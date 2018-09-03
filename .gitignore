@@ -40,4 +40,8 @@
 build/
 .vscode/
 
+# test output
+fbstream_test_file
+filebuftest
+
 logicmill.code-workspace

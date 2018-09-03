@@ -1,4 +1,5 @@
 #include <logicmill/buffer.h>
+#include <boost/crc.hpp>
 
 using namespace logicmill;
 

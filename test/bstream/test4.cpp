@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-#include "../doctest.h"
+#include <doctest.h>
 #include <logicmill/bstream.h>
 #include <logicmill/bstream/ombstream.h>
 #include <logicmill/bstream/imbstream.h>

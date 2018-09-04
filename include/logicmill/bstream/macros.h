@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   macros.h
- * Author: David Curtis
- *
- * Created on June 30, 2017, 11:50 AM
- */
-
 #ifndef LOGICMILL_BSTREAM_MACROS_H
 #define LOGICMILL_BSTREAM_MACROS_H
 
@@ -235,7 +228,7 @@
 /**/
 
 #define BSTRM_BASE_TYPE_( class_name )														\
-	logicmill::bstream::streaming_base< class_name >											\
+	logicmill::bstream::streaming_base< class_name >										\
 /**/
 
 #define BSTRM_CTOR_( name, base_array, member_array )										\
@@ -301,7 +294,7 @@
 /**/
 
 #define BSTRM_CTOR_DECL_SIG_( name )														\
-	name( logicmill::bstream::ibstream& is )													\
+	name( logicmill::bstream::ibstream& is )												\
 /**/
 
 #define BSTRM_CTOR_DEF_SIG_( scope, name )													\
@@ -315,7 +308,7 @@
 /**/
 
 #define BSTRM_CTOR_DEF_SIG_SCOPED_( scope, name )											\
-	scope::name::name( logicmill::bstream::ibstream& is )										\
+	scope::name::name( logicmill::bstream::ibstream& is )									\
 /**/
 
 #define BSTRM_CTOR_DEF_( scope, name, base_array, member_array )							\
@@ -349,8 +342,8 @@ public:																						\
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_DECL_SIG_()													\
-	logicmill::bstream::obstream&																\
-	serialize_impl( logicmill::bstream::obstream& os ) const									\
+	logicmill::bstream::obstream&															\
+	serialize_impl( logicmill::bstream::obstream& os ) const								\
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_BODY_( name, base_array, member_array )						\
@@ -378,7 +371,7 @@ public:																						\
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_EACH_BASE_( r, data, i, base )									\
-	( logicmill::bstream::base_serializer< decltype( *this ), base >::put( os, *this ) );		\
+	( logicmill::bstream::base_serializer< decltype( *this ), base >::put( os, *this ) );	\
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_MEMBERS_( member_array )										\
@@ -402,7 +395,7 @@ public:																						\
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DECL_SIG_()													\
-	logicmill::bstream::obstream&																\
+	logicmill::bstream::obstream&															\
 	serialize( logicmill::bstream::obstream& os ) const										\
 /**/
 
@@ -421,7 +414,7 @@ public:																						\
 /**/
 
 #define BSTRM_POLY_SERIALIZE_METHOD_DECL_SIG_()												\
-	virtual logicmill::bstream::obstream&														\
+	virtual logicmill::bstream::obstream&													\
 	serialize( logicmill::bstream::obstream& os ) const										\
 /**/
 
@@ -442,13 +435,13 @@ public:																						\
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_DEF_SIG_UNSCOPED_( scope, name )								\
-		logicmill::bstream::obstream&															\
+		logicmill::bstream::obstream&														\
 		name::serialize_impl( logicmill::bstream::obstream& os ) const						\
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_DEF_SIG_SCOPED_( scope, name )									\
-		logicmill::bstream::obstream&															\
-		scope::name::serialize_impl( logicmill::bstream::obstream& os ) const					\
+		logicmill::bstream::obstream&														\
+		scope::name::serialize_impl( logicmill::bstream::obstream& os ) const				\
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DEF_( scope, name )											\
@@ -463,13 +456,13 @@ public:																						\
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DEF_SIG_UNSCOPED_( scope, name )								\
-		logicmill::bstream::obstream&															\
-		name::serialize( logicmill::bstream::obstream& os ) const								\
+		logicmill::bstream::obstream&														\
+		name::serialize( logicmill::bstream::obstream& os ) const							\
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DEF_SIG_SCOPED_( scope, name )								\
-		logicmill::bstream::obstream&															\
-		scope::name::serialize( logicmill::bstream::obstream& os ) const						\
+		logicmill::bstream::obstream&														\
+		scope::name::serialize( logicmill::bstream::obstream& os ) const					\
 /**/
 
 #endif // LOGICMILL_BSTREAM_MACROS_H

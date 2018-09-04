@@ -30,7 +30,7 @@
 #include <logicmill/bstream/obmembuf.h>
 #include <logicmill/bstream/ibfilebuf.h>
 #include <logicmill/bstream/obfilebuf.h>
-#include "../doctest.h"
+#include <doctest.h>
 #include <logicmill/bstream/error.h>
 
 using namespace logicmill;

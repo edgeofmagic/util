@@ -350,7 +350,7 @@ inline context_base const& get_default_context()
     return default_context;
 }
 
-} // bstream
-} // logicmill
+} // namespace bstream
+} // namespace logicmill
 
 #endif // LOGICMILL_BSTREAM_CONTEXT_H

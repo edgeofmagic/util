@@ -24,7 +24,7 @@
 
 #include <logicmill/bstream/ifbstream.h>
 #include <logicmill/bstream/ofbstream.h>
-#include "../doctest.h"
+#include <doctest.h>
 
 using namespace logicmill;
 using namespace bstream;

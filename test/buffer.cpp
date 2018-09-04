@@ -23,7 +23,7 @@
  */
 
 #include <logicmill/buffer.h>
-#include "doctest.h"
+#include <doctest.h>
 #include <iostream>
 
 using namespace logicmill;

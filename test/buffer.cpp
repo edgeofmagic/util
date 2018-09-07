@@ -53,7 +53,7 @@ TEST_CASE( "logicmill/buffer/smoke/basic" )
 
 	void* baddr1 = buf.data();
 
-	std::cout << "baddr1 is " << baddr0 << ", baddr1 is " << baddr1 << std::endl;
+	// std::cout << "baddr0 is " << baddr0 << ", baddr1 is " << baddr1 << std::endl;
 
 	std::cout << buf.to_string() << std::endl;
 

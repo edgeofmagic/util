@@ -22,35 +22,50 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/async/loop.h>
-#include <doctest.h>
-#include <iostream>
+#ifndef LOGICMILL_ASYNC_TIMER_H
+#define LOGICMILL_ASYNC_TIMER_H
 
-using namespace logicmill;
+#include <memory>
+#include <functional>
+#include <system_error>
+#include <chrono>
 
-TEST_CASE( "logicmill/async/loop/smoke/basic" )
+namespace logicmill
 {
-	async::loop::ptr lp = async::loop::create();
-
-	lp->run();
-
-	CHECK( true );
-}
-
-TEST_CASE( "logicmill/async/loop/smoke/timer" )
+namespace async
 {
-	async::loop::ptr lp = async::loop::create();
 
-	auto tp = lp->create_timer( [] ( async::timer::ptr timer_ptr )
-	{
-		std::cout << "timer expired" << std::endl;
-	});
+class loop;
 
-	tp->start( std::chrono::milliseconds{ 1000 } );
+class timer
+{
+public:
+	using ptr = std::shared_ptr< timer >;
+	using handler = std::function< void ( timer::ptr ) >;
 
-	lp->run();
+	virtual ~timer() {}
 
-	lp->close();
+	virtual void
+	start( std::chrono::milliseconds timeout ) = 0;
 
-	CHECK( true );
-}
+	virtual void
+	start( std::chrono::milliseconds timeout, std::error_code& err ) = 0;
+
+	virtual void
+	stop() = 0;
+
+	virtual void
+	stop( std::error_code& err ) = 0;
+
+	virtual void
+	close() = 0;
+
+	virtual std::shared_ptr< loop >
+	owner() = 0;
+
+};
+
+} // namespace async
+} // namespace logicmill
+
+#endif // LOGICMILL_ASYNC_TIMER_H

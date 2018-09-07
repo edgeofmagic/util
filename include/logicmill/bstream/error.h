@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   error.h
- * Author: David Curtis
- *
- * Created on June 29, 2017, 1:35 PM
- */
-
 #ifndef LOGICMILL_BSTREAM_ERROR_H
 #define LOGICMILL_BSTREAM_ERROR_H
 
@@ -38,20 +31,6 @@ namespace logicmill
 {
 namespace bstream
 {
-
-class type_error : public std::logic_error
-{
-public:
-	explicit type_error( const std::string& what_arg ) 
-	: 
-	std::logic_error{ what_arg } 
-	{}
-
-	explicit type_error( const char* what_arg )
-	: 
-	std::logic_error{ what_arg } 
-	{}
-};
 
 enum class errc
 {
@@ -86,6 +65,7 @@ enum class errc
 	expected_blob,
 	expected_extern,
 	invalid_header_for_error_code,
+	string_length_exceeds_limit,
 
 	num_deser_type_error_int8,
 	num_deser_type_error_uint8,
@@ -103,37 +83,14 @@ enum class errc
 
 };
 
-class bstream_category_impl : public std::error_category
-{
-public:
-	virtual const char* 
-	name() const noexcept override;
+std::error_category const&
+error_category() noexcept;
 
-	virtual std::string 
-	message( int ev ) const noexcept override;
+std::error_condition 
+make_error_condition( errc e );
 
-	virtual std::error_condition
-	default_error_condition(int ev) const noexcept override;
-
-};
-
-inline std::error_category const& bstream_category() noexcept
-{
-    static bstream_category_impl instance;
-    return instance;
-}
-
-inline std::error_condition 
-make_error_condition( errc e )
-{
-    return std::error_condition( static_cast< int >( e ), bstream_category() );
-}
-
-inline std::error_code 
-make_error_code( errc e )
-{
-    return std::error_code( static_cast< int >( e ), bstream_category() );
-}
+std::error_code 
+make_error_code( errc e );
 
 } // namespace bstream
 } // namespace logicmill

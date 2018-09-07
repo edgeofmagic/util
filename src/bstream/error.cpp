@@ -25,18 +25,32 @@
 #include <logicmill/bstream/error.h>
 
 using namespace logicmill;
-using namespace bstream;
+// using namespace bstream;
+
+
+class bstream_category_impl : public std::error_category
+{
+public:
+	virtual const char* 
+	name() const noexcept override;
+
+	virtual std::string 
+	message( int ev ) const noexcept override;
+
+	virtual std::error_condition
+	default_error_condition(int ev) const noexcept override;
+};
 
 const char* 
 bstream_category_impl::name() const noexcept
 {
-    return "logicmill::bstream";
+    return "bstream";
 }
 
 std::string 
 bstream_category_impl::message(int ev ) const noexcept
 {
-    switch ( static_cast< errc > (ev ) )
+    switch ( static_cast< bstream::errc > (ev ) )
     {
 		case bstream::errc::ok:
 			return "success";
@@ -96,6 +110,9 @@ bstream_category_impl::message(int ev ) const noexcept
 			return "expected extern";
 		case bstream::errc::invalid_header_for_error_code:
 			return "invalid header for error code";
+		case bstream::errc::string_length_exceeds_limit:
+			return "string length exceeds limit";
+
 		case bstream::errc::num_deser_type_error_int8:
 			return "unexpected typecode in deserializer for 8-bit signed integer";
 		case bstream::errc::num_deser_type_error_uint8:
@@ -132,7 +149,7 @@ bstream_category_impl::message(int ev ) const noexcept
 std::error_condition
 bstream_category_impl::default_error_condition(int ev) const noexcept
 {
-	switch ( static_cast< errc > ( ev ) )
+	switch ( static_cast< bstream::errc > ( ev ) )
 	{
 		case bstream::errc::expected_nil:
 		case bstream::errc::invalid_header_for_shared_ptr:
@@ -151,6 +168,7 @@ bstream_category_impl::default_error_condition(int ev) const noexcept
 		case bstream::errc::expected_blob:
 		case bstream::errc::expected_extern:
 		case bstream::errc::invalid_header_for_error_code:
+		case bstream::errc::string_length_exceeds_limit:
 		case bstream::errc::num_deser_type_error_int8:
 		case bstream::errc::num_deser_type_error_uint8:
 		case bstream::errc::num_deser_range_error_int16:
@@ -170,3 +188,24 @@ bstream_category_impl::default_error_condition(int ev) const noexcept
 			return std::error_condition(ev, *this);
 	}
 }
+
+std::error_category const&
+bstream::error_category() noexcept
+{
+    static bstream_category_impl instance;
+    return instance;
+}
+
+std::error_condition 
+bstream::make_error_condition( errc e )
+{
+    return std::error_condition( static_cast< int >( e ), bstream::error_category() );
+}
+
+std::error_code 
+bstream::make_error_code( errc e )
+{
+    return std::error_code( static_cast< int >( e ), bstream::error_category() );
+}
+
+

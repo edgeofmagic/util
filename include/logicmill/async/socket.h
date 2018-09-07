@@ -22,64 +22,59 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ASYNC_LOOP_H
-#define LOGICMILL_ASYNC_LOOP_H
+#ifndef LOGICMILL_ASYNC_SOCKET_H
+#define LOGICMILL_ASYNC_SOCKET_H
 
 #include <memory>
 #include <functional>
 #include <system_error>
 #include <chrono>
-#include <logicmill/async/timer.h>
-#include <logicmill/async/resolver.h>
 
 namespace logicmill
 {
 namespace async
 {
 
-class timer;
+class loop;
 
-class loop
+namespace tcp
+{
+	class socket
+	{
+	public:
+		
+	}
+}
+
+class timer
 {
 public:
-	using ptr = std::shared_ptr< loop >;
+	using ptr = std::shared_ptr< timer >;
+	using handler = std::function< void ( timer::ptr ) >;
 
-	static loop::ptr
-	create();
-
-	virtual
-	~loop() {}
-
-	static loop::ptr
-	get_default();
+	virtual ~timer() {}
 
 	virtual void
-	run() = 0;
+	start( std::chrono::milliseconds timeout ) = 0;
 
-	virtual void 
-	run( std::error_code& err ) = 0;
+	virtual void
+	start( std::chrono::milliseconds timeout, std::error_code& err ) = 0;
 
 	virtual void
 	stop() = 0;
 
 	virtual void
-	close() = 0;
+	stop( std::error_code& err ) = 0;
 
 	virtual void
-	close( std::error_code& err ) = 0;
+	close() = 0;
 
-	virtual timer::ptr
-	create_timer( timer::handler hf ) = 0;
-
-	virtual timer::ptr
-	create_timer( std::error_code& err, timer::handler hf ) = 0;
-
-	virtual resolver::ptr
-	create_resolver( std::error_code& err, resolver::handler hf ) = 0;
+	virtual std::shared_ptr< loop >
+	owner() = 0;
 
 };
 
 } // namespace async
 } // namespace logicmill
 
-#endif // LOGICMILL_ASYNC_LOOP_H
+#endif // LOGICMILL_ASYNC_SOCKET_H

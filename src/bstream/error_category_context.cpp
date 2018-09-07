@@ -31,7 +31,7 @@ using namespace bstream;
 const error_category_context::category_init_list error_category_context::m_default_categories =
 {
     &std::generic_category(),
-    &bstream::bstream_category()
+    &bstream::error_category()
 };
 
 error_category_context::error_category_context( category_init_list init_list )

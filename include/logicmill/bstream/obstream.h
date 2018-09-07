@@ -524,7 +524,8 @@ struct serializer< std::string_view >
 		}
 		else
 		{
-			throw type_error( "string length exceeds limit" );
+			throw std::system_error{ make_error_code( bstream::errc::string_length_exceeds_limit ) };
+			// throw type_error( "string length exceeds limit" );
 		}
 		return os;
 	}
@@ -570,7 +571,8 @@ struct serializer< std::string >
 		}
 		else
 		{
-			throw type_error( "string length exceeds limit" );
+			throw std::system_error{ make_error_code( bstream::errc::string_length_exceeds_limit ) };
+			// throw type_error( "string length exceeds limit" );
 		}
 		return os;
 	}

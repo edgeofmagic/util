@@ -67,10 +67,7 @@ public:
 protected:
 
     virtual position_type
-    really_seek( seek_anchor where, offset_type offset, std::error_code& err ) override;
-
-    virtual position_type
-    really_tell( seek_anchor where, std::error_code& err ) override;
+    really_seek( position_type pos, std::error_code& err ) override;
 
     virtual size_type
     really_underflow( std::error_code& err ) override;

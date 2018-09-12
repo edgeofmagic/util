@@ -383,18 +383,6 @@ public:
         position( 0, err );
     }
 
-    // virtual void 
-    // rewind()
-    // {
-    //     position( 0 );
-    // }
-
-    // virtual void 
-    // rewind( std::error_code& err )
-    // {
-    //     position( 0, err );
-    // }
-
     const_buffer
     get_msgpack_obj_buf();
 

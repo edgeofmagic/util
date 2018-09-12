@@ -76,14 +76,14 @@ public:
 
 protected:
 
-    // virtual bool
-    // really_force_mutable() override;
-
     virtual void
     really_flush( std::error_code& err ) override;
 
-    virtual void
-    really_touch( std::error_code& err ) override;
+	virtual bool
+	is_valid_position( position_type pos ) const override;
+
+	virtual void
+	really_jump( std::error_code& err ) override;
 
     void
     resize( size_type size )
@@ -92,11 +92,6 @@ protected:
 	    // force a hard lower bound to avoid non-resizing dilemma in resizing, when cushioned == size == 1
         m_buf.capacity( std::max( 16UL, cushioned_size ) );
     }
-
-    virtual position_type
-    really_seek( seek_anchor where, offset_type offset, std::error_code& err ) override;
-
-    // base class implementation of really_tell needs no override here
 
     virtual void
     really_overflow( size_type n, std::error_code& err ) override;

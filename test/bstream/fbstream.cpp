@@ -38,7 +38,7 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read" )
     os.close();
 
     bstream::ifbstream is( "fbstream_test_file" );
-    auto fsize = is.tell( seek_anchor::end );
+    auto fsize = is.size();
     const_buffer inbuf = is.getn( fsize );
     is.close();
     CHECK( outbuf == inbuf );
@@ -54,7 +54,7 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
     }
     {
         bstream::ifbstream is( "fbstream_test_file" );
-        auto fsize = is.tell( seek_anchor::end );
+        auto fsize = is.size();
         const_buffer inbuf = is.getn( fsize );
         is.close();
         mutable_buffer expected{ "abcdefghijklmnop" };
@@ -62,9 +62,9 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
     }
     {
         bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::at_end );
-        auto pos = os.tell( seek_anchor::current );
+        auto pos = os.position();
         CHECK( pos == 16 );
-        auto fsize = os.tell( seek_anchor::end );
+        auto fsize = os.size();
         CHECK( fsize == 16 );
         mutable_buffer outbuf{ "qrstuvwxyz" };
         os.putn( outbuf );
@@ -72,7 +72,7 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
     }
     {
         bstream::ifbstream is( "fbstream_test_file" );
-        auto fsize = is.tell( seek_anchor::end );
+        auto fsize = is.size();
         CHECK( fsize == 26 );
         const_buffer inbuf = is.getn( fsize );
         is.close();
@@ -81,9 +81,9 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
     }
     {
         bstream::ifbstream is( "fbstream_test_file" );
-        auto fsize = is.tell( seek_anchor::end );
+        auto fsize = is.size();
         CHECK( fsize == 26 );
-        is.seek( seek_anchor::begin, 16 );
+        is.position( 16, seek_anchor::begin );
         const_buffer inbuf = is.getn( 10 );
         bool caught_exception = false;
         try
@@ -102,30 +102,30 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
     }
     {
         bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::append );
-        auto pos = os.tell( seek_anchor::current );
+        auto pos = os.position();
         CHECK( pos == 26 );
         mutable_buffer outbuf{ "0123456789" };
         os.putn( outbuf );
-        auto zpos = os.seek( seek_anchor::begin, 0 );
+        auto zpos = os.position( 0 );
         os.putn( outbuf );
-        zpos = os.tell( seek_anchor::current );
+        zpos = os.position();
         os.close();
     }
     {
         bstream::ofbstream os( "fbstream_test_file" );
-        auto pos = os.tell( bstream::seek_anchor::current );
+        auto pos = os.position();
         CHECK( pos == 0 );
-        auto fsize = os.tell( bstream::seek_anchor::end );
+        auto fsize = os.size();
         CHECK( fsize == 46 );
         mutable_buffer outbuf{ "0123456789" };
         os.putn( outbuf );
-        auto zpos = os.tell( bstream::seek_anchor::current );
+        auto zpos = os.position();
         CHECK( zpos == 10 );
         os.close();
     }
     {
         bstream::ifbstream is( "fbstream_test_file" );
-        auto fsize = is.tell( seek_anchor::end );
+        auto fsize = is.size();
         CHECK( fsize == 46 );
         const_buffer inbuf = is.getn( fsize );
         is.close();
@@ -136,10 +136,10 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
         bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::truncate );
         mutable_buffer outbuf{ "abcdefghijklmnop" };
         os.putn( outbuf );
-        os.seek( seek_anchor::begin, 36 );
+        os.position( 36 );
         mutable_buffer outbuf2{ "0123456789" };
         os.putn( outbuf2 );
-        auto zpos = os.tell( seek_anchor::current );
+        auto zpos = os.position();
         CHECK( zpos == 46 );
         os.close();
     }

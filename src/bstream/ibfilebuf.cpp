@@ -66,90 +66,22 @@ m_fd{ -1 }
 }
 
 position_type
-ibfilebuf::really_seek( seek_anchor where, offset_type offset, std::error_code& err )
+ibfilebuf::really_seek( position_type pos, std::error_code& err )
 {
     clear_error( err );
     position_type result = invalid_position;
 
-    switch ( where )
-    {
-        case seek_anchor::current:
-        {
-            result = ::lseek( m_fd, offset, SEEK_CUR );
-        }
-        break;
+    result = ::lseek( m_fd, pos, SEEK_SET );
 
-        case seek_anchor::end:
-        {
-            result = ::lseek( m_fd, offset, SEEK_END );
-        }
-        break;
-
-        case seek_anchor::begin:
-        {
-            result = ::lseek( m_fd, offset, SEEK_SET );
-        }
-        break;
-    }
     if ( result < 0 )
     {
         err = std::error_code{ errno, std::generic_category() };
         result = invalid_position;
         goto exit;
     }
+
     m_gbase_offset = result;
     reset_ptrs();
-exit:
-    return result;
-}
-
-position_type
-ibfilebuf::really_tell( seek_anchor where, std::error_code& err )
-{
-    clear_error( err );
-    position_type result = invalid_position;
-
-    switch ( where )
-    {
-        case seek_anchor::current:
-        {
-            result = gpos();
-        }
-        break;
-
-        case seek_anchor::end:
-        {
-            auto save = m_gbase_offset;
-            result = ::lseek( m_fd, 0, SEEK_END );
-            if ( result < 0 )
-            {
-                err = std::error_code{ errno, std::generic_category() };
-                result = invalid_position;
-                goto exit;
-            }
-            auto restore_result = ::lseek( m_fd, save, SEEK_SET );
-            if ( restore_result < 0 )
-            {
-                err = std::error_code{ errno, std::generic_category() };
-                result = invalid_position;
-                goto exit;
-            }
-            assert( restore_result == save );
-        }
-        break;
-
-        case seek_anchor::begin:
-        {
-            result = 0;
-        }
-        break;
-    }
-    if ( result < 0 )
-    {
-        err = std::error_code{ errno, std::generic_category() };
-        result = invalid_position;
-        goto exit;
-    }
 exit:
     return result;
 }
@@ -157,6 +89,7 @@ exit:
 size_type
 ibfilebuf::really_underflow( std::error_code& err )
 {
+    clear_error( err );
     assert( m_gnext == m_gend );
     m_gbase_offset = gpos();
     m_gnext = m_gbase;
@@ -165,6 +98,8 @@ ibfilebuf::really_underflow( std::error_code& err )
     {
         available = 0;
     }
+	m_buf.size( available );
+    m_gend = m_gnext + available;
     return available;
 }
 
@@ -216,8 +151,6 @@ ibfilebuf::load_buffer( std::error_code& err )
         read_result = 0;
         goto exit;
     }
-	m_buf.size( read_result );
-    m_gend = m_gnext + read_result;
 
 exit:
     return read_result;
@@ -227,6 +160,7 @@ void
 ibfilebuf::really_open( std::error_code& err )
 {
     clear_error( err );
+
     if ( m_is_open )
     {
         close( err );
@@ -241,7 +175,22 @@ ibfilebuf::really_open( std::error_code& err )
         goto exit;
     }
 
+	m_end_position = ::lseek( m_fd, 0, SEEK_END );
+	if ( m_end_position < 0 )
+	{
+		err = std::error_code{ errno, std::generic_category() };
+		m_end_position = invalid_position;
+		goto exit;
+	}
+
+	if ( ::lseek( m_fd, 0, SEEK_SET ) < 0 )
+	{
+		err = std::error_code{ errno, std::generic_category() };
+		goto exit;
+	}
+
     m_is_open = true;
+	m_gbase_offset = 0;
     reset_ptrs();
 
 exit:

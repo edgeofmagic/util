@@ -131,12 +131,6 @@ obfilebuf::open( std::string const& filename, open_mode mode, int flags_override
 	}
 }
 
-// bool
-// obfilebuf::really_force_mutable()
-// {
-//     return true;
-// }
-
 void
 obfilebuf::really_flush( std::error_code& err )
 {
@@ -144,96 +138,53 @@ obfilebuf::really_flush( std::error_code& err )
     auto pos = ppos();
     assert( m_dirty && m_pnext > m_dirty_start );
     assert( m_dirty_start == m_pbase );
-    if ( m_last_touched != m_pbase_offset )
-    {
-        auto seek_result = ::lseek( m_fd, m_pbase_offset, SEEK_SET );
-        if ( seek_result < 0 )
-        {
-            err = std::error_code{ errno, std::generic_category() };
-            goto exit;
-        }
-        assert( seek_result == m_pbase_offset );
-    }
 
-    {
-        size_type n = static_cast< size_type >( m_pnext - m_pbase );
-        auto write_result = ::write( m_fd, m_pbase, n );
-        if ( write_result < 0 )
-        {
-            err = std::error_code{ errno, std::generic_category() };
-            goto exit;
-        }
-        assert( static_cast< size_type >( write_result ) == n );
-        m_pbase_offset = pos;
-        m_pnext = m_pbase;
-    }
+	size_type n = static_cast< size_type >( m_pnext - m_pbase );
+	auto write_result = ::write( m_fd, m_pbase, n );
+	if ( write_result < 0 )
+	{
+		err = std::error_code{ errno, std::generic_category() };
+		goto exit;
+	}
+	assert( static_cast< size_type >( write_result ) == n );
+	m_pbase_offset = pos;
+	m_pnext = m_pbase;
 exit:
     return;
 }
 
-void
-obfilebuf::really_touch( std::error_code& err )
+bool
+obfilebuf::is_valid_position( position_type pos ) const
 {
-    clear_error( err );
-    auto pos = ppos();
-    assert( m_pbase_offset == pos && m_pnext == m_pbase );
-    assert( m_last_touched != pos );
+    return pos >= 0;
+}
 
-    auto result = ::lseek( m_fd, pos, SEEK_SET );
+void
+obfilebuf::really_jump( std::error_code& err )
+{
+	clear_error( err );
+	assert( m_did_jump );
+
+	if ( m_dirty )
+	{
+		flush( err );
+	}
+
+    auto result = ::lseek( m_fd, m_jump_to, SEEK_SET );
     if ( result < 0 )
     {
         err = std::error_code{ errno, std::generic_category() };
         goto exit;
     }
-    m_last_touched = pos;
-    
-exit:
-    return;
-}
 
-position_type
-obfilebuf::really_seek( seek_anchor where, offset_type offset, std::error_code& err )
-{
-    clear_error( err );
-    position_type result = invalid_position;
-
-    flush( err );
-    if ( err ) goto exit;
-
-    switch ( where )
-    {
-        case seek_anchor::current:
-        {
-            result = ppos() + offset;
-        }
-        break;
-
-        case seek_anchor::end:
-        {
-            auto end_pos = get_high_watermark();
-            result = end_pos + offset;
-        }
-        break;
-
-        case seek_anchor::begin:
-        {
-            result = offset;
-        }
-        break;
-    }
-
-    if ( result < 0 )
-    {
-        err = make_error_code( std::errc::invalid_argument );
-        result = invalid_position;
-        goto exit;
-    }
-
-    m_pbase_offset = result;
-    m_pnext = m_pbase;
+	m_pbase_offset = m_jump_to;
+	assert( ! m_dirty );
+    assert( ppos() == m_jump_to );
+    assert( m_pnext == m_pbase );
 
 exit:
-    return result;
+	m_did_jump = false;
+	return;
 }
 
 void
@@ -304,7 +255,6 @@ obfilebuf::truncate( std::error_code& err )
         }
 
         force_high_watermark( pos );
-        m_last_touched = pos;
         result = pos;
     }
 
@@ -364,7 +314,6 @@ obfilebuf::really_open( std::error_code& err )
         if ( m_mode == open_mode::at_end || is_append( m_flags ) )
         {
             m_pbase_offset = end_pos;
-            m_last_touched = end_pos; // An acceptable lie.
         }
         else
         {
@@ -376,7 +325,6 @@ obfilebuf::really_open( std::error_code& err )
             }
             assert( pos == 0 );
             m_pbase_offset = 0;
-            m_last_touched = 0UL;
         }
         reset_ptrs();
         m_dirty = false;

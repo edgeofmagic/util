@@ -137,11 +137,11 @@ protected:
     virtual void
     really_flush( std::error_code& err ) override;
 
-    virtual void
-    really_touch( std::error_code& err ) override;
+	virtual bool
+	is_valid_position( position_type pos ) const override;
 
-    virtual position_type
-    really_seek( seek_anchor where, offset_type offset, std::error_code& err ) override;
+	virtual void
+	really_jump( std::error_code& err ) override;
 
     virtual void
     really_overflow( size_type, std::error_code& err ) override;

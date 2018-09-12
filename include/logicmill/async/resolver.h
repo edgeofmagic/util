@@ -54,10 +54,6 @@ public:
 
 	virtual std::string const&
 	hostname() const = 0;
-
-	virtual void
-	resolve(  std::string const& hostname, std::error_code& err ) = 0;
-
 };
 
 } // namespace async

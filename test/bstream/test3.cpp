@@ -221,6 +221,8 @@ TEST_CASE( "logicmill/smoke/bstream/poly_raw_ptrs_half_erasure" )
 	// {
 	// 	std::cout << raw_foop_dcast->id() << std::endl;
 	// }
+
+	delete raw_foop;
 }
 
 

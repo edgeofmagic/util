@@ -4,6 +4,14 @@ project(logicmill VERSION 0.1.0)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+	if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+#	else()
+#		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3")
+	endif()
+
+
 enable_testing()
 
 add_subdirectory( ext/libuv )
@@ -56,6 +64,8 @@ set(LOGICMILL_SRCS
 	include/logicmill/async/timer.h
 	include/logicmill/async/address.h
 	include/logicmill/async/error.h
+	include/logicmill/async/event.h
+	include/logicmill/async/stream.h
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
 	src/bstream/ibfilebuf.cpp
@@ -83,6 +93,8 @@ set(LOGICMILL_TEST_SRCS
 	test/buffer.cpp
 	test/async/loop.cpp
 	test/async/address.cpp
+	test/async/event.cpp
+#	test/async/stream.cpp
 	test/test_main.cpp)
 
 add_library(logicmill ${LOGICMILL_SRCS})
@@ -90,8 +102,11 @@ add_library(logicmill ${LOGICMILL_SRCS})
 add_executable(logicmill_test ${LOGICMILL_TEST_SRCS})
 target_link_libraries(logicmill_test logicmill uv_a)
 
-add_test(NAME test_bstream COMMAND logicmill_test --test-case=*bstream*)
-add_test(NAME test_async COMMAND logicmill_test --test-case=*async*)
+#add_test(NAME test_bstream COMMAND logicmill_test --test-case=*bstream*)
+#add_test(NAME test_async COMMAND logicmill_test --test-case=*async*)
+
+add_test(NAME logicmill_test COMMAND logicmill_test )
+
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

@@ -451,14 +451,26 @@ public:
 		resolver_impl::ptr	m_req_impl;
 	};
 
-	resolver_impl( std::shared_ptr< loop_impl > owner, async::resolver::handler handler )
+	resolver_impl( std::shared_ptr< loop_impl > owner, std::string const& hostname, async::resolver::handler handler )
 	:
 	m_owner{ owner },
-	m_uv_req{ nullptr },
+	m_uv_req{ new uv_getaddrinfo_t },
 	m_data{ nullptr },
-	m_hostname{},
+	m_hostname{ hostname },
 	m_handler{ handler }
 	{}
+
+	void 
+	start();
+
+	void 
+	start( std::error_code& err );
+
+	virtual ~resolver_impl()
+	{
+		std::cout << "in resolver_impl destructor" << std::endl;
+		assert( m_uv_req == nullptr );
+	}
 
 	static void on_resolve( uv_getaddrinfo_t* req, int status, struct addrinfo* result ) 
 	{
@@ -495,17 +507,27 @@ public:
 			}
 		}
 
+		uv_freeaddrinfo( result );
+
 		auto p = uv_req_get_data( reinterpret_cast< uv_req_t* >( req ) );
 		auto data = reinterpret_cast< resolver_impl::req_data* >( p );
 		auto req_impl = data->m_req_impl;
 
-		req_impl->m_handler( req_impl, std::move( addresses ), err );
+		data->m_req_impl->m_handler( data->m_req_impl, std::move( addresses ), err );
 
-		data->m_req_impl = nullptr; // kill self-reference
-		req_impl->m_hostname.clear();
 		assert( ( void* )req == ( void* )( req_impl->m_uv_req ) );
-		req_impl->m_uv_req = nullptr;
+		data->m_req_impl->wipe();
+		data->m_req_impl.reset(); // kill self-reference
 		delete req;
+	}
+
+	void
+	wipe()
+	{
+		m_hostname.clear();
+		m_owner.reset();
+		m_handler = nullptr;
+		m_uv_req = nullptr;
 	}
 
 	virtual std::shared_ptr< async::loop >
@@ -526,9 +548,6 @@ public:
 		return m_hostname;
 	}
 
-	virtual void
-	resolve(  std::string const& hostname, std::error_code& err ) override;
-
 	std::shared_ptr< loop_impl >		m_owner;
 	uv_getaddrinfo_t*					m_uv_req;
 	req_data							m_data;
@@ -537,7 +556,7 @@ public:
 
 };
 
-class timer_impl : public async::timer
+class timer_impl : public async::timer, public std::enable_shared_from_this< timer_impl >
 {
 public:
 
@@ -548,43 +567,75 @@ public:
 		timer_impl::ptr		m_timer_impl;
 	};
 
-	timer_impl( std::shared_ptr< loop_impl > owner, async::timer::handler handler );
-	
-	timer_impl( std::shared_ptr< loop_impl > owner, std::error_code& err, async::timer::handler handler );
+	timer_impl( std::shared_ptr< loop_impl > owner, async::timer::handler handler )
+	:
+	m_owner{ owner },
+	m_uv_timer{ nullptr },
+	m_data{ nullptr },
+	m_handler{ handler }
+	{}
 
 	virtual ~timer_impl()
 	{
-		if ( m_uv_timer &&  ! uv_is_closing( reinterpret_cast< uv_handle_t* >( m_uv_timer ) ) )
-		{
-			uv_close( reinterpret_cast< uv_handle_t* >( m_uv_timer ), on_timer_close );
-		}
+		std::cout << "in timer_impl destructor" << std::endl;
+		assert( m_uv_timer == nullptr );
 	}
+
+	void
+	init_uv_timer( std::error_code& err );
+
+	void
+	init_uv_timer();
 
 	virtual void
 	start( std::chrono::milliseconds timeout ) override
 	{
+		if ( ! m_owner ) // on_close clears the owner
+		{
+			throw std::system_error{ make_error_code( async::errc::timer_closed ) };
+		}
+
 		if ( ! m_uv_timer )
 		{
-			throw std::system_error{ make_error_code( std::errc::state_not_recoverable ) };
+			init_uv_timer();
 		}
-		auto status = uv_timer_start( m_uv_timer, timer_cb, timeout.count(), 0 );
+
+		if ( is_active() )
+		{
+			throw std::system_error{ make_error_code( std::errc::operation_in_progress ) };
+		}
+
+		auto status = uv_timer_start( m_uv_timer, on_timer_expire, timeout.count(), 0 );
 		UV_ERROR_THROW( status );
 	}
 
 	virtual void
 	start( std::chrono::milliseconds timeout, std::error_code& err ) override
 	{
+		int status = 0;
 		clear_error( err );
-		if ( ! m_uv_timer )
+
+		if ( ! m_owner ) // on_close clears the owner
 		{
-			err = make_error_code( std::errc::state_not_recoverable );
+			err = make_error_code( async::errc::timer_closed );
 			goto exit;
 		}
-		else
+		
+		if ( ! m_uv_timer )
 		{
-			auto status = uv_timer_start( m_uv_timer, timer_cb, timeout.count(), 0 );
-			UV_ERROR_CHECK( status, err, exit );
+			init_uv_timer( err );
+			if ( err ) goto exit;
 		}
+
+		if ( is_active() )
+		{
+			err = make_error_code( std::errc::operation_in_progress );
+			goto exit;
+		}
+
+		status = uv_timer_start( m_uv_timer, on_timer_expire, timeout.count(), 0 );
+		UV_ERROR_CHECK( status, err, exit );
+
 	exit:
 		return;
 	}
@@ -594,26 +645,33 @@ public:
 	{
 		if ( ! m_uv_timer )
 		{
-			throw std::system_error{ make_error_code( std::errc::state_not_recoverable ) };
+			throw std::system_error{ make_error_code( async::errc::timer_closed ) };
 		}
-		auto status = uv_timer_stop( m_uv_timer );
-		UV_ERROR_THROW( status );
+
+		if ( is_active() )
+		{
+			auto status = uv_timer_stop( m_uv_timer );
+			UV_ERROR_THROW( status );
+		}
 	}
 
 	virtual void
 	stop( std::error_code& err ) override
 	{
 		clear_error( err );
+
 		if ( ! m_uv_timer )
 		{
-			err = make_error_code( std::errc::state_not_recoverable );
+			err = make_error_code( async::errc::timer_closed );
 			goto exit;
 		}
-		else
+
+		if ( is_active() )
 		{
 			auto status = uv_timer_stop( m_uv_timer );
 			UV_ERROR_CHECK( status, err, exit );
 		}
+
 	exit:
 		return;
 	}
@@ -630,31 +688,58 @@ public:
 	virtual std::shared_ptr< async::loop >
 	owner() override;
 
+	bool is_active() const
+	{
+		return m_uv_timer && uv_is_active( reinterpret_cast< uv_handle_t* >( m_uv_timer ) );
+	}
+
+	virtual bool
+	is_pending() const override
+	{
+		return is_active();
+	}
+
+	void
+	wipe()
+	{
+		m_uv_timer = nullptr;
+		m_owner.reset();
+		m_handler = nullptr;
+	}
+
 	static void
 	on_timer_close( uv_handle_t* handle )
 	{
 		assert( uv_handle_get_type( handle ) == uv_handle_type::UV_TIMER );
+		uv_timer_t* timer_handle = reinterpret_cast< uv_timer_t* >( handle );
 		timer_data* tdata = reinterpret_cast< timer_data* >( uv_handle_get_data( handle ) );
 		assert( (void*)tdata->m_timer_impl->m_uv_timer == (void*)handle );
-		tdata->m_timer_impl->m_uv_timer = nullptr;
-		tdata->m_timer_impl->m_owner = nullptr;
-		tdata->m_timer_impl = nullptr; // release the self-reference
-		uv_timer_t* timer_handle = reinterpret_cast< uv_timer_t* >( handle );
+		tdata->m_timer_impl->wipe();
+		tdata->m_timer_impl.reset(); // release the self-reference
 		delete timer_handle;
 	}
 
-	void
-	prep( timer_impl::ptr self )
-	{
-		m_data.m_timer_impl = self;
-	}
-	
 	static void
-	timer_cb( uv_timer_t* handle )
+	on_timer_expire( uv_timer_t* handle )
 	{
 		timer_data* tdata = reinterpret_cast< timer_data* >( uv_handle_get_data( reinterpret_cast< uv_handle_t* >( handle ) ) );
 		auto t_impl = tdata->m_timer_impl;
 		t_impl->m_handler( t_impl );
+
+		if ( ! uv_is_active( reinterpret_cast< uv_handle_t* >( handle ) ) )
+		{
+			std::cout << "timer refcount is " << t_impl.use_count() << std::endl;
+			if ( t_impl.use_count() <= 2 )
+			{
+				// Two references: this one (t_impl) and the self-reference in timer_data.
+				// The timer is not active, so when t_impl goes out of scope, the
+				// timer will become unusable ( no pointer other then the self-reference exists),
+				// and it will constitute a memory leak. Close it.
+				std::cout << "closing timer: low refcount" << std::endl;
+				t_impl->close();
+
+			}
+		}
 	}
 
 	std::shared_ptr< loop_impl >	m_owner;
@@ -668,14 +753,16 @@ class loop_impl : public async::loop, public std::enable_shared_from_this< loop_
 {
 public:
 
+	struct use_default_loop {};
+
 	using ptr = std::shared_ptr< loop_impl >;
 
 	loop_impl( loop_impl const& ) = delete;
 	loop_impl( loop_impl&& ) = delete;
 
-	loop_impl( uv_loop_t* lp )	// only use to construct for default loop
+	loop_impl( use_default_loop flag )	// only use to construct for default loop
 	:
-	m_uv_loop{ lp },
+	m_uv_loop{ uv_default_loop() },
 	m_is_default_loop{ true }
 	{}
 
@@ -693,62 +780,59 @@ public:
 		uv_loop_init( m_uv_loop );
 	}
 
-	loop_impl::ptr
-	get_ptr()
-	{
-		return shared_from_this();
-	}
-
 	virtual ~loop_impl()
 	{
+		std::cout << "starting loop destructor" << std::endl;
 		std::error_code err;
 		close( err );
+		if ( ! err )
+		{
+			std::cout << "loop closed in destructor" << std::endl;
+		}
+		else
+		{
+			std::cout << "loop closure in destructor failed: " << err.message() << std::endl;			
+		}
 	}
 
 	virtual async::timer::ptr
 	create_timer( async::timer::handler hf ) override
 	{
-		if ( m_uv_loop )
+		if ( ! m_uv_loop )
 		{
-			auto status = uv_run( m_uv_loop, UV_RUN_DEFAULT );
-			UV_ERROR_THROW( status );
+			throw std::system_error{ make_error_code( async::errc::loop_closed ) };
 		}
-		std::error_code err;
-		auto tp = std::make_shared< timer_impl >( get_ptr(), err, hf );
-		if ( err )
-		{
-			throw std::system_error{ err };
-		}
-		tp->prep( tp );
-		return tp;
+		return std::make_shared< timer_impl >( shared_from_this(), hf );
 	}
 
 	virtual async::timer::ptr
 	create_timer( std::error_code& err, async::timer::handler hf ) override
 	{
 		clear_error( err );
-		timer_impl::ptr result;
+
+		async::timer::ptr result;
+
 		if ( ! m_uv_loop )
 		{
-			err = make_error_code(std::errc::state_not_recoverable );
+			err = make_error_code( async::errc::loop_closed );
 			goto exit;
 		}
-		else
-		{
-			result = std::make_shared< timer_impl >( get_ptr(), err, hf );
-			if ( err )
-			{
-				result = nullptr;
-				goto exit;
-			}
-			else
-			{
-				result->prep( result );
-			}
-		}
+		result = std::make_shared< timer_impl >( shared_from_this(), hf );
+		if ( err ) goto exit;
 
 	exit:
 		return result;
+	}
+
+	virtual void
+	run() override
+	{
+		if ( ! m_uv_loop )
+		{
+			throw std::system_error{ make_error_code( async::errc::loop_closed ) };
+		}
+		auto status = uv_run( m_uv_loop, UV_RUN_DEFAULT );
+		UV_ERROR_THROW( status );
 	}
 
 	virtual void
@@ -757,7 +841,7 @@ public:
 		clear_error( err );
 		if ( ! m_uv_loop )
 		{
-			err = make_error_code(std::errc::state_not_recoverable );
+			err = make_error_code( async::errc::loop_closed );
 			goto exit;
 		}
 		else
@@ -771,32 +855,26 @@ public:
 	}
 
 	virtual void
-	run() override
+	stop() override
 	{
-		if ( m_uv_loop )
+		if ( ! m_uv_loop )
 		{
-			auto status = uv_run( m_uv_loop, UV_RUN_DEFAULT );
-			UV_ERROR_THROW( status );
+			throw std::system_error{ make_error_code( async::errc::loop_closed ) };
 		}
-		else
-		{
-			throw std::system_error{ make_error_code(std::errc::state_not_recoverable ) };
-		}
-	exit:
-		return;
+		uv_stop(  m_uv_loop );
 	}
 
 	virtual void
-	stop() override
+	stop( std::error_code& err ) override
 	{
-		if ( m_uv_loop )
+		clear_error( err );
+		if ( ! m_uv_loop )
 		{
-			uv_stop(  m_uv_loop );
+			err = make_error_code( async::errc::loop_closed );
 		}
-		else
-		{
-			throw std::system_error{ make_error_code( std::errc::state_not_recoverable ) };
-		}
+		uv_stop(  m_uv_loop );
+	exit:
+		return;
 	}
 
 	static void
@@ -812,110 +890,120 @@ public:
 					uv_timer_t* timer_handle = reinterpret_cast< uv_timer_t* >( handle );
 					if ( ! uv_is_closing( handle ) )
 					{
+						std::cout << "closing timer: on loop closure" << std::endl;
 						uv_close( handle, timer_impl::on_timer_close );
 					}
 				}
 				break;
 				default:
+				{
+					std::cout << "closing loop handles, unexpected handle type: " << handle_type << std::endl;
+				}
 				break;
 			}
 		}
 	}
 
 	virtual void
-	close() override
+	close() override  // probably should NOT be called from any handler
 	{
-		if ( m_uv_loop )
+		std::cout << "starting loop close" << std::endl;
+		if ( ! m_uv_loop )
 		{
-			auto status = uv_loop_close( m_uv_loop );
-			if ( status == UV_EBUSY )
-			{
-				uv_walk( m_uv_loop, on_walk, nullptr );
-				status = uv_run( m_uv_loop, UV_RUN_DEFAULT );
-				UV_ERROR_THROW( status );
-				status = uv_loop_close( m_uv_loop );
-				UV_ERROR_THROW( status );
-			}
-			else if ( status < 0 )
-			{
-				UV_ERROR_THROW( status );
-			}
-			if ( ! m_is_default_loop )
-			{
-				delete m_uv_loop;
-			}
-			m_uv_loop = nullptr;
+			throw std::system_error{ make_error_code( async::errc::loop_closed ) };
 		}
+		
+		auto status = uv_loop_close( m_uv_loop );
+		if ( status == UV_EBUSY )
+		{
+			uv_walk( m_uv_loop, on_walk, nullptr );
+			status = uv_run( m_uv_loop, UV_RUN_DEFAULT );
+			UV_ERROR_THROW( status );
+			status = uv_loop_close( m_uv_loop );
+			UV_ERROR_THROW( status );
+		}
+		else if ( status < 0 )
+		{
+			UV_ERROR_THROW( status );
+		}
+		if ( ! m_is_default_loop )
+		{
+			delete m_uv_loop;
+		}
+		m_uv_loop = nullptr;
 	}
 
 	virtual void
-	close( std::error_code& err ) override
+	close( std::error_code& err ) override // probably should NOT be called from any handler
 	{
+		std::cout << "starting loop close" << std::endl;
 		clear_error( err );
-		if ( m_uv_loop )
+		int status = 0;
+
+		if ( ! m_uv_loop )
 		{
-			auto status = uv_loop_close( m_uv_loop );
-			if ( status == UV_EBUSY )
-			{
-				uv_walk( m_uv_loop, on_walk, nullptr );
-				status = uv_run( m_uv_loop, UV_RUN_DEFAULT );
-				UV_ERROR_CHECK( status, err, exit );
-				status = uv_loop_close( m_uv_loop );
-				UV_ERROR_CHECK( status, err, exit );
-			}
-			else if ( status < 0 )
-			{
-				UV_ERROR_CHECK( status, err, exit );
-			}
-			if ( ! m_is_default_loop )
-			{
-				delete m_uv_loop;
-			}
-			m_uv_loop = nullptr;
+			err = make_error_code( async::errc::loop_closed );
+			goto exit;
 		}
+
+		status = uv_loop_close( m_uv_loop );
+		if ( status == UV_EBUSY )
+		{
+			uv_walk( m_uv_loop, on_walk, nullptr );
+			status = uv_run( m_uv_loop, UV_RUN_DEFAULT ); // is this cool?
+			UV_ERROR_CHECK( status, err, exit );
+			status = uv_loop_close( m_uv_loop );
+			UV_ERROR_CHECK( status, err, exit );
+		}
+		else if ( status < 0 )
+		{
+			UV_ERROR_CHECK( status, err, exit );
+		}
+		if ( ! m_is_default_loop )
+		{
+			delete m_uv_loop;
+		}
+		m_uv_loop = nullptr;
 	exit:
 		return;
 	}
 
 	virtual async::resolver::ptr
-	create_resolver( std::error_code& err, async::resolver::handler hf ) override
+	create_resolver( std::string const& hostname, async::resolver::handler hf ) override
 	{
-		return std::make_shared< resolver_impl >( shared_from_this(), hf );
+		if ( ! m_uv_loop )
+		{
+			throw std::system_error{ make_error_code( async::errc::loop_closed ) };
+		}
+
+		auto result = std::make_shared< resolver_impl >( shared_from_this(), hostname, hf );
+		result->start();
+		return result;
+	}
+
+	virtual async::resolver::ptr
+	create_resolver( std::string const& hostname, std::error_code& err, async::resolver::handler hf ) override
+	{
+		clear_error( err );
+		resolver_impl::ptr result;
+
+		if ( ! m_uv_loop )
+		{
+			err = make_error_code( async::errc::loop_closed );
+			goto exit;
+		}
+
+		result = std::make_shared< resolver_impl >( shared_from_this(), hostname, hf );
+		result->start( err );
+		if ( err ) goto exit;
+
+	exit:
+		return result;
 	}
 
 	uv_loop_t*		m_uv_loop;
 	bool			m_is_default_loop;
 };
-
-timer_impl::timer_impl( std::shared_ptr< loop_impl > owner, async::timer::handler handler )
-:
-m_owner{ owner },
-m_uv_timer{ new uv_timer_t },
-m_data{ nullptr },
-m_handler{ handler }
-{
-	auto status = uv_timer_init( m_owner->m_uv_loop, m_uv_timer );
-	UV_ERROR_THROW( status );
-
-	uv_handle_set_data( reinterpret_cast< uv_handle_t* >( m_uv_timer ), &m_data );
-}
-
-timer_impl::timer_impl( std::shared_ptr< loop_impl > owner, std::error_code& err, async::timer::handler handler )
-:
-m_owner{ owner },
-m_uv_timer{ new uv_timer_t },
-m_data{ nullptr },
-m_handler{ handler }
-{
-	clear_error( err );
-	auto status = uv_timer_init( m_owner->m_uv_loop, m_uv_timer );
-	UV_ERROR_CHECK( status, err, exit );
-
-	uv_handle_set_data( reinterpret_cast< uv_handle_t* >( m_uv_timer ), &m_data );
-
-exit:
-	return;
-}
 
 std::shared_ptr< async::loop >
 timer_impl::owner()
@@ -923,12 +1011,46 @@ timer_impl::owner()
 	return m_owner;
 }
 
+void
+timer_impl::init_uv_timer( std::error_code& err )
+{
+	assert( m_uv_timer == nullptr );
 
+	clear_error( err );
+
+	m_uv_timer = new uv_timer_t;
+	auto status = uv_timer_init( m_owner->m_uv_loop, m_uv_timer );
+	UV_ERROR_CHECK( status, err, exit );
+
+	m_data.m_timer_impl = shared_from_this();
+
+	uv_handle_set_data( reinterpret_cast< uv_handle_t* >( m_uv_timer ), &m_data );
+
+exit:
+	return;
+}
+
+void
+timer_impl::init_uv_timer()
+{
+	assert( m_uv_timer == nullptr );
+
+	m_uv_timer = new uv_timer_t;
+	auto status = uv_timer_init( m_owner->m_uv_loop, m_uv_timer );
+	UV_ERROR_THROW( status );
+
+	if ( ! m_data.m_timer_impl )
+	{
+		m_data.m_timer_impl = shared_from_this();
+	}
+
+	uv_handle_set_data( reinterpret_cast< uv_handle_t* >( m_uv_timer ), &m_data );
+}
 
 async::loop::ptr
 async::loop::get_default()
 {
-	static async::loop::ptr default_loop = std::make_shared< loop_impl >( uv_default_loop() );
+	static async::loop::ptr default_loop = std::make_shared< loop_impl >( loop_impl::use_default_loop{} );
 	return default_loop;
 }
 
@@ -944,20 +1066,24 @@ resolver_impl::owner()
 	return m_owner;
 }
 
-void
-resolver_impl::resolve(  std::string const& hostname, std::error_code& err )
+void 
+resolver_impl::start()
+{
+	m_data.m_req_impl = shared_from_this();
+	uv_req_set_data( reinterpret_cast< uv_req_t* >( m_uv_req ), &m_data );
+	auto status = uv_getaddrinfo( m_owner->m_uv_loop, m_uv_req, on_resolve, m_hostname.c_str(), nullptr, nullptr );
+	UV_ERROR_THROW( status );	
+}
+
+void 
+resolver_impl::start( std::error_code& err )
 {
 	clear_error( err );
-	if ( m_uv_req )
-	{
-		err = make_error_code( std::errc::operation_in_progress );
-	}
-	else
-	{
-		m_uv_req = new uv_getaddrinfo_t;
-		m_hostname = hostname;
-		m_data.m_req_impl = shared_from_this();
-		uv_req_set_data( reinterpret_cast< uv_req_t* >( m_uv_req ), &m_data );
-		uv_getaddrinfo( m_owner->m_uv_loop, m_uv_req, on_resolve, m_hostname.c_str(), nullptr, nullptr );
-	}
+	m_data.m_req_impl = shared_from_this();
+	uv_req_set_data( reinterpret_cast< uv_req_t* >( m_uv_req ), &m_data );
+	auto status = uv_getaddrinfo( m_owner->m_uv_loop, m_uv_req, on_resolve, m_hostname.c_str(), nullptr, nullptr );
+	UV_ERROR_CHECK( status, err, exit );	
+
+exit:
+	return;
 }

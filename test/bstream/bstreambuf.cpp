@@ -61,6 +61,16 @@ public:
         return m_target.m_dirty;
     }
 
+	bool did_jump()
+	{
+		return m_target.m_did_jump;
+	}
+
+	size_type jump_to()
+	{
+		return m_target.m_jump_to;
+	}
+
     // bool mutability_implied()
     // {
     //     return m_target.m_implies_mutability;
@@ -139,7 +149,7 @@ TEST_CASE( "logicmill/smoke/obstreambuf/basic" )
     mutable_buffer tbuf2{ "black" };
     obuf.putn( tbuf0.data(), tbuf0.size(), err );
     CHECK( ! err );
-    CHECK( obuf.tell( bstream::seek_anchor::current, err ) == 6 );
+    CHECK( obuf.position() == 6 );
     CHECK( ! err );
 
     {
@@ -150,11 +160,11 @@ TEST_CASE( "logicmill/smoke/obstreambuf/basic" )
     }
 
     {
-        obuf.seek( 8, err );
+        obuf.position( 8, err );
         CHECK( ! err );
         obuf.putn( tbuf1.data(), tbuf1.size(), err );
         CHECK( !err );
-        CHECK( obuf.tell( bstream::seek_anchor::current, err ) == 12 );
+        CHECK( obuf.position() == 12 );
         CHECK( ! err );
     }
     {
@@ -172,7 +182,7 @@ TEST_CASE( "logicmill/smoke/obstreambuf/basic" )
     {
         auto& bref = obuf.get_buffer_ref();
         auto end_pos = probe.hwm();
-        auto tell_end = obuf.tell( bstream::seek_anchor::end, err );
+        auto tell_end = obuf.size();
         CHECK( ! err );
         CHECK( tell_end == end_pos );
         CHECK( end_pos == bref.size() );
@@ -209,17 +219,17 @@ TEST_CASE( "logicmill/smoke/ibstreambuf/basic" )
         ++index;
     }
 
-    CHECK( ibuf.seek( bstream::seek_anchor::begin, 3, err ) == 3 );
+    CHECK( ibuf.position( 3, bstream::seek_anchor::begin, err ) == 3 );
     CHECK( ! err );
     auto b = ibuf.get( err );
     CHECK( ! err );
     CHECK( b == *( buf.data() + 3 ) );
-    CHECK( ibuf.seek( bstream::seek_anchor::current, 5, err  ) == 9 );
+    CHECK( ibuf.position( 5, bstream::seek_anchor::current, err  ) == 9 );
     b = ibuf.get( err );
     CHECK( ! err );
     CHECK( b == *( buf.data() + 9 ) );
 
-    CHECK( ibuf.seek( bstream::seek_anchor::end, -1, err ) == 15 );
+    CHECK( ibuf.position( -1, bstream::seek_anchor::end, err ) == 15 );
     b = ibuf.get( err );
     CHECK( ! err );
     CHECK( b == *( buf.data() + 15 ) );
@@ -228,22 +238,21 @@ TEST_CASE( "logicmill/smoke/ibstreambuf/basic" )
     CHECK( err );
     CHECK( err == bstream::errc::read_past_end_of_stream );
 
-    CHECK( ibuf.seek( bstream::seek_anchor::begin, 0, err ) == 0 );
+    CHECK( ibuf.position( 0, bstream::seek_anchor::begin, err ) == 0 );
     CHECK( ! err );
 
     auto bf = ibuf.getn( 7, err );
     CHECK( !  err );
 
     CHECK( bf.size() == 7 );
-    CHECK( ibuf.tell( bstream::seek_anchor::current, err ) == 7 );
-    CHECK( ! err );
+    CHECK( ibuf.position() == 7 );
     CHECK( bf.to_string() == std::string{ "0123456" } ); 
 
-    CHECK( ibuf.seek( bstream::seek_anchor::current, -8, err ) == bstream::invalid_position );
+    CHECK( ibuf.position( -8, bstream::seek_anchor::current, err ) == bstream::invalid_position );
     CHECK( err );
     CHECK( err == std::errc::invalid_seek );
 
-    CHECK( ibuf.seek( bstream::seek_anchor::end, -4, err ) == 12 );
+    CHECK( ibuf.position( -4, bstream::seek_anchor::end, err ) == 12 );
     CHECK( ! err );
     
     bf = ibuf.getn( 5, err );
@@ -296,16 +305,18 @@ TEST_CASE( "logicmill/smoke/obfilebuf/basic" )
     CHECK( probe.hwm() == 32 );
     CHECK( ! probe.dirty() );
 
-    auto pos = obf.tell( bstream::seek_anchor::current, err );
+    auto pos = obf.position();
     CHECK( ! err );
     CHECK( pos == 32 );
 
-    pos = obf.seek( bstream::seek_anchor::current, 32, err );
+    pos = obf.position( 32, bstream::seek_anchor::current, err );
     CHECK( ! err );
     CHECK( pos == 64 );
-    CHECK( probe.base_offset() == 64 );
+    CHECK( probe.base_offset() == 32 );
     CHECK( probe.next() == probe.base() );
     CHECK( probe.hwm() == 32 );
+	CHECK( probe.did_jump() == true );
+	CHECK( probe.jump_to() == 64 );
     CHECK( ! probe.dirty() );
 
     obf.putn( buf.data() + 32, 48, err );
@@ -327,12 +338,11 @@ TEST_CASE( "logicmill/smoke/ibfilebuf/basic" )
     bstream::ibfilebuf ibf{ "filebuftest", err, 0, 32 };
     CHECK( ! err );
 
-    auto end_pos = ibf.tell( bstream::seek_anchor::end, err );
+    auto end_pos = ibf.size();
     CHECK( ! err );
     CHECK( end_pos == 112 );
 
-    auto pos = ibf.tell( bstream::seek_anchor::current, err );
-    CHECK( ! err );
+    auto pos = ibf.position();
     CHECK( pos == 0 );
 
     const_buffer buf = ibf.getn( end_pos, err );

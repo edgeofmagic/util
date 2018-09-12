@@ -27,20 +27,6 @@
 using namespace logicmill;
 using namespace bstream;
 
-// bool
-// obmembuf::really_force_mutable()
-// {
-//     if ( ! m_buf.is_mutable() )
-//     {
-// 		set_high_watermark();
-//         position_type pos = m_pnext - m_pbase;
-//         m_buf.force_unique( get_high_watermark() );
-//         auto new_base = m_buf.data();
-//         set_ptrs( new_base, new_base + pos, new_base + m_buf.size() );
-//     }
-//     return true;
-// }
-
 void
 obmembuf::really_flush( std::error_code& err )
 {
@@ -49,87 +35,41 @@ obmembuf::really_flush( std::error_code& err )
 }
 
 void
-obmembuf::really_touch( std::error_code& err )
+obmembuf::really_jump( std::error_code& err )
 {
-    clear_error( err );
+	clear_error( err );
+	assert( m_did_jump );
+	assert( is_valid_position( m_jump_to ) );
+
+	if ( m_dirty )
+	{
+		flush( err );
+	}
+
     auto hwm = get_high_watermark();
-    auto pos = ppos();
-    assert( hwm < m_pend - m_pbase && pos <= m_pend - m_pbase );
-    assert( m_last_touched != pos );
 
-    if ( hwm < pos )
+    if ( hwm < m_jump_to )
     {
-        m_dirty_start = m_pbase + hwm;
-        size_type n = static_cast< size_type >( pos - hwm );
-        ::memset( m_dirty_start, 0, n );
-        m_dirty = true;
+		auto gap = m_jump_to - hwm;
 
-        flush( err );
-        if ( err ) goto exit;
+		really_fill( 0, gap );
+		// set_high_watermark();
 
-        assert( ppos() == pos );
-        assert( get_high_watermark() == pos );
-        assert( m_last_touched == pos );
+        assert( ppos() == m_jump_to );
+        // assert( get_high_watermark() == m_jump_to );
     }
     else
     {
-        m_last_touched = pos;
-        assert( hwm >= pos );
+		m_pnext = m_pbase + m_jump_to;
+        assert( ppos() == m_jump_to );
     }
-    
-exit:
-    return;
+	m_did_jump = false;
 }
 
-position_type
-obmembuf::really_seek( seek_anchor where, offset_type offset, std::error_code& err )
+bool
+obmembuf::is_valid_position( position_type pos ) const
 {
-    clear_error( err );
-    position_type result = invalid_position;
-
-    flush( err );
-    if ( err ) goto exit;
-
-    switch ( where )
-    {
-        case seek_anchor::current:
-        {
-            result = ppos() + offset;
-        }
-        break;
-
-        case seek_anchor::end:
-        {
-            auto end_pos = get_high_watermark(); // high watermark is current from flush() above
-            result = end_pos + offset;
-        }
-        break;
-
-        case seek_anchor::begin:
-        {
-            result = offset;
-        }
-        break;
-    }
-
-    if ( result < 0 )
-    {
-        err = make_error_code( std::errc::invalid_argument );
-        result = invalid_position;
-    }
-    else if ( result >= static_cast< position_type >( m_pend - m_pbase ) )
-    {
-        resize( result );
-        auto new_base = m_buf.data();
-        set_ptrs( new_base, new_base + result, new_base + m_buf.size() );
-    }
-    else
-    {
-        m_pnext = m_pbase + result;
-    }
-
-exit:
-    return result;
+    return pos >= 0;
 }
 
 void
@@ -151,7 +91,7 @@ obmembuf::clear() noexcept
 {
 	reset_ptrs();
 	reset_high_water_mark();
-	m_last_touched = 0UL;
+	m_did_jump = false;
 	m_dirty = false;
 	return *this;
 }
@@ -159,7 +99,10 @@ obmembuf::clear() noexcept
 const_buffer
 obmembuf::get_buffer()
 {
-	set_high_watermark();
+	if ( m_dirty )
+	{
+		flush();
+	}
 	return const_buffer{ m_buf, 0, static_cast< buffer::size_type >( get_high_watermark() ) };
 	// return m_buf.slice( 0, get_high_watermark() );
 }
@@ -167,7 +110,10 @@ obmembuf::get_buffer()
 mutable_buffer&
 obmembuf::get_buffer_ref()
 {
-    set_high_watermark();
+	if ( m_dirty )
+	{
+		flush();
+	}
     m_buf.size( get_high_watermark() );
 	return m_buf;
 }
@@ -175,10 +121,13 @@ obmembuf::get_buffer_ref()
 const_buffer
 obmembuf::release_buffer()
 {
-    set_high_watermark();
+	if ( m_dirty )
+	{
+		flush();
+	}
     m_buf.size( get_high_watermark() );
     reset_high_water_mark();
-    m_last_touched = 0UL;
+	m_did_jump = false;
     m_dirty = false;
     set_ptrs( nullptr, nullptr, nullptr );
     return const_buffer{ std::move( m_buf ) };

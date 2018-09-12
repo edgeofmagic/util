@@ -63,6 +63,8 @@ public:
 	virtual std::shared_ptr< loop >
 	owner() = 0;
 
+	virtual bool
+	is_pending() const = 0;
 };
 
 } // namespace async

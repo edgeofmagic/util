@@ -141,8 +141,12 @@ async_category_impl::message(int ev ) const noexcept
 			return "cannot send after transport endpoint shutdown";
 		case async::errc::unknown_error:						// UV__UNKNOWN
 			return "unknown system error";
-		case async::errc::ill_formed_address:					// UV__UNKNOWN
+		case async::errc::ill_formed_address:
 			return "ill-formed address";
+		case async::errc::loop_closed:
+			return "loop closed";
+		case async::errc::timer_closed:
+			return "timer closed";
 		default:
 			return "unknown async error";
     }

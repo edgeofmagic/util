@@ -51,13 +51,6 @@
 using namespace logicmill;
 using namespace async;
 
-static void
-clear_error( std::error_code& err )
-{
-	static std::error_code no_error;
-	err = no_error;
-}
-
 void
 ip::address::to_v4( std::ostream &os ) const
 {

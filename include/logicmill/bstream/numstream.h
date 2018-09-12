@@ -191,85 +191,37 @@ public:
  	size_type 
 	size()
 	{
-		return static_cast< size_type >( m_strmbuf->tell( seek_anchor::end ) );
-	}
-
-	size_type 
-	size( std::error_code& err )
-	{
-		return static_cast< size_type >( m_strmbuf->tell( seek_anchor::end, err ) );
+		return static_cast< size_type >( m_strmbuf->size() );
 	}
 
 	position_type
-	position() 
+	position() const
 	{
-		return static_cast< position_type >( m_strmbuf->tell() );		
-	}
-
-	position_type
-	position( std::error_code& err ) 
-	{
-		return static_cast< position_type >( m_strmbuf->tell( err ) );
+		return m_strmbuf->position();		
 	}
 
 	position_type
 	position( position_type pos )
 	{
-		return static_cast< position_type >( m_strmbuf->seek( pos ) );		
+		return m_strmbuf->position( pos );		
 	}
 
 	position_type
 	position( position_type pos, std::error_code& err )
 	{
-		return static_cast< position_type >( m_strmbuf->seek( pos, err ) );
+		return static_cast< position_type >( m_strmbuf->position( pos, err ) );
 	}
 
 	position_type
 	position( offset_type offset, seek_anchor where )
 	{
-		return static_cast< position_type >( m_strmbuf->seek( where, offset ) );
+		return static_cast< position_type >( m_strmbuf->position( offset, where ) );
 	}
 
 	position_type
 	position( offset_type offset, seek_anchor where, std::error_code& err )
 	{
-		return static_cast< position_type >( m_strmbuf->seek( where, offset, err ) );
-	}
-
-	position_type
-	tell( seek_anchor where ) 
-	{
-		return m_strmbuf->tell( where );
-	}
-
-	position_type
-	tell( seek_anchor where, std::error_code& err ) 
-	{
-		return m_strmbuf->tell( where, err );
-	}
-
-	position_type
-	seek( position_type pos, std::error_code& err )
-	{
-		return seek( seek_anchor::begin, pos, err );
-	}
-
-	position_type
-	seek( position_type pos )
-	{
-		return seek( seek_anchor::begin, pos );
-	}
-
-	position_type
-	seek( seek_anchor where, offset_type offset )
-	{
-		return m_strmbuf->seek( where, offset );
-	}
-
-	position_type
-	seek( seek_anchor where, offset_type offset, std::error_code& err )
-	{
-		return m_strmbuf->seek( where, offset, err );
+		return static_cast< position_type >( m_strmbuf->position( offset, where, err ) );
 	}
 
 	void 
@@ -332,89 +284,40 @@ public:
 	}
 
  	size_type 
-	size()
+	size() const
 	{
-		return static_cast< size_type >( m_strmbuf->tell( seek_anchor::end ) );
-	}
-
-	size_type 
-	size( std::error_code& err )
-	{
-		return static_cast< size_type >( m_strmbuf->tell( seek_anchor::end, err ) );
+		return static_cast< size_type >( m_strmbuf->size() );
 	}
 
 	position_type
-	position() 
+	position() const
 	{
-		return static_cast< position_type >( m_strmbuf->tell() );		
-	}
-
-	position_type
-	position( std::error_code& err ) 
-	{
-		return static_cast< position_type >( m_strmbuf->tell( err ) );
+		return static_cast< position_type >( m_strmbuf->position() );		
 	}
 
 	position_type
 	position( position_type pos )
 	{
-		return static_cast< position_type >( m_strmbuf->seek( pos ) );		
+		return static_cast< position_type >( m_strmbuf->position( pos ) );		
 	}
 
 	position_type
 	position( position_type pos, std::error_code& err )
 	{
-		return static_cast< position_type >( m_strmbuf->seek( pos, err ) );
+		return static_cast< position_type >( m_strmbuf->position( pos, err ) );
 	}
 
 	position_type
 	position( offset_type offset, seek_anchor where )
 	{
-		return static_cast< position_type >( m_strmbuf->seek( where, offset ) );
+		return static_cast< position_type >( m_strmbuf->position( offset, where ) );
 	}
 
 	position_type
 	position( offset_type offset, seek_anchor where, std::error_code& err )
 	{
-		return static_cast< position_type >( m_strmbuf->seek( where, offset, err ) );
+		return static_cast< position_type >( m_strmbuf->position( offset, where, err ) );
 	}
-
-	position_type
-	tell( seek_anchor where )
-	{
-		return m_strmbuf->tell( where );
-	}
-
-	position_type
-	tell( seek_anchor where, std::error_code& err )
-	{
-		return m_strmbuf->tell( where, err );
-	}
-
-	position_type 
-	seek( seek_anchor where, offset_type offset )
-	{
-		return m_strmbuf->seek( where, offset );
-	}
-
-	position_type 
-	seek( seek_anchor where, offset_type offset, std::error_code& err )
-	{
-		return m_strmbuf->seek( where, offset, err );
-	}
-
-	position_type
-	seek( position_type pos )
-	{
-		return seek( seek_anchor::begin, pos );
-	}
-
-	position_type
-	seek( position_type pos, std::error_code& err )
-	{
-		return seek( seek_anchor::begin, pos, err );
-	}
-
 	void 
 	rewind()
 	{

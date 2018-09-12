@@ -44,6 +44,7 @@ public:
     m_buf{ buf }
     {
         set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
+		m_end_position = m_buf.size();
     }
 
     ibmembuf( const_buffer&& buf )
@@ -52,6 +53,7 @@ public:
     m_buf{ std::move( buf ) }
     {
         set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
+		m_end_position = m_buf.size();
     }
 
 	ibmembuf( mutable_buffer&& buf )
@@ -60,6 +62,7 @@ public:
 	m_buf{ std::move( buf ) }
 	{
         set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
+		m_end_position = m_buf.size();
 	}
 
     const_buffer
@@ -84,14 +87,6 @@ public:
     getn( size_type n ) override;
 
 protected:
-
-    // ibmembuf( size_type size )
-    // :
-    // ibstreambuf{},
-    // m_buf{ mutable_buffer{ size } }
-    // {
-    //     set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
-    // }
 
     const_buffer      m_buf;
 };

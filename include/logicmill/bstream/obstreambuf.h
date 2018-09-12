@@ -166,48 +166,30 @@ public:
     filln( const byte_type fill_byte, size_type n );
 
     position_type
-    seek( position_type pos, std::error_code& err )
+    position( position_type pos, std::error_code& err )
     {
-        return seek( bstream::seek_anchor::begin, pos, err );
+        return position( pos, bstream::seek_anchor::begin, err );
     }
 
     position_type
-    seek( position_type pos )
+    position( position_type pos )
     {
-        return seek( bstream::seek_anchor::begin, pos );
+        return position( pos, bstream::seek_anchor::begin );
     }
 
     position_type
-    seek( seek_anchor where, offset_type offset, std::error_code& err )
-    {
-        return really_seek( where, offset, err );
-    }
+    position( offset_type offset, seek_anchor where, std::error_code& err );
 
     position_type
-    seek( seek_anchor where, offset_type offset );
+    position( offset_type offset, seek_anchor where );
 
     position_type
-    tell( std::error_code& err )
-    {
-        return really_tell( seek_anchor::current, err );
-    }
+    position() const;
 
-    position_type
-    tell( seek_anchor where, std::error_code& err )
-    {
-        return really_tell( where, err );
-    }
-
-    position_type
-    tell( seek_anchor where = seek_anchor::current );
+	size_type
+	size() const;
 
 protected:
-
-    void
-    touch( std::error_code& err );
-
-    void
-    touch();
 
     void
     set_ptrs( byte_type * base, byte_type * next, byte_type * end )
@@ -269,113 +251,16 @@ protected:
         return m_pbase_offset + ( m_pnext - m_pbase );
     }
 
-    // bool
-    // dirty() const noexcept
-    // {
-    //     return m_dirty;
-    // }
-
-    // void
-    // dirty( bool value ) noexcept
-    // {
-    //     m_dirty = value;
-    // }
-
-    // position_type
-    // last_touched() const noexcept
-    // {
-    //     return m_last_touched;
-    // }
-
-    // void
-    // last_touched( position_type touched )
-    // {
-    //     m_last_touched = touched;
-    // }
-
-    // byte_type*
-    // pbase() const noexcept
-    // {
-    //     return m_pbase;
-    // }
-
-    // void
-    // pbase( byte_type* p )
-    // {
-    //     m_pbase = p;
-    // }
-
-    // byte_type*
-    // pnext() const noexcept
-    // {
-    //     return m_pnext;
-    // }
-
-    // void
-    // pnext( byte_type* p )
-    // {
-    //     m_pnext = p;
-    // }
-
-    // byte_type*
-    // pend() const noexcept
-    // {
-    //     return m_pend;
-    // }
-
-    // void
-    // pend( byte_type* p )
-    // {
-    //     m_pend = p;
-    // }
-
-    // byte_type*
-    // dirty_start() const noexcept
-    // {
-    //     return m_dirty_start;
-    // }
-
-    // void
-    // dirty_start( byte_type* start ) noexcept
-    // {
-    //     m_dirty_start = start;
-    // }
-
-    // bool
-    // mutability_implied() const noexcept
-    // {
-    //     return m_implies_mutability;
-    // }
-
-    // void
-    // mutability_implied( bool value )
-    // {
-    //     m_implies_mutability = value;
-    // }
-
-    // void
-    // force_mutable()
-    // {
-    //     if ( ! mutability_implied() )
-    //     {
-    //         really_force_mutable();
-    //         mutability_implied( true );
-    //     }
-    // }
+	void
+	really_fill( byte_type fill_byte, size_type n );
 
 protected: // to be overridden by derived classes
 
-    // virtual bool
-    // really_force_mutable();
+	virtual void
+	really_jump( std::error_code& err );
 
-    virtual void
-    really_touch( std::error_code& err );
-
-    virtual position_type
-    really_seek( seek_anchor where, offset_type offset, std::error_code& err );
-
-    virtual position_type
-    really_tell( seek_anchor where, std::error_code& err );
+	virtual bool
+	is_valid_position( position_type pos ) const;
 
     virtual void
     really_overflow( size_type, std::error_code& err );
@@ -383,18 +268,20 @@ protected: // to be overridden by derived classes
     virtual void
     really_flush( std::error_code& err );
 
+	position_type
+	new_position( offset_type offset, seek_anchor where ) const;
 
 protected:
 
     position_type       m_pbase_offset;
     position_type       m_high_watermark;
-    position_type       m_last_touched;
+	position_type		m_jump_to;
     byte_type*          m_pbase;
     byte_type*          m_pnext;
     byte_type*          m_pend;
     byte_type*          m_dirty_start;
     bool                m_dirty;
-    // bool                m_implies_mutability;
+	bool				m_did_jump;
 };
 
 } // namespace bstream

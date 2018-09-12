@@ -47,11 +47,11 @@ public:
 	static loop::ptr
 	create();
 
-	virtual
-	~loop() {}
-
 	static loop::ptr
 	get_default();
+
+	virtual
+	~loop() {}
 
 	virtual void
 	run() = 0;
@@ -61,6 +61,9 @@ public:
 
 	virtual void
 	stop() = 0;
+
+	virtual void
+	stop( std::error_code& err ) = 0;
 
 	virtual void
 	close() = 0;
@@ -75,8 +78,10 @@ public:
 	create_timer( std::error_code& err, timer::handler hf ) = 0;
 
 	virtual resolver::ptr
-	create_resolver( std::error_code& err, resolver::handler hf ) = 0;
+	create_resolver( std::string const& hostname, resolver::handler hf ) = 0;
 
+	virtual resolver::ptr
+	create_resolver( std::string const& hostname, std::error_code& err, resolver::handler hf ) = 0;
 };
 
 } // namespace async

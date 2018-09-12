@@ -54,7 +54,8 @@ public:
     m_gbase_offset{ 0 },
     m_gbase{ buf },
     m_gnext{ buf },
-    m_gend{ buf + size }
+    m_gend{ buf + size },
+	m_end_position{ static_cast< position_type >( size ) }
     {}
 
     ibstreambuf( ibstreambuf const& ) = delete;
@@ -73,12 +74,14 @@ protected:
     m_gbase_offset{ rhs.m_gbase_offset },
     m_gbase{ rhs.m_gbase },
     m_gnext{ rhs.m_gnext },
-    m_gend{ rhs.m_gend }
+    m_gend{ rhs.m_gend },
+	m_end_position{ rhs.m_end_position }
 	{
 		rhs.m_gbase_offset = 0;
 		rhs.m_gbase = nullptr;
 		rhs.m_gnext = nullptr;
 		rhs.m_gend = nullptr;
+		rhs.m_end_position = 0;
 	}
 
 public:
@@ -110,37 +113,25 @@ public:
     getn( byte_type* dst, size_type n );
 
     position_type
-    seek( position_type position, std::error_code& err )
-    {
-        return really_seek( seek_anchor::begin, static_cast< offset_type >( position ), err );
-    }
+    position( position_type position, std::error_code& err );
 
     position_type
-    seek( position_type position );
+    position( position_type position );
 
     position_type
-    seek( seek_anchor where, offset_type offset, std::error_code& err )
-    {
-        return really_seek( where, offset, err );
-    }
+    position( offset_type offset, seek_anchor where, std::error_code& err );
 
     position_type
-    seek( seek_anchor where, offset_type offset );
+    position( offset_type offset, seek_anchor where );
 
     position_type
-    tell( seek_anchor where, std::error_code& err )
-    {
-        return really_tell( where, err );
-    }
+    position() const;
 
-    position_type
-    tell( std::error_code& err )
-    {
-        return really_tell( seek_anchor::current, err );
-    }
-
-    position_type
-    tell( seek_anchor where = seek_anchor::current );
+	position_type
+	size() const
+	{
+		return m_end_position;
+	}
 
 protected:
 
@@ -166,18 +157,6 @@ protected:
     size_type
     underflow();
 
-    // void
-    // gbase_offset( position_type base_offset )
-    // {
-    //     m_gbase_offset = base_offset;
-    // }
-
-    // position_type
-    // m_gbase_offset const
-    // {
-    //     return m_gbase_offset;
-    // }
-
     void
     set_ptrs( const byte_type * base, const byte_type * next, const byte_type * end )
     {
@@ -186,50 +165,12 @@ protected:
         m_gend = end;
     }
 
-    // const byte_type*
-    // gbase() const noexcept
-    // {
-    //     return m_gbase;
-    // }
-
-    // const byte_type*
-    // gnext() const noexcept
-    // {
-    //     return m_gnext;
-    // }
-
-    // const byte_type*
-    // gend() const noexcept
-    // {
-    //     return m_gend;
-    // }
-
-    // void
-    // gbase( const byte_type* p ) noexcept
-    // {
-    //     m_gbase = p;
-    // }
-
-    // void
-    // gnext( const byte_type* p ) noexcept
-    // {
-    //     m_gnext = p;
-    // }
-
-    // void
-    // gend( const byte_type* p ) noexcept
-    // {
-    //     m_gend = p;
-    // }
-
-    // derived implementations override the following virtuals:
+	position_type
+	new_position( offset_type offset, seek_anchor where ) const;
 
     virtual position_type
-    really_seek( seek_anchor where, offset_type offset, std::error_code& err );
+    really_seek( position_type pos, std::error_code& err );
 
-    virtual position_type
-    really_tell( seek_anchor where, std::error_code& err );
-    
     virtual size_type
     really_underflow( std::error_code& err );
 
@@ -237,6 +178,7 @@ protected:
     const byte_type*					m_gbase;
     const byte_type*					m_gnext;
     const byte_type*					m_gend;
+	position_type						m_end_position;
 };
 
 } // namespace bstream

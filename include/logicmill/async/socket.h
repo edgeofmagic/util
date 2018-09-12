@@ -42,6 +42,22 @@ namespace tcp
 	class socket
 	{
 	public:
+		using ptr = std::shared_ptr< socket >;
+
+		using connect_handler = std::function< void ( socket::ptr connection, std::error_code& err ) >;
+		using read_handler = std::function< void ( )
+
+		using bind_handler
+		virtual ~socket() {}
+
+		virtual void
+		bind( ip::endpoint const& ep, std::error_code& err, connect_handler handler ) = 0;
+
+		virtual void
+		close( std::error_code& err ) = 0;
+
+		virtual void
+
 		
 	}
 }

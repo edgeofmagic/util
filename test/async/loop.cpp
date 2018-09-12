@@ -68,12 +68,17 @@ TEST_CASE( "logicmill/async/loop/smoke/timer" )
 {
 	async::loop::ptr lp = async::loop::create();
 
-	auto tp = lp->create_timer( [] ( async::timer::ptr timer_ptr )
 	{
-		std::cout << "timer expired" << std::endl;
-	});
+		auto tp = lp->create_timer( [] ( async::timer::ptr timer_ptr )
+		{
+			CHECK( ! timer_ptr->is_pending() );
+			std::cout << "timer expired" << std::endl;
+		});
 
-	tp->start( std::chrono::milliseconds{ 1000 } );
+		tp->start( std::chrono::milliseconds{ 1000 } );
+
+		CHECK( tp->is_pending() );
+	}
 
 	lp->run();
 
@@ -146,7 +151,7 @@ TEST_CASE( "logicmill/async/resolver/smoke/basic" )
 	std::error_code err;
 
 	async::loop::ptr lp = async::loop::create();
-	auto res = lp->create_resolver( err, [] ( async::resolver::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
+	auto res = lp->create_resolver( "google.com", err, [] ( async::resolver::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
 	{
 		std::cout << "resolver handler called for hostname " << req->hostname() << std::endl;
 		std::cout << "status is " << err.message() << std::endl;
@@ -160,17 +165,17 @@ TEST_CASE( "logicmill/async/resolver/smoke/basic" )
 		std::cout.flush();
 	});
 
-	res->resolve( "google.com", err );
-
 	if ( err )
 	{
-		std::cout << "resolve failed, err: " << err.message() << std::endl;
+		std::cout << "create_resolver failed, err: " << err.message() << std::endl;
 	}
 	else
 	{
 		lp->run();
 		std::cout << "loop run completed" << std::endl;
 	}
+
+	lp->close();
 }
 
 TEST_CASE( "logicmill/async/resolver/smoke/not_found_failure" )
@@ -178,7 +183,8 @@ TEST_CASE( "logicmill/async/resolver/smoke/not_found_failure" )
 	std::error_code err;
 
 	async::loop::ptr lp = async::loop::create();
-	auto res = lp->create_resolver( err, [] ( async::resolver::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
+	auto res = lp->create_resolver( "no_such_host.com", err, 
+	[] ( async::resolver::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
 	{
 		std::cout << "resolver handler called for hostname " << req->hostname() << std::endl;
 		std::cout << "status is " << err.message() << std::endl;
@@ -192,15 +198,60 @@ TEST_CASE( "logicmill/async/resolver/smoke/not_found_failure" )
 		std::cout.flush();
 	});
 
-	res->resolve( "no_such_host.com", err );
-
 	if ( err )
 	{
-		std::cout << "resolve failed, err: " << err.message() << std::endl;
+		std::cout << "create_resolver failed, err: " << err.message() << std::endl;
 	}
 	else
 	{
 		lp->run();
 		std::cout << "loop run completed" << std::endl;
 	}
+
+	lp->close();
 }
+
+#if 1
+TEST_CASE( "logicmill/async/resolver/smoke/cancellation" )
+{
+	{
+		std::error_code err;
+
+		async::loop::ptr lp = async::loop::create();
+		auto res = lp->create_resolver( "not_a_host_in_any_event.com", err, 
+		[] ( async::resolver::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
+		{
+			std::cout << "resolver handler called for hostname " << req->hostname() << std::endl;
+			std::cout << "status is " << err.message() << std::endl;
+			if ( ! err )
+			{
+				for ( auto& addr : addresses )
+				{
+					std::cout << addr.to_string() << std::endl;
+				}
+			}
+			std::cout.flush();
+		});
+
+		async::timer::ptr tp = lp->create_timer( err, [=] ( async::timer::ptr timer_ptr ) // mutable
+		{
+			res->cancel();
+			std::cout << "cancelled resolve request" << std::endl;
+		});
+
+		REQUIRE( ! err );
+
+		tp->start( std::chrono::milliseconds{ 0 }, err );
+
+		REQUIRE( ! err );
+
+		lp->run();
+		std::cout << "loop run completed" << std::endl;
+
+		std::cout << "outstanding loop refcount after run: " << lp.use_count() << std::endl;
+
+		lp->close();
+
+	}
+}
+#endif

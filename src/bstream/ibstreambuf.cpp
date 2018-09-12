@@ -29,9 +29,8 @@ using namespace logicmill;
 using namespace bstream;
 
 position_type
-ibstreambuf::really_seek( seek_anchor where, offset_type offset, std::error_code& err )
+ibstreambuf::new_position( offset_type offset, seek_anchor where ) const
 {
-    clear_error( err );
     position_type result = invalid_position;
 
     switch ( where )
@@ -44,7 +43,7 @@ ibstreambuf::really_seek( seek_anchor where, offset_type offset, std::error_code
 
         case seek_anchor::end:
         {
-            result = ( m_gend - m_gbase ) + offset;
+            result = m_end_position + offset;
         }
         break;
 
@@ -55,60 +54,85 @@ ibstreambuf::really_seek( seek_anchor where, offset_type offset, std::error_code
         break;
     }
 
-    if ( result < 0 || result > ( m_gend - m_gbase ) )
+	return result;
+}
+
+position_type
+ibstreambuf::position( offset_type offset, seek_anchor where, std::error_code& err )
+{
+    clear_error( err );
+	position_type result = new_position( offset, where );
+
+    if ( result < 0 || result > ( m_end_position ) )
     {
         err = make_error_code( std::errc::invalid_seek );
         result = invalid_position;
         goto exit;
     }
 
-    m_gnext = m_gbase + result;
+	result = really_seek( result, err );
+	if ( err ) goto exit;
 
 exit:
-    return result;
-
+	return result;
 }
 
 position_type
-ibstreambuf::really_tell( seek_anchor where, std::error_code& err )
+ibstreambuf::position( position_type pos )
+{
+    std::error_code err;
+    auto result = position( static_cast< offset_type >( pos ), seek_anchor::begin, err );
+    if ( err )
+    {
+        throw std::system_error{ err };
+    }
+    return result;
+}
+
+position_type
+ibstreambuf::position( offset_type offset, seek_anchor where )
+{
+    std::error_code err;
+    auto result = position( offset, where, err );
+    if ( err )
+    {
+        throw std::system_error{ err };
+    }
+    return result;
+}
+
+position_type
+ibstreambuf::position( position_type pos, std::error_code& err )
+{
+	return position( static_cast< offset_type >( pos ), seek_anchor::begin, err );
+}
+
+position_type
+ibstreambuf::really_seek( position_type pos, std::error_code& err )
 {
     clear_error( err );
-    position_type result = invalid_position;
+    m_gnext = m_gbase + pos;
+    return pos;
+}
 
-    switch ( where )
-    {
-        case seek_anchor::current:
-        {
-            result = gpos();
-        }
-        break;
-        
-        case seek_anchor::end:
-        {
-            result = static_cast< position_type >( m_gend - m_gbase );
-        }
-        break;
-
-        case seek_anchor::begin:
-        {
-            result = 0;
-        }
-        break;
-    }
-
-    return result;
+position_type
+ibstreambuf::position() const
+{
+	return gpos();
 }
 
 size_type
 ibstreambuf::really_underflow( std::error_code& err )
 {
     clear_error( err );
+	m_gnext = m_gend;
     return 0UL;
 }
 
 byte_type 
 ibstreambuf::get( std::error_code& err )
 {
+	clear_error( err );
     byte_type result = 0;
     if ( m_gnext >= m_gend )
     {
@@ -145,6 +169,7 @@ ibstreambuf::get()
 byte_type
 ibstreambuf::peek( std::error_code& err )
 {
+	clear_error( err );
     byte_type result = 0;
     if ( m_gnext >= m_gend )
     {
@@ -181,6 +206,7 @@ ibstreambuf::peek()
 const_buffer
 ibstreambuf::getn( size_type n, std::error_code& err )
 {
+	clear_error( err );
 	mutable_buffer buf{ n };
 	auto got = getn( buf.data(), n, err );
 	buf.size( got );
@@ -199,93 +225,70 @@ ibstreambuf::getn( size_type n )
 size_type 
 ibstreambuf::getn( byte_type* dst, size_type n, std::error_code& err )
 {
-    size_type available = m_gend - m_gnext;
-    size_type remaining = n;
-    byte_type* bp = dst;
-    while ( remaining > 0 )
-    {
-        if ( available < 1 )
-        {
-            underflow( err );
-            if ( err ) goto exit;
-            available = m_gend - m_gnext;
-            if ( available < 1 )
-            {
-                break;
-            }
-        }
-        size_type chunk_size = std::min( remaining, available );
-        ::memcpy( bp, m_gnext, chunk_size );
-        bp += chunk_size;
-        m_gnext += chunk_size;
-        remaining -= chunk_size;
-        available = m_gend - m_gnext;
-    }
+	clear_error( err );
+	size_type result = 0;
+	// optimize for the available case
+	if ( n < m_gend - m_gnext )
+	{
+		::memcpy( dst, m_gnext, n );
+		m_gnext += n;
+		result = n;
+	}
+	else
+	{
+		byte_type* p = dst;
+		byte_type* endp = dst + n;
+		while ( p < endp )
+		{
+			if ( m_gnext >= m_gend )
+			{
+				assert( m_gnext == m_gend );
+				underflow( err );
+				if ( err ) goto exit;
+			}
+			size_type chunk_size = std::min( static_cast< size_type >( m_gend - m_gnext ), static_cast< size_type >( endp - p ) );
+			if ( chunk_size < 1 ) break;
+			::memcpy( p, m_gnext, chunk_size );
+			p += chunk_size;
+			m_gnext += chunk_size;
+		}
+		result = static_cast< size_type >( p - dst );
+	}
 exit:
-    return n - remaining; 
+	return result;
 }
 
 size_type 
 ibstreambuf::getn( byte_type* dst, size_type n )
 {
-    size_type available = m_gend - m_gnext;
-    size_type remaining = n;
-    byte_type* bp = dst;
-    while ( remaining > 0 )
-    {
-        if ( available < 1 )
-        {
-            underflow();
-            available = m_gend - m_gnext;
-            if ( available < 1 )
-            {
-                break;
-            }
-        }
-        size_type chunk_size = std::min( remaining, available );
-        ::memcpy( bp, m_gnext, chunk_size );
-        bp += chunk_size;
-        m_gnext += chunk_size;
-        remaining -= chunk_size;
-        available = m_gend - m_gnext;
-    }
-    return n - remaining; 
-}
-
-position_type
-ibstreambuf::seek( position_type position )
-{
-    std::error_code err;
-    auto result = really_seek( seek_anchor::begin, static_cast< offset_type >( position ), err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
-    return result;
-}
-
-position_type
-ibstreambuf::seek( seek_anchor where, offset_type offset )
-{
-    std::error_code err;
-    auto result = really_seek( where, offset, err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
-    return result;
-}
-
-position_type
-ibstreambuf::tell( seek_anchor where )
-{
-    std::error_code err;
-    auto result = really_tell( where, err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
-    return result;
+	size_type result = 0;
+	// optimize for the available case
+	if ( n < m_gend - m_gnext )
+	{
+		::memcpy( dst, m_gnext, n );
+		m_gnext += n;
+		result = n;
+	}
+	else
+	{
+		byte_type* p = dst;
+		byte_type* endp = dst + n;
+		while ( p < endp )
+		{
+			if ( m_gnext >= m_gend )
+			{
+				assert( m_gnext == m_gend );
+				underflow();
+			}
+			size_type chunk_size = std::min( static_cast< size_type >( m_gend - m_gnext ), static_cast< size_type >( endp - p ) );
+			if ( chunk_size < 1 ) break;
+			::memcpy( p, m_gnext, chunk_size );
+			p += chunk_size;
+			m_gnext += chunk_size;
+		}
+		result = static_cast< size_type >( p - dst );
+	}
+	return result;
 }
 
 size_type

@@ -31,13 +31,13 @@ obstreambuf::obstreambuf( byte_type* data, size_type size )
 :
 m_pbase_offset{ 0 },
 m_high_watermark{ 0 },
-m_last_touched{ 0 },
+m_jump_to{ 0 },
 m_pbase{ data },
 m_pnext{ data },
 m_pend{ data + size },
 m_dirty_start{ data },
-m_dirty{ false }
-// m_implies_mutability{ true }
+m_dirty{ false },
+m_did_jump{ false }
 {
 }
 
@@ -45,36 +45,36 @@ obstreambuf::obstreambuf()
 :
 m_pbase_offset{ 0 },
 m_high_watermark{ 0 },
-m_last_touched{ 0 },
+m_jump_to{ 0 },
 m_pbase{ nullptr },
 m_pnext{ nullptr },
 m_pend{ nullptr },
 m_dirty_start{ nullptr },
-m_dirty{ false }
-// m_implies_mutability{ true }  // TODO: really?
+m_dirty{ false },
+m_did_jump{ false }
 {}
 
 obstreambuf::obstreambuf( obstreambuf&& rhs )
 : 
 m_pbase_offset{ rhs.m_pbase_offset },
 m_high_watermark{ rhs.m_high_watermark },
-m_last_touched{ rhs.m_last_touched },
+m_jump_to{ rhs.m_jump_to },
 m_pbase{ rhs.m_pbase },
 m_pnext{ rhs.m_pnext },
 m_pend{ rhs.m_pend },
 m_dirty_start{ rhs.m_dirty_start },
-m_dirty{ rhs.m_dirty }
-// m_implies_mutability{ rhs.m_implies_mutability }
+m_dirty{ rhs.m_dirty },
+m_did_jump{ rhs.m_did_jump }
 {
 	rhs.m_pbase_offset = 0;
 	rhs.m_high_watermark = 0;
-	rhs.m_last_touched = 0;
+	rhs.m_jump_to = 0;
 	rhs.m_pbase = nullptr;
 	rhs.m_pnext = nullptr;
 	rhs.m_pend = nullptr;
 	rhs.m_dirty_start = nullptr;
 	rhs.m_dirty = false;
-	// rhs.m_implies_mutability = true; // TODO: really?
+	rhs.m_did_jump = false;
 
 }
 
@@ -84,15 +84,15 @@ obstreambuf::flush( std::error_code& err )
     clear_error( err );
     if ( m_dirty )
     {
-        // assert( mutability_implied() );
         really_flush( err );
-        if ( ! err )
-        {
-            set_high_watermark();
-            m_last_touched = ppos();
-            m_dirty = false;
-        }
+		if ( err ) goto exit;
+
+		set_high_watermark();
+		m_dirty = false;
     }
+
+exit:
+	return;
 }
 
 void
@@ -100,7 +100,6 @@ obstreambuf::flush()
 {
     if ( m_dirty )
     {
-        // assert( mutability_implied() );
         std::error_code err;
         really_flush( err );
         if ( err )
@@ -108,7 +107,6 @@ obstreambuf::flush()
             throw std::system_error{ err };
         }
         set_high_watermark();
-        m_last_touched = ppos();
         m_dirty = false;
     }
 }
@@ -116,11 +114,10 @@ obstreambuf::flush()
 void
 obstreambuf::put( byte_type byte, std::error_code& err )
 {
-    // force_mutable();
-    if ( ! m_dirty )
+	clear_error( err );
+    if ( m_did_jump )
     {
-        touch( err );
-        if ( err ) goto exit;
+        really_jump( err );
     }
     if ( m_pnext >= m_pend )
     {
@@ -143,10 +140,11 @@ exit:
 void
 obstreambuf::put( byte_type byte )
 {
-    // force_mutable();
-    if ( ! m_dirty )
+    if ( m_did_jump )
     {
-        touch();
+		std::error_code err;
+        really_jump( err );
+		if ( err ) throw std::system_error{ err };
     }
     if ( m_pnext >= m_pend )
     {
@@ -157,70 +155,57 @@ obstreambuf::put( byte_type byte )
     if ( ! m_dirty )
     {
         m_dirty_start = m_pnext;
+	    m_dirty = true;
     }
     *m_pnext++ = byte;
-    m_dirty = true;
 }
 
 void
 obstreambuf::putn( const byte_type* src, size_type n, std::error_code& err )
 {
-    // force_mutable();
-    if ( ! m_dirty )
-    {
-        touch( err );
-        if ( err ) goto exit;
-        m_dirty_start = m_pnext;
-    }
+	clear_error( err );
+	if ( n < 1 ) goto exit;
+
+	if ( m_did_jump )
+	{
+        really_jump( err );
+	}
+	
     if ( n <= static_cast< size_type >( m_pend - m_pnext ) ) // optimize for common case ( no overflow )
     {
+		if ( ! m_dirty )
+		{
+			m_dirty_start = m_pnext;
+			m_dirty = true;
+		}
         ::memcpy( m_pnext, src, n );
         m_pnext += n;
-        m_dirty = true;
     }
-    else 
-    {
-        overflow( n, err );
-        if ( err ) goto exit;
-        if ( n <= static_cast< size_type >( m_pend - m_pnext ) ) // try it in one go
-        {
-            if ( ! m_dirty )
-            {
-                m_dirty_start = m_pnext;
-            }
-            ::memcpy( m_pnext, src, n );
-            m_pnext += n;
-            m_dirty = true;
-        }
-        else // put it in chunks
-        {
-            auto remaining = n;
-            auto p = src;
-            while ( remaining > 0 )
-            {
-                if ( m_pnext >= m_pend ) // should be false on first iteration
-                {
-                    assert( m_pnext == m_pend );
-                    overflow( remaining, err );
-                    if ( err ) goto exit;
-                }
-
-                assert( m_pend - m_pnext > 0 );
-
-                size_type chunk_size = std::min( remaining, static_cast< size_type >( m_pend - m_pnext ) );
-                if ( ! m_dirty )
-                {
-                    m_dirty_start = m_pnext;
-                }
-                ::memcpy( m_pnext, p, chunk_size );
-                remaining -= chunk_size;
-                p += chunk_size;
-                m_pnext += chunk_size;
-                m_dirty = true;
-            }
-        }
-    }
-    
+	else 
+	{
+		auto p = src;
+		auto limit = src + n;
+		while ( p < limit )
+		{
+			if ( m_pnext >= m_pend ) 
+			{
+				assert( m_pnext == m_pend ); // just checking
+				overflow( limit - p, err );
+				if ( err ) goto exit;
+				assert( ! m_dirty );
+			}
+			if ( ! m_dirty )
+			{
+				m_dirty_start = m_pnext;
+				m_dirty = true;
+			}
+			size_type chunk_size = std::min( static_cast< size_type >( m_pend - m_pnext ), static_cast< size_type >( limit - p ) );
+			::memcpy( m_pnext, p, chunk_size );
+			p += chunk_size;
+			m_pnext += chunk_size;
+		}
+	}
+	
 exit:
     return;
 }
@@ -228,150 +213,246 @@ exit:
 void
 obstreambuf::putn( const byte_type* src, size_type n )
 {
-    std::error_code err;
-    putn( src, n, err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
+	if ( n > 0 )
+	{
+		if ( m_did_jump )
+		{
+			std::error_code err;
+			really_jump( err );
+			if ( err ) throw std::system_error{ err };
+		}
+		
+		if ( n <= static_cast< size_type >( m_pend - m_pnext ) ) // optimize for common case ( no overflow )
+		{
+			if ( ! m_dirty )
+			{
+				m_dirty_start = m_pnext;
+				m_dirty = true;
+			}
+			::memcpy( m_pnext, src, n );
+			m_pnext += n;
+		}
+		else 
+		{
+			auto p = src;
+			auto limit = src + n;
+			while ( p < limit )
+			{
+				if ( m_pnext >= m_pend ) 
+				{
+					assert( m_pnext == m_pend ); // just checking
+					overflow( limit - p );
+					assert( ! m_dirty );
+				}
+				if ( ! m_dirty )
+				{
+					m_dirty_start = m_pnext;
+					m_dirty = true;
+				}
+				size_type chunk_size = std::min( static_cast< size_type >( m_pend - m_pnext ), static_cast< size_type >( limit - p ) );
+				::memcpy( m_pnext, p, chunk_size );
+				p += chunk_size;
+				m_pnext += chunk_size;
+			}
+		}
+	}
 }
+
 
 void
 obstreambuf::filln( const byte_type fill_byte, size_type n, std::error_code& err )
 {
-    // force_mutable();
-    if ( ! m_dirty )
-    {
-        touch( err );
-        if ( err ) goto exit;
-        m_dirty_start = m_pnext;
-    }
+	clear_error( err );
+	if ( n < 1 ) goto exit;
+
+	if ( m_did_jump )
+	{
+        really_jump( err );
+	}
+	
     if ( n <= static_cast< size_type >( m_pend - m_pnext ) ) // optimize for common case ( no overflow )
     {
+		if ( ! m_dirty )
+		{
+			m_dirty_start = m_pnext;
+			m_dirty = true;
+		}
         ::memset( m_pnext, fill_byte, n );
         m_pnext += n;
-        m_dirty = true;
     }
-    else 
-    {
-        overflow( n, err );
-        if ( err ) goto exit;
-        if ( n <= static_cast< size_type >( m_pend - m_pnext ) ) // try it in one go
-        {
-            if ( ! m_dirty )
-            {
-                m_dirty_start = m_pnext;
-            }
-            ::memset( m_pnext, fill_byte, n );
-            m_pnext += n;
-            m_dirty = true;
-        }
-        else // put it in chunks
-        {
-            auto remaining = n;
-            while ( remaining > 0 )
-            {
-                if ( m_pnext >= m_pend ) // should be false on first iteration
-                {
-                    assert( m_pnext == m_pend );
-                    overflow( remaining, err );
-                    if ( err ) goto exit;
-                }
-
-                assert( m_pend - m_pnext > 0 );
-
-                size_type chunk_size = std::min( remaining, static_cast< size_type >( m_pend - m_pnext ) );
-                if ( ! m_dirty )
-                {
-                    m_dirty_start = m_pnext;
-                }
-                ::memset( m_pnext, fill_byte, chunk_size );
-                remaining -= chunk_size;
-                m_pnext += chunk_size;
-                m_dirty = true;
-            }
-        }
-    }
-    
+	else 
+	{
+		size_type remaining = n;
+		while ( remaining > 0 )
+		{
+			if ( m_pnext >= m_pend ) 
+			{
+				assert( m_pnext == m_pend ); // just checking
+				overflow( remaining, err );
+				if ( err ) goto exit;
+				assert( ! m_dirty );
+			}
+			if ( ! m_dirty )
+			{
+				m_dirty_start = m_pnext;
+				m_dirty = true;
+			}
+			size_type chunk_size = std::min( static_cast< size_type >( m_pend - m_pnext ), remaining );
+			::memset( m_pnext, fill_byte, chunk_size );
+			remaining -= chunk_size;
+			m_pnext += chunk_size;
+		}
+	}
+	
 exit:
     return;
+}
+
+void
+obstreambuf::really_fill( byte_type fill_byte, size_type n )
+{
+	assert( n > 0 );
+	if ( n <= static_cast< size_type >( m_pend - m_pnext ) ) // optimize for common case ( no overflow )
+	{
+		if ( ! m_dirty )
+		{
+			m_dirty_start = m_pnext;
+			m_dirty = true;
+		}
+		::memset( m_pnext, fill_byte, n );
+		m_pnext += n;
+	}
+	else 
+	{
+		size_type remaining = n;
+		while ( remaining > 0 )
+		{
+			if ( m_pnext >= m_pend ) 
+			{
+				assert( m_pnext == m_pend ); // just checking
+				overflow( remaining );
+				assert( ! m_dirty );
+			}
+			if ( ! m_dirty )
+			{
+				m_dirty_start = m_pnext;
+				m_dirty = true;
+			}
+			size_type chunk_size = std::min( static_cast< size_type >( m_pend - m_pnext ), remaining );
+			::memset( m_pnext, fill_byte, chunk_size );
+			remaining -= chunk_size;
+			m_pnext += chunk_size;
+		}
+	}
 }
 
 void
 obstreambuf::filln( const byte_type fill_byte, size_type n )
 {
-    std::error_code err;
-    filln( fill_byte, n, err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
+	if ( n > 0 )
+	{
+		if ( m_did_jump )
+		{
+			std::error_code err;
+			really_jump( err );
+			if ( err ) throw std::system_error{ err };
+		}
+		really_fill( fill_byte, n );		
+	}
+}
+
+
+size_type
+obstreambuf::size() const
+{
+	// don't actually set_high_watermark here... at some point flush() will do that
+	// note: this means that ppos() and size may exceed high watermark, but only if m_dirty is false
+	return ( m_dirty && ( ppos() > get_high_watermark() ) ) ? ppos() : get_high_watermark();
 }
 
 position_type
-obstreambuf::seek( seek_anchor where, offset_type offset )
+obstreambuf::new_position( offset_type offset, seek_anchor where  ) const
 {
-    std::error_code err;
-    auto result = really_seek( where, offset, err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
-    return result;
-}
+    position_type result = invalid_position;
 
-position_type
-obstreambuf::tell( seek_anchor where )
-{
-    std::error_code err;
-    auto result = really_tell( where, err );
-    if ( err )
+    switch ( where )
     {
-        throw std::system_error{ err };
-    }
-    return result;
-}
-
-void
-obstreambuf::touch( std::error_code& err )
-{
-    assert( ! m_dirty );
-    // assert( mutability_implied() );
-    auto pos = ppos();
-    
-    if ( m_last_touched != pos )
-    {
-        really_touch( err );
-        if ( err ) goto exit;
-    }
-
-    assert( ppos() == pos );
-    assert( pos == m_last_touched );
-    assert( ! m_dirty );
-exit:
-    return;
-}
-
-void
-obstreambuf::touch()
-{
-    assert( ! m_dirty );
-    // assert( mutability_implied() );
-    auto pos = ppos();
-    
-    if ( m_last_touched != pos )
-    {
-        std::error_code err;
-        really_touch( err );
-        if ( err )
+        case seek_anchor::current:
         {
-            throw std::system_error{ err };
+            result = ppos() + offset;
         }
+        break;
+
+        case seek_anchor::end:
+        {
+            result = size() + offset;
+        }
+        break;
+
+        case seek_anchor::begin:
+        {
+            result = offset;
+        }
+        break;
     }
 
-    assert( ppos() == pos );
-    assert( pos == m_last_touched );
-    assert( ! m_dirty );
+	return result;
+}
+
+bool
+obstreambuf::is_valid_position( position_type pos ) const
+{
+    return ( pos >= 0 ) && ( pos <= ( m_pend - m_pbase ) );
+}
+
+
+position_type
+obstreambuf::position( offset_type offset, seek_anchor where )
+{
+	auto new_pos = new_position( offset, where );
+
+    if ( ! is_valid_position( new_pos ) )
+    {
+        throw std::system_error{  make_error_code( std::errc::invalid_argument ) };
+    }
+
+	if ( new_pos != ppos() )
+	{
+		m_did_jump = true;
+		m_jump_to = new_pos;
+	}
+
+    return new_pos;
+}
+
+position_type
+obstreambuf::position( offset_type offset, seek_anchor where, std::error_code& err )
+{
+    clear_error( err );
+
+	auto new_pos = new_position( offset, where );
+
+    if ( ! is_valid_position( new_pos ) )
+    {
+        err = make_error_code( std::errc::invalid_argument );
+		goto exit;
+    }
+
+	if ( new_pos != ppos() )
+	{
+		if ( err ) goto exit;
+		m_did_jump = true;
+		m_jump_to = new_pos;
+	}
+
+exit:
+    return new_pos;
+}
+
+position_type
+obstreambuf::position() const
+{
+	return ppos();
 }
 
 void
@@ -404,120 +485,31 @@ obstreambuf::overflow( size_type requested )
     assert( m_pend > m_pnext );
 }
 
-// bool
-// obstreambuf::really_force_mutable()
-// {
-//     return true;
-// }
-
 void
-obstreambuf::really_touch( std::error_code& err )
+obstreambuf::really_jump( std::error_code& err )
 {
-    clear_error( err );
-    auto hwm = get_high_watermark();
-    auto pos = ppos();
-    assert( hwm < m_pend - m_pbase && pos <= m_pend - m_pbase );
-    assert( m_last_touched != pos );
+	clear_error( err );
+	assert( m_did_jump );
+	assert( is_valid_position( m_jump_to ) );
 
-    if ( hwm < pos )
+    auto hwm = set_high_watermark();
+
+    if ( hwm < m_jump_to )
     {
-        m_pnext = m_pbase + ( hwm - m_pbase_offset );
+		auto gap = m_jump_to - hwm;
 
-        filln( pos - hwm, 0, err );
-        if ( err ) goto exit;
+		really_fill( 0, gap );
+		set_high_watermark();
 
-        flush( err );
-        if ( err ) goto exit;
-
-        assert( ppos() == pos );
-        assert( get_high_watermark() == pos );
-        assert( m_last_touched == pos );
+        assert( ppos() == m_jump_to );
+        assert( get_high_watermark() == m_jump_to );
     }
     else
     {
-        m_last_touched = pos;
-        assert( hwm >= pos );
+		m_pnext = m_pbase + m_jump_to;
+        assert( ppos() == m_jump_to );
     }
-
-exit:
-    return;
-}
-
-position_type
-obstreambuf::really_seek( seek_anchor where, offset_type offset, std::error_code& err )
-{
-    clear_error( err );
-    position_type result = invalid_position;
-
-    flush( err );
-    if ( err ) goto exit;
-
-    switch ( where )
-    {
-        case seek_anchor::current:
-        {
-            result = ppos() + offset;
-        }
-        break;
-
-        case seek_anchor::end:
-        {
-            // high watermark will be current because of flush() above
-            auto end_pos = get_high_watermark();
-            result = end_pos + offset;
-        }
-        break;
-
-        case seek_anchor::begin:
-        {
-            result = offset;
-        }
-        break;
-    }
-
-    if ( result < 0 || result > m_pend - m_pbase )
-    {
-        err = make_error_code( std::errc::invalid_argument );
-        result = invalid_position;
-        goto exit;
-    }
-
-    m_pnext = m_pbase + ( result - m_pbase_offset );
-
-exit:
-    return result;
-}
-
-position_type
-obstreambuf::really_tell( seek_anchor where, std::error_code& err )
-{
-	clear_error( err );
-
-	position_type result = invalid_position;
-
-	switch ( where )
-	{
-		case seek_anchor::current:
-		{
-			result = ppos();
-		}
-		break;
-        
-		case seek_anchor::end:
-		{
-			set_high_watermark(); // Note: hwm may advance ahead of last_flushed and dirty_start here. This should be ok.
-			result = get_high_watermark();
-        }
-        break;
-
-		case seek_anchor::begin:
-		{
-			result = 0;
-		}
-		break;
-    }
-
-	return result;
+	m_did_jump = false;
 }
 
 void

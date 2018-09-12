@@ -66,6 +66,14 @@ make_error_code( errc e );
 namespace async
 {
 
+inline void
+clear_error( std::error_code& err )
+{
+	static std::error_code no_error;
+	err = no_error;
+}
+
+
 enum class errc
 {
 	ok = 0,
@@ -76,7 +84,9 @@ enum class errc
 	remote_io_error,					// UV_EREMOTEIO
 	transport_endpoint_shutdown,		// UV_ESHUTDOWN
 	unknown_error,						// UV_UNKNOWN
-	ill_formed_address
+	ill_formed_address,
+	loop_closed,
+	timer_closed
 };
 
 std::error_category const&

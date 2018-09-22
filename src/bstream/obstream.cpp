@@ -51,7 +51,7 @@ obstream::write_map_header(std::uint32_t size )
 obstream&
 obstream::write_map_header(std::uint32_t size, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     try
     {
         write_map_header( size );
@@ -87,7 +87,7 @@ obstream::write_array_header(std::uint32_t size )
 obstream&
 obstream::write_array_header(std::uint32_t size, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     try
     {
         write_array_header( size );
@@ -123,7 +123,7 @@ obstream::write_blob_header(std::uint32_t size )
 obstream&
 obstream::write_blob_header(std::uint32_t size, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     try
     {
         write_blob_header( size );
@@ -182,7 +182,7 @@ obstream::write_ext( std::uint8_t ext_type, buffer const& buf )
 obstream&
 obstream::write_ext( std::uint8_t ext_type, buffer const& buf, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     try
     {
         write_ext( ext_type, buf );
@@ -240,7 +240,7 @@ obstream::write_ext( std::uint8_t ext_type, std::vector< std::uint8_t > const& v
 obstream&
 obstream::write_ext( std::uint8_t ext_type, std::vector< std::uint8_t > const& vec, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     try
     {
         write_ext( ext_type, vec );
@@ -296,7 +296,7 @@ obstream::write_ext_header( std::uint8_t ext_type, std::uint32_t size )
 obstream&
 obstream::write_ext_header( std::uint8_t ext_type, std::uint32_t size, std::error_code& err  )
 {
-    clear_error( err );
+    err.clear();
     try
     {
         write_ext_header( ext_type, size );
@@ -338,7 +338,7 @@ obstream::obstream::write_null_ptr()
 obstream&
 obstream::write_null_ptr( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     try
     {
         write_null_ptr();
@@ -363,7 +363,7 @@ obstream::write_error_code( std::error_code const& ecode )
 obstream&
 obstream::write_error_code( std::error_code const& ecode, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     try
     {
         write_error_code( ecode );

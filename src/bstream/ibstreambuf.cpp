@@ -31,7 +31,7 @@ using namespace bstream;
 position_type
 ibstreambuf::new_position( offset_type offset, seek_anchor where ) const
 {
-    position_type result = invalid_position;
+    position_type result = bstream::npos;
 
     switch ( where )
     {
@@ -60,13 +60,13 @@ ibstreambuf::new_position( offset_type offset, seek_anchor where ) const
 position_type
 ibstreambuf::position( offset_type offset, seek_anchor where, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
 	position_type result = new_position( offset, where );
 
     if ( result < 0 || result > ( m_end_position ) )
     {
         err = make_error_code( std::errc::invalid_seek );
-        result = invalid_position;
+        result = bstream::npos;
         goto exit;
     }
 
@@ -110,7 +110,7 @@ ibstreambuf::position( position_type pos, std::error_code& err )
 position_type
 ibstreambuf::really_seek( position_type pos, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     m_gnext = m_gbase + pos;
     return pos;
 }
@@ -124,7 +124,7 @@ ibstreambuf::position() const
 size_type
 ibstreambuf::really_underflow( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
 	m_gnext = m_gend;
     return 0UL;
 }
@@ -132,7 +132,7 @@ ibstreambuf::really_underflow( std::error_code& err )
 byte_type 
 ibstreambuf::get( std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
     byte_type result = 0;
     if ( m_gnext >= m_gend )
     {
@@ -169,7 +169,7 @@ ibstreambuf::get()
 byte_type
 ibstreambuf::peek( std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
     byte_type result = 0;
     if ( m_gnext >= m_gend )
     {
@@ -203,29 +203,48 @@ ibstreambuf::peek()
     return * m_gnext;
 }
 
-const_buffer
-ibstreambuf::getn( size_type n, std::error_code& err )
+shared_buffer
+ibstreambuf::getn( as_shared_buffer, size_type n, std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	mutable_buffer buf{ n };
 	auto got = getn( buf.data(), n, err );
 	buf.size( got );
-	return const_buffer{ buf };
+	return shared_buffer{ std::move( buf ) };
 }
 
-const_buffer
-ibstreambuf::getn( size_type n )
+shared_buffer
+ibstreambuf::getn( as_shared_buffer, size_type n )
 {
     mutable_buffer buf{ n };
     auto got = getn( buf.data(), n );
     buf.size( got );
-	return const_buffer{ buf };
+	return shared_buffer{ std::move( buf ) };
+}
+
+const_buffer
+ibstreambuf::getn( as_const_buffer, size_type n, std::error_code& err )
+{
+	err.clear();
+	mutable_buffer buf{ n };
+	auto got = getn( buf.data(), n, err );
+	buf.size( got );
+	return const_buffer{ std::move( buf ) };
+}
+
+const_buffer
+ibstreambuf::getn( as_const_buffer, size_type n )
+{
+    mutable_buffer buf{ n };
+    auto got = getn( buf.data(), n );
+    buf.size( got );
+	return const_buffer{ std::move( buf ) };
 }
 
 size_type 
 ibstreambuf::getn( byte_type* dst, size_type n, std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	size_type result = 0;
 	// optimize for the available case
 	if ( n < m_gend - m_gnext )

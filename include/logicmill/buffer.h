@@ -173,13 +173,6 @@ public:
 
 protected:
 
-	void
-	static clear_error( std::error_code& err )
-	{
-		static const std::error_code no_error;
-		err = no_error;
-	}
-
 	struct adopt_memory {};
 	struct copy_memory {};
 
@@ -266,7 +259,7 @@ protected:
 		void
 		reallocate( size_type new_cap, std::error_code& err )
 		{
-			clear_error( err );
+			err.clear();
 			if ( ! allocator )
 			{
 				err =  make_error_code( std::errc::operation_not_supported );
@@ -313,7 +306,7 @@ protected:
 		void
 		reallocate( size_type new_cap, size_type preserve, std::error_code& err )
 		{
-			clear_error( err );
+			err.clear();
 			if ( ! allocator )
 			{
 				err =  make_error_code( std::errc::operation_not_supported );
@@ -597,7 +590,7 @@ public:
 	{
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 
-		clear_error( err );
+		err.clear();
 
 		if ( new_cap > m_capacity )
 		{
@@ -670,7 +663,7 @@ public:
 	mutable_buffer&
 	put( position_type offset, elem_type value, std::error_code& err )
 	{
-		clear_error( err );
+		err.clear();
 
 		if ( ! m_alloc_ctrl || ! m_data || ( offset >= m_capacity ) )
 		{
@@ -701,7 +694,7 @@ public:
 	mutable_buffer&
 	putn( position_type offset, const void* src, size_type length, std::error_code& err )
 	{
-		clear_error( err );
+		err.clear();
 
 		if ( length > 0 )
 		{

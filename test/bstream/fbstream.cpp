@@ -30,118 +30,137 @@ using namespace logicmill;
 using namespace bstream;
 using bstream::ofbstream;
 
-TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read" )
-{
-    bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::truncate );
-    mutable_buffer outbuf{ "abcdefghijklmnop" };
-    os.putn( outbuf );
-    os.close();
+#define STRING_INIT_MUTABLE_BUFFER( _name_, _contents_ )								\
+	mutable_buffer _name_{ ::strlen( _contents_ ) };									\
+	{																					\
+		std::string str_{ _contents_ };													\
+		_name_.putn( 0, str_.data(), str_.size() );										\
+		_name_.size( str_.size() );														\
+	}																					\
+/**/
 
-    bstream::ifbstream is( "fbstream_test_file" );
-    auto fsize = is.size();
-    const_buffer inbuf = is.getn( fsize );
-    is.close();
-    CHECK( outbuf == inbuf );
-}
+TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read" )
+	{
+		bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::truncate );
+		// mutable_buffer outbuf{ "abcdefghijklmnop" };
+		STRING_INIT_MUTABLE_BUFFER( outbuf, "abcdefghijklmnop" );
+		os.putn( outbuf );
+		os.close();
+
+		bstream::ifbstream is( "fbstream_test_file" );
+		auto fsize = is.size();
+		const_buffer inbuf = is.getn( as_const_buffer{}, fsize );
+		is.close();
+		CHECK( outbuf == inbuf );
+	}
 
 TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
 {
-    {
-        bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::truncate );
-        mutable_buffer outbuf{ "abcdefghijklmnop" };
-        os.putn( outbuf );
-        os.close();
-    }
-    {
-        bstream::ifbstream is( "fbstream_test_file" );
-        auto fsize = is.size();
-        const_buffer inbuf = is.getn( fsize );
-        is.close();
-        mutable_buffer expected{ "abcdefghijklmnop" };
-        CHECK( expected == inbuf );
-    }
-    {
-        bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::at_end );
-        auto pos = os.position();
-        CHECK( pos == 16 );
-        auto fsize = os.size();
-        CHECK( fsize == 16 );
-        mutable_buffer outbuf{ "qrstuvwxyz" };
-        os.putn( outbuf );
-        os.close();
-    }
-    {
-        bstream::ifbstream is( "fbstream_test_file" );
-        auto fsize = is.size();
-        CHECK( fsize == 26 );
-        const_buffer inbuf = is.getn( fsize );
-        is.close();
-        mutable_buffer expected{ "abcdefghijklmnopqrstuvwxyz" };
-        CHECK( expected == inbuf );
-    }
-    {
-        bstream::ifbstream is( "fbstream_test_file" );
-        auto fsize = is.size();
-        CHECK( fsize == 26 );
-        is.position( 16, seek_anchor::begin );
-        const_buffer inbuf = is.getn( 10 );
-        bool caught_exception = false;
-        try
-        {
-            is.get();
-            CHECK( false ); // should never get here
-        }
-        catch ( std::system_error const& e )
-        {
-            caught_exception = true;
-        }
-        CHECK( caught_exception );
-        is.close();
-        mutable_buffer expected{ "qrstuvwxyz" };
-        CHECK( expected == inbuf );
-    }
-    {
-        bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::append );
-        auto pos = os.position();
-        CHECK( pos == 26 );
-        mutable_buffer outbuf{ "0123456789" };
-        os.putn( outbuf );
-        auto zpos = os.position( 0 );
-        os.putn( outbuf );
-        zpos = os.position();
-        os.close();
-    }
-    {
-        bstream::ofbstream os( "fbstream_test_file" );
-        auto pos = os.position();
-        CHECK( pos == 0 );
-        auto fsize = os.size();
-        CHECK( fsize == 46 );
-        mutable_buffer outbuf{ "0123456789" };
-        os.putn( outbuf );
-        auto zpos = os.position();
-        CHECK( zpos == 10 );
-        os.close();
-    }
-    {
-        bstream::ifbstream is( "fbstream_test_file" );
-        auto fsize = is.size();
-        CHECK( fsize == 46 );
-        const_buffer inbuf = is.getn( fsize );
-        is.close();
-        mutable_buffer expected{ "0123456789klmnopqrstuvwxyz01234567890123456789" };
-        CHECK( expected == inbuf );
-    }
-    {
-        bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::truncate );
-        mutable_buffer outbuf{ "abcdefghijklmnop" };
-        os.putn( outbuf );
-        os.position( 36 );
-        mutable_buffer outbuf2{ "0123456789" };
-        os.putn( outbuf2 );
-        auto zpos = os.position();
-        CHECK( zpos == 46 );
-        os.close();
-    }
-    
+	{
+		bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::truncate );
+		STRING_INIT_MUTABLE_BUFFER( outbuf, "abcdefghijklmnop" );
+		// mutable_buffer outbuf{ "abcdefghijklmnop" };
+		os.putn( outbuf );
+		os.close();
+	}
+	{
+		bstream::ifbstream is( "fbstream_test_file" );
+		auto fsize = is.size();
+		const_buffer inbuf = is.getn( as_const_buffer{}, fsize );
+		is.close();
+		// mutable_buffer expected{ "abcdefghijklmnop" };
+		STRING_INIT_MUTABLE_BUFFER( expected, "abcdefghijklmnop" );
+		CHECK( expected == inbuf );
+	}
+	{
+		bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::at_end );
+		auto pos = os.position();
+		CHECK( pos == 16 );
+		auto fsize = os.size();
+		CHECK( fsize == 16 );
+		// mutable_buffer outbuf{ "qrstuvwxyz" };
+		STRING_INIT_MUTABLE_BUFFER( outbuf, "qrstuvwxyz" );
+		os.putn( outbuf );
+		os.close();
+	}
+	{
+		bstream::ifbstream is( "fbstream_test_file" );
+		auto fsize = is.size();
+		CHECK( fsize == 26 );
+		const_buffer inbuf = is.getn( as_const_buffer{}, fsize );
+		is.close();
+		// mutable_buffer expected{ "abcdefghijklmnopqrstuvwxyz" };
+		STRING_INIT_MUTABLE_BUFFER( expected,  "abcdefghijklmnopqrstuvwxyz" );
+		CHECK( expected == inbuf );
+	}
+	{
+		bstream::ifbstream is( "fbstream_test_file" );
+		auto fsize = is.size();
+		CHECK( fsize == 26 );
+		is.position( 16, seek_anchor::begin );
+		const_buffer inbuf = is.getn( as_const_buffer{}, 10 );
+		bool caught_exception = false;
+		try
+		{
+			is.get();
+			CHECK( false ); // should never get here
+		}
+		catch ( std::system_error const& e )
+		{
+			caught_exception = true;
+		}
+		CHECK( caught_exception );
+		is.close();
+		// mutable_buffer expected{ "qrstuvwxyz" };
+		STRING_INIT_MUTABLE_BUFFER( expected, "qrstuvwxyz" );
+		CHECK( expected == inbuf );
+	}
+	{
+		bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::append );
+		auto pos = os.position();
+		CHECK( pos == 26 );
+		// mutable_buffer outbuf{ "0123456789" };
+		STRING_INIT_MUTABLE_BUFFER( outbuf, "0123456789" );
+		os.putn( outbuf );
+		auto zpos = os.position( 0 );
+		os.putn( outbuf );
+		zpos = os.position();
+		os.close();
+	}
+	{
+		bstream::ofbstream os( "fbstream_test_file" );
+		auto pos = os.position();
+		CHECK( pos == 0 );
+		auto fsize = os.size();
+		CHECK( fsize == 46 );
+		// mutable_buffer outbuf{ "0123456789" };
+		STRING_INIT_MUTABLE_BUFFER( outbuf, "0123456789" );
+		os.putn( outbuf );
+		auto zpos = os.position();
+		CHECK( zpos == 10 );
+		os.close();
+	}
+	{
+		bstream::ifbstream is( "fbstream_test_file" );
+		auto fsize = is.size();
+		CHECK( fsize == 46 );
+		const_buffer inbuf = is.getn( as_const_buffer{}, fsize );
+		is.close();
+		// mutable_buffer expected{ "0123456789klmnopqrstuvwxyz01234567890123456789" };
+		STRING_INIT_MUTABLE_BUFFER( expected, "0123456789klmnopqrstuvwxyz01234567890123456789" );
+		CHECK( expected == inbuf );
+	}
+	{
+		bstream::ofbstream os( "fbstream_test_file", bstream::open_mode::truncate );
+		// mutable_buffer outbuf{ "abcdefghijklmnop" };
+		STRING_INIT_MUTABLE_BUFFER( outbuf, "abcdefghijklmnop" );
+		os.putn( outbuf );
+		os.position( 36 );
+		// mutable_buffer outbuf2{ "0123456789" };
+		STRING_INIT_MUTABLE_BUFFER( outbuf2, "0123456789" );
+		os.putn( outbuf2 );
+		auto zpos = os.position();
+		CHECK( zpos == 46 );
+		os.close();
+	}
 }

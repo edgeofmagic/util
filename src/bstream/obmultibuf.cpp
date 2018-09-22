@@ -30,14 +30,14 @@ using namespace bstream;
 void
 obmultibuf::really_flush( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     assert( m_dirty && m_pnext > m_dirty_start );
 }
 
 void
 obmembuf::really_jump( std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	assert( m_did_jump );
 	assert( is_valid_position( m_jump_to ) );
 
@@ -68,8 +68,8 @@ obmembuf::really_jump( std::error_code& err )
 position_type
 obmultibuf::really_seek( seek_anchor where, offset_type offset, std::error_code& err )
 {
-    clear_error( err );
-    position_type result = invalid_position;
+    err.clear();
+    position_type result = bstream::npos;
 
 	if ( dirty )
 	{
@@ -102,7 +102,7 @@ obmultibuf::really_seek( seek_anchor where, offset_type offset, std::error_code&
     if ( result < 0 )
     {
         err = make_error_code( std::errc::invalid_argument );
-        result = invalid_position;
+        result = bstream::npos;
     }
 	else if ( result >= m_pbase_offset && result <= m_pbase_offset + ( m_pend - m_pbase ) ) // position is in current buffer
 	{
@@ -183,7 +183,7 @@ exit:
 void
 obmultibuf::really_overflow( size_type n, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     assert( std::less_equal< byte_type * >()( m_pnext, m_pend ) );
     assert( ( m_pnext - m_pbase ) + n > m_buf.size() );
     auto pos = ppos();

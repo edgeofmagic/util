@@ -214,7 +214,7 @@ ip::address::from_string( const std::string &s )
 void
 ip::address::from_string( const std::string &s, std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	if ( s.find( ':' ) == std::string::npos )
 	{
 		from_v4( s );
@@ -309,7 +309,7 @@ private:
 	static std::uint16_t
 	convert_hex_word( std::string const& s, std::error_code err )
 	{
-		clear_error( err );
+		err.clear();
 		unsigned long result = 0;
 		try
 		{
@@ -325,7 +325,7 @@ private:
 	static std::uint16_t
 	convert_dec_byte( std::string const& s, std::error_code err )
 	{
-		clear_error( err );
+		err.clear();
 		unsigned long result = 0;
 		try
 		{
@@ -375,7 +375,7 @@ public:
 		elements.reserve( 8 );
 		v4_bytes.reserve( 4 );
 
-		clear_error( err );
+		err.clear();
 
 		std::size_t i = 0;
 		std::string token;

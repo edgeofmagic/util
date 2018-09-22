@@ -134,7 +134,7 @@ obfilebuf::open( std::string const& filename, open_mode mode, int flags_override
 void
 obfilebuf::really_flush( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     auto pos = ppos();
     assert( m_dirty && m_pnext > m_dirty_start );
     assert( m_dirty_start == m_pbase );
@@ -162,7 +162,7 @@ obfilebuf::is_valid_position( position_type pos ) const
 void
 obfilebuf::really_jump( std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	assert( m_did_jump );
 
 	if ( m_dirty )
@@ -190,14 +190,14 @@ exit:
 void
 obfilebuf::really_overflow( size_type, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     assert( m_pbase_offset == ppos() && m_pnext == m_pbase );
 }
 
 void
 obfilebuf::close( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     flush( err );
     if ( err ) goto exit;
     
@@ -238,8 +238,8 @@ obfilebuf::open()
 position_type
 obfilebuf::truncate( std::error_code& err )
 {
-    clear_error( err );
-    position_type result = invalid_position;
+    err.clear();
+    position_type result = bstream::npos;
 
     flush( err );
     if ( err ) goto exit;
@@ -277,7 +277,7 @@ obfilebuf::truncate()
 void 
 obfilebuf::really_open( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     if ( m_is_open )
     {
         close( err );

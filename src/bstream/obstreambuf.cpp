@@ -81,7 +81,7 @@ m_did_jump{ rhs.m_did_jump }
 void
 obstreambuf::flush( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     if ( m_dirty )
     {
         really_flush( err );
@@ -114,7 +114,7 @@ obstreambuf::flush()
 void
 obstreambuf::put( byte_type byte, std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
     if ( m_did_jump )
     {
         really_jump( err );
@@ -163,7 +163,7 @@ obstreambuf::put( byte_type byte )
 void
 obstreambuf::putn( const byte_type* src, size_type n, std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	if ( n < 1 ) goto exit;
 
 	if ( m_did_jump )
@@ -262,7 +262,7 @@ obstreambuf::putn( const byte_type* src, size_type n )
 void
 obstreambuf::filln( const byte_type fill_byte, size_type n, std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	if ( n < 1 ) goto exit;
 
 	if ( m_did_jump )
@@ -373,7 +373,7 @@ obstreambuf::size() const
 position_type
 obstreambuf::new_position( offset_type offset, seek_anchor where  ) const
 {
-    position_type result = invalid_position;
+    position_type result = bstream::npos;
 
     switch ( where )
     {
@@ -428,7 +428,7 @@ obstreambuf::position( offset_type offset, seek_anchor where )
 position_type
 obstreambuf::position( offset_type offset, seek_anchor where, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
 
 	auto new_pos = new_position( offset, where );
 
@@ -488,7 +488,7 @@ obstreambuf::overflow( size_type requested )
 void
 obstreambuf::really_jump( std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	assert( m_did_jump );
 	assert( is_valid_position( m_jump_to ) );
 
@@ -521,7 +521,7 @@ obstreambuf::really_overflow( size_type, std::error_code& err )
 void
 obstreambuf::really_flush( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     assert( m_dirty && m_pnext > m_dirty_start );
 }
 

@@ -429,16 +429,7 @@ map_uv_error( int uv_code )
 	}
 }
 
-
-static void
-clear_error( std::error_code& err )
-{
-	static std::error_code no_error;
-	err = no_error;
-}
-
 class loop_impl;
-
 
 class resolver_impl : public async::resolver, public std::enable_shared_from_this< resolver_impl >
 {
@@ -613,7 +604,7 @@ public:
 	start( std::chrono::milliseconds timeout, std::error_code& err ) override
 	{
 		int status = 0;
-		clear_error( err );
+		err.clear();
 
 		if ( ! m_owner ) // on_close clears the owner
 		{
@@ -658,7 +649,7 @@ public:
 	virtual void
 	stop( std::error_code& err ) override
 	{
-		clear_error( err );
+		err.clear();
 
 		if ( ! m_uv_timer )
 		{
@@ -808,7 +799,7 @@ public:
 	virtual async::timer::ptr
 	create_timer( std::error_code& err, async::timer::handler hf ) override
 	{
-		clear_error( err );
+		err.clear();
 
 		async::timer::ptr result;
 
@@ -838,7 +829,7 @@ public:
 	virtual void
 	run( std::error_code& err ) override
 	{
-		clear_error( err );
+		err.clear();
 		if ( ! m_uv_loop )
 		{
 			err = make_error_code( async::errc::loop_closed );
@@ -867,7 +858,7 @@ public:
 	virtual void
 	stop( std::error_code& err ) override
 	{
-		clear_error( err );
+		err.clear();
 		if ( ! m_uv_loop )
 		{
 			err = make_error_code( async::errc::loop_closed );
@@ -937,7 +928,7 @@ public:
 	close( std::error_code& err ) override // probably should NOT be called from any handler
 	{
 		std::cout << "starting loop close" << std::endl;
-		clear_error( err );
+		err.clear();
 		int status = 0;
 
 		if ( ! m_uv_loop )
@@ -984,7 +975,7 @@ public:
 	virtual async::resolver::ptr
 	create_resolver( std::string const& hostname, std::error_code& err, async::resolver::handler hf ) override
 	{
-		clear_error( err );
+		err.clear();
 		resolver_impl::ptr result;
 
 		if ( ! m_uv_loop )
@@ -1016,7 +1007,7 @@ timer_impl::init_uv_timer( std::error_code& err )
 {
 	assert( m_uv_timer == nullptr );
 
-	clear_error( err );
+	err.clear();
 
 	m_uv_timer = new uv_timer_t;
 	auto status = uv_timer_init( m_owner->m_uv_loop, m_uv_timer );
@@ -1078,7 +1069,7 @@ resolver_impl::start()
 void 
 resolver_impl::start( std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	m_data.m_req_impl = shared_from_this();
 	uv_req_set_data( reinterpret_cast< uv_req_t* >( m_uv_req ), &m_data );
 	auto status = uv_getaddrinfo( m_owner->m_uv_loop, m_uv_req, on_resolve, m_hostname.c_str(), nullptr, nullptr );

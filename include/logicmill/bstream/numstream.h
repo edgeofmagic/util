@@ -32,7 +32,7 @@
 #ifndef LOGICMILL_BSTREAM_NUMSTREAM_H
 #define LOGICMILL_BSTREAM_NUMSTREAM_H
 
-#include <logicmill/buffer.h>
+#include <logicmill/bstream/buffer.h>
 #include <logicmill/bstream/obstreambuf.h>
 #include <logicmill/bstream/ibstreambuf.h>
 #include <boost/endian/conversion.hpp>
@@ -398,11 +398,17 @@ public:
 		return reinterpret_cast< U& >( cval );
 	}
 
-	const_buffer
-	getn( size_type nbytes, bool throw_on_incomplete = true );
+	shared_buffer
+	getn( as_shared_buffer, size_type nbytes, bool throw_on_incomplete = true );
+
+	shared_buffer
+	getn( as_shared_buffer, size_type nbytes, std::error_code& err, bool err_on_incomplete = true );
 
 	const_buffer
-	getn( size_type nbytes, std::error_code& err, bool err_on_incomplete = true );
+	getn( as_const_buffer, size_type nbytes, bool throw_on_incomplete = true );
+
+	const_buffer
+	getn( as_const_buffer, size_type nbytes, std::error_code& err, bool err_on_incomplete = true );
 
 	size_type
 	getn( byte_type* dst, size_type nbytes, bool throw_on_incomplete = true  );

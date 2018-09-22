@@ -27,43 +27,65 @@
 
 #include <cstdint>
 #include <system_error>
+#include <limits>
 
 namespace logicmill 
 {
 namespace bstream
 {
 
-    using size_type = std::size_t;
-    using position_type = std::int64_t;
-    using offset_type  = std::int64_t;
-    using byte_type = std::uint8_t;
-    using poly_tag_type = int;
+/** \brief The type used to represent a single byte in a stream or buffer.
+ */
+using byte_type = std::uint8_t;
 
-    static constexpr poly_tag_type invalid_tag = -1;
-    static constexpr position_type invalid_position = -1;
+/** \brief The type used to represent the size or capacity of a stream or buffer.
+ */
+using size_type = std::size_t;
 
-    enum class seek_anchor
-    {
-        begin,
-        current,
-        end
-    };
+/** \brief The type used to represent the absolute position of a byte in 
+ * in a stream or buffer.
+ */
+using position_type = std::uint64_t;
 
-    enum class open_mode
-    {
-        truncate,
-        append,
-        at_end,
-        at_begin,
-    };
+/** \brief The type used to represent the a relative offset from an 
+ * absolute position in a stream or buffer.
+ */
+using offset_type  = std::int64_t;
 
-	inline void
-	clear_error( std::error_code& ec )
-	{
-		static const std::error_code good = std::error_code{};
-		ec = good;
-	}
+/** \brief The type used to represent a checksum value calculated for
+ * a buffer.
+ */
+using checksum_type = std::uint32_t;
 
+/** \brief A value representing an invalid size.
+ */
+static constexpr size_type npos = std::numeric_limits< size_type >::max();
+
+
+// using size_type = std::size_t;
+// using position_type = std::int64_t;
+// using byte_type = std::uint8_t;
+using poly_tag_type = int;
+
+static constexpr poly_tag_type invalid_tag = -1;
+
+enum class seek_anchor
+{
+	begin,
+	current,
+	end
+};
+
+enum class open_mode
+{
+	truncate,
+	append,
+	at_end,
+	at_begin,
+};
+
+struct as_shared_buffer {};
+struct as_const_buffer {};
 
 } // namespace bstream
 } // namespace logicmill

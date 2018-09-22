@@ -28,7 +28,7 @@
 #include <fcntl.h>
 #include <vector>
 #include <logicmill/bstream/obstreambuf.h>
-#include <logicmill/buffer.h>
+#include <logicmill/bstream/buffer.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_OBFILEBUF_SIZE
 #define LOGICMILL_BSTREAM_DEFAULT_OBFILEBUF_SIZE  16384UL
@@ -164,7 +164,7 @@ private:
     reset_ptrs()
     {
         byte_type* base = m_buf.data();
-        set_ptrs( base, base, base + m_buf.size() );
+        set_ptrs( base, base, base + m_buf.capacity() );
     }
 
     void 

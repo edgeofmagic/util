@@ -30,14 +30,14 @@ using namespace bstream;
 void
 obmembuf::really_flush( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     assert( m_dirty && m_pnext > m_dirty_start );
 }
 
 void
 obmembuf::really_jump( std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	assert( m_did_jump );
 	assert( is_valid_position( m_jump_to ) );
 
@@ -75,7 +75,7 @@ obmembuf::is_valid_position( position_type pos ) const
 void
 obmembuf::really_overflow( size_type n, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     assert( std::less_equal< byte_type * >()( m_pnext, m_pend ) );
     assert( ( m_pnext - m_pbase ) + n > m_buf.size() );
     auto pos = ppos();
@@ -103,8 +103,8 @@ obmembuf::get_buffer()
 	{
 		flush();
 	}
-	return const_buffer{ m_buf, 0, static_cast< buffer::size_type >( get_high_watermark() ) };
-	// return m_buf.slice( 0, get_high_watermark() );
+    m_buf.size( get_high_watermark() );
+	return const_buffer{ m_buf };
 }
 
 mutable_buffer&

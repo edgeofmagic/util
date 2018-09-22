@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_OBMEMBUF_H
 
 #include <logicmill/bstream/obstreambuf.h>
-#include <logicmill/buffer.h>
+#include <logicmill/bstream/buffer.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_OBMEMBUF_SIZE
 #define LOGICMILL_BSTREAM_DEFAULT_OBMEMBUF_SIZE  16384UL
@@ -90,7 +90,7 @@ protected:
     {
         size_type cushioned_size = ( size * 3 ) / 2;
 	    // force a hard lower bound to avoid non-resizing dilemma in resizing, when cushioned == size == 1
-        m_buf.capacity( std::max( 16UL, cushioned_size ) );
+        m_buf.expand( std::max( 16UL, cushioned_size ) );
     }
 
     virtual void
@@ -100,7 +100,7 @@ protected:
     reset_ptrs()
     {
         auto base = m_buf.data();
-        set_ptrs( base, base, base + m_buf.size() );
+        set_ptrs( base, base, base + m_buf.capacity() );
     }
 
     mutable_buffer			m_buf;

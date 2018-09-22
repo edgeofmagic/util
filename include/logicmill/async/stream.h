@@ -29,7 +29,7 @@
 #include <functional>
 #include <system_error>
 #include <chrono>
-#include <logicmill/buffer.h>
+#include <logicmill/bstream/buffer.h>
 #include <logicmill/async/event.h>
 #include <logicmill/async/error.h>
 
@@ -179,7 +179,7 @@ public:
 
 void connect( data_source::ptr src, data_sink::ptr sink, std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	src->add_handler( data_event{}, sink );
 	sink->add_handler( control_event{}, src );
 	sink->add_handler( receipt_event{}, src );
@@ -220,7 +220,7 @@ public:
 
 void stack( duplex::ptr a, duplex::ptr b, std::error_code& err )
 {
-	clear_error( err );
+	err.clear();
 	connect( a, b, err );
 	connect( b, a, err );
 }

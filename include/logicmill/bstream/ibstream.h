@@ -115,7 +115,7 @@ public:
         && std::is_default_constructible< T >::value, T >
     read_as( std::error_code& ec )
     {
-        clear_error( ec );
+        ec.clear();
         try 
         {
             return  T( *this );
@@ -139,7 +139,7 @@ public:
         && std::is_default_constructible< T >::value, T >
     read_as( std::error_code& ec )
     {
-        clear_error( ec );
+        ec.clear();
         try
         {
             return value_deserializer< T >::get( *this );
@@ -164,7 +164,7 @@ public:
     typename std::enable_if_t< use_ref_deserializer< T >::value, T >
     read_as( std::error_code& ec )
     {
-        clear_error( ec );
+        ec.clear();
         T obj;
         try
         {
@@ -188,7 +188,7 @@ public:
     typename std::enable_if_t< has_ref_deserializer< T >::value, ibstream& >
     read_as( T& obj, std::error_code& ec )
     {
-        clear_error( ec );
+        ec.clear();
         try
         {
             ref_deserializer< T >::get( *this, obj );
@@ -220,7 +220,7 @@ public:
         ibstream& > 
     read_as( T& obj, std::error_code& ec )
     {
-        clear_error( ec );
+        ec.clear();
         try
         {
             obj = T( *this );
@@ -254,7 +254,7 @@ public:
         ibstream& >
     read_as( T& obj, std::error_code& ec )
     {
-        clear_error( ec );
+        ec.clear();
         try
         {
             obj = value_deserializer< T >::get( *this );
@@ -308,27 +308,49 @@ public:
     std::size_t 
     read_blob_header( std::error_code& ec );
 
-    logicmill::const_buffer
-    read_blob_body( std::size_t nbytes )
+    logicmill::bstream::shared_buffer
+    read_blob_body( as_shared_buffer tag, std::size_t nbytes )
     {
-        return getn( nbytes );
+        return getn( tag, nbytes );
     }
 
-    logicmill::const_buffer
-    read_blob_body( std::size_t nbytes, std::error_code& ec )
+    logicmill::bstream::shared_buffer
+    read_blob_body( as_shared_buffer tag, std::size_t nbytes, std::error_code& ec )
     {
-        return getn( nbytes, ec );
+        return getn( tag, nbytes, ec );
     }
 
-    logicmill::const_buffer
-    read_blob()
+    logicmill::bstream::const_buffer
+    read_blob_body( as_const_buffer tag, std::size_t nbytes )
+    {
+        return getn( tag, nbytes );
+    }
+
+    logicmill::bstream::const_buffer
+    read_blob_body( as_const_buffer tag, std::size_t nbytes, std::error_code& ec )
+    {
+        return getn( tag, nbytes, ec );
+    }
+
+    logicmill::bstream::shared_buffer
+    read_blob( as_shared_buffer tag )
     {
         auto nbytes = read_blob_header();
-        return read_blob_body( nbytes );
+        return read_blob_body( tag, nbytes );
     }
 
-    logicmill::const_buffer
-    read_blob( std::error_code& ec );
+    logicmill::bstream::shared_buffer
+    read_blob( as_shared_buffer tag, std::error_code& ec );
+
+    logicmill::bstream::const_buffer
+    read_blob( as_const_buffer tag )
+    {
+        auto nbytes = read_blob_header();
+        return read_blob_body( tag, nbytes );
+    }
+
+    logicmill::bstream::const_buffer
+    read_blob( as_const_buffer tag, std::error_code& ec );
 
     std::size_t
     read_ext_header( std::uint8_t& ext_type );
@@ -336,16 +358,28 @@ public:
     std::size_t
     read_ext_header( std::uint8_t& ext_type, std::error_code& ec );
 
-    logicmill::const_buffer
-    read_ext_body( std::size_t nbytes )
+    logicmill::bstream::shared_buffer
+    read_ext_body( as_shared_buffer tag, std::size_t nbytes )
     {
-        return getn( nbytes );
+        return getn( tag, nbytes );
     }
 
-    logicmill::const_buffer
-    read_ext_body( std::size_t nbytes, std::error_code& ec )
+    logicmill::bstream::shared_buffer
+    read_ext_body( as_shared_buffer tag, std::size_t nbytes, std::error_code& ec )
     {
-        return getn( nbytes, ec );
+        return getn( tag, nbytes, ec );
+    }
+
+    logicmill::bstream::const_buffer
+    read_ext_body( as_const_buffer tag, std::size_t nbytes )
+    {
+        return getn( tag, nbytes );
+    }
+
+    logicmill::bstream::const_buffer
+    read_ext_body( as_const_buffer tag, std::size_t nbytes, std::error_code& ec )
+    {
+        return getn( tag, nbytes, ec );
     }
 
     void
@@ -361,7 +395,7 @@ public:
     void
     read_nil( std::error_code& ec )
     {
-        clear_error( ec );
+        ec.clear();
         auto tcode = base::get();
         if ( tcode != typecode::nil )
         {
@@ -389,7 +423,7 @@ public:
     const_buffer
     get_msgpack_obj_buf( std::error_code& ec )
     {
-        clear_error( ec );
+        ec.clear();
         try
         {
             return get_msgpack_obj_buf();
@@ -951,11 +985,11 @@ struct value_deserializer< std::string >
     static std::string get( ibstream& is )
     {
         auto tcode = is.get();
+		std::size_t length = 0;
         if ( tcode >= typecode::fixstr_min && tcode <= typecode::fixstr_max )
         {
             std::uint8_t mask = 0x1f;
-            std::size_t length = tcode & mask;
-            return is.getn( length ).to_string(); // TODO: does this work? construct string?
+            length = tcode & mask;
         }
         else
         {
@@ -963,41 +997,41 @@ struct value_deserializer< std::string >
             {
                 case typecode::str_8:
                 {
-                    std::size_t length = is.get_num< std::uint8_t >();
-                    return is.getn( length ).to_string();
+            		length = is.get_num< std::uint8_t >();
                 }
                 case typecode::str_16:
                 {
-                    std::size_t length = is.get_num< std::uint16_t >();
-                    return is.getn( length ).to_string();
+                	length = is.get_num< std::uint16_t >();
                 }
                 case typecode::str_32:
                 {
-                    std::size_t length = is.get_num< std::uint32_t >();
-                    return is.getn( length ).to_string();
+                	length = is.get_num< std::uint32_t >();
                 }
                 default:
                     throw std::system_error{ make_error_code( bstream::errc::val_deser_type_error_string ) };
             }
         }
+		byte_type strchars[ length ];
+		is.getn( strchars, length );
+		return std::string{ reinterpret_cast< char* >( &strchars ), length };
     }
 };	
 
 template<>
-struct value_deserializer< logicmill::string_alias >
+struct value_deserializer< logicmill::bstream::string_alias >
 {
-    logicmill::string_alias 
+    logicmill::bstream::string_alias 
     operator()( ibstream& is ) const
     {
         return get( is );
     }
 
-    static logicmill::string_alias get( ibstream& is, std::size_t length )
+    static logicmill::bstream::string_alias get( ibstream& is, std::size_t length )
     {
-        return logicmill::string_alias{ is.getn( length ) };
+        return logicmill::bstream::string_alias{ is.getn( as_shared_buffer{}, length ) };
     }
 
-    static logicmill::string_alias get( ibstream& is )
+    static logicmill::bstream::string_alias get( ibstream& is )
     {
         auto tcode = is.get();
         if ( tcode >= typecode::fixstr_min && tcode <= typecode::fixstr_max )
@@ -1395,18 +1429,34 @@ struct value_deserializer< std::unique_ptr< T > >
 };
 
 template<>
-struct value_deserializer< logicmill::const_buffer >
+struct value_deserializer< logicmill::bstream::const_buffer >
 {
-    logicmill::const_buffer 
+    logicmill::bstream::const_buffer 
     operator()( ibstream& is )  const
     {
         return get( is );
     }
 
-    static logicmill::const_buffer
+    static logicmill::bstream::const_buffer
     get( ibstream& is )
     {
-        return is.read_blob();
+        return is.read_blob( as_const_buffer{} );
+    }
+};
+
+template<>
+struct value_deserializer< logicmill::bstream::shared_buffer >
+{
+    logicmill::bstream::shared_buffer 
+    operator()( ibstream& is )  const
+    {
+        return get( is );
+    }
+
+    static logicmill::bstream::shared_buffer
+    get( ibstream& is )
+    {
+        return is.read_blob( as_shared_buffer{} );
     }
 };
 

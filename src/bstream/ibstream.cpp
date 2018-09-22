@@ -322,7 +322,7 @@ ibstream::read_string_header()
 std::size_t
 ibstream::read_string_header( std::error_code& ec )
 {
-	clear_error( ec );
+	ec.clear();
 	std::size_t result = 0ul;
 	try
 	{
@@ -371,7 +371,7 @@ ibstream::read_array_header()
 std::size_t 
 ibstream::read_array_header( std::error_code& ec )
 {
-	clear_error( ec );
+	ec.clear();
 	std::size_t result = 0;
 	try
 	{
@@ -420,7 +420,7 @@ ibstream::read_map_header()
 std::size_t
 ibstream::read_map_header( std::error_code& ec )
 {
-	clear_error( ec );
+	ec.clear();
 	std::size_t result = 0;
 	try
 	{
@@ -447,7 +447,7 @@ ibstream::check_map_key(std::string const& key )
 ibstream&
 ibstream::check_map_key(std::string const& key, std::error_code& ec )
 {
-	clear_error( ec );
+	ec.clear();
 	auto name = read_as< std::string >();
 	if (name != key )
 	{
@@ -470,7 +470,7 @@ ibstream::check_array_header(std::size_t expected )
 ibstream&
 ibstream::check_array_header(std::size_t expected, std::error_code& ec )
 {
-	clear_error( ec );
+	ec.clear();
 	auto actual = read_array_header();
 	if (actual != expected )
 	{
@@ -493,7 +493,7 @@ ibstream::check_map_header(std::size_t expected )
 ibstream&
 ibstream::check_map_header(std::size_t expected, std::error_code& ec )
 {
-	clear_error( ec );
+	ec.clear();
 	auto actual = read_map_header();
 	if (actual != expected )
 	{
@@ -535,7 +535,7 @@ ibstream::read_blob_header()
 std::size_t 
 ibstream::read_blob_header( std::error_code& ec )
 {
-	clear_error( ec );
+	ec.clear();
 	std::size_t result = 0;
 	try
 	{
@@ -548,8 +548,22 @@ ibstream::read_blob_header( std::error_code& ec )
 	return result;
 }
 
-logicmill::const_buffer
-ibstream::read_blob( std::error_code& ec )
+logicmill::bstream::shared_buffer
+ibstream::read_blob( as_shared_buffer tag, std::error_code& ec )
+{
+	auto nbytes = read_blob_header( ec );
+	if ( ec )
+	{
+		return shared_buffer{};
+	}
+	else
+	{
+		return read_blob_body( tag, nbytes, ec );
+	}
+}
+
+logicmill::bstream::const_buffer
+ibstream::read_blob( as_const_buffer tag, std::error_code& ec )
 {
 	auto nbytes = read_blob_header( ec );
 	if ( ec )
@@ -558,7 +572,7 @@ ibstream::read_blob( std::error_code& ec )
 	}
 	else
 	{
-		return read_blob_body( nbytes, ec );
+		return read_blob_body( tag, nbytes, ec );
 	}
 }
 
@@ -628,7 +642,7 @@ ibstream::read_ext_header( std::uint8_t& ext_type )
 std::size_t
 ibstream::read_ext_header( std::uint8_t& ext_type, std::error_code& ec )
 {
-	clear_error( ec );
+	ec.clear();
 	std::size_t result = 0;
 	try
 	{

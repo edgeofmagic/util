@@ -134,14 +134,14 @@ public:
 	}
 
 	obstream&
-	write_blob_body( logicmill::buffer const& blob )
+	write_blob_body( logicmill::bstream::buffer const& blob )
 	{
 		putn( blob.data(), blob.size() );
 		return *this;
 	}
 
 	obstream&
-	write_blob_body( logicmill::buffer const& blob, std::error_code& err )
+	write_blob_body( logicmill::bstream::buffer const& blob, std::error_code& err )
 	{
 		putn( blob.data(), blob.size(), err );
 		return *this;
@@ -168,7 +168,7 @@ public:
 	}
 
 	obstream&
-	write_blob( logicmill::buffer const& buf )
+	write_blob( logicmill::bstream::buffer const& buf )
 	{
 		write_blob_header( buf.size() );
 		write_blob_body( buf );
@@ -176,7 +176,7 @@ public:
 	}
 
 	obstream&
-	write_blob( logicmill::buffer const& buf, std::error_code& err )
+	write_blob( logicmill::bstream::buffer const& buf, std::error_code& err )
 	{
 		write_blob_header( buf.size(), err );
 		if ( err ) goto exit;
@@ -279,7 +279,7 @@ protected:
 	obstream&
 	write_shared_ptr( std::shared_ptr< T > ptr, std::error_code& err )
 	{
-		clear_error( err );
+		err.clear();
 		try
 		{
 			write_shared_ptr( ptr );
@@ -299,7 +299,7 @@ protected:
 	obstream&
 	write_as_unique_pointer( T *ptr, std::error_code& err )
 	{
-		clear_error( err );
+		err.clear();
 		try
 		{
 			write_as_unique_pointer( ptr );
@@ -531,9 +531,9 @@ struct serializer< std::string_view >
 };
 
 template<>
-struct serializer< logicmill::string_alias >
+struct serializer< logicmill::bstream::string_alias >
 {
-	static obstream& put( obstream& os, logicmill::string_alias const& value )
+	static obstream& put( obstream& os, logicmill::bstream::string_alias const& value )
 	{
 		return serializer< std::string_view >::put( os, value.view() );
 	}
@@ -607,9 +607,9 @@ struct serializer< T, typename std::enable_if_t< std::is_enum< T >::value > >
 };
 
 template<>
-struct serializer< logicmill::buffer >
+struct serializer< logicmill::bstream::buffer >
 {
-	static obstream& put( obstream& os, logicmill::buffer const& val )
+	static obstream& put( obstream& os, logicmill::bstream::buffer const& val )
 	{
 		os.write_blob( val );
 		return os;

@@ -40,19 +40,32 @@ ibmembuf::get_slice( size_type n )
     {
         auto pos = gpos();
         gbump( n );
-        return m_buf.slice( pos, n );
+        return const_buffer{ m_buf, static_cast< position_type >( pos ), n };
     }
 }
 
-const_buffer
-ibmembuf::getn( size_type n, std::error_code& err )
+shared_buffer
+ibmembuf::getn( as_shared_buffer, size_type n, std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
+    return shared_buffer{ get_slice( n ) };
+}
+
+shared_buffer
+ibmembuf::getn( as_shared_buffer, size_type n )
+{
+    return shared_buffer{ get_slice( n ) };
+}
+
+const_buffer
+ibmembuf::getn( as_const_buffer, size_type n, std::error_code& err )
+{
+    err.clear();
     return get_slice( n );
 }
 
 const_buffer
-ibmembuf::getn( size_type n )
+ibmembuf::getn( as_const_buffer, size_type n )
 {
     return get_slice( n );
 }

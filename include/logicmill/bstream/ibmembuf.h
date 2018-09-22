@@ -77,16 +77,22 @@ public:
 		return m_buf;
 	}
 
-    const_buffer
-    get_slice( size_type n );
+    virtual shared_buffer
+    getn( as_shared_buffer tag, size_type n, std::error_code& err ) override;
+
+    virtual shared_buffer
+    getn( as_shared_buffer tag, size_type n ) override;
 
     virtual const_buffer
-    getn( size_type n, std::error_code& err ) override;
+    getn( as_const_buffer tag, size_type n, std::error_code& err ) override;
 
     virtual const_buffer
-    getn( size_type n ) override;
+    getn( as_const_buffer tag, size_type n ) override;
 
 protected:
+
+    const_buffer
+    get_slice( size_type n );
 
     const_buffer      m_buf;
 };

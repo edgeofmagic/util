@@ -29,9 +29,9 @@ using namespace logicmill;
 using namespace bstream;
 
 const_buffer
-inumstream::getn( size_type nbytes, bool throw_on_incomplete )
+inumstream::getn( as_const_buffer tag, size_type nbytes, bool throw_on_incomplete )
 {
-    const_buffer buf = m_strmbuf->getn( nbytes );
+    const_buffer buf{ m_strmbuf->getn( tag, nbytes ) };
     if ( throw_on_incomplete && buf.size() < nbytes )
     {
         throw std::system_error{ make_error_code( bstream::errc::read_past_end_of_stream ) };
@@ -40,10 +40,37 @@ inumstream::getn( size_type nbytes, bool throw_on_incomplete )
 }
 
 const_buffer
-inumstream::getn( size_type nbytes, std::error_code& err, bool err_on_incomplete )
+inumstream::getn( as_const_buffer tag, size_type nbytes, std::error_code& err, bool err_on_incomplete )
 {
-    clear_error( err );
-    const_buffer buf = m_strmbuf->getn( nbytes, err );
+    err.clear();
+    const_buffer buf{ m_strmbuf->getn( tag, nbytes, err ) };
+    if ( err ) goto exit;
+
+    if ( err_on_incomplete && buf.size() < nbytes )
+    {
+        err = make_error_code( bstream::errc::read_past_end_of_stream );
+        goto exit;
+    }
+exit:
+    return buf;
+}
+
+shared_buffer
+inumstream::getn( as_shared_buffer tag, size_type nbytes, bool throw_on_incomplete )
+{
+    shared_buffer buf{ m_strmbuf->getn( tag, nbytes ) };
+    if ( throw_on_incomplete && buf.size() < nbytes )
+    {
+        throw std::system_error{ make_error_code( bstream::errc::read_past_end_of_stream ) };
+    }
+    return buf;
+}
+
+shared_buffer
+inumstream::getn( as_shared_buffer tag, size_type nbytes, std::error_code& err, bool err_on_incomplete )
+{
+    err.clear();
+    shared_buffer buf{ m_strmbuf->getn( tag, nbytes, err ) };
     if ( err ) goto exit;
 
     if ( err_on_incomplete && buf.size() < nbytes )
@@ -69,7 +96,7 @@ inumstream::getn( byte_type* dst, size_type nbytes, bool throw_on_incomplete )
 size_type
 inumstream::getn( byte_type* dst, size_type nbytes, std::error_code& err, bool err_on_incomplete )
 {
-    clear_error( err );
+    err.clear();
     auto result = m_strmbuf->getn( dst, nbytes, err );
     if ( err ) goto exit;
 

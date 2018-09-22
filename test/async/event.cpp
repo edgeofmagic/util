@@ -37,10 +37,140 @@ namespace event_test
 		kill
 	};
 
-	using kill_event = async::event_definition< actions, actions::kill, std::string const& >;
-	using start_event = async::event_definition< actions, actions::start, int >;
-	using stop_event = async::event_definition< actions, actions::stop, bool >;
+	using kill_event = async::event< actions, actions::kill, std::string const& >;
+	using start_event = async::event< actions, actions::start, int >;
+	using stop_event = async::event< actions, actions::stop, bool >;
 
+	class kill_emitter : public async::emitter< kill_event, async::cardinality::simplex >
+	{};
+
+	class kill_handler : public async::handler_spec< kill_event, kill_handler >
+	{
+	public:
+		using base = async::handler_spec< kill_event, kill_handler >;
+		using ptr = std::shared_ptr< kill_handler >;
+
+		kill_handler()
+		: 
+		base{  &kill_handler::murder }
+		{}
+
+		void murder( std::string const& message )
+		{
+			std::cout << "redrum: " << message << std::endl;
+			kill_received = true;
+		}
+
+		bool kill_received = false;
+	};	
+
+	struct kill_functor
+	{
+
+		kill_functor( bool& f ) : flag{ f } { flag = false; }
+		bool& flag;
+		void operator()( std::string const& s )
+		{
+			std::cout << "kill_functor: " << s << std::endl;
+			flag = true;
+		}
+	};
+}
+
+using namespace event_test;
+
+TEST_CASE( "logicmill/async/event/smoke/listener/lambda" )
+{
+	bool kill_received = false;
+
+	kill_event::listener kill_listener = [&] ( std::string const& message )
+	{
+		std::cout << "kill_listener: " << message << std::endl;
+		kill_received = true;
+	};
+
+	kill_listener( std::string{ "weasels ripped my flesh" } );
+
+	CHECK( kill_received );
+}
+
+TEST_CASE( "logicmill/async/event/smoke/listener/functor/move" )
+{
+	bool kill_received = false;
+
+	kill_functor kf{ kill_received };
+
+	CHECK( ! kill_received );
+
+	kill_emitter ke;
+
+	auto id = ke.add_listener( kill_event{}, std::move( kf ) );
+	
+	ke.emit( kill_event{}, "don't you eat that yellow snow" );
+
+	CHECK( kill_received );
+}
+
+TEST_CASE( "logicmill/async/event/smoke/listener/functor/copy" )
+{
+	bool kill_received = false;
+
+	kill_functor kf{ kill_received };
+
+	CHECK( ! kill_received );
+
+	kill_emitter ke;
+
+	auto id = ke.add_listener( kill_event{}, kf );
+	
+	ke.emit( kill_event{}, "here it goes, the circular motion--rub it!" );
+
+	CHECK( kill_received );
+}
+
+TEST_CASE( "logicmill/async/event/smoke/handler" )
+{
+	kill_handler k;
+
+	CHECK( ! k.kill_received );
+
+	k.handle( kill_event{}, std::string{ "zoot allures" } );
+
+	CHECK( k.kill_received );
+}
+
+TEST_CASE( "logicmill/async/event/smoke/emitter/listener" )
+{
+	bool kill_received = false;
+
+	kill_emitter ke;
+
+	auto id = ke.add_listener( kill_event{}, [&] ( std::string const& message )
+	{
+		std::cout << "kill_listener: " << message << std::endl;
+		kill_received = true;
+	} );
+	
+	ke.emit( kill_event{}, "shut up and play yer guitar");
+
+	CHECK( kill_received );
+}
+
+TEST_CASE( "logicmill/async/event/smoke/emitter/handler" )
+{
+	kill_emitter ke;
+	kill_handler::ptr kp = std::make_shared< kill_handler >();
+	CHECK( ! kp->kill_received );
+
+	auto id = ke.add_listener( kill_event{}, kp );
+	
+	ke.emit( kill_event{}, "watch out where the huskies go");
+
+	CHECK( kp->kill_received );
+}
+
+
+#if 0
 	class killer : public kill_event::handler_spec< killer >
 	{
 	public:
@@ -324,4 +454,6 @@ TEST_CASE( "logicmill/async/event/smoke/derived_multi_event_emitter_handler" )
 
 	actor.disconnect();
 }
+
+#endif
 

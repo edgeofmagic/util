@@ -25,7 +25,7 @@
 #ifndef LOGICMILL_BSTREAM_IBSTREAMBUF_H
 #define LOGICMILL_BSTREAM_IBSTREAMBUF_H
 
-#include <logicmill/buffer.h>
+#include <logicmill/bstream/buffer.h>
 #include <logicmill/bstream/types.h>
 
 namespace logicmill 
@@ -100,11 +100,17 @@ public:
     byte_type
     peek();
 
-    virtual const_buffer
-    getn( size_type n, std::error_code& err );
+    virtual shared_buffer
+    getn( as_shared_buffer tag, size_type n, std::error_code& err );
+
+    virtual shared_buffer
+    getn( as_shared_buffer tag, size_type n );
 
     virtual const_buffer
-    getn( size_type n );
+    getn( as_const_buffer tag, size_type n, std::error_code& err );
+
+    virtual const_buffer
+    getn( as_const_buffer tag, size_type n );
 
     size_type 
     getn( byte_type* dst, size_type n, std::error_code& err );

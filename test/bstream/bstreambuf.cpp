@@ -144,9 +144,20 @@ TEST_CASE( "logicmill/smoke/obstreambuf/basic" )
 
     std::error_code err;
 
-    mutable_buffer tbuf0{ "zooble" };
-    mutable_buffer tbuf1{ "gorn" };
-    mutable_buffer tbuf2{ "black" };
+	std::string zooble{ "zooble" };
+	std::string gorn{ "gorn" };
+	std::string black{ "black" };
+
+    mutable_buffer tbuf0{ zooble.size() };
+	tbuf0.putn( 0, zooble.data(), zooble.size() );
+	tbuf0.size( zooble.size() );
+    mutable_buffer tbuf1{ gorn.size() };
+	tbuf1.putn( 0, gorn.data(), gorn.size() );
+	tbuf1.size( gorn.size() );
+    mutable_buffer tbuf2{ black.size() };
+	tbuf2.putn( 0, black.data(), black.size() );
+	tbuf2.size( black.size() );
+
     obuf.putn( tbuf0.data(), tbuf0.size(), err );
     CHECK( ! err );
     CHECK( obuf.position() == 6 );
@@ -195,7 +206,10 @@ TEST_CASE( "logicmill/smoke/ibstreambuf/basic" )
 {
     // std::this_thread::sleep_for( std::chrono::seconds( 10 ) );
 
-    mutable_buffer buf{ "0123456789ABCDEF" };
+	std::string contents{ "0123456789ABCDEF" };
+    mutable_buffer buf{ contents.size() };
+	buf.putn( 0, contents.data(), contents.size() );
+	buf.size( contents.size() );
     bstream::ibstreambuf ibuf{ buf.data(), buf.size() };
 
     bstream::detail::ibs_test_probe probe{ ibuf };
@@ -241,21 +255,21 @@ TEST_CASE( "logicmill/smoke/ibstreambuf/basic" )
     CHECK( ibuf.position( 0, bstream::seek_anchor::begin, err ) == 0 );
     CHECK( ! err );
 
-    auto bf = ibuf.getn( 7, err );
+    auto bf = ibuf.getn( as_const_buffer{}, 7, err );
     CHECK( !  err );
 
     CHECK( bf.size() == 7 );
     CHECK( ibuf.position() == 7 );
     CHECK( bf.to_string() == std::string{ "0123456" } ); 
 
-    CHECK( ibuf.position( -8, bstream::seek_anchor::current, err ) == bstream::invalid_position );
+    CHECK( ibuf.position( -8, bstream::seek_anchor::current, err ) == bstream::npos );
     CHECK( err );
     CHECK( err == std::errc::invalid_seek );
 
     CHECK( ibuf.position( -4, bstream::seek_anchor::end, err ) == 12 );
     CHECK( ! err );
     
-    bf = ibuf.getn( 5, err );
+    bf = ibuf.getn( as_const_buffer{}, 5, err );
     CHECK( bf.size() == 4 );
     CHECK( bf.to_string() == "CDEF" );
     CHECK( ! err );
@@ -345,7 +359,7 @@ TEST_CASE( "logicmill/smoke/ibfilebuf/basic" )
     auto pos = ibf.position();
     CHECK( pos == 0 );
 
-    const_buffer buf = ibf.getn( end_pos, err );
+    const_buffer buf = ibf.getn( as_const_buffer{}, end_pos, err );
     CHECK( ! err );
     CHECK( buf.size() == 112 );
 

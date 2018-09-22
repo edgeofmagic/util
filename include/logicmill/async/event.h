@@ -26,11 +26,13 @@
 #define LOGICMILL_ASYNC_EVENT_H
 
 #include <logicmill/async/error.h>
+#include <logicmill/traits.h>
 #include <functional>
 #include <cstdint>
 #include <unordered_set>
 #include <unordered_map>
 
+#if 0
 #define LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( _event_name_ )			\
 	using _event_name_::emitter::add_handler;							\
 	using _event_name_::emitter::remove_handler;						\
@@ -46,9 +48,80 @@
 #define LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( _event_name_ )			\
 	using _event_name_::handler::handle;								\
 /**/
+# endif 
 
 namespace logicmill {
 namespace async {
+
+
+template < class T, T Value, class... Args >
+class event
+{
+public:
+	using listener = std::function< void ( Args... ) >;
+
+};
+
+template< class E >
+class handler;
+
+template< class T, T Value, class... Args >
+class handler< event< T, Value, Args... > >
+{
+public:
+	using event_type =  event< T, Value, Args... >;
+	using ptr = std::shared_ptr< handler >;
+
+	virtual void handle( event_type defn, Args... args ) = 0;
+
+};
+
+template< class E, class Derived >
+class handler_spec;
+
+template< class Derived, class T, T Value, class... Args >
+class handler_spec< event< T, Value, Args... >, Derived > 
+	: public handler< event< T, Value, Args... > >
+{
+public:
+	using event_type = event< T, Value, Args... >;
+	using method_ptr_type = void ( Derived::* )( Args... );
+
+	handler_spec( method_ptr_type mptr )
+	:
+	m_mptr{ mptr }
+	{}
+
+	virtual void handle( event_type , Args... args ) override
+	{
+		((static_cast< Derived& >(*this)).*m_mptr)( args... );
+	}
+
+protected:
+	method_ptr_type m_mptr;
+};
+
+#if 0
+template< class Derived >
+class handler_spec : public handler
+{
+public:
+	using method_ptr_type = void ( Derived::* )( Args... );
+
+	handler_spec( method_ptr_type mptr )
+	:
+	m_mptr{ mptr }
+	{}
+
+	virtual void handle( event_definition , Args... args ) override
+	{
+		((static_cast< Derived& >(*this)).*m_mptr)( args... );
+	}
+
+protected:
+	method_ptr_type m_mptr;
+};
+#endif
 
 class emitter_base
 {
@@ -58,7 +131,173 @@ public:
 	virtual void disconnect() {}
 };
 
+enum class cardinality
+{
+	simplex,
+	multiplex
+};
+
+template< class E, cardinality K >
+class emitter;
+
 template< class T, T Value, class... Args >
+class emitter< event< T, Value, Args... >, cardinality::simplex > : public emitter_base
+{
+public:
+	using id_type = std::uint64_t;
+	using event_type = event< T, Value, Args... >;
+	using listener_type = typename event_type::listener;
+
+	template< class U >
+	std::enable_if_t< std::is_convertible< U, listener_type >::value , id_type >
+	add_listener( event_type, U&& l )
+	{
+		id_type result = 0;
+		if ( ! m_listener )
+		{
+			m_listener = std::forward< U >( l );
+			m_listener_id = m_next_id++;
+			result = m_listener_id;
+		}
+		return result;
+	}
+
+	id_type add_listener( event_type e, typename handler< event_type >::ptr hp )
+	{
+		return add_listener( e, [=] ( Args... args )
+		{
+			hp->handle( event_type{}, args... );
+		} );
+	}
+
+	bool remove_listener( event_type, id_type id )
+	{
+		bool result = false;
+		if ( id == m_listener_id )
+		{
+			m_listener = nullptr;
+			m_listener_id = 0;
+			result = true;
+		}
+		return result;
+	}
+
+	void remove_all( event_type )
+	{
+		m_listener = nullptr;
+		m_listener_id = 0;
+	}
+
+	virtual void disconnect()
+	{
+		m_listener = nullptr;
+		m_listener_id = 0;
+	}
+
+	std::size_t listener_count( event_type ) const
+	{
+		return ( m_listener ) ? 1 : 0;
+	}
+
+	void emit( event_type, Args... args )
+	{
+		if ( m_listener )
+		{
+			m_listener( args... );
+		}
+	}
+
+private:
+	id_type				m_next_id = 1;
+	listener_type		m_listener = nullptr;
+	id_type				m_listener_id = 0;
+};
+
+template< class T, T Value, class... Args >
+class emitter< event< T, Value, Args... >, cardinality::multiplex > : public emitter_base
+{
+public:
+	using id_type = std::uint64_t;
+	using event_type = event< T, Value, Args... >;
+	using listener_type = typename event_type::listener;
+	using map_type = std::unordered_map< id_type, listener_type >;
+
+	template< class U >
+	id_type add_listener( event_type, U&& l )
+	{
+		id_type id = m_next_id++;
+		m_listeners.emplace_back( id, std::forward< U >( l ) );
+		return id;
+	}
+
+	id_type add_listener( event_type e, typename handler< event_type >::ptr hp )
+	{
+		return add_listener( e, [=] ( Args... args )
+		{
+			hp->handle( event_type{}, args... );
+		} );
+	}
+
+	bool remove_listener( event_type, id_type id )
+	{
+		bool result = false;
+		auto count = m_listeners.erase( id );
+		return count == 1;
+	}
+
+	void remove_all( event_type )
+	{
+		clear();
+	}
+
+	virtual void disconnect()
+	{
+		clear();
+	}
+
+	std::size_t listener_count( event_type ) const
+	{
+		return m_listeners.size();
+	}
+
+	void emit( event_type, Args... args )
+	{
+		for ( auto it = m_listeners.begin(); it != m_listeners.end(); ++it )
+		{
+			(it->second)( args... );
+		}
+	}
+
+private:
+
+	void clear()
+	{
+		m_listeners.clear();
+	}
+
+	id_type				m_next_id = 1;
+	map_type			m_listeners;
+};
+
+
+
+#if 0
+
+enum class cardinality
+{
+	simplex,
+	multiplex
+};
+
+class emitter_base
+{
+public:
+	virtual ~emitter_base() {}
+
+	virtual void disconnect() {}
+};
+
+template< class T, T Value, cardinality K, class... Args >
 struct event_definition 
 {
 	using listener = std::function< void ( Args... ) >;
@@ -91,6 +330,10 @@ struct event_definition
 		method_ptr_type m_mptr;
 	};
 
+	class emitter : public emitter_base
+	{
+		using id_type
+	}
 
 	class emitter : public emitter_base
 	{
@@ -98,48 +341,140 @@ struct event_definition
 
 		using id_type = std::uint64_t;
 
-		void add_handler( event_definition, typename handler::ptr h )
+
+		emitter( cardinality card = cardinality::multiplex )
+		:
+		m_is_simplex{ ( ( card == cardinality::simplex ) ? true : false ) },
+		m_next_id{ 1 }
 		{
-			m_handlers.insert( h );
+			if ( m_is_simplex )
+			{
+				new ( & m_listeners.m_simplex ) simplex_listener();
+			}
+			else
+			{
+				new ( & m_listeners.m_multiplex ) listener_map();
+			}
 		}
 
-		bool remove_handler( event_definition, typename handler::ptr h )
+		~emitter()
 		{
-			return m_handlers.erase( h );
+			if ( m_is_simplex )
+			{
+				m_listeners.m_simplex.~simplex_listener();
+			}
+			else
+			{
+				m_listeners.m_multiplex.~listener_map();
+			}
 		}
 
 
-		id_type add_listener( event_definition, listener l )
+		id_type add_listener( event_definition evt, typename handler::ptr h, std::error_code& err )
 		{
-			auto id = m_next_id;
-			++m_next_id;
-			m_listeners.emplace( id, std::move( l ) );
-			return id;
+			return add_listener( evt, err, [=] ( Args... args )
+			{
+				h->handle( event_definition{}, args... );
+			} );
 		}
 
-		bool remove_listener( event_definition, id_type id )
+		id_type add_listener( event_definition evt, typename handler::ptr h )
 		{
-			return m_listeners.erase( id );
+			return add_listener( evt, [=] ( Args... args )
+			{
+				h->handle( event_definition{}, args... );
+			} );
+		}
+
+
+		template< class T >
+		id_type add_listener( event_definition, std::error_code& err, T&& l )
+		{
+			err.clear();
+			id_type result = 0;
+			if ( m_is_simplex )
+			{
+				if ( m_listeners.m_simplex.m_listener )
+				{
+					err = make_error_code( std::errc::already_connected );
+					goto exit;
+				}
+				else
+				{
+					result = m_next_id++;
+					m_listeners.m_simplex.m_id = result;
+					m_listeners.m_simplex.m_listener = std::forward< T >( l );
+				}
+			}
+			else
+			{
+				auto id = m_next_id++;
+				m_listeners.m_multiplex.emplace( id, std::forward< T >( l ) );
+				result = id;
+			}
+
+		exit:
+			return result;
+		}
+
+		template< class T >
+		id_type add_listener( event_definition, T&& l )
+		{
+			id_type result = 0;
+			if ( m_is_simplex )
+			{
+				if ( m_listeners.m_simplex.m_listener )
+				{
+					throw std::system_error{ make_error_code( std::errc::already_connected ) };
+				}
+				else
+				{
+					result = m_next_id++;
+					m_listeners.m_simplex.m_id = result;
+					m_listeners.m_simplex.m_listener = std::forward< T >( l );
+				}
+			}
+			else
+			{
+				auto id = m_next_id++;
+				m_listeners.m_multiplex.emplace( id, std::forward< T >( l ) );
+				result = id;
+			}
+
+			return result;
+		}
+
+
+		id_type remove_listener( event_definition, id_type id )
+		{
+			id_type result = 0;
+			if ( m_is_simplex )
+			{
+				if ( m_Listeners.m_simplex.m_id == id )
+				{
+					m_listeners.m_simplex.m_id = 0;
+					m_listeners.m_simplex.m_listener = nullptr;
+					result = id;
+				}
+			}
+			else
+			{
+				auto removed = m_listeners.m_multiplex.erase( id );
+				if ( removed > 0 )
+				{
+					assert( removed == 1 );
+					result = id;
+				}
+			}
+			return result;
 		}
 
 		void emit( event_definition, Args... args )
 		{
-			event_definition e;
-			for ( auto it = m_handlers.begin(); it != m_handlers.end(); ++it )
-			{
-				(*it)->handle( e, args... );
-			}
-
 			for ( auto it = m_listeners.begin(); it != m_listeners.end(); ++it )
 			{
 				(it->second)( args... );
 			}
-		}
-
-		std::size_t
-		handler_count( event_definition ) const
-		{
-			return m_handlers.size();
 		}
 
 		std::size_t
@@ -169,8 +504,23 @@ struct event_definition
 
 	protected:
 		id_type														m_next_id = 1;
-		std::unordered_set< typename handler::ptr >					m_handlers;
-		std::unordered_map< id_type, listener >						m_listeners;
+		const bool													m_is_simplex;
+
+		using listener_map = std::unordered_map< id_type, listener >;
+
+		struct simplex_listener
+		{
+			id_type		m_id;
+			listener	m_listener;
+		};
+
+		union listeners
+		{
+			listener_map						m_multiplex;
+			simplex_listener					m_simplex;
+		};
+
+		listeners								m_listeners;
 	};
 
 };
@@ -351,6 +701,7 @@ protected:
 	}
 };
 
+#endif 
 
 } // namespace async
 } // namespace logicmill

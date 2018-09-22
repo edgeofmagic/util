@@ -694,7 +694,14 @@ TEST_CASE( "logicmill/smoke/bstream/numeric_representation" )
 
 	bstream::ombstream os{ 1024 };
 	os << ( std::uint8_t )0;
-	CHECK_0( os );
+	{
+		bstream::imbstream is( os.get_buffer() );
+		CHECK( is.size() == 1 );
+		auto byte = is.get();
+		CHECK( byte == 0 );
+		os.clear();
+	}
+	// CHECK_0( os );
 	os << ( std::int8_t )0;
 	CHECK_0( os );
 	os << ( std::uint16_t )0;

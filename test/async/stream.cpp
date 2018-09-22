@@ -28,13 +28,6 @@
 
 using namespace logicmill;
 
-static void
-clear_error( std::error_code& err )
-{
-	static std::error_code no_error;
-	err = no_error;
-}
-
 namespace stream_test
 {
 	class pump : public async::stream::data_source

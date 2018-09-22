@@ -68,15 +68,15 @@ m_fd{ -1 }
 position_type
 ibfilebuf::really_seek( position_type pos, std::error_code& err )
 {
-    clear_error( err );
-    position_type result = invalid_position;
+    err.clear();
+    position_type result = bstream::npos;
 
     result = ::lseek( m_fd, pos, SEEK_SET );
 
     if ( result < 0 )
     {
         err = std::error_code{ errno, std::generic_category() };
-        result = invalid_position;
+        result = bstream::npos;
         goto exit;
     }
 
@@ -89,7 +89,7 @@ exit:
 size_type
 ibfilebuf::really_underflow( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     assert( m_gnext == m_gend );
     m_gbase_offset = gpos();
     m_gnext = m_gbase;
@@ -106,7 +106,7 @@ ibfilebuf::really_underflow( std::error_code& err )
 void
 ibfilebuf::close( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     if ( m_is_open )
     {
         auto close_result = ::close( m_fd );
@@ -141,7 +141,7 @@ ibfilebuf::close()
 size_type
 ibfilebuf::load_buffer( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
     assert( m_gnext == m_gbase );
 
     auto read_result = ::read( m_fd, const_cast< byte_type * >( m_gbase ), m_buf.capacity() );
@@ -159,7 +159,7 @@ exit:
 void 
 ibfilebuf::really_open( std::error_code& err )
 {
-    clear_error( err );
+    err.clear();
 
     if ( m_is_open )
     {
@@ -179,7 +179,7 @@ ibfilebuf::really_open( std::error_code& err )
 	if ( m_end_position < 0 )
 	{
 		err = std::error_code{ errno, std::generic_category() };
-		m_end_position = invalid_position;
+		m_end_position = bstream::npos;
 		goto exit;
 	}
 

@@ -147,7 +147,7 @@ TEST_CASE( "logicmill::bstream::file::sequential::sink_to_source [ smoke ] { bas
 		CHECK( ( probe.base() + 1 ) == probe.next() );
 		CHECK( ( probe.base() + 16 ) == probe.end() );
 
-		const_buffer cbuf = src.getn( as_const_buffer{}, 15, err );
+		const_buffer cbuf = src.get_slice( 15, err );
 		CHECK( ! err );
 		CHECK( probe.pos() == 16 );
 		CHECK( src.size() == 33 );
@@ -168,10 +168,11 @@ TEST_CASE( "logicmill::bstream::file::sequential::sink_to_source [ smoke ] { bas
 		CHECK( ( probe.base() + 1 ) == probe.next() );
 		CHECK( ( probe.base() + 16 ) == probe.end() );
 
-		shared_buffer sbuf = src.getn( as_shared_buffer{}, 17, err );
-		CHECK( ! err );
-		CHECK( sbuf.size() == 16 );
-		CHECK( MATCH_BUFFER( sbuf, &( data[ 17 ] ) ) );
+		shared_buffer sbuf = src.get_slice( 17, err );
+		CHECK( err );
+		CHECK( err == bstream::errc::read_past_end_of_stream );
+		// CHECK( sbuf.size() == 16 );
+		// CHECK( MATCH_BUFFER( sbuf, &( data[ 17 ] ) ) );
 
 		CHECK( probe.pos() == 33 );
 		CHECK( src.size() == 33 );
@@ -207,6 +208,11 @@ TEST_CASE( "logicmill::bstream::file::sequential::sink_to_source [ smoke ] { sin
 		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
 		0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
 	};
+
+	if ( ! fs::is_directory( "test_output" ) || ! fs::exists( "test_output" ) )
+	{
+    	fs::create_directory( "test_output" ); 
+	}
 
 	SUBCASE( "sink write" )
 	{
@@ -364,6 +370,11 @@ TEST_CASE( "logicmill::bstream::file::sequential::sink_to_source [ smoke ] { one
 		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
 		0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
 	};
+	
+	if ( ! fs::is_directory( "test_output" ) || ! fs::exists( "test_output" ) )
+	{
+    	fs::create_directory( "test_output" ); 
+	}
 
 	SUBCASE( "sink with one-byte buffer")
 	{

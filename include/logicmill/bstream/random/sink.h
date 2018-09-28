@@ -133,16 +133,12 @@ namespace detail
  * In order to prevent unnecessary invocations of touch, the stream buffer maintains a positional
  * value last_touched. Whenever a synchronization operation (touch or flush) occurs, last_touched 
  * is set to the current position after the synchronization. 
- * 
- * 
  */
 
 class sink
 {
 public:
 	friend class detail::sink_test_probe;
-
-    // static constexpr buffer::size_type default_buffer_size = LOGICMILL_BSTREAM_DEFAULT_OBMEMBUF_SIZE;
 
     sink( byte_type* data, size_type size );
 
@@ -228,18 +224,6 @@ protected:
         m_end = end;
     }
 
-    // void
-    // pbase_offset( position_type offset )
-    // {
-    //     m_base_offset = offset;
-    // }
-
-    // position_type
-    // pbase_offset() const
-    // {
-    //     return m_base_offset;
-    // }
-
     void
     overflow( size_type requested, std::error_code& err );
 
@@ -301,11 +285,8 @@ protected: // to be overridden by derived classes
     really_flush( std::error_code& err );
 
 	virtual size_type
-	really_get_size() const
-	{
-		return ( m_dirty && ( ppos() > get_high_watermark() ) ) ? ppos() : get_high_watermark();
-	}
-
+	really_get_size() const;
+	
 protected:
 
     position_type       m_base_offset;

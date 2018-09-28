@@ -23,10 +23,10 @@
  */
 
 
-#ifndef LOGICMILL_BSTREAM_FILE_RANDOM_SOURCE_H
-#define LOGICMILL_BSTREAM_FILE_RANDOM_SOURCE_H
+#ifndef LOGICMILL_BSTREAM_MEMORY_SIMPLE_RANDOM_SOURCE_H
+#define LOGICMILL_BSTREAM_MEMORY_SIMPLE_RANDOM_SOURCE_H
 
-#include <logicmill/bstream/file/sequential/source.h>
+#include <logicmill/bstream/memory/simple/sequential/source.h>
 #include <logicmill/bstream/random/source_base.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE
@@ -37,44 +37,79 @@ namespace logicmill
 {
 namespace bstream 
 {
-namespace file
+namespace memory
+{
+namespace simple
 {
 namespace random
 {
 
 namespace detail
 {
+	template< class Buffer >
 	class source_test_probe;
 }
 
-class source : public file::sequential::source, public bstream::random::source_base
+template< class Buffer >
+class source : public memory::simple::sequential::source< Buffer >, public bstream::random::source_base
 {
 public:
+	using sbase = memory::simple::sequential::source< Buffer >;
 
-	friend class file::random::detail::source_test_probe;
+	friend class memory::simple::random::detail::source_test_probe< Buffer >;
 
-    source( size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+	source( shared_buffer const& buf )
+	:
+	memory::simple::sequential::source< Buffer >( buf )
+	{}
 
-    source( std::string const& filename, std::error_code& err, int flag_overrides = 0, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+	source( shared_buffer&& buf )
+	:
+	memory::simple::sequential::source< Buffer >( std::move( buf ) )
+	{}
 
-    source( std::string const& filename, int flag_overrides = 0, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+    source( const_buffer const& buf )
+	:
+	memory::simple::sequential::source< Buffer >( buf )
+	{}
+
+    source( const_buffer&& buf )
+	:
+	memory::simple::sequential::source< Buffer >( std::move( buf ) )
+	{}
+
+	source( mutable_buffer&& buf )
+	:
+	memory::simple::sequential::source< Buffer >( std::move( buf ) )
+	{}
 
 protected:
 
     virtual position_type
-    really_seek( position_type pos, std::error_code& err ) override;
+    really_seek( position_type pos, std::error_code& err ) override
+	{
+		err.clear();
+		sbase::m_next = sbase::m_base + pos;
+		return pos;
+	}
 
 	virtual position_type
-	really_get_position() const override;
+	really_get_position() const override
+	{
+		return sbase::gpos();
+	}
 
 	virtual size_type
-	really_get_size() const override;
-
+	really_get_size() const override
+	{
+		return sbase::m_buf.size();
+	}
 };
 
 } // namespace random
-} // namespace file
+} // namespace simple
+} // namespace memory
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_FILE_RANDOM_SOURCE_H
+#endif // LOGICMILL_BSTREAM_MEMORY_SIMPLE_RANDOM_SOURCE_H

@@ -54,6 +54,12 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/random/sink.h
 	include/logicmill/bstream/file/sequential/source.h
 	include/logicmill/bstream/file/sequential/sink.h
+	include/logicmill/bstream/file/random/source.h
+	include/logicmill/bstream/file/random/sink.h
+	include/logicmill/bstream/memory/simple/sequential/source.h
+	include/logicmill/bstream/memory/simple/sequential/sink.h
+	include/logicmill/bstream/memory/simple/random/source.h
+	include/logicmill/bstream/memory/simple/random/sink.h
 	include/logicmill/bstream/stdlib/chrono.h
 	include/logicmill/bstream/stdlib/deque.h
 	include/logicmill/bstream/stdlib/forward_list.h
@@ -86,14 +92,17 @@ set(LOGICMILL_SRCS
 	src/bstream/obstream.cpp
 	src/bstream/obstreambuf.cpp
 	src/bstream/buffer.cpp
-	src/bstream/sequential/source.cpp
-	src/bstream/sequential/sink.cpp
-	src/bstream/random/source.cpp
-	src/bstream/random/source_base.cpp
-	src/bstream/random/rsink.cpp
-	src/bstream/file/sequential/source.cpp
-	src/bstream/file/sequential/sink.cpp
-	src/bstream/file/random/source.cpp
+	src/bstream/seq_src.cpp
+	src/bstream/seq_snk.cpp
+	src/bstream/rand_src.cpp
+	src/bstream/rand_src_base.cpp
+	src/bstream/rand_snk.cpp
+	src/bstream/file_seq_src.cpp
+	src/bstream/file_seq_snk.cpp
+	src/bstream/file_rand_src.cpp
+	src/bstream/file_rand_snk.cpp
+	src/bstream/mem_smpl_seq_snk.cpp
+	src/bstream/mem_smpl_rand_snk.cpp
 	src/async/uv_async.cpp
 	src/async/address.cpp
 	src/async/error.cpp
@@ -101,10 +110,13 @@ set(LOGICMILL_SRCS
 
 set(LOGICMILL_TEST_SRCS
 	test/bstream/bstreambuf.cpp
-	test/bstream/sequential_src_sink.cpp
-	test/bstream/random_src_sink.cpp
-	test/bstream/file_seq_src_sink.cpp
-	test/bstream/file_rand_src_sink.cpp
+	test/bstream/sequential.cpp
+	test/bstream/random.cpp
+	test/bstream/file_seq.cpp
+	test/bstream/file_rand.cpp
+	test/bstream/mem_smpl_seq.cpp
+	test/bstream/mem_smpl_rand.cpp
+
 	test/bstream/fbstream.cpp
 	test/bstream/test0.cpp
 	test/bstream/test1.cpp

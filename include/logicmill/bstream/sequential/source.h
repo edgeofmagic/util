@@ -96,16 +96,16 @@ public:
     peek();
 
     virtual shared_buffer
-    getn( as_shared_buffer tag, size_type n, std::error_code& err );
+    get_shared_slice( size_type n, std::error_code& err );
 
     virtual shared_buffer
-    getn( as_shared_buffer tag, size_type n );
+    get_shared_slice( size_type n );
 
     virtual const_buffer
-    getn( as_const_buffer tag, size_type n, std::error_code& err );
+    get_slice( size_type n, std::error_code& err );
 
     virtual const_buffer
-    getn( as_const_buffer tag, size_type n );
+    get_slice( size_type n );
 
     size_type 
     getn( byte_type* dst, size_type n, std::error_code& err );
@@ -171,10 +171,7 @@ protected:
     really_underflow( std::error_code& err );
 
 	virtual size_type
-	really_get_size() const
-	{
-		return m_end - m_base;
-	}
+	really_get_size() const;
 
     position_type						m_base_offset;
     const byte_type*					m_base;

@@ -86,6 +86,7 @@ enum class open_mode
 
 struct as_shared_buffer {};
 struct as_const_buffer {};
+struct as_mutable_buffer {};
 
 } // namespace bstream
 } // namespace logicmill

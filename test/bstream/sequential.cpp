@@ -144,18 +144,18 @@ TEST_CASE( "logicmill::bstream::sequential::source [ smoke ] { basic functionali
 		CHECK( probe.pos() == i + 1 );
 	}
 
-	const_buffer cbuf = src.getn( as_const_buffer{}, 8, err );
+	const_buffer cbuf = src.get_slice( 8, err );
 	CHECK( ! err );
 	CHECK( probe.pos() == 16 );
 	CHECK( MATCH_BUFFER( cbuf, &buf[ 8 ] ) );
 
-	shared_buffer sbuf = src.getn( as_shared_buffer{}, 8, err );
+	shared_buffer sbuf = src.get_slice( 8, err );
 	CHECK( ! err );
 	CHECK( probe.pos() == 24 );
 
 	CHECK( MATCH_BUFFER( sbuf, &buf[ 16 ] ) );
 
-	byte_type bytes[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // note: size is 9
+	byte_type bytes[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 	auto got = src.getn( bytes, sizeof( bytes ), err );
 	CHECK( ! err );

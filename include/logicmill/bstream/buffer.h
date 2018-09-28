@@ -70,7 +70,7 @@
 {																											\
 	assert( ( _buf_ ).m_alloc != nullptr );																	\
 	assert( ( _buf_ ).m_data >= ( _buf_ ).m_alloc->data() );												\
-	assert( ( _buf_ ).m_data < ( ( _buf_ ).m_alloc->data() + ( _buf_ ).m_alloc->capacity() ) );				\
+	assert( ( _buf_ ).m_data <= ( ( _buf_ ).m_alloc->data() + ( _buf_ ).m_alloc->capacity() ) );				\
 	assert( ( ( _buf_ ).m_data + ( _buf_ ).m_size )															\
 			<= ( ( _buf_ ).m_alloc->data() + ( _buf_ ).m_alloc->capacity() ) );								\
 }																											\
@@ -1445,6 +1445,26 @@ public:
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
 	}
 
+	const_buffer( buffer const& rhs, position_type offset, size_type length, std::error_code& err, memory_broker::ptr broker = default_broker::get() )
+	:
+	m_alloc{ std::make_unique< allocation >( broker ) }
+	{
+		// ASSERT_BUFFER_INVARIANTS( buf );
+		err.clear();
+		if ( offset + length > rhs.m_size )
+		{
+			err = make_error_code( std::errc::invalid_argument );
+			goto exit;
+		}
+		m_data = m_alloc->allocate( length );
+		::memcpy( m_data, rhs.m_data + offset, length );
+		m_size = length;
+
+		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+	exit:
+		return;
+	}
+
 	// const_buffer( buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
 	// :
 	// m_alloc{ std::make_unique< allocation >( rhs.m_data, rhs.m_size, broker ) }
@@ -1458,6 +1478,13 @@ public:
 	{
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
 		return const_buffer{ *this, offset, length, broker };
+	}
+
+	const_buffer
+	slice( position_type offset, size_type length, std::error_code& err, memory_broker::ptr broker = default_broker::get() ) const
+	{
+		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		return const_buffer{ *this, offset, length, err, broker };
 	}
 
 	const_buffer&
@@ -1650,6 +1677,24 @@ public:
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
+	shared_buffer( shared_buffer const& rhs, position_type offset, size_type length, std::error_code& err )
+	:
+	m_alloc{ rhs.m_alloc }
+	{
+		err.clear();
+		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
+		if ( offset + length > rhs.m_size )
+		{
+			err = make_error_code( std::errc::invalid_argument );
+			goto exit;
+		}
+		m_data = rhs.m_data + offset;
+		m_size = length;
+		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+	exit:
+		return;
+	}
+
 	shared_buffer( buffer const& rhs, position_type offset, size_type length, memory_broker::ptr broker = default_broker::get() )
 	:
 	m_alloc{ std::make_unique< allocation >( broker ) }
@@ -1677,6 +1722,13 @@ public:
 	{
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 		return shared_buffer{ *this, offset, length };
+	}
+
+	shared_buffer
+	slice( position_type offset, size_type length, std::error_code& err ) const
+	{
+		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		return shared_buffer{ *this, offset, length, err };
 	}
 
 	shared_buffer&

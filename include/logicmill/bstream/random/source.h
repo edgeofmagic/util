@@ -72,7 +72,7 @@ protected:
 	base{ std::move( rhs ) }
 	{}
 
-public:
+protected:
 
     virtual position_type
     really_seek( position_type pos, std::error_code& err ) override;

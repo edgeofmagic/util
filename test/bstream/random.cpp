@@ -32,126 +32,6 @@
 using namespace logicmill;
 using namespace bstream;
 
-#if 0
-#define MATCH_MEMORY( _actual_, _expected_ )										\
-	( ::memcmp( ( _actual_ ), ( _expected_ ), sizeof( _actual_ ) ) == 0 )			\
-/**/
-
-#define MATCH_MEMORY_N( _actual_, _expected_, _count_ )								\
-	( ::memcmp( ( _actual_ ), ( _expected_ ), ( _count_ ) ) == 0 )					\
-/**/
-
-#define MATCH_BUFFER( _actual_, _expected_ )										\
-	( ::memcmp( ( _actual_ ).data(), ( _expected_ ), ( _actual_ ).size() ) == 0	)	\
-/**/
-
-class bstream::random::detail::source_test_probe
-{
-public:
-	source_test_probe( bstream::random::source& target )
-	: 
-	m_target{ target }
-	{}
-
-    position_type base_offset()
-    {
-        return m_target.m_base_offset;
-    }
-
-    position_type pos()
-    {
-        return m_target.gpos();
-    }
-
-    const byte_type* base()
-    {
-        return m_target.m_base;
-    }
-
-    const byte_type* next()
-    {
-        return m_target.m_next;
-    }
-
-    const byte_type* end()
-    {
-        return m_target.m_end;
-    }
-
-private:
-	bstream::random::source& m_target;
-
-};
-
-class bstream::random::detail::sink_test_probe
-{
-public:
-	sink_test_probe( bstream::random::sink& target )
-	: 
-	m_target{ target }
-	{}
-
-    position_type base_offset()
-    {
-        return m_target.m_base_offset;
-    }
-
-    position_type hwm()
-    {
-        return m_target.m_high_watermark;
-    }
-
-    bool dirty()
-    {
-        return m_target.m_dirty;
-    }
-
-    byte_type* dirty_start()
-    {
-        return m_target.m_dirty_start;
-    }
-
-    size_type dirty_start_position()
-    {
-        return m_target.m_dirty_start - m_target.m_base;
-    }
-
-	bool did_jump()
-	{
-		return m_target.m_did_jump;
-	}
-
-	size_type jump_to()
-	{
-		return m_target.m_jump_to;
-	}
-
-    position_type pos()
-    {
-        return m_target.ppos();
-    }
-
-    byte_type* base()
-    {
-        return m_target.m_base;
-    }
-
-    byte_type* next()
-    {
-        return m_target.m_next;
-    }
-
-    byte_type* end()
-    {
-        return m_target.m_end;
-    }
-
-private:
-	bstream::random::sink& m_target;
-
-};
-#endif
-
 TEST_CASE( "logicmill::bstream::random::sink [ smoke ] { basic functionality }" )
 {
 	byte_type buf[] = { 
@@ -316,18 +196,18 @@ TEST_CASE( "logicmill::bstream::random::source [ smoke ] { basic functionality }
 		CHECK( probe.pos() == i + 1 );
 	}
 
-	const_buffer cbuf = src.getn( as_const_buffer{}, 8, err );
+	const_buffer cbuf = src.get_slice( 8, err );
 	CHECK( ! err );
 	CHECK( probe.pos() == 16 );
 	CHECK( MATCH_BUFFER( cbuf, &buf[ 8 ] ) );
 
-	shared_buffer sbuf = src.getn( as_shared_buffer{}, 8, err );
+	shared_buffer sbuf = src.get_shared_slice( 8, err );
 	CHECK( ! err );
 	CHECK( probe.pos() == 24 );
 
 	CHECK( MATCH_BUFFER( sbuf, &buf[ 16 ] ) );
 
-	byte_type bytes[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // note: size is 9
+	byte_type bytes[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; 
 
 	auto got = src.getn( bytes, sizeof( bytes ), err );
 	CHECK( ! err );
@@ -346,7 +226,7 @@ TEST_CASE( "logicmill::bstream::random::source [ smoke ] { basic functionality }
 	CHECK( ! err );
 	CHECK( probe.pos() == 8 );
 
-	cbuf = src.getn( as_const_buffer{}, 8, err );
+	cbuf = src.get_slice( 8, err );
 	CHECK( ! err );
 	CHECK( probe.pos() == 16 );
 	CHECK( src.position() ==  16 );
@@ -357,7 +237,7 @@ TEST_CASE( "logicmill::bstream::random::source [ smoke ] { basic functionality }
 	CHECK( probe.pos() == 24 );
 	CHECK( src.position() ==  24 );
 
-	sbuf = src.getn( as_shared_buffer{}, 8, err );
+	sbuf = src.get_shared_slice( 8, err );
 	CHECK( ! err );
 	CHECK( probe.pos() == 32 );
 	CHECK( src.position() ==  32 );

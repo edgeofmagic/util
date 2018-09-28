@@ -32,6 +32,12 @@
 #include <logicmill/bstream/file/sequential/sink.h>
 #include <logicmill/bstream/file/sequential/source.h>
 #include <logicmill/bstream/file/random/source.h>
+#include <logicmill/bstream/file/random/sink.h>
+#include <logicmill/bstream/memory/simple/sequential/sink.h>
+#include <logicmill/bstream/memory/simple/sequential/source.h>
+#include <logicmill/bstream/memory/simple/random/source.h>
+#include <logicmill/bstream/memory/simple/random/sink.h>
+
 
 #define MATCH_MEMORY( _actual_, _expected_ )										\
 	( ::memcmp( ( _actual_ ), ( _expected_ ), sizeof( _actual_ ) ) == 0 )			\
@@ -45,15 +51,9 @@
 	( ::memcmp( ( _actual_ ).data(), ( _expected_ ), ( _actual_ ).size() ) == 0	)	\
 /**/
 
-namespace logicmill 
-{
-namespace bstream 
-{
-namespace sequential
-{
-
-namespace detail
-{
+namespace logicmill { namespace bstream { 
+	
+namespace sequential { namespace detail {
 
 class source_test_probe
 {
@@ -131,13 +131,10 @@ private:
 
 };
 
-} // namespace detail
-} // namespace sequential
+} /* namespace detail */ } /* namespace sequential */
 
-namespace random
-{
-namespace detail
-{
+namespace random { namespace detail {
+
 class source_test_probe : public bstream::sequential::detail::source_test_probe
 {
 public:
@@ -220,15 +217,9 @@ private:
 
 };
 
-} // namespace detail
-} // namespace random
+} /* namespace detail */ } /* namespace random */
 
-namespace file
-{
-namespace sequential
-{
-namespace detail
-{
+namespace file { namespace sequential { namespace detail {
 
 class sink_test_probe : public bstream::sequential::detail::sink_test_probe
 {
@@ -293,13 +284,9 @@ private:
 	bstream::file::sequential::source& m_target;
 };
 
-} // namespace detail
-} // namespace sequential
+} /* namespace detail */ } /* namespace sequential */
 
-namespace random
-{
-namespace detail
-{
+namespace random { namespace detail {
 
 class source_test_probe : public file::sequential::detail::source_test_probe
 {
@@ -327,17 +314,131 @@ public:
 	}
 
 private:
+
 	bstream::file::random::source& m_target;
 };
 
-} // namespace detail
-} // namespace random
+class sink_test_probe : public bstream::random::detail::sink_test_probe
+{
+public:
+	sink_test_probe( bstream::file::random::sink& target )
+	:
+	bstream::random::detail::sink_test_probe{ target },
+	m_target{ target }
+	{}
 
+	mutable_buffer& buffer()
+	{
+		return m_target.m_buf;
+	}
 
-} // namespace file
+	bool is_open()
+	{
+		return m_target.m_is_open;
+	}
 
+	open_mode mode()
+	{
+		return m_target.m_mode;
+	}
 
-} // namespace bstream
-} // namespace logicmill
+	int flags()
+	{
+		return m_target.m_flags;
+	}
+
+private:
+	bstream::file::random::sink& m_target;
+};
+
+} /* namespace detail */ } /* namespace random */ } /* namespace file */
+
+namespace memory { namespace simple { namespace sequential { namespace detail {
+
+template< class Buffer >
+class source_test_probe : public bstream::sequential::detail::source_test_probe
+{
+public:
+	source_test_probe( bstream::memory::simple::sequential::source< Buffer >& target )
+	:
+	bstream::sequential::detail::source_test_probe{ target },
+	m_target{ target }
+	{}
+
+	Buffer& buffer()
+	{
+		return m_target.m_buf;
+	}
+
+private:
+	bstream::memory::simple::sequential::source< Buffer >& m_target;
+
+};
+
+class sink_test_probe : public bstream::sequential::detail::sink_test_probe
+{
+public:
+	sink_test_probe( bstream::memory::simple::sequential::sink& target )
+	:
+	bstream::sequential::detail::sink_test_probe{ target },
+	m_target{ target }
+	{}
+
+	mutable_buffer& buffer()
+	{
+		return m_target.m_buf;
+	}
+
+private:
+	bstream::memory::simple::sequential::sink& m_target;
+
+};
+
+} /* namespace detail */ } /* namespace sequential */
+
+namespace random { namespace detail {
+
+template< class Buffer >
+class source_test_probe : public memory::simple::sequential::detail::source_test_probe< Buffer >
+{
+public:
+
+	source_test_probe( bstream::memory::simple::random::source< Buffer >& target )
+	:
+	memory::simple::sequential::detail::source_test_probe< Buffer >{ target },
+	m_target{ target }
+	{}
+
+	Buffer& buffer()
+	{
+		return m_target.m_buf;
+	}
+
+protected:
+
+	memory::simple::random::source< Buffer >& m_target;
+};
+
+class sink_test_probe : public bstream::random::detail::sink_test_probe
+{
+public:
+	sink_test_probe( memory::simple::random::sink& target )
+	:
+	bstream::random::detail::sink_test_probe{ target },
+	m_target{ target }
+	{}
+
+	mutable_buffer& buffer()
+	{
+		return m_target.m_buf;
+	}
+
+private:
+	memory::simple::random::sink& m_target;
+};
+
+} /* namespace detail */ } /* namespace random */ } /* namespace simple */ } /* namespace memory */
+
+} /* namespace bstream */ } /* namespace logicmill */
 
 #endif // LOGICMILL_TEST_BSTREAM_COMMON_H

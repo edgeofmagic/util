@@ -23,8 +23,8 @@
  */
 
 // #include <logicmill/bstream/file/random/sink.h>
-#include <logicmill/bstream/file/random/source.h>
-#include <logicmill/bstream/file/random/sink.h>
+#include <logicmill/bstream/file/source.h>
+#include <logicmill/bstream/file/sink.h>
 #include <doctest.h>
 #include <logicmill/bstream/error.h>
 #include "common.h"
@@ -35,7 +35,7 @@ using namespace bstream;
 
 namespace fs = std::experimental::filesystem;
 
-// TEST_CASE( "logicmill::bstream::file::random::sink [ smoke ] { sink seek write }" )
+// TEST_CASE( "logicmill::bstream::file::sink [ smoke ] { sink seek write }" )
 // {
 // 	if ( ! fs::is_directory( "test_output" ) || ! fs::exists( "test_output" ) )
 // 	{
@@ -43,13 +43,13 @@ namespace fs = std::experimental::filesystem;
 // 	}
 
 // 	std::error_code err;
-// 	file::random::sink snk{ "test_output/file_rand_0", open_mode::truncate, err, 16 };
+// 	file::sink snk{ "test_output/file_rand_0", open_mode::truncate, err, 16 };
 // 	CHECK( ! err );
 
 
 // }
 
-TEST_CASE( "logicmill::bstream::file::random::source [ smoke ] { source seek read }" )
+TEST_CASE( "logicmill::bstream::file::source [ smoke ] { source seek read }" )
 {
 	byte_type data[] = { 
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -70,7 +70,7 @@ TEST_CASE( "logicmill::bstream::file::random::source [ smoke ] { source seek rea
 	SUBCASE( "create test file" )
 	{
 		std::error_code err;
-		file::random::sink snk{ "test_output/file_rand_0", open_mode::truncate, err, 16 };
+		file::sink snk{ "test_output/file_rand_0", open_mode::truncate, err, 16 };
 		CHECK( ! err );
 
 		snk.putn( data, sizeof( data ), err );
@@ -83,10 +83,10 @@ TEST_CASE( "logicmill::bstream::file::random::source [ smoke ] { source seek rea
 	SUBCASE( "source read")
 	{
 		std::error_code err;
-		file::random::source src{ "test_output/file_rand_0", err, 0, 16 };
+		file::source src{ "test_output/file_rand_0", err, 0, 16 };
 		CHECK( ! err );
 
-		file::random::detail::source_test_probe probe{ src };
+		file::detail::source_test_probe probe{ src };
      
 		CHECK( probe.pos() == 0 );
 		CHECK( src.size() == sizeof( data ) );
@@ -114,7 +114,7 @@ TEST_CASE( "logicmill::bstream::file::random::source [ smoke ] { source seek rea
 }
 
 
-TEST_CASE( "logicmill::bstream::file::random::sink [ smoke ] { sink seek write }" )
+TEST_CASE( "logicmill::bstream::file::sink [ smoke ] { sink seek write }" )
 {
 	byte_type data[] = { 
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -135,7 +135,7 @@ TEST_CASE( "logicmill::bstream::file::random::sink [ smoke ] { sink seek write }
 	SUBCASE( "create hole" )
 	{
 		std::error_code err;
-		file::random::sink snk{ "test_output/file_rand_1", open_mode::truncate, err, 16 };
+		file::sink snk{ "test_output/file_rand_1", open_mode::truncate, err, 16 };
 		CHECK( ! err );
 
 		snk.putn( data, 16, err );
@@ -163,10 +163,10 @@ TEST_CASE( "logicmill::bstream::file::random::sink [ smoke ] { sink seek write }
 			0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
 		};
 
-		file::random::source src{ "test_output/file_rand_1", err, 0, 16 };
+		file::source src{ "test_output/file_rand_1", err, 0, 16 };
 		CHECK( ! err );
 
-		file::random::detail::source_test_probe probe{ src };
+		file::detail::source_test_probe probe{ src };
      
 		CHECK( probe.pos() == 0 );
 		CHECK( src.size() == sizeof( data ) );
@@ -194,7 +194,7 @@ TEST_CASE( "logicmill::bstream::file::random::sink [ smoke ] { sink seek write }
 	SUBCASE( "fill hole in reverse" )
 	{
 		std::error_code err;
-		file::random::sink snk{ "test_output/file_rand_1", open_mode::truncate, err, 16 };
+		file::sink snk{ "test_output/file_rand_1", open_mode::truncate, err, 16 };
 		CHECK( ! err );
 
 		CHECK( snk.size() == 0 );
@@ -245,10 +245,10 @@ TEST_CASE( "logicmill::bstream::file::random::sink [ smoke ] { sink seek write }
 			0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
 		};
 
-		file::random::source src{ "test_output/file_rand_1", err, 0, 16 };
+		file::source src{ "test_output/file_rand_1", err, 0, 16 };
 		CHECK( ! err );
 
-		file::random::detail::source_test_probe probe{ src };
+		file::detail::source_test_probe probe{ src };
      
 		CHECK( probe.pos() == 0 );
 		CHECK( src.size() == sizeof( data ) );

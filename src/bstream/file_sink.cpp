@@ -1,4 +1,3 @@
-
 /*
  * The MIT License
  *
@@ -23,13 +22,14 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/file/sequential/sink.h>
+#include <logicmill/bstream/file/sink.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 using namespace logicmill;
 using namespace bstream;
 
-file::sequential::sink::sink( sink&& rhs )
+file::sink::sink( sink&& rhs )
 :
 base{ std::move( rhs ) },
 m_buf{ std::move( rhs.m_buf ) },
@@ -37,11 +37,10 @@ m_filename{ std::move( rhs.m_filename ) },
 m_is_open{ rhs.m_is_open },
 m_mode{ rhs.m_mode },
 m_flags{ rhs.m_flags },
-m_fd{ rhs.m_fd },
-m_initial_size{ 0 }
+m_fd{ rhs.m_fd }
 {}
 
-file::sequential::sink::sink( std::string const& filename, open_mode mode, std::error_code& err, size_type buffer_size )
+file::sink::sink( std::string const& filename, open_mode mode, std::error_code& err, size_type buffer_size )
 :
 base{},
 m_buf{ buffer_size },
@@ -49,14 +48,13 @@ m_filename{ filename },
 m_is_open{ false },
 m_mode{ mode },
 m_flags{ to_flags( mode ) },
-m_fd{ -1 },
-m_initial_size{ 0 }
+m_fd{ -1 }
 {
 	reset_ptrs();
 	really_open( err );
 }
 
-file::sequential::sink::sink( std::string const& filename, open_mode mode, size_type buffer_size )
+file::sink::sink( std::string const& filename, open_mode mode, size_type buffer_size )
 :
 base{},
 m_buf{ buffer_size },
@@ -64,8 +62,7 @@ m_filename{ filename },
 m_is_open{ false },
 m_mode{ mode },
 m_flags{ to_flags( mode ) },
-m_fd{ -1 },
-m_initial_size{ 0 }
+m_fd{ -1 }
 {
 	reset_ptrs();
 	std::error_code err;
@@ -76,7 +73,7 @@ m_initial_size{ 0 }
 	}
 }
 
-file::sequential::sink::sink( open_mode mode, size_type buffer_size )
+file::sink::sink( open_mode mode, size_type buffer_size )
 :
 base{},
 m_buf{ buffer_size },
@@ -84,14 +81,13 @@ m_filename{},
 m_is_open{ false },
 m_mode{ mode },
 m_flags{ to_flags( m_mode ) },
-m_fd{ -1 },
-m_initial_size{ 0 }
+m_fd{ -1 }
 {
 	reset_ptrs();
 }
 
 void
-file::sequential::sink::open( std::string const& filename, open_mode mode, std::error_code& err )
+file::sink::open( std::string const& filename, open_mode mode, std::error_code& err )
 {
 	m_filename = filename;
 	m_mode = mode;
@@ -100,7 +96,7 @@ file::sequential::sink::open( std::string const& filename, open_mode mode, std::
 }
 
 void
-file::sequential::sink::open( std::string const& filename, open_mode mode )
+file::sink::open( std::string const& filename, open_mode mode )
 {
 	m_filename = filename;
 	m_mode = mode;
@@ -114,7 +110,7 @@ file::sequential::sink::open( std::string const& filename, open_mode mode )
 }
 
 void
-file::sequential::sink::open( std::string const& filename, open_mode mode, int flags_override, std::error_code& err )
+file::sink::open( std::string const& filename, open_mode mode, int flags_override, std::error_code& err )
 {
 	m_filename = filename;
 	m_mode = mode;
@@ -123,7 +119,7 @@ file::sequential::sink::open( std::string const& filename, open_mode mode, int f
 }
 
 void
-file::sequential::sink::open( std::string const& filename, open_mode mode, int flags_override )
+file::sink::open( std::string const& filename, open_mode mode, int flags_override )
 {
 	m_filename = filename;
 	m_mode = mode;
@@ -137,10 +133,12 @@ file::sequential::sink::open( std::string const& filename, open_mode mode, int f
 }
 
 void
-file::sequential::sink::really_flush( std::error_code& err )
+file::sink::really_flush( std::error_code& err )
 {
     err.clear();
     auto pos = ppos();
+    assert( m_dirty && m_next > m_dirty_start );
+    assert( m_dirty_start == m_base );
 
 	size_type n = static_cast< size_type >( m_next - m_base );
 	auto write_result = ::write( m_fd, m_base, n );
@@ -156,15 +154,49 @@ exit:
     return;
 }
 
+bool
+file::sink::is_valid_position( position_type pos ) const
+{
+    return pos >= 0;
+}
+
 void
-file::sequential::sink::really_overflow( size_type, std::error_code& err )
+file::sink::really_jump( std::error_code& err )
+{
+	err.clear();
+	assert( m_did_jump );
+
+	if ( m_dirty )
+	{
+		flush( err );
+	}
+
+    auto result = ::lseek( m_fd, m_jump_to, SEEK_SET );
+    if ( result < 0 )
+    {
+        err = std::error_code{ errno, std::generic_category() };
+        goto exit;
+    }
+
+	m_base_offset = m_jump_to;
+	assert( ! m_dirty );
+    assert( ppos() == m_jump_to );
+    assert( m_next == m_base );
+
+exit:
+	m_did_jump = false;
+	return;
+}
+
+void
+file::sink::really_overflow( size_type, std::error_code& err )
 {
     err.clear();
     assert( m_base_offset == ppos() && m_next == m_base );
 }
 
 void
-file::sequential::sink::close( std::error_code& err )
+file::sink::close( std::error_code& err )
 {
     err.clear();
     flush( err );
@@ -183,7 +215,7 @@ exit:
 }
 
 void
-file::sequential::sink::close()
+file::sink::close()
 {
     std::error_code err;
     close( err );
@@ -194,7 +226,7 @@ file::sequential::sink::close()
 }
 
 void
-file::sequential::sink::open()
+file::sink::open()
 {
     std::error_code err;
     really_open( err );
@@ -205,7 +237,7 @@ file::sequential::sink::open()
 }
 
 position_type
-file::sequential::sink::truncate( std::error_code& err )
+file::sink::truncate( std::error_code& err )
 {
     err.clear();
     position_type result = bstream::npos;
@@ -223,6 +255,7 @@ file::sequential::sink::truncate( std::error_code& err )
             goto exit;
         }
 
+        force_high_watermark( pos );
         result = pos;
     }
 
@@ -231,7 +264,7 @@ exit:
 }
 
 position_type
-file::sequential::sink::truncate()
+file::sink::truncate()
 {
     std::error_code err;
     auto result = truncate( err );
@@ -243,7 +276,7 @@ file::sequential::sink::truncate()
 }
 
 void 
-file::sequential::sink::really_open( std::error_code& err )
+file::sink::really_open( std::error_code& err )
 {
     err.clear();
     if ( m_is_open )
@@ -277,8 +310,7 @@ file::sequential::sink::really_open( std::error_code& err )
             err = std::error_code{ errno, std::generic_category() };
             goto exit;
         }
-
-		m_initial_size = end_pos;
+        force_high_watermark( end_pos );
 
         if ( m_mode == open_mode::at_end || is_append( m_flags ) )
         {
@@ -296,9 +328,35 @@ file::sequential::sink::really_open( std::error_code& err )
             m_base_offset = 0;
         }
         reset_ptrs();
+        m_dirty = false;
     }
 
 exit:
     return;
 }
 
+int
+file::sink::to_flags( open_mode mode )
+{
+	switch ( mode )
+	{
+		case open_mode::append:
+			return O_WRONLY | O_CREAT | O_APPEND;
+		case open_mode::truncate:
+			return O_WRONLY | O_CREAT | O_TRUNC;
+		default:
+			return O_WRONLY | O_CREAT;
+	}
+}
+
+bool
+file::sink::is_truncate( int flags )
+{
+	return ( flags & O_TRUNC ) != 0;
+}
+
+bool
+file::sink::is_append( int flags )
+{
+	return ( flags & O_APPEND ) != 0;
+}

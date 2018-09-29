@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_MEMORY_SIMPLE_RANDOM_SINK_H
-#define LOGICMILL_BSTREAM_MEMORY_SIMPLE_RANDOM_SINK_H
+#ifndef LOGICMILL_BSTREAM_MEMORY_SIMPLE_SINK_H
+#define LOGICMILL_BSTREAM_MEMORY_SIMPLE_SINK_H
 
-#include <logicmill/bstream/random/sink.h>
+#include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/buffer.h>
 
 #ifndef LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE
@@ -40,19 +40,17 @@ namespace memory
 {
 namespace simple
 {
-namespace random
-{
 
 namespace detail
 {
 	class sink_test_probe;
 }
 
-class sink : public bstream::random::sink
+class sink : public bstream::sink
 {
 public:
 
-	using base = bstream::random::sink;
+	using base = bstream::sink;
 
 	friend class detail::sink_test_probe;
 
@@ -104,10 +102,9 @@ protected:
     mutable_buffer					m_buf;
 };
 
-} // namespace random
 } // namespace simple
 } // namespace memory
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_MEMORY_SIMPLE_RANDOM_SINK_H
+#endif // LOGICMILL_BSTREAM_MEMORY_SIMPLE_SINK_H

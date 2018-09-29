@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/random/source.h>
-#include <logicmill/bstream/random/sink.h>
+#include <logicmill/bstream/source.h>
+#include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/buffer.h>
 #include <logicmill/bstream/error.h>
 #include <doctest.h>
@@ -32,7 +32,8 @@
 using namespace logicmill;
 using namespace bstream;
 
-TEST_CASE( "logicmill::bstream::random::sink [ smoke ] { basic functionality }" )
+
+TEST_CASE( "logicmill::bstream::sink [ smoke ] { basic functionality }" )
 {
 	byte_type buf[] = { 
 		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -76,9 +77,9 @@ TEST_CASE( "logicmill::bstream::random::sink [ smoke ] { basic functionality }" 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	};
 	
-    random::sink snk{ buf, sizeof( buf ) };
+    bstream::sink snk{ buf, sizeof( buf ) };
 
-    bstream::random::detail::sink_test_probe probe{ snk };
+    bstream::detail::sink_test_probe probe{ snk };
 
     std::error_code err;
 
@@ -170,7 +171,7 @@ TEST_CASE( "logicmill::bstream::random::sink [ smoke ] { basic functionality }" 
 	CHECK( MATCH_MEMORY( buf, expected_3 ) );
 }
 
-TEST_CASE( "logicmill::bstream::random::source [ smoke ] { basic functionality }" )
+TEST_CASE( "logicmill::bstream::source [ smoke ] { basic functionality }" )
 {
 	byte_type buf[] = { 
 		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -179,9 +180,9 @@ TEST_CASE( "logicmill::bstream::random::source [ smoke ] { basic functionality }
 		0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
 	};
 
-	random::source src{ buf, sizeof( buf ) };
+	bstream::source src{ buf, sizeof( buf ) };
 
-	bstream::random::detail::source_test_probe probe{ src };
+	bstream::detail::source_test_probe probe{ src };
 
 	std::error_code err;
 
@@ -286,6 +287,4 @@ TEST_CASE( "logicmill::bstream::random::source [ smoke ] { basic functionality }
 	CHECK( is_there == 0x2f );
 	CHECK( probe.pos() == 32);
 	CHECK( src.position() ==  32 );
-
-
 }

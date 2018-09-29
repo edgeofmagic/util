@@ -21,9 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
-#ifndef LOGICMILL_BSTREAM_SEQUENTIAL_SINK_H
-#define LOGICMILL_BSTREAM_SEQUENTIAL_SINK_H
+#ifndef LOGICMILL_BSTREAM_SINK_H
+#define LOGICMILL_BSTREAM_SINK_H
 
 #include <system_error>
 #include <logicmill/bstream/types.h>
@@ -32,9 +31,6 @@ namespace logicmill
 {
 namespace bstream 
 {
-namespace sequential
-{
-
 namespace detail
 {
 	class sink_test_probe;
@@ -134,14 +130,11 @@ namespace detail
  * In order to prevent unnecessary invocations of touch, the stream buffer maintains a positional
  * value last_touched. Whenever a synchronization operation (touch or flush) occurs, last_touched 
  * is set to the current position after the synchronization. 
- * 
- * 
  */
 
 class sink
 {
 public:
-
 	friend class detail::sink_test_probe;
 
     sink( byte_type* data, size_type size );
@@ -184,6 +177,27 @@ public:
     void
     filln( const byte_type fill_byte, size_type n );
 
+    position_type
+    position( position_type pos, std::error_code& err )
+    {
+        return position( pos, bstream::seek_anchor::begin, err );
+    }
+
+    position_type
+    position( position_type pos )
+    {
+        return position( pos, bstream::seek_anchor::begin );
+    }
+
+    position_type
+    position( offset_type offset, seek_anchor where, std::error_code& err );
+
+    position_type
+    position( offset_type offset, seek_anchor where );
+
+    position_type
+    position() const;
+
 	size_type
 	size() const
 	{
@@ -214,6 +228,34 @@ protected:
     overflow( size_type requested );
 
     position_type
+    get_high_watermark() const noexcept
+    {
+        return m_high_watermark;
+    }
+
+    position_type
+    set_high_watermark() 
+    {
+        if ( m_dirty && ( ppos() > m_high_watermark ) )
+        {
+            m_high_watermark = ppos();
+        }
+        return m_high_watermark;
+    }
+
+    void
+    force_high_watermark( position_type hwm )
+    {
+        m_high_watermark = hwm;
+    }
+
+    void
+    reset_high_water_mark()
+    {
+        m_high_watermark = 0;
+    }
+
+    position_type
     ppos() const noexcept
     {
         return m_base_offset + ( m_next - m_base );
@@ -222,7 +264,16 @@ protected:
 	void
 	really_fill( byte_type fill_byte, size_type n );
 
+	position_type
+	new_position( offset_type offset, seek_anchor where ) const;
+
 protected: // to be overridden by derived classes
+
+	virtual void
+	really_jump( std::error_code& err );
+
+	virtual bool
+	is_valid_position( position_type pos ) const;
 
     virtual void
     really_overflow( size_type, std::error_code& err );
@@ -231,21 +282,22 @@ protected: // to be overridden by derived classes
     really_flush( std::error_code& err );
 
 	virtual size_type
-	really_get_size() const
-	{
-		return ppos();
-	}
-
+	really_get_size() const;
+	
 protected:
 
     position_type       m_base_offset;
+    position_type       m_high_watermark;
+	position_type		m_jump_to;
     byte_type*          m_base;
     byte_type*          m_next;
     byte_type*          m_end;
+    byte_type*          m_dirty_start;
+    bool                m_dirty;
+	bool				m_did_jump;
 };
 
-} // namespace sequential
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_SEQUENTIAL_SINK_H
+#endif // LOGICMILL_BSTREAM_SINK_H

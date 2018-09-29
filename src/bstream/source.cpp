@@ -22,12 +22,25 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/sequential/source.h>
+#include <logicmill/bstream/source.h>
 #include <logicmill/bstream/error.h>
 
 using namespace logicmill;
 using namespace bstream;
-using namespace sequential;
+
+position_type
+source::really_seek( position_type pos, std::error_code& err )
+{
+    err.clear();
+    m_next = m_base + pos;
+    return pos;
+}
+
+position_type
+source::really_get_position() const
+{
+	return gpos();
+}
 
 size_type
 source::really_underflow( std::error_code& err )
@@ -266,3 +279,87 @@ source::underflow()
     return available;
 }
 
+position_type
+source::new_position( offset_type offset, seek_anchor where ) const
+{
+    position_type result = bstream::npos;
+
+    switch ( where )
+    {
+        case seek_anchor::current:
+        {
+            result = really_get_position() + offset;
+        }
+        break;
+
+        case seek_anchor::end:
+        {
+            result = really_get_size() + offset;
+        }
+        break;
+
+        case seek_anchor::begin:
+        {
+            result = offset;
+        }
+        break;
+    }
+
+	return result;
+}
+
+position_type
+source::position( offset_type offset, seek_anchor where, std::error_code& err )
+{
+    err.clear();
+	position_type result = new_position( offset, where );
+
+    if ( result < 0 || result > ( really_get_size() ) )
+    {
+        err = make_error_code( std::errc::invalid_seek );
+        result = bstream::npos;
+        goto exit;
+    }
+
+	result = really_seek( result, err );
+	if ( err ) goto exit;
+
+exit:
+	return result;
+}
+
+position_type
+source::position( position_type pos )
+{
+    std::error_code err;
+    auto result = position( static_cast< offset_type >( pos ), seek_anchor::begin, err );
+    if ( err )
+    {
+        throw std::system_error{ err };
+    }
+    return result;
+}
+
+position_type
+source::position( offset_type offset, seek_anchor where )
+{
+    std::error_code err;
+    auto result = position( offset, where, err );
+    if ( err )
+    {
+        throw std::system_error{ err };
+    }
+    return result;
+}
+
+position_type
+source::position( position_type pos, std::error_code& err )
+{
+	return position( static_cast< offset_type >( pos ), seek_anchor::begin, err );
+}
+
+position_type
+source::position() const
+{
+	return really_get_position();
+}

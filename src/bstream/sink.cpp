@@ -22,12 +22,12 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/random/sink.h>
+#include <logicmill/bstream/sink.h>
 
 using namespace logicmill;
 using namespace bstream;
 
-random::sink::sink( byte_type* data, size_type size )
+bstream::sink::sink( byte_type* data, size_type size )
 :
 m_base_offset{ 0 },
 m_high_watermark{ 0 },
@@ -41,7 +41,7 @@ m_did_jump{ false }
 {
 }
 
-random::sink::sink()
+bstream::sink::sink()
 :
 m_base_offset{ 0 },
 m_high_watermark{ 0 },
@@ -54,7 +54,7 @@ m_dirty{ false },
 m_did_jump{ false }
 {}
 
-random::sink::sink( sink&& rhs )
+bstream::sink::sink( sink&& rhs )
 : 
 m_base_offset{ rhs.m_base_offset },
 m_high_watermark{ rhs.m_high_watermark },
@@ -79,7 +79,7 @@ m_did_jump{ rhs.m_did_jump }
 }
 
 void
-random::sink::flush( std::error_code& err )
+bstream::sink::flush( std::error_code& err )
 {
     err.clear();
     if ( m_dirty )
@@ -96,7 +96,7 @@ exit:
 }
 
 void
-random::sink::flush()
+bstream::sink::flush()
 {
     if ( m_dirty )
     {
@@ -112,7 +112,7 @@ random::sink::flush()
 }
 
 void
-random::sink::put( byte_type byte, std::error_code& err )
+bstream::sink::put( byte_type byte, std::error_code& err )
 {
 	err.clear();
     if ( m_did_jump )
@@ -138,7 +138,7 @@ exit:
 }
 
 void
-random::sink::put( byte_type byte )
+bstream::sink::put( byte_type byte )
 {
     if ( m_did_jump )
     {
@@ -161,7 +161,7 @@ random::sink::put( byte_type byte )
 }
 
 void
-random::sink::putn( const byte_type* src, size_type n, std::error_code& err )
+bstream::sink::putn( const byte_type* src, size_type n, std::error_code& err )
 {
 	err.clear();
 	if ( n < 1 ) goto exit;
@@ -211,7 +211,7 @@ exit:
 }
 
 void
-random::sink::putn( const byte_type* src, size_type n )
+bstream::sink::putn( const byte_type* src, size_type n )
 {
 	if ( n > 0 )
 	{
@@ -260,7 +260,7 @@ random::sink::putn( const byte_type* src, size_type n )
 
 
 void
-random::sink::filln( const byte_type fill_byte, size_type n, std::error_code& err )
+bstream::sink::filln( const byte_type fill_byte, size_type n, std::error_code& err )
 {
 	err.clear();
 	if ( n < 1 ) goto exit;
@@ -309,7 +309,7 @@ exit:
 }
 
 void
-random::sink::really_fill( byte_type fill_byte, size_type n )
+bstream::sink::really_fill( byte_type fill_byte, size_type n )
 {
 	assert( n > 0 );
 	if ( n <= static_cast< size_type >( m_end - m_next ) ) // optimize for common case ( no overflow )
@@ -347,7 +347,7 @@ random::sink::really_fill( byte_type fill_byte, size_type n )
 }
 
 void
-random::sink::filln( const byte_type fill_byte, size_type n )
+bstream::sink::filln( const byte_type fill_byte, size_type n )
 {
 	if ( n > 0 )
 	{
@@ -363,7 +363,7 @@ random::sink::filln( const byte_type fill_byte, size_type n )
 
 
 // size_type
-// random::sink::size() const
+// bstream::sink::size() const
 // {
 // 	// don't actually set_high_watermark here... at some point flush() will do that
 // 	// note: this means that ppos() and size may exceed high watermark, but only if m_dirty is false
@@ -371,7 +371,7 @@ random::sink::filln( const byte_type fill_byte, size_type n )
 // }
 
 position_type
-random::sink::new_position( offset_type offset, seek_anchor where  ) const
+bstream::sink::new_position( offset_type offset, seek_anchor where  ) const
 {
     position_type result = bstream::npos;
 
@@ -400,7 +400,7 @@ random::sink::new_position( offset_type offset, seek_anchor where  ) const
 }
 
 position_type
-random::sink::position( offset_type offset, seek_anchor where )
+bstream::sink::position( offset_type offset, seek_anchor where )
 {
 	auto new_pos = new_position( offset, where );
 
@@ -423,7 +423,7 @@ random::sink::position( offset_type offset, seek_anchor where )
 }
 
 position_type
-random::sink::position( offset_type offset, seek_anchor where, std::error_code& err )
+bstream::sink::position( offset_type offset, seek_anchor where, std::error_code& err )
 {
     err.clear();
 
@@ -451,13 +451,13 @@ exit:
 }
 
 position_type
-random::sink::position() const
+bstream::sink::position() const
 {
 	return m_did_jump ? m_jump_to : ppos();
 }
 
 void
-random::sink::overflow( size_type requested, std::error_code& err )
+bstream::sink::overflow( size_type requested, std::error_code& err )
 {
     flush( err );
     if ( err ) goto exit;
@@ -472,7 +472,7 @@ exit:
 }
 
 void
-random::sink::overflow( size_type requested )
+bstream::sink::overflow( size_type requested )
 {
     flush();
     std::error_code err;
@@ -487,7 +487,7 @@ random::sink::overflow( size_type requested )
 }
 
 void
-random::sink::really_jump( std::error_code& err )
+bstream::sink::really_jump( std::error_code& err )
 {
 	err.clear();
 	assert( m_did_jump );
@@ -518,26 +518,26 @@ random::sink::really_jump( std::error_code& err )
 }
 
 void
-random::sink::really_overflow( size_type, std::error_code& err )
+bstream::sink::really_overflow( size_type, std::error_code& err )
 {
     err = make_error_code( std::errc::no_buffer_space );
 }
 
 void
-random::sink::really_flush( std::error_code& err )
+bstream::sink::really_flush( std::error_code& err )
 {
     err.clear();
     assert( m_dirty && m_next > m_dirty_start );
 }
 
 size_type
-random::sink::really_get_size() const
+bstream::sink::really_get_size() const
 {
 	return ( m_dirty && ( ppos() > get_high_watermark() ) ) ? ppos() : get_high_watermark();
 }
 
 bool
-random::sink::is_valid_position( position_type pos ) const
+bstream::sink::is_valid_position( position_type pos ) const
 {
     return ( pos >= 0 ) && ( pos <= ( m_end - m_base ) );
 }

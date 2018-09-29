@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_FILE_SEQUENTIAL_SOURCE_H
-#define LOGICMILL_BSTREAM_FILE_SEQUENTIAL_SOURCE_H
+#ifndef LOGICMILL_BSTREAM_FILE_SOURCE_H
+#define LOGICMILL_BSTREAM_FILE_SOURCE_H
 
-#include <logicmill/bstream/sequential/source.h>
+#include <logicmill/bstream/source.h>
 
-#ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_SOURCE_SIZE
-#define LOGICMILL_BSTREAM_DEFAULT_FILE_SOURCE_SIZE  16384UL
+#ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE
+#define LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE  16384UL
 #endif
 
 namespace logicmill 
@@ -37,26 +37,24 @@ namespace bstream
 {
 namespace file
 {
-namespace sequential
-{
 
 namespace detail
 {
 	class source_test_probe;
 }
 
-class source : public bstream::sequential::source
+class source : public bstream::source
 {
 public:
-	using base = bstream::sequential::source;
+	using base = bstream::source;
 
-	friend class file::sequential::detail::source_test_probe;
+	friend class file::detail::source_test_probe;
 
-    source( size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_SOURCE_SIZE );
+    source( size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
 
-    source( std::string const& filename, std::error_code& err, int flag_overrides = 0, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_SOURCE_SIZE );
+    source( std::string const& filename, std::error_code& err, int flag_overrides = 0, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
 
-    source( std::string const& filename, int flag_overrides = 0, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_SOURCE_SIZE );
+    source( std::string const& filename, int flag_overrides = 0, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
 
     void
     open( std::string const& filename, std::error_code& err, int flag_overrides = 0 );
@@ -84,6 +82,12 @@ protected:
 	virtual size_type
 	really_get_size() const override;
 
+    virtual position_type
+    really_seek( position_type pos, std::error_code& err ) override;
+
+	virtual position_type
+	really_get_position() const override;
+
 protected:
 
     size_type
@@ -107,9 +111,8 @@ protected:
 	size_type			m_size;
 };
 
-} // namespace sequential
 } // namespace file
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_FILE_SEQUENTIAL_SOURCE_H
+#endif // LOGICMILL_BSTREAM_FILE_SOURCE_H

@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_SEQUENTIAL_SOURCE_H
-#define LOGICMILL_BSTREAM_SEQUENTIAL_SOURCE_H
+#ifndef LOGICMILL_BSTREAM_SOURCE_H
+#define LOGICMILL_BSTREAM_SOURCE_H
 
 #include <logicmill/bstream/buffer.h>
 #include <logicmill/bstream/types.h>
@@ -31,8 +31,6 @@
 namespace logicmill 
 {
 namespace bstream 
-{
-namespace sequential
 {
 
 namespace detail
@@ -132,6 +130,25 @@ public:
 		return static_cast< size_type >( m_end - m_next );
 	}
 
+	/*
+	 * random-access methods (seek/tell)
+	 */
+
+    position_type
+    position( position_type position, std::error_code& err );
+
+    position_type
+    position( position_type position );
+
+    position_type
+    position( offset_type offset, seek_anchor where, std::error_code& err );
+
+    position_type
+    position( offset_type offset, seek_anchor where );
+
+    position_type
+    position() const;
+
 protected:
 
     const byte_type*
@@ -164,14 +181,26 @@ protected:
         m_end = end;
     }
 
-	virtual void
-	really_rewind();
-
     virtual size_type
     really_underflow( std::error_code& err );
 
+	position_type
+	new_position( offset_type offset, seek_anchor where ) const;
+
+    virtual position_type
+    really_seek( position_type pos, std::error_code& err );
+
+	// TODO: is this necessary with the removal of source_base ?
+	virtual position_type
+	really_get_position() const;
+
+	// TODO: is this necessary with the removal of source_base ?
 	virtual size_type
 	really_get_size() const;
+
+	// TODO: is this necessary with the removal of source_base ?
+	virtual void
+	really_rewind();
 
     position_type						m_base_offset;
     const byte_type*					m_base;
@@ -179,8 +208,7 @@ protected:
     const byte_type*					m_end;
 };
 
-} // namespace sequential
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_SEQUENTIAL_SOURCE_H
+#endif // LOGICMILL_BSTREAM_SOURCE_H

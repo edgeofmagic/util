@@ -22,17 +22,14 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_FILE_SEQUENTIAL_SINK_H
-#define LOGICMILL_BSTREAM_FILE_SEQUENTIAL_SINK_H
+#ifndef LOGICMILL_BSTREAM_FILE_SINK_H
+#define LOGICMILL_BSTREAM_FILE_SINK_H
 
-#include <fcntl.h>
-#include <vector>
-#include <algorithm>
-#include <logicmill/bstream/sequential/sink.h>
+#include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/buffer.h>
 
-#ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_SEQUENTIAL_SINK_BUFFER_SIZE
-#define LOGICMILL_BSTREAM_DEFAULT_FILE_SEQUENTIAL_SINK_BUFFER_SIZE  16384UL
+#ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE
+#define LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE  16384UL
 #endif
 
 namespace logicmill 
@@ -41,31 +38,29 @@ namespace bstream
 {
 namespace file
 {
-namespace sequential
-{
 
 namespace detail
 {
 	class sink_test_probe;
 }
 
-class sink : public bstream::sequential::sink
+class sink : public bstream::sink
 {
 public:
 
-	using base = bstream::sequential::sink;
+	using base = bstream::sink;
 
-	friend class file::sequential::detail::sink_test_probe;
-
+	friend class detail::sink_test_probe;
+	
     static constexpr open_mode default_mode = open_mode::at_begin;
 
     sink( sink&& rhs );
 
-    sink( std::string const& filename, open_mode mode, std::error_code& err, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_SEQUENTIAL_SINK_BUFFER_SIZE );
+    sink( std::string const& filename, open_mode mode, std::error_code& err, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
 
-    sink( std::string const& filename, open_mode mode = default_mode, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_SEQUENTIAL_SINK_BUFFER_SIZE );
+    sink( std::string const& filename, open_mode mode = default_mode, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
 
-    sink( open_mode mode = default_mode, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_SEQUENTIAL_SINK_BUFFER_SIZE );
+    sink( open_mode mode = default_mode, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
 
     void
     open( std::string const& filename, open_mode mode, std::error_code& err );
@@ -148,28 +143,28 @@ protected:
     virtual void
     really_flush( std::error_code& err ) override;
 
+	virtual bool
+	is_valid_position( position_type pos ) const override;
+
+	virtual void
+	really_jump( std::error_code& err ) override;
+
     virtual void
     really_overflow( size_type, std::error_code& err ) override;
 
-	virtual size_type
-	really_get_size() const override
-	{
-		return std::max( static_cast< size_type >( ppos() ), m_initial_size );
-	}
+	// virtual size_type
+	// really_get_size() const
+	// {
+	// 	return ( m_dirty && ( ppos() > get_high_watermark() ) ) ? ppos() : get_high_watermark();
+	// }
 
 private:
 
     static bool
-    is_truncate( int flags )
-    {
-        return ( flags & O_TRUNC ) != 0;
-    }
+    is_truncate( int flags );
 
     static bool
-    is_append( int flags )
-    {
-        return ( flags & O_APPEND ) != 0;
-    }
+    is_append( int flags );
 
     void
     reset_ptrs()
@@ -181,19 +176,8 @@ private:
     void 
     really_open( std::error_code& err );
 
-    constexpr int
-    to_flags( open_mode mode )
-    {
-        switch ( mode )
-        {
-            case open_mode::append:
-                return O_WRONLY | O_CREAT | O_APPEND;
-            case open_mode::truncate:
-                return O_WRONLY | O_CREAT | O_TRUNC;
-            default:
-                return O_WRONLY | O_CREAT;
-        }
-    }
+    static int
+    to_flags( open_mode mode );
 
     mutable_buffer					m_buf;
     std::string						m_filename;
@@ -201,12 +185,10 @@ private:
     open_mode						m_mode;
     int								m_flags;
     int								m_fd;
-	size_type						m_initial_size;
 };
 
-} // namespace sequential
 } // namespace file
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_FILE_SEQUENTIAL_SINK_H
+#endif // LOGICMILL_BSTREAM_FILE_RANDOM_SINK_H

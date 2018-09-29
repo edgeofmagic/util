@@ -22,14 +22,14 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/file/sequential/source.h>
+#include <logicmill/bstream/file/source.h>
 #include <unistd.h>
 #include <fcntl.h>
 
 using namespace logicmill;
 using namespace bstream;
 
-file::sequential::source::source( size_type buffer_size )
+file::source::source( size_type buffer_size )
 :
 m_buf{ buffer_size },
 m_filename{},
@@ -39,7 +39,7 @@ m_fd{ -1 },
 m_size{ 0 }
 {}
 
-file::sequential::source::source( std::string const& filename, std::error_code& err, int flag_overrides, size_type buffer_size )
+file::source::source( std::string const& filename, std::error_code& err, int flag_overrides, size_type buffer_size )
 :
 m_buf{ buffer_size },
 m_filename{ filename },
@@ -51,7 +51,7 @@ m_size{ 0 }
 	really_open( err );
 }
 
-file::sequential::source::source( std::string const& filename, int flag_overrides, size_type buffer_size )
+file::source::source( std::string const& filename, int flag_overrides, size_type buffer_size )
 :
 m_buf{ buffer_size },
 m_filename{ filename },
@@ -69,7 +69,7 @@ m_size{ 0 }
 }
 
 size_type
-file::sequential::source::really_underflow( std::error_code& err )
+file::source::really_underflow( std::error_code& err )
 {
     err.clear();
     assert( m_next == m_end );
@@ -86,7 +86,7 @@ file::sequential::source::really_underflow( std::error_code& err )
 }
 
 void
-file::sequential::source::close( std::error_code& err )
+file::source::close( std::error_code& err )
 {
     err.clear();
     if ( m_is_open )
@@ -106,7 +106,7 @@ exit:
 }
 
 void
-file::sequential::source::close()
+file::source::close()
 {
     if ( m_is_open )
     {
@@ -121,7 +121,7 @@ file::sequential::source::close()
 }
 
 size_type
-file::sequential::source::load_buffer( std::error_code& err )
+file::source::load_buffer( std::error_code& err )
 {
     err.clear();
     assert( m_next == m_base );
@@ -139,7 +139,7 @@ exit:
 }
 
 void 
-file::sequential::source::really_open( std::error_code& err )
+file::source::really_open( std::error_code& err )
 {
     err.clear();
 
@@ -186,14 +186,14 @@ exit:
 }
 
 size_type
-file::sequential::source::really_get_size() const
+file::source::really_get_size() const
 {
 	return m_size;
 }
 
 
 void
-file::sequential::source::open( std::string const& filename, std::error_code& err, int flag_overrides )
+file::source::open( std::string const& filename, std::error_code& err, int flag_overrides )
 {
     m_filename = filename;
     m_flags = O_RDONLY | flag_overrides;
@@ -201,7 +201,7 @@ file::sequential::source::open( std::string const& filename, std::error_code& er
 }
 
 void
-file::sequential::source::open( std::string const& filename, int flag_overrides )
+file::source::open( std::string const& filename, int flag_overrides )
 {
     m_filename = filename;
     m_flags = O_RDONLY | flag_overrides;
@@ -211,4 +211,31 @@ file::sequential::source::open( std::string const& filename, int flag_overrides 
     {
         throw std::system_error{ err };
     }
+}
+
+position_type
+file::source::really_seek( position_type pos, std::error_code& err )
+{
+    err.clear();
+    position_type result = bstream::npos;
+
+    result = ::lseek( m_fd, pos, SEEK_SET );
+
+    if ( result < 0 )
+    {
+        err = std::error_code{ errno, std::generic_category() };
+        result = bstream::npos;
+        goto exit;
+    }
+
+    m_base_offset = result;
+    reset_ptrs();
+exit:
+    return result;
+}
+
+position_type
+file::source::really_get_position() const
+{
+	return gpos();
 }

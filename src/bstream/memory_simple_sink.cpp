@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/memory/simple/sequential/sink.h>
+#include <logicmill/bstream/memory/simple/sink.h>
 
 using namespace logicmill;
 using namespace bstream;
 
 void
-memory::simple::sequential::sink::really_overflow( size_type n, std::error_code& err )
+memory::simple::sink::really_overflow( size_type n, std::error_code& err )
 {
 	err.clear();
 	assert( std::less_equal< byte_type * >()( m_next, m_end ) );
@@ -44,7 +44,7 @@ memory::simple::sequential::sink::really_overflow( size_type n, std::error_code&
 }
 
 void
-memory::simple::sequential::sink::resize( size_type size, std::error_code& err )
+memory::simple::sink::resize( size_type size, std::error_code& err )
 {
 	err.clear();
 	size_type cushioned_size = ( size * 3 ) / 2;
@@ -66,4 +66,19 @@ memory::simple::sequential::sink::resize( size_type size, std::error_code& err )
 
 exit:
 	return;
+}
+
+bool
+memory::simple::sink::is_valid_position( position_type pos ) const
+{
+	bool result = false;
+	if ( m_buf.is_expandable() )
+	{
+		result = pos >= 0;
+	}
+	else
+	{
+		result = ( pos >= 0 ) && ( pos <= ( m_end - m_base ) );
+	}
+    return result;
 }

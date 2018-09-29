@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_MEMORY_SIMPLE_SEQUENTIAL_SOURCE_H
-#define LOGICMILL_BSTREAM_MEMORY_SIMPLE_SEQUENTIAL_SOURCE_H
+#ifndef LOGICMILL_BSTREAM_MEMORY_SIMPLE_SOURCE_H
+#define LOGICMILL_BSTREAM_MEMORY_SIMPLE_SOURCE_H
 
-#include <logicmill/bstream/sequential/source.h>
+#include <logicmill/bstream/source.h>
 #include <logicmill/bstream/buffer.h>
 #include <logicmill/bstream/types.h>
 
@@ -37,8 +37,6 @@ namespace memory
 {
 namespace simple
 {
-namespace sequential
-{
 
 namespace detail
 {
@@ -47,13 +45,14 @@ namespace detail
 }
 
 template< class Buffer >
-class source : public bstream::sequential::source
+class source : public bstream::source
 {
 public:
 
-	friend class memory::simple::sequential::detail::source_test_probe< Buffer >;
+	friend class memory::simple::detail::source_test_probe< Buffer >;
 
-	using bstream::sequential::source::getn;
+	using bstream::source::getn;
+	using base = bstream::source;
 
 	source( shared_buffer const& buf );
 
@@ -61,7 +60,7 @@ public:
 
     source( const_buffer const& buf )
     :
-    bstream::sequential::source{},
+    base{},
     m_buf{ buf }
     {
         set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
@@ -69,7 +68,7 @@ public:
 
     source( const_buffer&& buf )
     :
-    bstream::sequential::source{},
+    base{},
     m_buf{ std::move( buf ) }
     {
         set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
@@ -77,7 +76,7 @@ public:
 
 	source( mutable_buffer&& buf )
 	:
-	bstream::sequential::source{},
+	base{},
 	m_buf{ std::move( buf ) }
 	{
         set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
@@ -113,6 +112,20 @@ public:
 		return m_buf.size();
 	}
 
+    virtual position_type
+    really_seek( position_type pos, std::error_code& err ) override
+	{
+		err.clear();
+		m_next = m_base + pos;
+		return pos;
+	}
+
+	virtual position_type
+	really_get_position() const override
+	{
+		return gpos();
+	}
+
 protected:
 
     Buffer      m_buf;
@@ -122,7 +135,7 @@ protected:
 template<>
 inline source< const_buffer >::source( shared_buffer const& buf )
 :
-bstream::sequential::source{},
+base{},
 m_buf{ buf }
 {
 	set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
@@ -131,7 +144,7 @@ m_buf{ buf }
 template<>
 inline source< const_buffer >::source( shared_buffer&& buf )
 :
-bstream::sequential::source{},
+base{},
 m_buf{ buf } // construct by copy (as base type buffer); can't move shared_buffer to const_buffer
 {
 	set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
@@ -140,7 +153,7 @@ m_buf{ buf } // construct by copy (as base type buffer); can't move shared_buffe
 template<>
 inline source< shared_buffer >::source( shared_buffer const& buf )
 :
-bstream::sequential::source{},
+base{},
 m_buf{ buf }
 {
 	set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
@@ -149,7 +162,7 @@ m_buf{ buf }
 template<>
 inline source< shared_buffer >::source( shared_buffer&& buf )
 :
-bstream::sequential::source{},
+base{},
 m_buf{ std::move( buf ) }
 {
 	set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
@@ -239,10 +252,9 @@ source< shared_buffer >::get_slice( size_type n )
 	return result;
 }
 
-} // namespace sequential
 } // namespace simple
 } // namespace memory
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_MEMORY_SIMPLE_SEQUENTIAL_SOURCE_H
+#endif // LOGICMILL_BSTREAM_MEMORY_SIMPLE_SOURCE_H

@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/memory/simple/source.h>
-#include <logicmill/bstream/memory/simple/sink.h>
+#include <logicmill/bstream/memory/source.h>
+#include <logicmill/bstream/memory/sink.h>
 #include <logicmill/bstream/buffer.h>
 #include <logicmill/bstream/error.h>
 #include <doctest.h>
@@ -33,7 +33,7 @@ using namespace logicmill;
 using namespace bstream;
 
 
-TEST_CASE( "logicmill::bstream::memory::simple::sink [ smoke ] { basic functionality }" )
+TEST_CASE( "logicmill::bstream::memory::sink [ smoke ] { basic functionality }" )
 {
 	byte_type buf[] = { 
 		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -79,9 +79,9 @@ TEST_CASE( "logicmill::bstream::memory::simple::sink [ smoke ] { basic functiona
 	
 	mutable_buffer mbuf{ buf, sizeof( buf ), buffer::null_deallocator{} };
 
-    memory::simple::sink snk{ std::move( mbuf ) };
+    memory::sink snk{ std::move( mbuf ) };
 
-    memory::simple::detail::sink_test_probe probe{ snk };
+    memory::detail::sink_test_probe probe{ snk };
 
     std::error_code err;
 
@@ -173,7 +173,7 @@ TEST_CASE( "logicmill::bstream::memory::simple::sink [ smoke ] { basic functiona
 	CHECK( MATCH_MEMORY( buf, expected_3 ) );
 }
 
-TEST_CASE( "logicmill::bstream::memory::simple::sink [ smoke ] { seek expanding buffer }" )
+TEST_CASE( "logicmill::bstream::memory::sink [ smoke ] { seek expanding buffer }" )
 {
 	byte_type data[] = { 
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -190,8 +190,8 @@ TEST_CASE( "logicmill::bstream::memory::simple::sink [ smoke ] { seek expanding 
 	};
 
 
-    memory::simple::sink snk{ 32 };
-    memory::simple::detail::sink_test_probe probe{ snk };
+    memory::sink snk{ 32 };
+    memory::detail::sink_test_probe probe{ snk };
 
 	std::error_code err;
 	snk.filln( 0xff, 16, err );
@@ -215,7 +215,7 @@ TEST_CASE( "logicmill::bstream::memory::simple::sink [ smoke ] { seek expanding 
 	std::cout << "capacity is " << probe.buffer().capacity() << std::endl;
 }	
 
-TEST_CASE( "logicmill::bstream::memory::simple::source [ smoke ] { basic functionality }" )
+TEST_CASE( "logicmill::bstream::memory::source [ smoke ] { basic functionality }" )
 {
 	byte_type data[] = { 
 		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -225,9 +225,9 @@ TEST_CASE( "logicmill::bstream::memory::simple::source [ smoke ] { basic functio
 	};
 
 	const_buffer buf{ data, sizeof( data ) };
-	memory::simple::source< const_buffer > src{ buf };
+	memory::source< const_buffer > src{ buf };
 
-	bstream::memory::simple::detail::source_test_probe< const_buffer > probe{ src };
+	bstream::memory::detail::source_test_probe< const_buffer > probe{ src };
 
 	std::error_code err;
 

@@ -35,8 +35,10 @@
 #include <logicmill/bstream/ibstream_traits.h>
 #include <logicmill/bstream/context.h>
 #include <logicmill/bstream/typecode.h>
-#include <logicmill/bstream/numstream.h>
+#include <logicmill/bstream/source.h>
 #include <deque>
+#include <boost/endian/conversion.hpp>
+
 
 namespace logicmill
 {
@@ -53,10 +55,9 @@ namespace bstream
  *	\a a \a priori the contents of buffer as streamed by the sender ( that is,
  *	the types, number, and order of the items ).
  */
-class ibstream : public inumstream
+class ibstream 
 {
 public:
-    using base = inumstream;
 
     template< class U, class E > friend struct value_deserializer;
 
@@ -95,12 +96,172 @@ public:
     ibstream( ibstream const& ) = delete;
     ibstream( ibstream&& ) = delete;
 
-    ibstream( std::unique_ptr< bstream::ibstreambuf > strmbuf, context_base const& cntxt = get_default_context() )
+    ibstream( std::unique_ptr< bstream::source > strmbuf, context_base const& cntxt = get_default_context() )
     : 
-    inumstream{ std::move( strmbuf ), cntxt.get_context_impl()->byte_order() },
     m_context{ cntxt.get_context_impl() },
-    m_ptr_deduper{ m_context->dedup_shared_ptrs() ? std::make_unique< ptr_deduper >() : nullptr }
+    m_ptr_deduper{ m_context->dedup_shared_ptrs() ? std::make_unique< ptr_deduper >() : nullptr },
+	m_strmbuf{ std::move( strmbuf ) },
+	m_reverse_order{ cntxt.get_context_impl()->byte_order() != bend::order::native }
     {}
+
+	bstream::source&
+	get_streambuf()
+	{
+		return *m_strmbuf.get();
+	}
+
+	bstream::source const&
+	get_streambuf() const
+	{
+		return *m_strmbuf.get();
+	}
+
+	std::unique_ptr< bstream::source >
+	release_streambuf()
+	{
+		return std::move( m_strmbuf ); // hope this is set to null
+	}
+
+ 	size_type 
+	size() const
+	{
+		return static_cast< size_type >( m_strmbuf->size() );
+	}
+
+	position_type
+	position() const
+	{
+		return static_cast< position_type >( m_strmbuf->position() );		
+	}
+
+	position_type
+	position( position_type pos )
+	{
+		return static_cast< position_type >( m_strmbuf->position( pos ) );		
+	}
+
+	position_type
+	position( position_type pos, std::error_code& err )
+	{
+		return static_cast< position_type >( m_strmbuf->position( pos, err ) );
+	}
+
+	position_type
+	position( offset_type offset, seek_anchor where )
+	{
+		return static_cast< position_type >( m_strmbuf->position( offset, where ) );
+	}
+
+	position_type
+	position( offset_type offset, seek_anchor where, std::error_code& err )
+	{
+		return static_cast< position_type >( m_strmbuf->position( offset, where, err ) );
+	}
+	void 
+	rewind()
+	{
+		position( 0 );
+	}
+
+	void 
+	rewind( std::error_code& err )
+	{
+		position( 0, err );
+	}
+
+	byte_type
+	get()
+	{
+		return m_strmbuf->get();
+	}
+
+	byte_type
+	get( std::error_code& err )
+	{
+		return m_strmbuf->get( err );
+	}
+
+	byte_type 
+	peek()
+	{
+		return m_strmbuf->peek();
+	}
+
+	byte_type 
+	peek( std::error_code& err )
+	{
+		return m_strmbuf->peek( err );
+	}
+
+	template< class U >
+	typename std::enable_if< std::is_arithmetic< U >::value && sizeof( U ) == 1, U >::type 
+	get_num()
+	{
+		return static_cast< U >( get() );
+	}
+
+	template< class U >
+	typename std::enable_if< std::is_arithmetic< U >::value && sizeof( U ) == 1, U >::type 
+	get_num( std::error_code& err )
+	{
+		return static_cast< U >( get( err ) );
+	}
+
+	template< class U >
+	typename std::enable_if< std::is_arithmetic< U >::value && ( sizeof( U ) > 1 ), U >::type 
+	get_num()
+	{
+		return m_strmbuf->get_num< U >( m_reverse_order );
+	}
+
+	template< class U >
+	typename std::enable_if< std::is_arithmetic< U >::value && ( sizeof( U ) > 1 ), U >::type 
+	get_num( std::error_code& err )
+	{
+		return m_strmbuf->get_num< U >( m_reverse_order, err );
+	}
+
+	shared_buffer
+	get_shared_slice( size_type nbytes )
+	{
+		return m_strmbuf->get_shared_slice( nbytes );
+	}
+
+	shared_buffer
+	get_shared_slice( size_type nbytes, std::error_code& err )
+	{
+		return m_strmbuf->get_shared_slice( nbytes, err );
+	}
+
+	const_buffer
+	get_slice( size_type nbytes )
+	{
+	    return m_strmbuf->get_slice( nbytes );
+	}
+
+	const_buffer
+	get_slice( size_type nbytes, std::error_code& err )
+	{
+		return m_strmbuf->get_slice( nbytes, err );
+	}
+
+	size_type
+	getn( byte_type* dst, size_type nbytes  )
+	{
+		return m_strmbuf->getn( dst, nbytes );
+	}
+
+	size_type
+	getn( byte_type* dst, size_type nbytes, std::error_code& err  )
+	{
+    	return m_strmbuf->getn( dst, nbytes, err );
+	}	
+
+	bend::order
+	byte_order() const
+	{
+		return m_reverse_order ? ( ( bend::order::native == bend::order::little ) ? bend::order::big : bend::order::little ) : ( bend::order::native );
+	}
 
     template< class T >
     typename std::enable_if_t< is_ibstream_constructible< T >::value, T >
@@ -309,48 +470,48 @@ public:
     read_blob_header( std::error_code& ec );
 
     logicmill::bstream::shared_buffer
-    read_blob_body( as_shared_buffer tag, std::size_t nbytes )
+    read_blob_body_shared( std::size_t nbytes )
     {
-        return getn( tag, nbytes );
+        return get_shared_slice( nbytes );
     }
 
     logicmill::bstream::shared_buffer
-    read_blob_body( as_shared_buffer tag, std::size_t nbytes, std::error_code& ec )
+    read_blob_body_shared( std::size_t nbytes, std::error_code& ec )
     {
-        return getn( tag, nbytes, ec );
+        return get_shared_slice( nbytes, ec );
     }
 
     logicmill::bstream::const_buffer
-    read_blob_body( as_const_buffer tag, std::size_t nbytes )
+    read_blob_body( std::size_t nbytes )
     {
-        return getn( tag, nbytes );
+        return get_slice( nbytes );
     }
 
     logicmill::bstream::const_buffer
-    read_blob_body( as_const_buffer tag, std::size_t nbytes, std::error_code& ec )
+    read_blob_body( std::size_t nbytes, std::error_code& ec )
     {
-        return getn( tag, nbytes, ec );
+        return get_slice( nbytes, ec );
     }
 
     logicmill::bstream::shared_buffer
-    read_blob( as_shared_buffer tag )
+    read_blob_shared()
     {
         auto nbytes = read_blob_header();
-        return read_blob_body( tag, nbytes );
+        return read_blob_body_shared( nbytes );
     }
 
     logicmill::bstream::shared_buffer
-    read_blob( as_shared_buffer tag, std::error_code& ec );
+    read_blob_shared( std::error_code& ec );
 
     logicmill::bstream::const_buffer
     read_blob( as_const_buffer tag )
     {
         auto nbytes = read_blob_header();
-        return read_blob_body( tag, nbytes );
+        return read_blob_body( nbytes );
     }
 
     logicmill::bstream::const_buffer
-    read_blob( as_const_buffer tag, std::error_code& ec );
+    read_blob( std::error_code& ec );
 
     std::size_t
     read_ext_header( std::uint8_t& ext_type );
@@ -359,33 +520,33 @@ public:
     read_ext_header( std::uint8_t& ext_type, std::error_code& ec );
 
     logicmill::bstream::shared_buffer
-    read_ext_body( as_shared_buffer tag, std::size_t nbytes )
+    read_ext_body_shared( std::size_t nbytes )
     {
-        return getn( tag, nbytes );
+        return get_shared_slice( nbytes );
     }
 
     logicmill::bstream::shared_buffer
-    read_ext_body( as_shared_buffer tag, std::size_t nbytes, std::error_code& ec )
+    read_ext_body_shared( std::size_t nbytes, std::error_code& ec )
     {
-        return getn( tag, nbytes, ec );
+        return get_shared_slice( nbytes, ec );
     }
 
     logicmill::bstream::const_buffer
-    read_ext_body( as_const_buffer tag, std::size_t nbytes )
+    read_ext_body( std::size_t nbytes )
     {
-        return getn( tag, nbytes );
+        return get_slice( nbytes );
     }
 
     logicmill::bstream::const_buffer
-    read_ext_body( as_const_buffer tag, std::size_t nbytes, std::error_code& ec )
+    read_ext_body( std::size_t nbytes, std::error_code& ec )
     {
-        return getn( tag, nbytes, ec );
+        return get_slice( nbytes, ec );
     }
 
     void
     read_nil()
     {
-        auto tcode = base::get();
+        auto tcode = get();
         if ( tcode != typecode::nil )
         {
             throw std::system_error{ make_error_code( bstream::errc::expected_nil ) };
@@ -396,7 +557,7 @@ public:
     read_nil( std::error_code& ec )
     {
         ec.clear();
-        auto tcode = base::get();
+        auto tcode = get();
         if ( tcode != typecode::nil )
         {
             ec = make_error_code( bstream::errc::expected_nil );
@@ -436,6 +597,19 @@ public:
     }
 
 protected:
+
+	void
+	use( std::unique_ptr< bstream::source > strmbuf )
+	{
+		m_strmbuf = std::move( strmbuf );
+	}
+
+	template< class T, class... Args >
+	typename std::enable_if_t< std::is_base_of< bstream::source, T >::value >
+	use( Args&&... args )
+	{
+		m_strmbuf = std::make_unique< T >( std::forward< Args >( args )... );
+	}
 
     /*
      *  Pointers are streamed as a 2 - element object ( array or map ).
@@ -553,6 +727,8 @@ protected:
     std::unique_ptr< bufwriter >                    m_bufwriter = nullptr;
     std::shared_ptr< const context_impl_base >      m_context;
     std::unique_ptr< ptr_deduper >                  m_ptr_deduper;
+	std::unique_ptr< bstream::source >				m_strmbuf;
+	const bool										m_reverse_order;
 };
 	        
 template< class T >
@@ -1028,7 +1204,7 @@ struct value_deserializer< logicmill::bstream::string_alias >
 
     static logicmill::bstream::string_alias get( ibstream& is, std::size_t length )
     {
-        return logicmill::bstream::string_alias{ is.getn( as_shared_buffer{}, length ) };
+        return logicmill::bstream::string_alias{ is.get_shared_slice( length ) };
     }
 
     static logicmill::bstream::string_alias get( ibstream& is )
@@ -1456,7 +1632,7 @@ struct value_deserializer< logicmill::bstream::shared_buffer >
     static logicmill::bstream::shared_buffer
     get( ibstream& is )
     {
-        return is.read_blob( as_shared_buffer{} );
+        return is.read_blob_shared();
     }
 };
 

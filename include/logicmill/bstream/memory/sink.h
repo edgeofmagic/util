@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_MEMORY_SIMPLE_SINK_H
-#define LOGICMILL_BSTREAM_MEMORY_SIMPLE_SINK_H
+#ifndef LOGICMILL_BSTREAM_MEMORY_SINK_H
+#define LOGICMILL_BSTREAM_MEMORY_SINK_H
 
 #include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/buffer.h>
@@ -37,8 +37,6 @@ namespace logicmill
 namespace bstream 
 {
 namespace memory
-{
-namespace simple
 {
 
 namespace detail
@@ -54,7 +52,8 @@ public:
 
 	friend class detail::sink_test_probe;
 
-    sink( size_type size = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE, buffer::memory_broker::ptr broker = buffer::default_broker::get() )
+    sink( 	size_type size = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE, 
+			buffer::memory_broker::ptr broker = buffer::default_broker::get() )
     :
     base{},
     m_buf{ size, broker }
@@ -75,16 +74,22 @@ public:
     sink& operator=( sink&& ) = delete;
     sink& operator=( sink const& ) = delete;
 
-protected:
+	sink& 
+	clear() noexcept;
 
-    // virtual void
-    // really_flush( std::error_code& err ) override;
+	const_buffer
+	get_buffer();
+
+	mutable_buffer&
+	get_buffer_ref();
+
+	const_buffer
+	release_buffer();
+
+protected:
 
 	virtual bool
 	is_valid_position( position_type pos ) const override;
-
-	// virtual void
-	// really_jump( std::error_code& err ) override;
 
     virtual void
     really_overflow( size_type, std::error_code& err ) override;
@@ -102,9 +107,8 @@ protected:
     mutable_buffer					m_buf;
 };
 
-} // namespace simple
 } // namespace memory
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_MEMORY_SIMPLE_SINK_H
+#endif // LOGICMILL_BSTREAM_MEMORY_SINK_H

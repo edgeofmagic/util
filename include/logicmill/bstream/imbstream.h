@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_IMBSTREAM_H
 
 #include <logicmill/bstream/ibstream.h>
-#include <logicmill/bstream/ibmembuf.h>
+#include <logicmill/bstream/memory/source.h>
 #include <logicmill/bstream/utils/memory.h>
 
 namespace logicmill
@@ -42,73 +42,75 @@ public:
     imbstream( imbstream const& ) = delete;
     imbstream( imbstream&& ) = delete;
 
-    imbstream( std::unique_ptr< ibmembuf > strmbuf, context_base const& cntxt = get_default_context() )
+	using source_type = memory::source< shared_buffer >;
+
+    imbstream( std::unique_ptr< source_type > strmbuf, context_base const& cntxt = get_default_context() )
     : ibstream{ std::move( strmbuf ), cntxt }
     {}
 
     imbstream( buffer const& buf, context_base const& cntxt = get_default_context() )
     :
-    ibstream( std::make_unique< ibmembuf >( buf ), cntxt )
+    ibstream( std::make_unique< source_type >( buf ), cntxt )
     {}
 
     imbstream( buffer&& buf, context_base const& cntxt = get_default_context() )
     :
-    ibstream{ std::make_unique< ibmembuf >( std::move( buf ) ), cntxt }
+    ibstream{ std::make_unique< source_type >( std::move( buf ) ), cntxt }
     {}
 
     void
-    use( std::unique_ptr< ibmembuf > strmbuf )
+    use( std::unique_ptr< source_type > strmbuf )
     {
-        inumstream::use( std::move( strmbuf ) );
+        ibstream::use( std::move( strmbuf ) );
         reset();
     }
 
     void
-    use( std::unique_ptr< ibmembuf > strmbuf, std::error_code& err )
+    use( std::unique_ptr< source_type > strmbuf, std::error_code& err )
     {
-        inumstream::use( std::move( strmbuf ) );
+        ibstream::use( std::move( strmbuf ) );
         reset( err );
     }
 
     void
     use ( mutable_buffer&& buf )
     {
-        inumstream::use( std::make_unique< ibmembuf >( std::move( buf ) ) );
+        ibstream::use( std::make_unique< source_type >( std::move( buf ) ) );
         reset();
     }
 
     void
     use ( const_buffer&& buf )
     {
-        inumstream::use( std::make_unique< ibmembuf >( std::move( buf ) ) );
+        ibstream::use( std::make_unique< source_type >( std::move( buf ) ) );
         reset();
     }
 
     void
     use ( const_buffer const& buf )
     {
-        inumstream::use( std::make_unique< ibmembuf >( buf ) );
+        ibstream::use( std::make_unique< source_type >( buf ) );
         reset();
     }
 
     void
     use( mutable_buffer&& buf, std::error_code& err )
     {
-        inumstream::use( std::make_unique< ibmembuf >( std::move( buf ) ) );
+        ibstream::use( std::make_unique< source_type >( std::move( buf ) ) );
         reset( err );
     }
 
     void
     use( const_buffer&& buf, std::error_code& err )
     {
-        inumstream::use( std::make_unique< ibmembuf >( std::move( buf ) ) );
+        ibstream::use( std::make_unique< source_type >( std::move( buf ) ) );
         reset( err );
     }
 
     void
     use( const_buffer const& buf, std::error_code& err )
     {
-        inumstream::use( std::make_unique< ibmembuf >( buf ) );
+        ibstream::use( std::make_unique< source_type >( buf ) );
         reset( err );
     }
 
@@ -118,10 +120,10 @@ public:
         return get_membuf().get_buffer();
     }
 
-    ibmembuf&
+    source_type&
     get_membuf()
     {
-        return reinterpret_cast< ibmembuf& >( * m_strmbuf );
+        return reinterpret_cast< source_type& >( * m_strmbuf );
     }
 
 };

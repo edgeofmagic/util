@@ -11,7 +11,6 @@ set (CMAKE_CXX_STANDARD_REQUIRED ON)
 #		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3")
 	endif()
 
-
 enable_testing()
 
 add_subdirectory( ext/libuv )
@@ -19,28 +18,20 @@ add_subdirectory( ext/libuv )
 include_directories( include ext/boost ext/libuv/include ext/doctest/include )
 
 set(LOGICMILL_SRCS
-#	include/logicmill/buffer.h
 	include/logicmill/bstream.h
 	include/logicmill/bstream/base_classes.h
 	include/logicmill/bstream/context.h
 	include/logicmill/bstream/error.h
 	include/logicmill/bstream/error_category_context.h
 	include/logicmill/bstream/fwd_decls.h
-	include/logicmill/bstream/ibfilebuf.h
-	include/logicmill/bstream/ibmembuf.h
 	include/logicmill/bstream/ibstream.h
 	include/logicmill/bstream/ibstream_traits.h
-	include/logicmill/bstream/ibstreambuf.h
 	include/logicmill/bstream/ifbstream.h
 	include/logicmill/bstream/imbstream.h
 	include/logicmill/bstream/macros.h
 	include/logicmill/bstream/msgpack.h
-	include/logicmill/bstream/numstream.h
-	include/logicmill/bstream/obfilebuf.h
-	include/logicmill/bstream/obmembuf.h
 	include/logicmill/bstream/obstream.h
 	include/logicmill/bstream/obstream_traits.h
-	include/logicmill/bstream/obstreambuf.h
 	include/logicmill/bstream/ofbstream.h
 	include/logicmill/bstream/ombstream.h
 	include/logicmill/bstream/stdlib.h
@@ -51,21 +42,9 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/sink.h
 	include/logicmill/bstream/file/source.h
 	include/logicmill/bstream/file/sink.h
-	include/logicmill/bstream/memory/simple/source.h
-	include/logicmill/bstream/memory/simple/sink.h
-#	include/logicmill/bstream/sequential/source.h
-#	include/logicmill/bstream/sequential/sink.h
-#	include/logicmill/bstream/random/source.h
-#	include/logicmill/bstream/random/source_base.h
-#	include/logicmill/bstream/random/sink.h
-#	include/logicmill/bstream/file/sequential/source.h
-#	include/logicmill/bstream/file/sequential/sink.h
-#	include/logicmill/bstream/file/random/source.h
-#	include/logicmill/bstream/file/random/sink.h
-#	include/logicmill/bstream/memory/simple/sequential/source.h
-#	include/logicmill/bstream/memory/simple/sequential/sink.h
-#	include/logicmill/bstream/memory/simple/random/source.h
-#	include/logicmill/bstream/memory/simple/random/sink.h
+	include/logicmill/bstream/memory/source.h
+	include/logicmill/bstream/memory/sink.h
+	include/logicmill/bstream/compound_memory/sink.h
 	include/logicmill/bstream/stdlib/chrono.h
 	include/logicmill/bstream/stdlib/deque.h
 	include/logicmill/bstream/stdlib/forward_list.h
@@ -88,50 +67,24 @@ set(LOGICMILL_SRCS
 	include/logicmill/async/stream.h
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
-	src/bstream/ibfilebuf.cpp
-	src/bstream/ibmembuf.cpp
 	src/bstream/ibstream.cpp
-	src/bstream/ibstreambuf.cpp
-	src/bstream/numstream.cpp
-	src/bstream/obfilebuf.cpp
-	src/bstream/obmembuf.cpp
 	src/bstream/obstream.cpp
-	src/bstream/obstreambuf.cpp
 	src/bstream/buffer.cpp
 	src/bstream/source.cpp
 	src/bstream/sink.cpp
 	src/bstream/file_source.cpp
 	src/bstream/file_sink.cpp
-	src/bstream/memory_simple_sink.cpp
-#	src/bstream/seq_src.cpp
-#	src/bstream/seq_snk.cpp
-#	src/bstream/rand_src.cpp
-#	src/bstream/rand_src_base.cpp
-#	src/bstream/rand_snk.cpp
-#	src/bstream/file_seq_src.cpp
-#	src/bstream/file_seq_snk.cpp
-#	src/bstream/file_rand_src.cpp
-#	src/bstream/file_rand_snk.cpp
-#	src/bstream/mem_smpl_seq_snk.cpp
-#	src/bstream/mem_smpl_rand_snk.cpp
+	src/bstream/memory_sink.cpp
+	src/bstream/compound_memory_sink.cpp
 	src/async/uv_async.cpp
 	src/async/address.cpp
 	src/async/error.cpp
 	src/fs_impl.cpp)
 
 set(LOGICMILL_TEST_SRCS
-	test/bstream/bstreambuf.cpp
 	test/bstream/abstract_source.cpp
 	test/bstream/file.cpp
-	test/bstream/memory_simple.cpp
-
-#	test/bstream/sequential.cpp
-#	test/bstream/random.cpp
-#	test/bstream/file_seq.cpp
-#	test/bstream/file_rand.cpp
-#	test/bstream/mem_smpl_seq.cpp
-#	test/bstream/mem_smpl_rand.cpp
-
+	test/bstream/memory.cpp
 	test/bstream/fbstream.cpp
 	test/bstream/test0.cpp
 	test/bstream/test1.cpp
@@ -142,7 +95,7 @@ set(LOGICMILL_TEST_SRCS
 	test/async/loop.cpp
 	test/async/address.cpp
 	test/async/event.cpp
-#	test/async/stream.cpp
+	test/async/stream.cpp
 	test/test_main.cpp)
 
 add_library(logicmill ${LOGICMILL_SRCS})
@@ -154,7 +107,6 @@ target_link_libraries(logicmill_test logicmill uv_a)
 #add_test(NAME test_async COMMAND logicmill_test --test-case=*async*)
 
 add_test(NAME logicmill_test COMMAND logicmill_test )
-
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/memory/simple/sink.h>
+#include <logicmill/bstream/memory/sink.h>
 
 using namespace logicmill;
 using namespace bstream;
 
 void
-memory::simple::sink::really_overflow( size_type n, std::error_code& err )
+memory::sink::really_overflow( size_type n, std::error_code& err )
 {
 	err.clear();
 	assert( std::less_equal< byte_type * >()( m_next, m_end ) );
@@ -44,7 +44,7 @@ memory::simple::sink::really_overflow( size_type n, std::error_code& err )
 }
 
 void
-memory::simple::sink::resize( size_type size, std::error_code& err )
+memory::sink::resize( size_type size, std::error_code& err )
 {
 	err.clear();
 	size_type cushioned_size = ( size * 3 ) / 2;
@@ -69,7 +69,7 @@ exit:
 }
 
 bool
-memory::simple::sink::is_valid_position( position_type pos ) const
+memory::sink::is_valid_position( position_type pos ) const
 {
 	bool result = false;
 	if ( m_buf.is_expandable() )
@@ -81,4 +81,51 @@ memory::simple::sink::is_valid_position( position_type pos ) const
 		result = ( pos >= 0 ) && ( pos <= ( m_end - m_base ) );
 	}
     return result;
+}
+
+memory::sink& 
+memory::sink::clear() noexcept
+{
+	reset_ptrs();
+	reset_high_water_mark();
+	m_did_jump = false;
+	m_dirty = false;
+	return *this;
+}
+
+const_buffer
+memory::sink::get_buffer()
+{
+	if ( m_dirty )
+	{
+		flush();
+	}
+    m_buf.size( get_high_watermark() );
+	return const_buffer{ m_buf };
+}
+
+mutable_buffer&
+memory::sink::get_buffer_ref()
+{
+	if ( m_dirty )
+	{
+		flush();
+	}
+    m_buf.size( get_high_watermark() );
+	return m_buf;
+}
+
+const_buffer
+memory::sink::release_buffer()
+{
+	if ( m_dirty )
+	{
+		flush();
+	}
+    m_buf.size( get_high_watermark() );
+    reset_high_water_mark();
+	m_did_jump = false;
+    m_dirty = false;
+    set_ptrs( nullptr, nullptr, nullptr );
+    return const_buffer{ std::move( m_buf ) };
 }

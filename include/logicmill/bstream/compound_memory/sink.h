@@ -22,59 +22,73 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_OBMEMBUF_H
-#define LOGICMILL_BSTREAM_OBMEMBUF_H
+#ifndef LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
+#define LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
 
-#include <logicmill/bstream/obstreambuf.h>
+#include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/buffer.h>
+#include <deque>
 
-#ifndef LOGICMILL_BSTREAM_DEFAULT_OBMEMBUF_SIZE
-#define LOGICMILL_BSTREAM_DEFAULT_OBMEMBUF_SIZE  16384UL
+#ifndef LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE
+#define LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE  16384UL
 #endif
 
 namespace logicmill 
 {
 namespace bstream 
 {
+namespace compound_memory
+{
 
-class obmembuf : public obstreambuf
+namespace detail
+{
+	class sink_test_probe;
+}
+
+class sink : public bstream::sink
 {
 public:
 
-    obmembuf( size_type size = LOGICMILL_BSTREAM_DEFAULT_OBMEMBUF_SIZE )
+	using base = bstream::sink;
+
+	using buffers = std::deque< mutable_buffer >;
+
+	friend class detail::sink_test_probe;
+
+    sink( 	size_type size = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE, 
+			buffer::memory_broker::ptr broker = buffer::default_broker::get() )
     :
-    obstreambuf{},
-    m_buf{ size }
+    base{},
+	m_segment_capacity{ size },
+	m_current{ 0 },
+    m_bufs{}
     {
+		m_bufs.emplace_back( mutable_buffer{ size, broker } );
         reset_ptrs();
     }
 
-    obmembuf( mutable_buffer&& buf )
-    :
-    obstreambuf{},
-    m_buf{ std::move( buf ) }
-    {
-        reset_ptrs();
-    }
+    sink( sink&& ) = delete;
+    sink( sink const& ) = delete;
+    sink& operator=( sink&& ) = delete;
+    sink& operator=( sink const& ) = delete;
 
-    obmembuf( obmembuf&& ) = delete;
-    obmembuf( obmembuf const& ) = delete;
-    obmembuf& operator=( obmembuf&& ) = delete;
-    obmembuf& operator=( obmembuf const& ) = delete;
-    
-	obmembuf& 
+	sink& 
 	clear() noexcept;
 
-	const_buffer
-	get_buffer();
+	buffers& 
+	get_buffers();
 
-	mutable_buffer&
-	get_buffer_ref();
-
-	const_buffer
-	release_buffer();
+	buffers
+	release_buffers();
 
 protected:
+
+	void
+	set_size();
+
+	void
+	locate( position_type pos, std::error_code& err );
+
 
     virtual void
     really_flush( std::error_code& err ) override;
@@ -85,28 +99,24 @@ protected:
 	virtual void
 	really_jump( std::error_code& err ) override;
 
-    void
-    resize( size_type size )
-    {
-        size_type cushioned_size = ( size * 3 ) / 2;
-	    // force a hard lower bound to avoid non-resizing dilemma in resizing, when cushioned == size == 1
-        m_buf.expand( std::max( 16UL, cushioned_size ) );
-    }
-
     virtual void
-    really_overflow( size_type n, std::error_code& err ) override;
+    really_overflow( size_type, std::error_code& err ) override;
 
     void
     reset_ptrs()
     {
-        auto base = m_buf.data();
-        set_ptrs( base, base, base + m_buf.capacity() );
+		m_base_offset = m_current * m_segment_capacity;
+        byte_type* base = m_bufs[ m_current ].data();
+        set_ptrs( base, base, base + m_segment_capacity );
     }
 
-    mutable_buffer			m_buf;
+	size_type		m_segment_capacity;
+	std::size_t		m_current;
+    buffers			m_bufs;
 };
 
+} // namespace compound_memory
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_OBMEMBUF_H
+#endif // LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H

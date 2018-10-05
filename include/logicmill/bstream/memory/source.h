@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_MEMORY_SIMPLE_SOURCE_H
-#define LOGICMILL_BSTREAM_MEMORY_SIMPLE_SOURCE_H
+#ifndef LOGICMILL_BSTREAM_MEMORY_SOURCE_H
+#define LOGICMILL_BSTREAM_MEMORY_SOURCE_H
 
 #include <logicmill/bstream/source.h>
 #include <logicmill/bstream/buffer.h>
@@ -34,8 +34,6 @@ namespace logicmill
 namespace bstream 
 {
 namespace memory
-{
-namespace simple
 {
 
 namespace detail
@@ -49,7 +47,7 @@ class source : public bstream::source
 {
 public:
 
-	friend class memory::simple::detail::source_test_probe< Buffer >;
+	friend class detail::source_test_probe< Buffer >;
 
 	using bstream::source::getn;
 	using base = bstream::source;
@@ -78,6 +76,14 @@ public:
 	:
 	base{},
 	m_buf{ std::move( buf ) }
+	{
+        set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
+	}
+
+	source( buffer const& buf )
+	:
+	base{},
+	m_buf{ buf }
 	{
         set_ptrs( m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size() );
 	}
@@ -252,9 +258,8 @@ source< shared_buffer >::get_slice( size_type n )
 	return result;
 }
 
-} // namespace simple
 } // namespace memory
 } // namespace bstream
 } // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_MEMORY_SIMPLE_SOURCE_H
+#endif // LOGICMILL_BSTREAM_MEMORY_SOURCE_H

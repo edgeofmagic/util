@@ -49,7 +49,7 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read" )
 
 		bstream::ifbstream is( "fbstream_test_file" );
 		auto fsize = is.size();
-		const_buffer inbuf = is.getn( as_const_buffer{}, fsize );
+		const_buffer inbuf = is.get_slice( fsize );
 		is.close();
 		CHECK( outbuf == inbuf );
 	}
@@ -66,7 +66,7 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
 	{
 		bstream::ifbstream is( "fbstream_test_file" );
 		auto fsize = is.size();
-		const_buffer inbuf = is.getn( as_const_buffer{}, fsize );
+		const_buffer inbuf = is.get_slice( fsize );
 		is.close();
 		// mutable_buffer expected{ "abcdefghijklmnop" };
 		STRING_INIT_MUTABLE_BUFFER( expected, "abcdefghijklmnop" );
@@ -87,7 +87,7 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
 		bstream::ifbstream is( "fbstream_test_file" );
 		auto fsize = is.size();
 		CHECK( fsize == 26 );
-		const_buffer inbuf = is.getn( as_const_buffer{}, fsize );
+		const_buffer inbuf = is.get_slice( fsize );
 		is.close();
 		// mutable_buffer expected{ "abcdefghijklmnopqrstuvwxyz" };
 		STRING_INIT_MUTABLE_BUFFER( expected,  "abcdefghijklmnopqrstuvwxyz" );
@@ -98,7 +98,7 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
 		auto fsize = is.size();
 		CHECK( fsize == 26 );
 		is.position( 16, seek_anchor::begin );
-		const_buffer inbuf = is.getn( as_const_buffer{}, 10 );
+		const_buffer inbuf = is.get_slice( 10 );
 		bool caught_exception = false;
 		try
 		{
@@ -144,7 +144,7 @@ TEST_CASE( "logicmill/smoke/bstream/fbstream/write_read_ate" )
 		bstream::ifbstream is( "fbstream_test_file" );
 		auto fsize = is.size();
 		CHECK( fsize == 46 );
-		const_buffer inbuf = is.getn( as_const_buffer{}, fsize );
+		const_buffer inbuf = is.get_slice( fsize );
 		is.close();
 		// mutable_buffer expected{ "0123456789klmnopqrstuvwxyz01234567890123456789" };
 		STRING_INIT_MUTABLE_BUFFER( expected, "0123456789klmnopqrstuvwxyz01234567890123456789" );

@@ -40,6 +40,22 @@ namespace async
 namespace stream
 {
 
+/*
+
+source-sink interaction
+
+If a sink accepts a message and enqueues it locally,
+the sink (in essence) takes ownership of the message.
+
+A sink may refuse to accept a message (by returning a busy error code),
+the source should expect a subsequent event from the sink, either
+resume or shutdown.
+
+shutdowns may occur at any terminus, and should be propagated up or down the stack
+
+*/
+
+
 enum class stream_event
 {
 	data,
@@ -54,6 +70,74 @@ enum class control_state
 	shutdown
 };
 
+#if 0
+
+class payload
+{
+public:
+
+	using ptr = std::shared_ptr< payload >;
+	using id_type = std::uint64_t;
+
+	payload( std::deque< mutable_buffer >&& buffers, id_type id )
+	:
+	m_buffers{ std::move( buffers ) },
+	m_id{ id },
+	m_size{ count() },
+	m_possibly_dirty{ false }
+	{}
+
+	std::deque< mutable_buffer >&
+	buffers()
+	{
+		m_possibly_dirty = true;
+		return m_buffers;
+	}
+
+	std::deque< mutable_buffer > const&
+	buffers() const
+	{
+		return m_buffers;
+	}
+
+	id_type
+	id() const
+	{
+		return m_id;
+	}
+
+	std::size_t
+	size() const
+	{
+		if ( m_possibly_dirty )
+		{
+			m_size = count();
+			m_possibly_dirty = false;
+		}
+		return m_size;
+	}
+
+private:
+
+	std::size_t
+	count() const
+	{
+		std::size_t total = 0;
+		for ( auto& buf : m_buffers )
+		{
+			total += buf.size();
+		}
+		return total;
+	}
+
+	std::deque< mutable_buffer >		m_buffers;
+	id_type								m_id;
+	mutable std::size_t					m_size;
+	mutable bool						m_possibly_dirty;
+};
+#endif 
+
+#if 0
 class receipt
 {
 public:
@@ -115,215 +199,203 @@ private:
 	cancel_listener					m_cancel_listener;
 };
 
-using data_event = event_definition< stream_event, stream_event::data, const_buffer, receipt::ptr, std::error_code const& >;
-using control_event = event_definition< stream_event, stream_event::control, control_state, std::error_code const& >;
-using receipt_event = event_definition< stream_event, stream_event::received, receipt::ptr, std::error_code const& >;
+#endif
 
-class data_sink : public data_event::handler_spec< data_sink >, public control_event::emitter, public receipt_event::emitter
+template< class Payload >
+using data_event = event< stream_event, stream_event::data, Payload >;
+
+using control_event = event< stream_event, stream_event::control, control_state >;
+
+template< class Payload >
+using receipt_event = event< stream_event, stream_event::received, Payload, std::error_code const& >;
+
+template< class Payload >
+class data_sink : public handler_spec< data_event< Payload >, data_sink< Payload > >,
+public emitter< control_event, cardinality::simplex >,
+public emitter< receipt_event< Payload >, cardinality::simplex >
 {
 public:
 	using ptr = std::shared_ptr< data_sink >;
-	using sink_base = data_event::handler_spec< data_sink >;
+	using data_handler = handler_spec< data_event< Payload >, data_sink >;
+	using control_emitter = emitter< control_event, cardinality::simplex >;
+	using receipt_emitter = emitter< receipt_event< Payload >, cardinality::simplex >;
 
-	LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( control_event );
-	LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( receipt_event );
+	using control_emitter::add_listener;
+	using receipt_emitter::add_listener;
+
+
+	// LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( control_event );
+	// LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( receipt_event< Payload > );
 
 	data_sink()
 	:
-	sink_base{ &data_sink::recv_data }
+	data_handler{ &data_sink::recv_data }
 	{}
 
 	virtual void
-	recv_data( const_buffer buf, receipt::ptr rp, std::error_code const& err ) = 0;
+	recv_data( Payload pload ) = 0;
 
 	virtual void disconnect() override
 	{
-		control_event::emitter::disconnect();
-		receipt_event::emitter::disconnect();
+		control_emitter::disconnect();
+		receipt_emitter::disconnect();
 	}
 
 };
 
+template< class Payload >
 class data_source : 
-	public control_event::handler_spec< data_source >, 
-	public receipt_event::handler_spec< data_source >, 
-	public data_event::emitter
+	public handler_spec< control_event, data_source< Payload> >, 
+	public handler_spec< receipt_event< Payload >, data_source< Payload > >, 
+	public emitter< data_event< Payload >, cardinality::simplex >
 {
 public:
-	using ptr = std::shared_ptr< data_source >;
+	using ptr = std::shared_ptr< data_source< Payload > >;
+	using data_emitter = emitter< data_event< Payload >, cardinality::simplex >;
+	using control_handler = handler_spec< control_event, data_source< Payload > >;
+	using receipt_handler = handler_spec< receipt_event< Payload >, data_source< Payload > >;
+
 
 	data_source()
 	:
-	control_event::handler_spec< data_source >{ &data_source::control },
-	receipt_event::handler_spec< data_source >{ &data_source::received }
+	control_handler{ &data_source::control },
+	receipt_handler{ &data_source::received }
 	{}
 
 	virtual void
-	control( control_state state, std::error_code const& err ) = 0;
+	control( control_state state ) = 0;
 
 	virtual void
-	received( receipt::ptr rp, std::error_code const& err ) = 0;
-
-	virtual receipt::ptr
-	create_receipt()
-	{
-		return std::make_shared< receipt >();
-	}
+	received( Payload pload, std::error_code const& err ) = 0;
 
 	virtual void disconnect() override
 	{
-		data_event::emitter::disconnect();
+		data_emitter::disconnect();
 	}
 
 };
 
-void connect( data_source::ptr src, data_sink::ptr sink, std::error_code& err )
+template< class Payload >
+void connect( typename data_source< Payload >::ptr src, typename data_sink< Payload >::ptr sink, std::error_code& err )
 {
 	err.clear();
-	src->add_handler( data_event{}, sink );
-	sink->add_handler( control_event{}, src );
-	sink->add_handler( receipt_event{}, src );
+	src->add_listener( data_event< Payload >{}, sink );
+	sink->add_listener( control_event{}, src );
+	sink->add_listener( receipt_event< Payload >{}, src );
 }
 
-
-
-/*
-class duplex : 
-	public multi_emitter< data_event, control_event >, 
-	public data_event::handler_spec< duplex >, 
-	public control_event::handler_spec< duplex >
-{
-
-
-};
-*/
-
-class duplex : public data_source, public data_sink
+template< class SourcePayload, class SinkPayload = SourcePayload >
+class duplex : public data_source< SourcePayload >, public data_sink< SinkPayload >
 {
 public:
 	using ptr = std::shared_ptr< duplex >;
 
-	LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( control_event );
-	LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( receipt_event );
-	LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( data_event );
-	LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( control_event );
-	LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( receipt_event );
-	LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( data_event );
+	// LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( control_event );
+	// LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( receipt_event< SinkPayload > );
+	// LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( data_event< SourcePayload > );
+	// LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( control_event );
+	// LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( receipt_event< SourcePayload > );
+	// LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( data_event< SinkPayload > );
 
 	virtual void disconnect() override
 	{
-		data_source::disconnect();
-		data_sink::disconnect();
+		data_source< SourcePayload >::disconnect();
+		data_sink< SinkPayload >::disconnect();
 	}
 };
 
-
-void stack( duplex::ptr a, duplex::ptr b, std::error_code& err )
+template< class Payload >
+void stack( typename duplex< Payload >::ptr a, typename duplex< Payload >::ptr b, std::error_code& err )
 {
 	err.clear();
 	connect( a, b, err );
 	connect( b, a, err );
 }
 
+template< class TopPayload, class BottomPayload = TopPayload >
 class stackable
 {
 public:
 
 	virtual ~stackable() {}
 
-	virtual duplex::ptr top() = 0;
+	virtual typename duplex< TopPayload >::ptr top() = 0;
 
-	virtual duplex::ptr top() = 0;
+	virtual typename duplex< BottomPayload >::ptr bottom() = 0;
 
 	virtual void disconnect() = 0;
 
 };
 
-class pass_thru : public stackable
+template< class Payload >
+class pass_thru : public stackable< Payload >
 {
-public:
-
 private:
 
-	class bottom_surface;
-
-	class top_surface : public duplex
+	class pass_thru_surface : public duplex< Payload >
 	{
-	public:
+	public:		
 
-		struct _receipt : public receipt
+		void
+		opposite( std::shared_ptr< pass_thru_surface > opp )
 		{
-			_receipt( const_buffer const& b )
-			:
-			receipt{}, 
-			buf{ b }
-			{}
-
-			_receipt()
-			:
-			receipt{},
-			buf{}
-			{}
-
-			virtual void really_cancel() override
-			{
-				buf = const_buffer{};
-			}
-
-			const_buffer	buf;
-		};
-
-		
+			m_opposite = opp;
+		}
 
 		virtual void
-		recv_data( const_buffer buf, async::stream::receipt::ptr rp, std::error_code const& err ) override
+		recv_data( Payload pload ) override
 		{
-			static const std::error_code success;
-
-			if ( err )
-			{
-				auto rcpt = std::make_shared< _receipt >();
-			}
-			if ( m_paused )
-			{
-				data_sink::emit( receipt_event{}, rp, make_error_code( std::errc::device_or_resource_busy ) );
-			}
-			else
-			{
-				auto rcpt = create_receipt();
-				data_source::emit( data_event{}, buf, rcpt, std::error_code{})
-				data_sink::emit( async::stream::receipt_event{}, rp, std::error_code{} );
-
-			}
-
-			my_receipt = create_receipt();
-
-			duplex::ptr bottom{ m_bottom };
-			m_bottom->emit( async::stream::data_event{}, buf, my_receipt, std::error_code{} );
+			typename duplex< Payload >::ptr{ m_opposite }->data_source::emit( async::stream::data_event< Payload >{}, pload );
 		}
 
 		virtual void
 		control( async::stream::control_state state, std::error_code const& err ) override
 		{
-			data_sink::emit( async::stream::control_event{}, state, std::error_code{} );
+			typename duplex< Payload >::ptr{ m_opposite }->data_sink::emit( async::stream::control_event{}, state );
 		}
 
 		virtual void
-		received( async::stream::receipt::ptr rp, std::error_code const& err ) override
+		received( Payload pload, std::error_code const& err ) override
 		{
-			auto found = m_outstanding_receipts.erase( rp );
-			assert( found );
+			typename duplex< Payload >::ptr{ m_opposite }->data_sink::emit( async::stream::receipt_event< Payload >{}, pload, err );
 		}		
 
 	private:
 
-		bool									m_paused;
-		std::deque< receipt::ptr >				m_outstanding_receipts;
-		std::weak_ptr< duplex > 				m_bottom;
+		std::weak_ptr< pass_thru_surface >					m_opposite;
 	};
 
-	std::shared_ptr< top_surface >				m_top;
-	std::shared_ptr< bottom_surface >			m_bottom;
+public:
+
+	pass_thru()
+	:
+	m_top{ std::make_shared< pass_thru_surface >() },
+	m_bottom{ std::make_shared< pass_thru_surface >() }
+	{
+		m_top->opposite( m_bottom );
+		m_bottom->opposite( m_top );
+	}
+
+	virtual typename duplex< Payload >::ptr top() override
+	{
+		return m_top;
+	}
+
+	virtual typename duplex< Payload >::ptr bottom() override
+	{
+		return m_bottom;
+	}
+	
+	virtual void disconnect() override
+	{
+		m_top->disconnect();
+		m_bottom->disconnect();
+	}
+
+private:
+
+	std::shared_ptr< pass_thru_surface >					m_top;
+	std::shared_ptr< pass_thru_surface >					m_bottom;
 };
 
 #if 0

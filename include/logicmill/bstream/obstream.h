@@ -34,10 +34,12 @@
 
 #include <logicmill/bstream/obstream_traits.h>
 #include <logicmill/bstream/context.h>
-#include <logicmill/bstream/numstream.h>
+#include <logicmill/bstream/buffer.h>
+#include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/typecode.h>
 #include <vector>
 #include <unordered_map>
+#include <boost/endian/conversion.hpp>
 
 
 namespace logicmill
@@ -45,7 +47,7 @@ namespace logicmill
 namespace bstream
 {
 
-class obstream : public onumstream
+class obstream //: public onumstream
 {
 protected:
 
@@ -94,12 +96,152 @@ public:
 		std::unordered_map< std::shared_ptr< void >, saved_ptr_info >		m_saved_ptrs; 
 	};
 
-	obstream( std::unique_ptr< bstream::obstreambuf > strmbuf, context_base const& cntxt = get_default_context() )
+	obstream( std::unique_ptr< bstream::sink > strmbuf, context_base const& cntxt = get_default_context() )
 	:
-	onumstream{ std::move( strmbuf ), cntxt.get_context_impl()->byte_order() },
     m_context{ cntxt.get_context_impl() },
-    m_ptr_deduper{ m_context->dedup_shared_ptrs() ? std::make_unique< ptr_deduper >() : nullptr }
+    m_ptr_deduper{ m_context->dedup_shared_ptrs() ? std::make_unique< ptr_deduper >() : nullptr },
+	m_strmbuf{ std::move( strmbuf ) },
+	m_reverse_order{ cntxt.get_context_impl()->byte_order() != bend::order::native }
 	{}
+
+	bstream::sink&
+	get_streambuf()
+	{
+		return *m_strmbuf.get();
+	}
+
+	bstream::sink const&
+	get_streambuf() const
+	{
+		return *m_strmbuf.get();
+	}
+
+	std::unique_ptr< bstream::sink >
+	release_streambuf()
+	{
+		return std::move( m_strmbuf );
+		m_strmbuf = nullptr;
+	}
+
+	obstream& 
+	put( std::uint8_t byte )
+	{
+		m_strmbuf->put( byte );
+		return *this;                
+	}
+
+	obstream& 
+	put( std::uint8_t byte, std::error_code& err )
+	{
+		m_strmbuf->put( byte, err );
+		return *this;                
+	}
+
+	obstream& 
+	putn( buffer const& buf )
+	{
+		m_strmbuf->putn( buf.data(), buf.size() );
+		return *this;
+	}
+
+	obstream& 
+	putn( buffer const& buf, std::error_code& err )
+	{
+		m_strmbuf->putn( buf.data(), buf.size(), err );
+		return *this;
+	}
+
+	obstream& 
+	putn( const void* src, size_type nbytes )
+	{
+		m_strmbuf->putn( reinterpret_cast< const byte_type * >( src ), nbytes );
+		return *this;
+	}
+
+	obstream& 
+	putn( const void* src, size_type nbytes, std::error_code& err )
+	{
+		m_strmbuf->putn( reinterpret_cast< const byte_type * >( src ), nbytes, err );
+		return *this;                
+	}
+
+	template< class U >
+	typename std::enable_if< std::is_arithmetic< U >::value && sizeof( U ) == 1, obstream& >::type 
+	put_num( U value )
+	{
+		return put( static_cast< std::uint8_t >( value ) );
+	}
+
+	template< class U >
+	typename std::enable_if< std::is_arithmetic< U >::value && sizeof( U ) == 1, obstream& >::type 
+	put_num( U value, std::error_code& err )
+	{
+		return put( static_cast< std::uint8_t >( value ), err );
+	}
+
+	template< class U >
+	typename std::enable_if< std::is_arithmetic< U >::value && ( sizeof( U ) > 1 ), obstream& >::type
+	put_num( U value )
+	{
+		constexpr std::size_t usize = sizeof( U );
+		using ctype = typename detail::canonical_type< usize >::type;
+
+		m_strmbuf->put_num( value, m_reverse_order );
+
+		return *this;
+	}
+
+	template< class U >
+	typename std::enable_if< std::is_arithmetic< U >::value && ( sizeof( U ) > 1 ), obstream& >::type
+	put_num( U value, std::error_code& err )
+	{
+		m_strmbuf->put_num( value, m_reverse_order, err );
+		return *this;
+	}
+
+ 	size_type 
+	size()
+	{
+		return static_cast< size_type >( m_strmbuf->size() );
+	}
+
+	position_type
+	position() const
+	{
+		return m_strmbuf->position();		
+	}
+
+	position_type
+	position( position_type pos )
+	{
+		return m_strmbuf->position( pos );		
+	}
+
+	position_type
+	position( position_type pos, std::error_code& err )
+	{
+		return m_strmbuf->position( pos, err );
+	}
+
+	position_type
+	position( offset_type offset, seek_anchor where )
+	{
+		return m_strmbuf->position( offset, where );
+	}
+
+	position_type
+	position( offset_type offset, seek_anchor where, std::error_code& err )
+	{
+		return m_strmbuf->position( offset, where, err );
+	}
+
+	void 
+	write( const char* src, std::size_t len )
+	{
+		putn( reinterpret_cast< const byte_type* >( src ), len );
+	}
+
+
 
 	obstream&
 	write_map_header( std::uint32_t size );
@@ -271,6 +413,19 @@ public:
 
 protected:
 
+	void
+	use( std::unique_ptr< bstream::sink > strmbuf )
+	{
+		m_strmbuf = std::move( strmbuf );
+	}
+
+	template< class T, class... Args >
+	typename std::enable_if_t< std::is_base_of< bstream::sink, T >::value >
+	use( Args&&... args )
+	{
+		m_strmbuf = std::make_unique< T >( std::forward< Args >( args )... );
+	}
+
 	template< class T >
 	obstream&
 	write_shared_ptr( std::shared_ptr< T > ptr );
@@ -317,7 +472,7 @@ protected:
 	obstream&
 	write_error_code( std::error_code const& ecode, std::error_code& err );
 		
-private:
+// private:
 		
 	static std::size_t 
 	map_header_size( std::size_t map_size );
@@ -330,6 +485,8 @@ private:
 
     std::shared_ptr< const context_impl_base >      m_context;
     std::unique_ptr< ptr_deduper >                  m_ptr_deduper;
+	std::unique_ptr< bstream::sink >				m_strmbuf;
+	const bool 										m_reverse_order;
 };
 
 template< class T >

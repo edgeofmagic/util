@@ -578,6 +578,8 @@ protected:
 		using sptr = std::shared_ptr< allocation >;
 		using uptr = std::unique_ptr< allocation >;
 
+		friend class mutable_buffer;
+
 		allocation( memory_broker::ptr broker = default_broker::get() )
 		:
 		m_broker{ broker },
@@ -997,7 +999,7 @@ public:
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	}
 
-#if 0
+#if 1
 	mutable_buffer( const void* data, size_type capacity ) // TODO: mostly here for testing, consider removing
 	:
 	m_alloc{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( data ), capacity ) },
@@ -1032,6 +1034,12 @@ public:
 		rhs.m_size = 0;
 		rhs.m_capacity = 0;
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+	}
+
+	mutable_buffer
+	fork()
+	{
+		return mutable_buffer{ m_capacity, m_alloc->m_broker };
 	}
 
 	mutable_buffer&

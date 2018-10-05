@@ -45,7 +45,7 @@ ibstream::get_msgpack_obj_buf()
 void 
 ibstream::ingest( bufwriter& os )
 {
-	auto tcode = base::get();
+	auto tcode = get();
 	os.put( tcode );
 
 	if ( ( tcode <= typecode::positive_fixint_max ) ||
@@ -285,7 +285,7 @@ std::size_t
 ibstream::read_string_header()
 {
 	std::size_t length = 0ul;
-	auto tcode = base::get();
+	auto tcode = get();
 	if (tcode >= typecode::fixstr_min && tcode <= typecode::fixstr_max )
 	{
 		std::uint8_t mask = 0x1f;
@@ -297,17 +297,17 @@ ibstream::read_string_header()
 		{
 			case typecode::str_8:
 			{
-				length = base::get_num< std::uint8_t >();
+				length = get_num< std::uint8_t >();
 			}
 			break;
 			case typecode::str_16:
 			{
-				length = base::get_num< std::uint16_t >();
+				length = get_num< std::uint16_t >();
 			}
 			break;
 			case typecode::str_32:
 			{
-				length = base::get_num< std::uint32_t >();
+				length = get_num< std::uint32_t >();
 			}
 			break;
 			default:
@@ -339,7 +339,7 @@ std::size_t
 ibstream::read_array_header()
 {
 	std::size_t length = 0;
-	auto tcode = base::get();
+	auto tcode = get();
 	if (tcode >= typecode::fixarray_min && tcode <= typecode::fixarray_max )
 	{
 		std::uint8_t mask = 0x0f;
@@ -351,12 +351,12 @@ ibstream::read_array_header()
 		{
 			case typecode::array_16:
 			{
-				length = base::get_num< std::uint16_t >();
+				length = get_num< std::uint16_t >();
 			}
 			break;
 			case typecode::array_32:
 			{
-				length = base::get_num< std::uint32_t >();
+				length = get_num< std::uint32_t >();
 			}
 			break;
 			default:
@@ -388,7 +388,7 @@ std::size_t
 ibstream::read_map_header()
 {
 	std::size_t length = 0;
-	auto tcode = base::get();
+	auto tcode = get();
 	if (tcode >= typecode::fixmap_min && tcode <= typecode::fixarray_max )
 	{
 		std::uint8_t mask = 0x0f;
@@ -400,12 +400,12 @@ ibstream::read_map_header()
 		{
 		case typecode::map_16:
 			{
-				length = base::get_num< std::uint16_t >();
+				length = get_num< std::uint16_t >();
 			}
 			break;
 			case typecode::map_32:
 			{
-				length = base::get_num< std::uint32_t >();
+				length = get_num< std::uint32_t >();
 			}
 			break;
 			default:
@@ -506,22 +506,22 @@ std::size_t
 ibstream::read_blob_header()
 {
 	std::size_t length = 0;
-	auto tcode = base::get();
+	auto tcode = get();
 	switch (tcode )
 	{
 		case typecode::bin_8:
 		{
-			length = base::get_num< std::uint8_t >();
+			length = get_num< std::uint8_t >();
 		}
 		break;
 		case typecode::bin_16:
 		{
-			length = base::get_num< std::uint16_t >();
+			length = get_num< std::uint16_t >();
 		}
 		break;
 		case typecode::bin_32:
 		{
-			length = base::get_num< std::uint32_t >();
+			length = get_num< std::uint32_t >();
 		}
 		break;
 		default:
@@ -549,7 +549,7 @@ ibstream::read_blob_header( std::error_code& ec )
 }
 
 logicmill::bstream::shared_buffer
-ibstream::read_blob( as_shared_buffer tag, std::error_code& ec )
+ibstream::read_blob_shared( std::error_code& ec )
 {
 	auto nbytes = read_blob_header( ec );
 	if ( ec )
@@ -558,12 +558,12 @@ ibstream::read_blob( as_shared_buffer tag, std::error_code& ec )
 	}
 	else
 	{
-		return read_blob_body( tag, nbytes, ec );
+		return read_blob_body_shared( nbytes, ec );
 	}
 }
 
 logicmill::bstream::const_buffer
-ibstream::read_blob( as_const_buffer tag, std::error_code& ec )
+ibstream::read_blob( std::error_code& ec )
 {
 	auto nbytes = read_blob_header( ec );
 	if ( ec )
@@ -572,7 +572,7 @@ ibstream::read_blob( as_const_buffer tag, std::error_code& ec )
 	}
 	else
 	{
-		return read_blob_body( tag, nbytes, ec );
+		return read_blob_body( nbytes, ec );
 	}
 }
 
@@ -580,55 +580,55 @@ std::size_t
 ibstream::read_ext_header( std::uint8_t& ext_type )
 {
 	std::size_t length = 0;
-	auto tcode = base::get();
+	auto tcode = get();
 	switch (tcode )
 	{
 		case typecode::fixext_1:
 		{
 			length = 1;
-			ext_type = base::get_num< std::uint8_t >();
+			ext_type = get_num< std::uint8_t >();
 		}
 		break;
 		case typecode::fixext_2:
 		{
 			length = 2;
-			ext_type = base::get_num< std::uint8_t >();
+			ext_type = get_num< std::uint8_t >();
 		}
 		break;
 		case typecode::fixext_4:
 		{
 			length = 4;
-			ext_type = base::get_num< std::uint8_t >();
+			ext_type = get_num< std::uint8_t >();
 		}
 		break;
 		case typecode::fixext_8:
 		{
 			length = 8;
-			ext_type = base::get_num< std::uint8_t >();
+			ext_type = get_num< std::uint8_t >();
 		}
 		break;
 		case typecode::fixext_16:
 		{
 			length = 16;
-			ext_type = base::get_num< std::uint8_t >();
+			ext_type = get_num< std::uint8_t >();
 		}
 		break;
 		case typecode::ext_8:
 		{
-			length = base::get_num< std::uint8_t >();
-			ext_type = base::get_num< std::uint8_t >();
+			length = get_num< std::uint8_t >();
+			ext_type = get_num< std::uint8_t >();
 		}
 		break;
 		case typecode::ext_16:
 		{
-			length = base::get_num< std::uint16_t >();
-			ext_type = base::get_num< std::uint8_t >();
+			length = get_num< std::uint16_t >();
+			ext_type = get_num< std::uint8_t >();
 		}
 		break;
 		case typecode::ext_32:
 		{
-			length = base::get_num< std::uint32_t >();
-			ext_type = base::get_num< std::uint8_t >();
+			length = get_num< std::uint32_t >();
+			ext_type = get_num< std::uint8_t >();
 		}
 		break;
 		default:

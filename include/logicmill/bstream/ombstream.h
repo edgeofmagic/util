@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_OMBSTREAM_H
 
 #include <logicmill/bstream/obstream.h>
-#include <logicmill/bstream/obmembuf.h>
+#include <logicmill/bstream/memory/sink.h>
 #include <logicmill/bstream/utils/memory.h>
 
 namespace logicmill
@@ -41,18 +41,18 @@ public:
     ombstream( ombstream const& ) = delete;
     ombstream( ombstream&& ) = delete;
 
-    ombstream( std::unique_ptr< obmembuf > strmbuf, context_base const& cntxt = get_default_context() )
+    ombstream( std::unique_ptr< memory::sink > strmbuf, context_base const& cntxt = get_default_context() )
     : obstream{ std::move( strmbuf ), cntxt }
     {}
 
     ombstream( mutable_buffer&& buf, context_base const& cntxt = get_default_context() )
     :
-    obstream{ std::make_unique< obmembuf >( std::move( buf ) ), cntxt }
+    obstream{ std::make_unique< memory::sink >( std::move( buf ) ), cntxt }
     {}
  
     ombstream( size_type size, context_base const& cntxt = get_default_context() )
     :
-    ombstream( std::make_unique< obmembuf >( size ), cntxt )
+    ombstream( std::make_unique< memory::sink >( size ), cntxt )
     {}
 
     const_buffer
@@ -79,10 +79,10 @@ public:
         get_membuf().clear();
     }
 
-    obmembuf&
+    memory::sink&
     get_membuf()
     {
-        return reinterpret_cast< obmembuf& >( * m_strmbuf );
+        return reinterpret_cast< memory::sink& >( * m_strmbuf );
     }
 };
 

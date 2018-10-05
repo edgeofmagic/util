@@ -32,17 +32,13 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#if 0
+#if 0 
 #define LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( _event_name_ )			\
-	using _event_name_::emitter::add_handler;							\
-	using _event_name_::emitter::remove_handler;						\
 	using _event_name_::emitter::add_listener;							\
 	using _event_name_::emitter::remove_listener;						\
 	using _event_name_::emitter::emit;									\
-	using _event_name_::emitter::handler_count;							\
 	using _event_name_::emitter::listener_count;						\
-	using _event_name_::emitter::receiver_count;						\
-	using _event_name_::emitter::clear;									\
+	using _event_name_::remove_all;										\
 /**/
 
 #define LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( _event_name_ )			\
@@ -390,7 +386,7 @@ struct event_definition
 		template< class T >
 		id_type add_listener( event_definition, std::error_code& err, T&& l )
 		{
-			err.clear();
+			clear_error( err );
 			id_type result = 0;
 			if ( m_is_simplex )
 			{

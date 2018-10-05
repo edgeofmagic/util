@@ -27,10 +27,14 @@
 #include <iostream>
 
 using namespace logicmill;
+using namespace async;
+using namespace stream;
 
 namespace stream_test
 {
-	class pump : public async::stream::data_source
+	using payload_type = std::shared_ptr< bstream::mutable_buffer >;
+
+	class pump : public data_source< payload_type >
 	{
 	public:
 
@@ -38,15 +42,21 @@ namespace stream_test
 		bool resumed = false;
 		bool got_receipt = false;
 
-		virtual void
-		control( async::stream::control_state state, std::error_code const& err ) override
+		void push( payload_type pload )
 		{
-			if ( state == async::stream::control_state::pause )
+			m_last_pushed = pload;
+			emit( data_event< payload_type >{}, pload );
+		}
+
+		virtual void
+		control( control_state state ) override
+		{
+			if ( state == control_state::pause )
 			{
 				paused = true;
 				resumed = false;
 			}
-			else if ( state == async::stream::control_state::resume )
+			else if ( state == control_state::resume )
 			{
 				resumed = true;
 				paused = false;
@@ -54,186 +64,213 @@ namespace stream_test
 		}
 
 		virtual void
-		received( async::stream::receipt::ptr rp, std::error_code const& err ) override
+		received( payload_type bp, std::error_code const& err ) override
 		{
-			got_receipt = true;
+			if ( bp == m_last_pushed )
+			{
+				got_receipt = true;
+			}
 		}
+
+		payload_type	m_last_pushed;
 
 	};
 
-	class drain : public async::stream::data_sink
+	class drain : public data_sink< payload_type >
 	{
 	public:
-		const_buffer buff;
-		
+		using control_emitter::emit;
+		using receipt_emitter::emit;
+
 		virtual void
-		recv_data( const_buffer buf, async::stream::receipt::ptr rp, std::error_code const& err ) override
+		recv_data( payload_type pload ) override
 		{
 			std::error_code ecode;
-			buff = buf;
-			emit( async::stream::receipt_event{}, rp, ecode ); 
+			m_last_drained = pload;
+			emit( receipt_event< payload_type >{}, pload, ecode ); 
 		}
+
+		payload_type	m_last_drained;
 
 	};
 
-	class echo : public async::stream::duplex
+	class echo : public duplex< payload_type >
 	{
 	public:
 		using ptr = std::shared_ptr< echo >;
 
-		async::stream::receipt::ptr my_receipt;
+		using data_sink< payload_type>::receipt_emitter::emit;
+		using data_sink< payload_type>::control_emitter::emit;
+		using data_sink< payload_type>::receipt_emitter::add_listener;
+		using data_sink< payload_type>::control_emitter::add_listener;
+		using data_sink< payload_type>::data_handler::handle;
+		using data_source< payload_type >::control_handler::handle;
+		using data_source< payload_type >::receipt_handler::handle;
+		using data_source< payload_type >::data_emitter::add_listener;
 
 		virtual void
-		recv_data( const_buffer buf, async::stream::receipt::ptr rp, std::error_code const& err ) override
+		recv_data( payload_type pload_in ) override
 		{
-			data_sink::emit( async::stream::receipt_event{}, rp, std::error_code{} );
-
-			my_receipt = create_receipt();
-
-			data_source::emit( async::stream::data_event{}, buf, my_receipt, std::error_code{} );
+			m_last_echoed = pload_in;
+			data_sink< payload_type >::receipt_emitter::emit( receipt_event< payload_type >{}, pload_in, std::error_code{} );
+			data_source< payload_type >::emit( data_event< payload_type >{}, pload_in );
 		}
 
 		virtual void
-		control( async::stream::control_state state, std::error_code const& err ) override
+		control( control_state state ) override
 		{
-			data_sink::emit( async::stream::control_event{}, state, std::error_code{} );
+			/* data_sink< payload_type >:: */ emit( control_event{}, state );
 		}
 
 		virtual void
-		received( async::stream::receipt::ptr rp, std::error_code const& err ) override
+		received( payload_type pload, std::error_code const& err ) override
 		{
-			CHECK( rp == my_receipt );
+			CHECK( pload ==  m_last_echoed );
 		}
+
+		payload_type m_last_echoed;
 
 	};
 
-	class echo_driver : public async::stream::duplex
+	class echo_driver : public duplex< payload_type >
 	{
 	public:
 		using ptr = std::shared_ptr< echo_driver >;
 
+		using data_sink< payload_type>::receipt_emitter::emit;
+		using data_sink< payload_type>::control_emitter::emit;
+
 		bool buffer_echoed = false;
 		bool got_receipt = false;
 
-		async::stream::receipt::ptr my_receipt = data_source::create_receipt();
+		payload_type m_payload = std::make_shared< bstream::mutable_buffer >( "some buffer content" );
 
-		const_buffer b{ mutable_buffer{ "some buffer content" } };
+		// std::string content{ "some buffer content" };
+		// m_payload->putn( 0, content.data(), content.size() );
 
 		void send()
 		{
 			std::error_code err;
-			data_source::emit( async::stream::data_event{}, b, my_receipt, err );
+			data_source< payload_type >::emit( data_event< payload_type >{}, m_payload );
 		}
 
 		virtual void
-		recv_data( const_buffer buf, async::stream::receipt::ptr rp, std::error_code const& err ) override
+		recv_data( payload_type pload ) override
 		{
-			data_sink::emit( async::stream::receipt_event{}, rp, std::error_code{} );
+			emit( receipt_event< payload_type >{}, pload, std::error_code{} );
 
-			CHECK( buf == b );
+			CHECK( m_payload == pload );
 
 			buffer_echoed = true;
 		}
 
 		virtual void
-		control( async::stream::control_state state, std::error_code const& err ) override
+		control( control_state state ) override
 		{
-//			data_sink::emit( async::stream::control_event{}, state, std::error_code{} );
+//			data_sink::emit( control_event{}, state, std::error_code{} );
 		}
 
 		virtual void
-		received( async::stream::receipt::ptr rp, std::error_code const& err ) override
+		received( payload_type pload, std::error_code const& err ) override
 		{
-			CHECK( rp == my_receipt );
+			CHECK( pload == m_payload );
 			got_receipt = true;
 		}
 
 	};
 }
 
-using namespace stream_test;
 
 TEST_CASE( "logicmill/async/stream/smoke/data_source/data_sink" )
 {
+	using namespace stream_test;
+
 	std::error_code err;
 
-	const_buffer b{ mutable_buffer{ "some buffer content" } };
+	payload_type pload = std::make_shared< bstream::mutable_buffer >( "some buffer content" );
 
 	auto pmp = std::make_shared< pump >();
-	auto rp = pmp->create_receipt();
-	auto dp = std::make_shared< drain >();
+	auto drn = std::make_shared< drain >();
 
-	async::stream::connect( pmp, dp, err );
+	connect< payload_type >( pmp, drn, err );
 
-	pmp->emit( async::stream::data_event{}, b, rp, err );
+	pmp->push( pload );
+//	pmp->emit( data_event< payload_type >{}, pload );
 
-	CHECK( dp->buff == b );
+	CHECK( drn->m_last_drained == pload );
 	CHECK( pmp->got_receipt );
 
-	dp->emit( async::stream::control_event{}, async::stream::control_state::pause, err );
+	drn->emit( control_event{}, control_state::pause  );
 
 	CHECK( pmp->paused );
 	CHECK( ! pmp->resumed );
 
-	dp->emit( async::stream::control_event{}, async::stream::control_state::resume, err );
+	drn->emit( control_event{}, control_state::resume  );
 
 	CHECK( ! pmp->paused );
 	CHECK( pmp->resumed );
 
 	pmp->disconnect();
-	dp->disconnect();
+	drn->disconnect();
 
 }
+#if 1
 
 TEST_CASE( "logicmill/async/stream/smoke/echo" )
 {
+	using namespace stream_test;
+
 	std::error_code ecode;
 
-	const_buffer b{ mutable_buffer{ "some buffer content" } };
+	auto pload = std::make_shared< bstream::mutable_buffer >( "some buffer content" );
 
 	auto ep = std::make_shared< echo >();
 	auto pmp = std::make_shared< pump >();
 
-	auto echo_receipt = pmp->create_receipt();
 	bool got_echo_receipt = false;
 	bool got_buffer_echo = false;
 
-	auto rl_id = ep->add_listener( async::stream::receipt_event{},
-	[ & ] ( async::stream::receipt::ptr rp, std::error_code const& err )
-	{
-		CHECK( rp == echo_receipt );
-		got_echo_receipt = true;
-	} );
+	// auto rl_id = ep->add_listener( receipt_event< payload_type >{},
+	// [ & ] ( payload_type pp, std::error_code const& err )
+	// {
+	// 	CHECK( pp == pload );
+	// 	got_echo_receipt = true;
+	// } );
 
-	auto dl_id = ep->add_listener( async::stream::data_event{}, 
-	[ & ] ( const_buffer buf, async::stream::receipt::ptr rp, std::error_code const& err )
+	auto dl_id = ep->add_listener( data_event< payload_type >{}, 
+	[ & ] ( payload_type pp )
 	{
-		CHECK( buf == b );
+		CHECK( pp == pload );
 		got_buffer_echo = true;
-		ep->handle( async::stream::receipt_event{}, rp, std::error_code{} );
+		ep->handle( receipt_event< payload_type >{}, pp, std::error_code{} );
 
 	} );
 
-	async::stream::connect( pmp, ep, ecode );
-	
-	pmp->emit( async::stream::data_event{}, b, echo_receipt, std::error_code{} );
+	connect< payload_type >( pmp, ep, ecode );
 
-	CHECK( got_echo_receipt );
+	pmp->push( pload );	
+//	pmp->emit( data_event< payload_type >{}, pload );
+
+	CHECK( pmp->got_receipt );
 	CHECK( got_buffer_echo );
 
 	pmp->disconnect();
 	ep->disconnect();
 }
+#endif
 
+#if 0
 
 TEST_CASE( "logicmill/async/stream/smoke/echo_driver" )
 {
+	using namespace stream_test;
+
 	std::error_code ecode;
 
 	auto edp = std::make_shared< echo_driver >();
 	auto ep = std::make_shared< echo >();
 
-	async::stream::stack( edp, ep, ecode );
+	stack( edp, ep, ecode );
 	
 	CHECK( ! edp->buffer_echoed );
 	CHECK( ! edp->got_receipt );
@@ -247,3 +284,196 @@ TEST_CASE( "logicmill/async/stream/smoke/echo_driver" )
 	ep->disconnect();
 
 }
+
+#endif
+
+#if 0
+
+
+namespace stream_test_1
+{
+	using payload_type = std::unique_ptr< std::string >&& ;
+
+	class pump : public data_source< payload_type >
+	{
+	public:
+
+		bool paused = false;
+		bool resumed = false;
+		bool got_receipt = false;
+
+		void push( payload_type pload )
+		{
+			m_value_last_pushed = *pload;
+			emit( data_event< payload_type >{}, std::move( pload ) );
+		}
+
+		virtual void
+		control( control_state state ) override
+		{
+			if ( state == control_state::pause )
+			{
+				paused = true;
+				resumed = false;
+			}
+			else if ( state == control_state::resume )
+			{
+				resumed = true;
+				paused = false;
+			}
+		}
+
+		virtual void
+		received( payload_type pload, std::error_code const& err ) override
+		{
+			CHECK( *pload == m_value_last_pushed );
+			got_receipt = true;
+		}
+
+		std::string		m_value_last_pushed;
+	};
+
+	class drain : public data_sink< payload_type >
+	{
+	public:
+		using control_emitter::emit;
+		using receipt_emitter::emit;
+
+		virtual void
+		recv_data( payload_type pload ) override
+		{
+			std::error_code ecode;
+			m_last_value_drained = *pload;
+			emit( receipt_event< payload_type >{}, std::move( pload ), ecode ); 
+		}
+
+		std::string		m_last_value_drained;
+
+	};
+
+#if 0
+	class echo : public duplex< payload_type >
+	{
+	public:
+		using ptr = std::shared_ptr< echo >;
+
+		using data_sink< payload_type>::receipt_emitter::emit;
+		using data_sink< payload_type>::control_emitter::emit;
+		using data_sink< payload_type>::receipt_emitter::add_listener;
+		using data_sink< payload_type>::control_emitter::add_listener;
+		using data_sink< payload_type>::data_handler::handle;
+		using data_source< payload_type >::control_handler::handle;
+		using data_source< payload_type >::receipt_handler::handle;
+		using data_source< payload_type >::data_emitter::add_listener;
+
+		virtual void
+		recv_data( payload_type pload_in ) override
+		{
+			m_last_echoed = pload_in;
+			data_sink< payload_type >::receipt_emitter::emit( receipt_event< payload_type >{}, pload_in, std::error_code{} );
+			data_source< payload_type >::emit( data_event< payload_type >{}, pload_in );
+		}
+
+		virtual void
+		control( control_state state ) override
+		{
+			/* data_sink< payload_type >:: */ emit( control_event{}, state );
+		}
+
+		virtual void
+		received( payload_type pload, std::error_code const& err ) override
+		{
+			CHECK( pload ==  m_last_echoed );
+		}
+
+		payload_type m_last_echoed;
+
+	};
+
+	class echo_driver : public duplex< payload_type >
+	{
+	public:
+		using ptr = std::shared_ptr< echo_driver >;
+
+		using data_sink< payload_type>::receipt_emitter::emit;
+		using data_sink< payload_type>::control_emitter::emit;
+
+		bool buffer_echoed = false;
+		bool got_receipt = false;
+
+		payload_type m_payload = std::make_shared< bstream::mutable_buffer >( "some buffer content" );
+
+		// std::string content{ "some buffer content" };
+		// m_payload->putn( 0, content.data(), content.size() );
+
+		void send()
+		{
+			std::error_code err;
+			data_source< payload_type >::emit( data_event< payload_type >{}, m_payload );
+		}
+
+		virtual void
+		recv_data( payload_type pload ) override
+		{
+			emit( receipt_event< payload_type >{}, pload, std::error_code{} );
+
+			CHECK( m_payload == pload );
+
+			buffer_echoed = true;
+		}
+
+		virtual void
+		control( control_state state ) override
+		{
+//			data_sink::emit( control_event{}, state, std::error_code{} );
+		}
+
+		virtual void
+		received( payload_type pload, std::error_code const& err ) override
+		{
+			CHECK( pload == m_payload );
+			got_receipt = true;
+		}
+
+	};
+
+#endif 
+
+}
+
+
+TEST_CASE( "logicmill/async/stream/smoke/data_source/data_sink_rvalue" )
+{
+	using namespace stream_test_1;
+
+	std::error_code err;
+
+	payload_type pload = std::make_unique< std::string >( "some buffer content" );
+
+	auto pmp = std::make_shared< pump >();
+	auto drn = std::make_shared< drain >();
+
+	connect< payload_type >( pmp, drn, err );
+
+	pmp->push( std::move( pload ) );
+//	pmp->emit( data_event< payload_type >{}, pload );
+
+	CHECK( drn->m_last_value_drained == "some buffer content" );
+	CHECK( pmp->got_receipt );
+
+	drn->emit( control_event{}, control_state::pause  );
+
+	CHECK( pmp->paused );
+	CHECK( ! pmp->resumed );
+
+	drn->emit( control_event{}, control_state::resume  );
+
+	CHECK( ! pmp->paused );
+	CHECK( pmp->resumed );
+
+	pmp->disconnect();
+	drn->disconnect();
+
+}
+
+#endif

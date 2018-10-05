@@ -88,6 +88,39 @@ struct as_shared_buffer {};
 struct as_const_buffer {};
 struct as_mutable_buffer {};
 
+namespace detail
+{
+
+template< int N >
+struct canonical_type;
+
+template<>
+struct canonical_type< 1 >
+{
+	using type = std::uint8_t;
+};
+
+template<>
+struct canonical_type< 2 >
+{
+	using type = std::uint16_t;
+};
+
+template<>
+struct canonical_type< 4 >
+{
+	using type = std::uint32_t;
+};
+
+template<>
+struct canonical_type< 8 >
+{
+	using type = std::uint64_t;
+};
+
+} // namespace detail
+
+
 } // namespace bstream
 } // namespace logicmill
 

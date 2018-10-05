@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_IFBSTREAM_H
 
 #include <logicmill/bstream/ibstream.h>
-#include <logicmill/bstream/ibfilebuf.h>
+#include <logicmill/bstream/file/source.h>
 #include <logicmill/bstream/utils/memory.h>
 #include <fstream>
 #include <system_error>
@@ -42,29 +42,29 @@ public:
 
     ifbstream( context_base const& cntxt = get_default_context() )
     :
-    ibstream{ std::make_unique< ibfilebuf >(), cntxt }
+    ibstream{ std::make_unique< file::source >(), cntxt }
     {}
 
     ifbstream( ifbstream const& ) = delete;
     ifbstream( ifbstream&& ) = delete;
 
-    ifbstream( std::unique_ptr< ibfilebuf > fbuf, context_base const& cntxt = get_default_context() )
+    ifbstream( std::unique_ptr< file::source > fbuf, context_base const& cntxt = get_default_context() )
     : ibstream{ std::move( fbuf ), cntxt }
     {}
 
-    ifbstream( ibfilebuf&& fbuf, context_base const& cntxt = get_default_context() )
+    ifbstream( file::source&& fbuf, context_base const& cntxt = get_default_context() )
     :
-    ibstream{ std::make_unique< ibfilebuf >( std::move( fbuf ) ), cntxt }
+    ibstream{ std::make_unique< file::source >( std::move( fbuf ) ), cntxt }
     {}
 
     ifbstream( std::string const& filename, context_base const& cntxt = get_default_context() )
     :
-    ibstream{ std::make_unique< ibfilebuf >( filename ), cntxt }
+    ibstream{ std::make_unique< file::source >( filename ), cntxt }
     {}
 
     ifbstream( std::string const& filename, std::error_code& err, context_base const& cntxt = get_default_context() )
     :
-    ibstream{ std::make_unique< ibfilebuf >( filename, err ), cntxt }
+    ibstream{ std::make_unique< file::source >( filename, err ), cntxt }
     {}
 
     void
@@ -97,22 +97,22 @@ public:
         get_filebuf().close( err );
     }
 
-    ibfilebuf&
+    file::source&
     get_filebuf()
     {
-        return reinterpret_cast< ibfilebuf& >( get_streambuf() );
+        return reinterpret_cast< file::source& >( get_streambuf() );
     }
 
-    ibfilebuf const&
+    file::source const&
     get_filebuf() const
     {
-        return reinterpret_cast< ibfilebuf const& >( get_streambuf() );
+        return reinterpret_cast< file::source const& >( get_streambuf() );
     }
 
-    std::unique_ptr< ibfilebuf >
+    std::unique_ptr< file::source >
     release_filebuf()
     {
-        return bstream::utils::static_unique_ptr_cast< ibfilebuf >( release_streambuf() );
+        return bstream::utils::static_unique_ptr_cast< file::source >( release_streambuf() );
     }
 
 };

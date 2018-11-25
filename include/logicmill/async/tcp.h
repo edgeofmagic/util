@@ -42,28 +42,13 @@ class loop;
 namespace tcp
 {
 
-class write_request
-{
-public:
-	using ptr = std::shared_ptr< write_request >;
-
-	virtual ~write_request() {}
-
-	virtual std::deque< bstream::mutable_buffer > const& 
-	buffers() const = 0;
-
-	virtual std::deque< bstream::mutable_buffer >
-	release() = 0;
-
-};
-
 class channel
 {
 public:
 
 	using ptr = std::shared_ptr< channel >;
 	using read_handler = std::function< void ( channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code const& err ) >;
-	using write_handler = std::function< void ( channel::ptr const& chan, write_request::ptr const& req, std::error_code const& err ) >;
+	using write_handler = std::function< void ( channel::ptr const& chan, std::deque< bstream::mutable_buffer >&& bufs, std::error_code const& err ) >;
 	using connect_handler = std::function< void ( channel::ptr const& chan, std::error_code const& err ) >;
 
 	virtual ~channel() {}
@@ -77,16 +62,16 @@ public:
 	virtual void
 	stop_read() = 0;
 
-	virtual write_request::ptr
+	virtual void
 	write( bstream::mutable_buffer&& buf, write_handler&& handler ) = 0;
 
-	virtual write_request::ptr
+	virtual void
 	write( bstream::mutable_buffer&& buf, write_handler const& handler ) = 0;
 
-	virtual write_request::ptr
+	virtual void
 	write( std::deque< bstream::mutable_buffer >&& bufs, write_handler&& handler ) = 0;
 
-	virtual write_request::ptr
+	virtual void
 	write( std::deque< bstream::mutable_buffer >&& bufs, write_handler const& handler ) = 0;
 
 	virtual void
@@ -106,114 +91,7 @@ public:
 	
 };
 
-}
-
-#if 0
-namespace tcp
-{
-
-	using payload_type = std::unique_ptr< std::deque< mutable_buffer > >;
-
-	class socket : public duplex< payload_type, socket >
-	{
-	public:
-		using data_event_type = data_event< payload_type >;
-
-		template< class P, class R >
-		void
-		on( data_event_type, P&& pload, id_type id, R&& rcpt )
-		{
-
-		}
-
-		void
-		on( cancel_event, id_type id )
-		{
-
-		}
-
-	private:
-		uv_stream_t*	m_socket;
-	};
-
-	class server
-	{
-		void bind( std::string const& addr_str, std::uint16_t port, std::error_code& err )
-		{
-
-		}
-	};
-
-	class socket : public duplex< payload_type, server >
-	{
-	public:
-
-		void bind( ip::endpoint const& ep, std::error_code& err )
-		{
-
-
-		}
-	private:
-
-		uv_tcp_t	m_socket;
-
-	};
-
-	class socket
-	{
-	public:
-		using ptr = std::shared_ptr< socket >;
-
-		using connect_handler = std::function< void ( socket::ptr connection, std::error_code& err ) >;
-		using read_handler = std::function< void ( )
-
-		using bind_handler
-		virtual ~socket() {}
-
-		virtual void
-		bind( ip::endpoint const& ep, std::error_code& err, connect_handler handler ) = 0;
-
-		virtual void
-		close( std::error_code& err ) = 0;
-
-		virtual void
-
-		
-	}
-}
-
-class timer
-{
-public:
-	using ptr = std::shared_ptr< timer >;
-	using handler = std::function< void ( timer::ptr ) >;
-
-	virtual ~timer() {}
-
-	virtual void
-	start( std::chrono::milliseconds timeout ) = 0;
-
-	virtual void
-	start( std::chrono::milliseconds timeout, std::error_code& err ) = 0;
-
-	virtual void
-	stop() = 0;
-
-	virtual void
-	stop( std::error_code& err ) = 0;
-
-	virtual void
-	close() = 0;
-
-	virtual std::shared_ptr< loop >
-	owner() = 0;
-
-};
-
 } // namespace tcp
-
-#endif
-
 } // namespace async
 } // namespace logicmill
 

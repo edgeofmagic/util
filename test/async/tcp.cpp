@@ -209,10 +209,10 @@ TEST_CASE( "logicmill::async::tcp::listener [ smoke ] { connect read write }" )
 
 			bstream::mutable_buffer reply{ "reply to first payload" };
 			cp->write( bstream::mutable_buffer{ "reply to first payload" }, 
-			[&] ( channel::ptr const& chan, write_request::ptr const& req, std::error_code const& err )
+			[&] ( channel::ptr const& chan, std::deque< bstream::mutable_buffer >&& bufs, std::error_code const& err )
 			{
 				CHECK( ! err );
-				std::cout << "wrote reply, written buffer contains '" << req->buffers()[0].as_string() << "'" << std::endl;
+				std::cout << "wrote reply, written buffer contains '" << bufs[0].as_string() << "'" << std::endl;
 			} );
 
 		} );
@@ -254,10 +254,10 @@ TEST_CASE( "logicmill::async::tcp::listener [ smoke ] { connect read write }" )
 				mbuf.putn( 0, contents.data(), contents.size() );
 				mbuf.size( contents.size() );
 				CHECK(mbuf.size() == contents.size() );
-				chan->write( std::move( mbuf ), [&] ( channel::ptr const& chan, write_request::ptr const& req, std::error_code const& err )
+				chan->write( std::move( mbuf ), [&] ( channel::ptr const& chan, std::deque< bstream::mutable_buffer >&& bufs, std::error_code const& err )
 				{
 					CHECK( ! err );
-					std::cout << "write handler called, written buffer contains '" << req->buffers()[0].as_string() << "'" << std::endl;
+					std::cout << "write handler called, written buffer contains '" << bufs[0].as_string() << "'" << std::endl;
 				} );
 			}
 		} );

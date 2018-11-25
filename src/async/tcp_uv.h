@@ -29,10 +29,8 @@
 #include <logicmill/async/tcp.h>
 #include "uv_error.h"
 
-class tcp_write_request_uv;
 class tcp_channel_uv;
 class tcp_listener_uv;
-
 
 class connect_request_uv
 {
@@ -58,23 +56,19 @@ public:
 	on_connect( uv_connect_t* req, int status );
 };
 
-class tcp_write_request_uv : public logicmill::async::tcp::write_request, public std::enable_shared_from_this< tcp_write_request_uv >
+class tcp_write_req_uv
 {
 public:
-	using ptr = std::shared_ptr< tcp_write_request_uv >;
-
-	struct request_data
-	{
-		ptr		m_impl_ptr;
-	};
 
 	template< class Handler, class = std::enable_if_t< std::is_convertible< Handler, logicmill::async::tcp::channel::write_handler >::value > >
-	tcp_write_request_uv( std::deque< logicmill::bstream::mutable_buffer >&& bufs, Handler&& handler )
+	tcp_write_req_uv( std::deque< logicmill::bstream::mutable_buffer >&& bufs, Handler&& handler )
 	:
 	m_write_handler{ std::forward< Handler >( handler ) },
 	m_buffers{ std::move( bufs ) },
 	m_uv_buffers{ new uv_buf_t[ m_buffers.size() ] }
 	{
+		assert( reinterpret_cast< uv_write_t* >( this ) == &m_uv_write_request );
+
 		std::size_t i = 0;
 		for ( auto it = m_buffers.begin(); it != m_buffers.end(); ++it )
 		{
@@ -84,33 +78,31 @@ public:
 		}
 	}
 
-	tcp_write_request_uv( tcp_write_request_uv&& rhs );
-
-	static void
-	on_write( uv_write_t* req, int status );
+	~tcp_write_req_uv()
+	{
+		if ( m_uv_buffers )
+		{
+			delete [] m_uv_buffers;
+		}
+	}
 
 	static std::shared_ptr< tcp_channel_uv >
 	get_channel_shared_ptr( uv_write_t* req );
 
+	static void
+	on_write( uv_write_t* req, int status );
+
 	void
-	start( uv_stream_t* chan, ptr const& self );
+	start( uv_stream_t* chan )
+	{
+		uv_write( &m_uv_write_request, chan, m_uv_buffers, m_buffers.size(), on_write );
+	}
 
-	virtual ~tcp_write_request_uv();
-
-	virtual std::deque< logicmill::bstream::mutable_buffer >
-	release() override;
-
-	virtual std::deque< logicmill::bstream::mutable_buffer > const&
-	buffers() const override;
-
-	logicmill::async::tcp::channel::write_handler			m_write_handler;
 	uv_write_t												m_uv_write_request;
-	request_data											m_data;
 	std::deque< logicmill::bstream::mutable_buffer >		m_buffers;
 	uv_buf_t*												m_uv_buffers;
+	logicmill::async::tcp::channel::write_handler			m_write_handler;
 };
-
-#if 1
 
 class tcp_base_uv
 {
@@ -214,7 +206,7 @@ public:
 	uv_tcp_t		m_tcp_handle;
 };
 
-class tcp_channel_uv : public tcp_base_uv, public logicmill::async::tcp::channel // , public std::enable_shared_from_this< tcp_channel_uv >
+class tcp_channel_uv : public tcp_base_uv, public logicmill::async::tcp::channel
 {
 public:
 
@@ -267,16 +259,16 @@ public:
 	virtual void
 	stop_read() override;
 
-	virtual logicmill::async::tcp::write_request::ptr
+	virtual void
 	write( logicmill::bstream::mutable_buffer&& buf, logicmill::async::tcp::channel::write_handler&& handler ) override;
 
-	virtual logicmill::async::tcp::write_request::ptr
+	virtual void
 	write( logicmill::bstream::mutable_buffer&& buf, logicmill::async::tcp::channel::write_handler const& handler ) override;
 
-	virtual logicmill::async::tcp::write_request::ptr
+	virtual void
 	write( std::deque< logicmill::bstream::mutable_buffer >&& bufs, logicmill::async::tcp::channel::write_handler&& handler ) override;
 
-	virtual logicmill::async::tcp::write_request::ptr
+	virtual void
 	write( std::deque< logicmill::bstream::mutable_buffer >&& bufs, logicmill::async::tcp::channel::write_handler const& handler ) override;
 
 	virtual void
@@ -341,7 +333,5 @@ private:
 	logicmill::async::ip::endpoint								m_endpoint;
 	logicmill::async::tcp::listener::connection_handler			m_connection_handler;
 };
-
-#endif
 
 #endif /* LOGICMILL_ASYNC_TCP_UV_H */

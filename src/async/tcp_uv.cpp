@@ -25,57 +25,17 @@ connect_request_uv::on_connect( uv_connect_t* req, int status )
 /* tcp_write_request_uv */
 
 tcp_channel_uv::ptr
-tcp_write_request_uv::get_channel_shared_ptr( uv_write_t* req )
+tcp_write_req_uv::get_channel_shared_ptr( uv_write_t* req )
 {
 	return std::dynamic_pointer_cast< tcp_channel_uv >( tcp_base_uv::get_base_shared_ptr( req->handle ) );
 }
 
-tcp_write_request_uv::tcp_write_request_uv( tcp_write_request_uv&& rhs )
-:
-m_write_handler{ std::move( rhs.m_write_handler ) },
-m_buffers{ std::move( rhs.m_buffers ) },
-m_uv_buffers{ rhs. m_uv_buffers }
-{
-	rhs.m_uv_buffers = nullptr;
-}
-
 void
-tcp_write_request_uv::on_write( uv_write_t* req, int status )
+tcp_write_req_uv::on_write( uv_write_t* req, int status )
 {
-	std::shared_ptr< tcp_write_request_uv > rp { std::move( 
-		reinterpret_cast< request_data* >( reinterpret_cast< uv_req_t* >( req )->data )->m_impl_ptr ) };
-	rp->m_write_handler( get_channel_shared_ptr( req ), rp, map_uv_error( status ) );
-}
-
-tcp_write_request_uv::~tcp_write_request_uv()
-{
-	assert( ! m_data.m_impl_ptr );
-	if ( m_uv_buffers )
-	{
-		delete [] m_uv_buffers;
-	}
-}
-
-void
-tcp_write_request_uv::start( uv_stream_t* chan, tcp_write_request_uv::ptr const& self )
-{
-	uv_req_set_data( reinterpret_cast< uv_req_t* >( &m_uv_write_request ), &m_data );
-	m_data.m_impl_ptr = self;
-	uv_write( &m_uv_write_request, chan, m_uv_buffers, m_buffers.size(), on_write );
-}
-
-std::deque< bstream::mutable_buffer >
-tcp_write_request_uv::release()
-{
-	delete [] m_uv_buffers;
-	m_uv_buffers = nullptr;
-	return std::move( m_buffers );
-}
-
-std::deque< bstream::mutable_buffer > const&
-tcp_write_request_uv::buffers() const
-{
-	return m_buffers;
+	auto target = reinterpret_cast< tcp_write_req_uv* >( req );
+	target->m_write_handler( get_channel_shared_ptr( req ), std::move( target->m_buffers ), map_uv_error( status ) );
+	delete target;
 }
 
 /* tcp_channel_uv */
@@ -160,40 +120,36 @@ tcp_channel_uv::stop_read()
 	uv_read_stop( get_stream_handle() );
 }
 
-async::tcp::write_request::ptr
+void
 tcp_channel_uv::write( bstream::mutable_buffer&& buf, async::tcp::channel::write_handler&& handler )
 {
 	std::deque< bstream::mutable_buffer > buf_deque;
 	buf_deque.emplace_back( std::move( buf ) );
-	auto rp = std::make_shared< tcp_write_request_uv >( std::move( buf_deque ), std::move( handler ) );
-	rp->start( get_stream_handle(), rp );
-	return rp;
+	auto request = new tcp_write_req_uv{ std::move( buf_deque ), std::move( handler ) };
+	request->start( get_stream_handle() );
 }
 
-async::tcp::write_request::ptr
+void
 tcp_channel_uv::write( bstream::mutable_buffer&& buf, async::tcp::channel::write_handler const& handler )
 {
 	std::deque< bstream::mutable_buffer > buf_deque;
 	buf_deque.emplace_back( std::move( buf ) );
-	auto rp = std::make_shared< tcp_write_request_uv >( std::move( buf_deque ), handler );
-	rp->start( get_stream_handle(), rp );
-	return rp;
+	auto request = new tcp_write_req_uv{ std::move( buf_deque ), handler };
+	request->start( get_stream_handle() );
 }
 
-async::tcp::write_request::ptr
+void
 tcp_channel_uv::write( std::deque< bstream::mutable_buffer >&& bufs, async::tcp::channel::write_handler&& handler )
 {
-	auto rp = std::make_shared< tcp_write_request_uv >( std::move( bufs ), std::move( handler ) );
-	rp->start( get_stream_handle(), rp );
-	return rp;
+	auto request = new tcp_write_req_uv{ std::move( bufs ), std::move( handler ) };
+	request->start( get_stream_handle() );
 }
 
-async::tcp::write_request::ptr
+void
 tcp_channel_uv::write( std::deque< bstream::mutable_buffer >&& bufs, async::tcp::channel::write_handler const& handler )
 {
-	auto rp = std::make_shared< tcp_write_request_uv >( std::move( bufs ), handler );
-	rp->start( get_stream_handle(), rp );
-	return rp;
+	auto request = new tcp_write_req_uv{ std::move( bufs ), handler };
+	request->start( get_stream_handle() );
 }
 
 
@@ -214,7 +170,6 @@ tcp_listener_uv::init( uv_loop_t* lp, ptr const& self, std::error_code& err )
 exit:
 	return;
 }
-
 
 void 
 tcp_listener_uv::on_connection( uv_stream_t* handle, int stat )

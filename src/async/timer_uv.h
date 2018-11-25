@@ -36,7 +36,7 @@ struct timer_handle_data
 	std::shared_ptr< timer_uv > m_impl_ptr;
 };
 
-class timer_uv : public logicmill::async::timer // , public std::enable_shared_from_this< timer_uv >
+class timer_uv : public logicmill::async::timer
 {
 public:
 

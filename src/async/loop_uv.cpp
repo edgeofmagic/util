@@ -1,15 +1,65 @@
 #include "loop_uv.h"
 #include "timer_uv.h"
 
-#if ( BUILD_RESOLVER )
-#include "resolve_request_uv.h"
-#endif
-
 #if ( BUILD_TCP )
 #include "tcp_uv.h"
 #endif
 
 using namespace logicmill;
+
+
+void
+resolve_req_uv::start( uv_loop_t* lp, std::error_code& err )
+{
+	err.clear();
+	auto status = uv_getaddrinfo( lp, &m_uv_req, on_resolve, m_hostname.c_str(), nullptr, nullptr );
+	UV_ERROR_CHECK( status, err, exit );	
+exit:
+	return;
+}
+
+void 
+resolve_req_uv::on_resolve( uv_getaddrinfo_t* req, int status, struct addrinfo* result ) 
+{
+	auto request = reinterpret_cast< resolve_req_uv* >( req );
+	std::error_code err = map_uv_error( status );
+	std::deque< logicmill::async::ip::address > addresses;
+
+	if ( ! err )
+	{
+
+		for ( auto info = result; info != nullptr; info = info->ai_next )
+		{
+			struct sockaddr_storage storage;
+
+			memset( &storage, 0, sizeof( storage ) );
+			memcpy( &storage, info->ai_addr, info->ai_addrlen );
+
+			logicmill::async::ip::address addr;
+
+			if ( info->ai_family == AF_INET )
+			{
+				addr = reinterpret_cast< struct sockaddr_in* >( info->ai_addr )->sin_addr;
+			}
+			else if ( info->ai_family == AF_INET6 )
+			{
+				addr = reinterpret_cast< struct sockaddr_in6* >( info->ai_addr )->sin6_addr;
+			}
+
+			auto it = std::find( addresses.begin(), addresses.end(), addr );
+
+			if ( it == addresses.end() )
+			{
+				addresses.emplace_back( addr );
+			}
+		}
+	}
+	uv_freeaddrinfo( result );
+	request->m_handler( request->m_hostname, std::move( addresses ), err );
+	request->m_handler = nullptr;
+	delete request;
+}
+
 
 loop_uv::loop_uv( use_default_loop flag )
 :
@@ -209,13 +259,11 @@ loop_uv::connect_tcp_channel( async::ip::endpoint const& ep, std::error_code& er
 
 #endif
 
-#if ( BUILD_RESOLVER )
 
-async::resolve_request::ptr
-loop_uv::resolve( std::string const& hostname, std::error_code& err, async::resolve_request::handler hf )
+void
+loop_uv::resolve( std::string const& hostname, std::error_code& err, resolve_handler&& handler )
 {
 	err.clear();
-	resolve_request_uv::ptr result;
 
 	if ( ! m_uv_loop )
 	{
@@ -223,15 +271,34 @@ loop_uv::resolve( std::string const& hostname, std::error_code& err, async::reso
 		goto exit;
 	}
 
-	result = std::make_shared< resolve_request_uv >( hostname, hf );
-	result->start( m_uv_loop, result, err );
-	if ( err ) goto exit;
+	{
+		resolve_req_uv* req  = new resolve_req_uv{ hostname, std::move( handler ) };
+		req->start( m_uv_loop, err );
+	}
 
 exit:
-	return result;
+	return;
 }
 
-#endif
+void
+loop_uv::resolve( std::string const& hostname, std::error_code& err, resolve_handler const& handler )
+{
+	err.clear();
+
+	if ( ! m_uv_loop )
+	{
+		err = make_error_code( async::errc::loop_closed );
+		goto exit;
+	}
+
+	{
+		resolve_req_uv* req  = new resolve_req_uv{ hostname, handler };
+		req->start( m_uv_loop, err );
+	}
+
+exit:
+	return;
+}
 
 loop_uv::ptr
 loop_data::get_loop_ptr()

@@ -26,20 +26,17 @@
 #define LOGICMILL_ASYNC_LOOP_H
 
 #define BUILD_TCP 1
-#define BUILD_RESOLVER 1
 
 #include <memory>
 #include <functional>
 #include <system_error>
 #include <chrono>
 #include <logicmill/async/timer.h>
-#if ( BUILD_RESOLVER )
-#include <logicmill/async/resolve_request.h>
-#endif
+#include <logicmill/async/endpoint.h>
+
 #if ( BUILD_TCP )
 #include <logicmill/async/tcp.h>
 #endif
-#include <logicmill/async/endpoint.h>
 
 namespace logicmill
 {
@@ -50,6 +47,8 @@ class loop
 {
 public:
 	using ptr = std::shared_ptr< loop >;
+
+	using resolve_handler = std::function< void( std::string const& hostname, std::deque< ip::address >&& addresses, std::error_code const& err ) >;
 
 	static loop::ptr
 	create();
@@ -88,12 +87,11 @@ public:
 
 #endif
 
-#if ( BUILD_RESOLVER )
+	virtual void
+	resolve( std::string const& hostname, std::error_code& err, resolve_handler&& handler ) = 0;
 
-	virtual std::shared_ptr< resolve_request >
-	resolve( std::string const& hostname, std::error_code& err, resolve_request::handler hf ) = 0;
-
-#endif
+	virtual void
+	resolve( std::string const& hostname, std::error_code& err, resolve_handler const& handler ) = 0;
 
 };
 

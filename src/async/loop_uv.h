@@ -29,6 +29,31 @@
 #include <logicmill/async/loop.h>
 #include "uv_error.h"
 
+
+class resolve_req_uv
+{
+public:
+	uv_getaddrinfo_t									m_uv_req;
+	std::string											m_hostname;
+	logicmill::async::loop::resolve_handler				m_handler;
+
+	template< class Handler, class = std::enable_if_t< std::is_convertible< Handler, logicmill::async::loop::resolve_handler >::value > >
+	resolve_req_uv( std::string const& hostname, Handler&& handler )
+	:
+	m_hostname{ hostname },
+	m_handler{ std::forward< Handler >( handler ) }
+	{
+		assert( reinterpret_cast< uv_getaddrinfo_t* >( this ) == &m_uv_req );
+	}
+
+	void
+	start( uv_loop_t* lp, std::error_code& err );
+
+	static void 
+	on_resolve( uv_getaddrinfo_t* req, int status, struct addrinfo* result );
+
+};
+
 class loop_uv;
 
 struct loop_data
@@ -98,12 +123,11 @@ public:
 
 #endif
 
-#if ( BUILD_RESOLVER )
+	virtual void
+	resolve( std::string const& hostname, std::error_code& err, resolve_handler&& handler ) override;
 
-	virtual logicmill::async::resolve_request::ptr
-	resolve( std::string const& hostname, std::error_code& err, logicmill::async::resolve_request::handler hf ) override;
-
-#endif
+	virtual void
+	resolve( std::string const& hostname, std::error_code& err, resolve_handler const& handler ) override;
 
 	uv_loop_t*		m_uv_loop;
 	loop_data		m_data;

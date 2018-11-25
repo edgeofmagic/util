@@ -184,17 +184,15 @@ TEST_CASE( "logicmill/async/loop/smoke/timer_stop_before_expire" )
 }
 #endif
 
-#if ( BUILD_RESOLVER )
 
-#if 1
 TEST_CASE( "logicmill/async/resolver/smoke/basic" )
 {
 	std::error_code err;
 
 	async::loop::ptr lp = async::loop::create();
-	auto res = lp->resolve( "google.com", err, [] ( async::resolve_request::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
+	lp->resolve( "google.com", err, [] ( std::string const& hostname, std::deque< async::ip::address >&& addresses, std::error_code const& err )
 	{
-		std::cout << "resolver handler called for hostname " << req->hostname() << std::endl;
+		std::cout << "resolver handler called for hostname " << hostname << std::endl;
 		std::cout << "status is " << err.message() << std::endl;
 		if ( ! err )
 		{
@@ -220,18 +218,16 @@ TEST_CASE( "logicmill/async/resolver/smoke/basic" )
 	lp->close( err );
 	CHECK( ! err );
 }
-#endif
 
-#if 1
 TEST_CASE( "logicmill/async/resolver/smoke/not_found_failure" )
 {
 	std::error_code err;
 
 	async::loop::ptr lp = async::loop::create();
-	auto res = lp->resolve( "no_such_host.com", err, 
-	[] ( async::resolve_request::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
+	lp->resolve( "no_such_host.com", err, 
+	[] ( std::string const& hostname, std::deque< async::ip::address >&& addresses, std::error_code const& err )
 	{
-		std::cout << "resolver handler called for hostname " << req->hostname() << std::endl;
+		std::cout << "resolver handler called for hostname " << hostname << std::endl;
 		std::cout << "status is " << err.message() << std::endl;
 		if ( ! err )
 		{
@@ -256,63 +252,6 @@ TEST_CASE( "logicmill/async/resolver/smoke/not_found_failure" )
 
 	// lp->close();
 }
-#endif
-
-#if 1
-TEST_CASE( "logicmill/async/resolver/smoke/cancellation" )
-{
-	{
-
-		auto start = std::chrono::system_clock::now();
-
-		std::error_code err;
-
-		async::loop::ptr lp = async::loop::create();
-		auto res = lp->resolve( "flabnangler.org", err, 
-		[&] ( async::resolve_request::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
-		{
-			auto current = std::chrono::system_clock::now();
-			std::chrono::microseconds elapsed = std::chrono::duration_cast< std::chrono::microseconds >(current - start);
-			std::cout << "resolver handler called for hostname " << req->hostname() << std::endl;
-			std::cout << "elapsed time is " << elapsed.count() << " usec" << std::endl;
-			std::cout << "status is " << err.message() << std::endl;
-			if ( ! err )
-			{
-				for ( auto& addr : addresses )
-				{
-					std::cout << addr.to_string() << std::endl;
-				}
-			}
-			std::cout.flush();
-		});
-
-		async::timer::ptr tp = lp->create_timer( err, [&] ( async::timer::ptr timer_ptr ) // mutable
-		{
-			res->cancel();
-			auto current = std::chrono::system_clock::now();
-			std::chrono::microseconds elapsed = std::chrono::duration_cast< std::chrono::microseconds >(current - start);
-
-			std::cout << "cancelled resolve request" << std::endl;
-			std::cout << "elapsed time is " << elapsed.count() << " usec" << std::endl;
-		});
-
-		REQUIRE( ! err );
-
-		tp->start( std::chrono::milliseconds{ 1 }, err );
-
-		REQUIRE( ! err );
-
-		lp->run( err );
-		CHECK( ! err );
-		std::cout << "loop run completed" << std::endl;
-
-		std::cout << "outstanding loop refcount after run: " << lp.use_count() << std::endl;
-
-		// lp->close();
-
-	}
-}
-#endif
 
 TEST_CASE( "logicmill/async/resolver/smoke/cancellation_loop_close" )
 {
@@ -324,12 +263,12 @@ TEST_CASE( "logicmill/async/resolver/smoke/cancellation_loop_close" )
 		std::error_code err;
 
 		async::loop::ptr lp = async::loop::create();
-		auto res = lp->resolve( "gorblesnapper.org", err, 
-		[&] ( async::resolve_request::ptr req, std::deque< async::ip::address >&& addresses, std::error_code const& err )
+		lp->resolve( "gorblesnapper.org", err, 
+		[&] ( std::string const& hostname, std::deque< async::ip::address >&& addresses, std::error_code const& err )
 		{
 			auto current = std::chrono::system_clock::now();
 			std::chrono::microseconds elapsed = std::chrono::duration_cast< std::chrono::microseconds >(current - start);
-			std::cout << "resolver handler called for hostname " << req->hostname() << std::endl;
+			std::cout << "resolver handler called for hostname " << hostname << std::endl;
 			std::cout << "elapsed time is " << elapsed.count() << " usec" << std::endl;
 			std::cout << "status is " << err.message() << std::endl;
 			if ( ! err )
@@ -360,6 +299,11 @@ TEST_CASE( "logicmill/async/resolver/smoke/cancellation_loop_close" )
 		REQUIRE( ! err );
 
 		lp->run( err );
+
+		CHECK( ! err );
+
+		lp->close( err );
+
 		CHECK( ! err );
 		std::cout << "loop run completed" << std::endl;
 
@@ -367,5 +311,3 @@ TEST_CASE( "logicmill/async/resolver/smoke/cancellation_loop_close" )
 	}
 }
 
-
-#endif

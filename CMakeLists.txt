@@ -79,8 +79,6 @@ set(LOGICMILL_SRCS
 #	src/async/uv_async.cpp
 	src/async/loop_uv.h
 	src/async/loop_uv.cpp
-	src/async/resolve_request_uv.h
-	src/async/resolve_request_uv.cpp
 	src/async/timer_uv.h
 	src/async/timer_uv.cpp
 	src/async/tcp_uv.h

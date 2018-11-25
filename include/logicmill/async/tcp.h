@@ -37,8 +37,6 @@ namespace logicmill
 namespace async
 {
 
-class loop;
-
 namespace tcp
 {
 
@@ -48,8 +46,10 @@ public:
 
 	using ptr = std::shared_ptr< channel >;
 	using read_handler = std::function< void ( channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code const& err ) >;
-	using write_handler = std::function< void ( channel::ptr const& chan, std::deque< bstream::mutable_buffer >&& bufs, std::error_code const& err ) >;
+	using write_buffer_handler = std::function< void ( channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code const& err ) >;
+	using write_buffers_handler = std::function< void ( channel::ptr const& chan, std::deque< bstream::mutable_buffer >&& bufs, std::error_code const& err ) >;
 	using connect_handler = std::function< void ( channel::ptr const& chan, std::error_code const& err ) >;
+	// using write_handler = std::function< void ( channel::ptr const& chan, std::deque< bstream::mutable_buffer >&& bufs, std::error_code const& err ) >;
 
 	virtual ~channel() {}
 
@@ -63,16 +63,16 @@ public:
 	stop_read() = 0;
 
 	virtual void
-	write( bstream::mutable_buffer&& buf, write_handler&& handler ) = 0;
+	write( bstream::mutable_buffer&& buf, write_buffer_handler&& handler ) = 0;
 
 	virtual void
-	write( bstream::mutable_buffer&& buf, write_handler const& handler ) = 0;
+	write( bstream::mutable_buffer&& buf, write_buffer_handler const& handler ) = 0;
 
 	virtual void
-	write( std::deque< bstream::mutable_buffer >&& bufs, write_handler&& handler ) = 0;
+	write( std::deque< bstream::mutable_buffer >&& bufs, write_buffers_handler&& handler ) = 0;
 
 	virtual void
-	write( std::deque< bstream::mutable_buffer >&& bufs, write_handler const& handler ) = 0;
+	write( std::deque< bstream::mutable_buffer >&& bufs, write_buffers_handler const& handler ) = 0;
 
 	virtual void
 	close() = 0;

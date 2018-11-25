@@ -22,21 +22,53 @@ connect_request_uv::on_connect( uv_connect_t* req, int status )
 	delete req;
 }
 
-/* tcp_write_request_uv */
+/* tcp_write_buf_req_uv */
 
 tcp_channel_uv::ptr
-tcp_write_req_uv::get_channel_shared_ptr( uv_write_t* req )
+tcp_write_buf_req_uv::get_channel_shared_ptr( uv_write_t* req )
 {
 	return std::dynamic_pointer_cast< tcp_channel_uv >( tcp_base_uv::get_base_shared_ptr( req->handle ) );
 }
 
 void
-tcp_write_req_uv::on_write( uv_write_t* req, int status )
+tcp_write_buf_req_uv::on_write( uv_write_t* req, int status )
 {
-	auto target = reinterpret_cast< tcp_write_req_uv* >( req );
+	auto target = reinterpret_cast< tcp_write_buf_req_uv* >( req );
+	target->m_write_handler( get_channel_shared_ptr( req ), std::move( target->m_buffer ), map_uv_error( status ) );
+	delete target;
+}
+
+/* tcp_write_bufs_req_uv */
+
+tcp_channel_uv::ptr
+tcp_write_bufs_req_uv::get_channel_shared_ptr( uv_write_t* req )
+{
+	return std::dynamic_pointer_cast< tcp_channel_uv >( tcp_base_uv::get_base_shared_ptr( req->handle ) );
+}
+
+void
+tcp_write_bufs_req_uv::on_write( uv_write_t* req, int status )
+{
+	auto target = reinterpret_cast< tcp_write_bufs_req_uv* >( req );
 	target->m_write_handler( get_channel_shared_ptr( req ), std::move( target->m_buffers ), map_uv_error( status ) );
 	delete target;
 }
+
+// /* tcp_write_request_uv */
+
+// tcp_channel_uv::ptr
+// tcp_write_req_uv::get_channel_shared_ptr( uv_write_t* req )
+// {
+// 	return std::dynamic_pointer_cast< tcp_channel_uv >( tcp_base_uv::get_base_shared_ptr( req->handle ) );
+// }
+
+// void
+// tcp_write_req_uv::on_write( uv_write_t* req, int status )
+// {
+// 	auto target = reinterpret_cast< tcp_write_req_uv* >( req );
+// 	target->m_write_handler( get_channel_shared_ptr( req ), std::move( target->m_buffers ), map_uv_error( status ) );
+// 	delete target;
+// }
 
 /* tcp_channel_uv */
 
@@ -121,34 +153,30 @@ tcp_channel_uv::stop_read()
 }
 
 void
-tcp_channel_uv::write( bstream::mutable_buffer&& buf, async::tcp::channel::write_handler&& handler )
+tcp_channel_uv::write( bstream::mutable_buffer&& buf, async::tcp::channel::write_buffer_handler&& handler )
 {
-	std::deque< bstream::mutable_buffer > buf_deque;
-	buf_deque.emplace_back( std::move( buf ) );
-	auto request = new tcp_write_req_uv{ std::move( buf_deque ), std::move( handler ) };
+	auto request = new tcp_write_buf_req_uv{ std::move( buf ), std::move( handler ) };
 	request->start( get_stream_handle() );
 }
 
 void
-tcp_channel_uv::write( bstream::mutable_buffer&& buf, async::tcp::channel::write_handler const& handler )
+tcp_channel_uv::write( bstream::mutable_buffer&& buf, async::tcp::channel::write_buffer_handler const& handler )
 {
-	std::deque< bstream::mutable_buffer > buf_deque;
-	buf_deque.emplace_back( std::move( buf ) );
-	auto request = new tcp_write_req_uv{ std::move( buf_deque ), handler };
+	auto request = new tcp_write_buf_req_uv{ std::move( buf ), handler };
 	request->start( get_stream_handle() );
 }
 
 void
-tcp_channel_uv::write( std::deque< bstream::mutable_buffer >&& bufs, async::tcp::channel::write_handler&& handler )
+tcp_channel_uv::write( std::deque< bstream::mutable_buffer >&& bufs, async::tcp::channel::write_buffers_handler&& handler )
 {
-	auto request = new tcp_write_req_uv{ std::move( bufs ), std::move( handler ) };
+	auto request = new tcp_write_bufs_req_uv{ std::move( bufs ), std::move( handler ) };
 	request->start( get_stream_handle() );
 }
 
 void
-tcp_channel_uv::write( std::deque< bstream::mutable_buffer >&& bufs, async::tcp::channel::write_handler const& handler )
+tcp_channel_uv::write( std::deque< bstream::mutable_buffer >&& bufs, async::tcp::channel::write_buffers_handler const& handler )
 {
-	auto request = new tcp_write_req_uv{ std::move( bufs ), handler };
+	auto request = new tcp_write_bufs_req_uv{ std::move( bufs ), handler };
 	request->start( get_stream_handle() );
 }
 

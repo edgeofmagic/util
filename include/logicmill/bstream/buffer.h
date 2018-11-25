@@ -612,7 +612,9 @@ protected:
 		m_broker{ create_broker( std::forward< Dealloc >( dealloc_functor ) ) },
 		m_capacity{ size },
 		m_data{ data }
-		{}
+		{
+			std::cout << "constructing dealloc-only allocation" << std::endl;
+		}
 
 		~allocation()
 		{
@@ -1349,7 +1351,8 @@ public:
 	:
 	m_alloc{ std::make_unique< buffer::allocation >( 
 		reinterpret_cast< byte_type* >( data ), size, 
-		create_broker( std::forward< Dealloc >( dealloc_f ) ) ) }
+		// create_broker( std::forward< Dealloc >( dealloc_f ) ) ) }
+		std::forward< Dealloc >( dealloc_f ) ) }
 	{
 		m_data = reinterpret_cast< byte_type* >( data );
 		m_size = size;

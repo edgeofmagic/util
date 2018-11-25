@@ -76,7 +76,15 @@ set(LOGICMILL_SRCS
 	src/bstream/file_sink.cpp
 	src/bstream/memory_sink.cpp
 	src/bstream/compound_memory_sink.cpp
-	src/async/uv_async.cpp
+#	src/async/uv_async.cpp
+	src/async/loop_uv.h
+	src/async/loop_uv.cpp
+	src/async/resolve_request_uv.h
+	src/async/resolve_request_uv.cpp
+	src/async/timer_uv.h
+	src/async/timer_uv.cpp
+	src/async/tcp_uv.h
+	src/async/tcp_uv.cpp
 	src/async/address.cpp
 	src/async/error.cpp
 	src/fs_impl.cpp)
@@ -94,8 +102,11 @@ set(LOGICMILL_TEST_SRCS
 	test/buffer.cpp
 	test/async/loop.cpp
 	test/async/address.cpp
-	test/async/event.cpp
-	test/async/stream.cpp
+	test/async/endpoint.cpp
+	test/async/tcp.cpp
+#	test/async/event.cpp
+# 	test/async/stream.cpp
+#	test/async/socket_behavior.cpp
 	test/test_main.cpp)
 
 add_library(logicmill ${LOGICMILL_SRCS})

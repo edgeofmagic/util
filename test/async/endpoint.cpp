@@ -22,46 +22,25 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ASYNC_TIMER_H
-#define LOGICMILL_ASYNC_TIMER_H
+#include <logicmill/async/endpoint.h>
+#include <doctest.h>
+#include <iostream>
 
-#include <memory>
-#include <functional>
-#include <system_error>
-#include <chrono>
+using namespace logicmill;
+using namespace async;
+using namespace ip;
 
-namespace logicmill
+
+TEST_CASE( "logicmill/async/ip/endpoint/smoke/basic" )
 {
-namespace async
-{
+	std::error_code err;
+	endpoint ep{ address{ "192.0.1.2", err }, 80 };
 
-class loop;
+	sockaddr_storage ss;
 
-class timer
-{
-public:
-	using ptr = std::shared_ptr< timer >;
-	using handler = std::function< void ( timer::ptr ) >;
+	ep.to_sockaddr( ss );
 
-	virtual ~timer() {}
+	endpoint ep_copy{ ss };
 
-	virtual void
-	start( std::chrono::milliseconds timeout, std::error_code& err ) = 0;
-
-	virtual void
-	stop( std::error_code& err ) = 0;
-
-	virtual void
-	close() = 0;
-
-	virtual std::shared_ptr< loop >
-	owner() = 0;
-
-	virtual bool
-	is_pending() const = 0;
-};
-
-} // namespace async
-} // namespace logicmill
-
-#endif // LOGICMILL_ASYNC_TIMER_H
+	CHECK( ep == ep_copy );
+}

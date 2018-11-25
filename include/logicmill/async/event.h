@@ -32,17 +32,16 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#if 0 
-#define LOGICMILL_ASYNC_EVENT_USE_EMITTER_BASE( _event_name_ )			\
-	using _event_name_::emitter::add_listener;							\
-	using _event_name_::emitter::remove_listener;						\
-	using _event_name_::emitter::emit;									\
-	using _event_name_::emitter::listener_count;						\
-	using _event_name_::remove_all;										\
+#if 1
+#define LOGICMILL_ASYNC_USE_SENDER_BASE( _source_base_ )						\
+	using _source_base_::fit;												\
+	using _source_base_::get_fitting;											\
+	using _source_base_::send;												\
+	using _source_base_::is_paired;											\
 /**/
 
-#define LOGICMILL_ASYNC_EVENT_USE_HANDLER_BASE( _event_name_ )			\
-	using _event_name_::handler::handle;								\
+#define LOGICMILL_ASYNC_USE_RECEIVER_BASE( _sink_base_ )					\
+	using _sink_base_::get_fitting;											\
 /**/
 # endif 
 
@@ -54,650 +53,328 @@ template < class T, T Value, class... Args >
 class event
 {
 public:
-	using listener = std::function< void ( Args... ) >;
-
+	using sink_f = std::function< void ( Args... ) >;
+	using source_f = std::function< void ( sink_f ) >;
 };
 
-template< class E >
-class handler;
+template< class T >
+struct is_event_type : std::false_type {};
 
 template< class T, T Value, class... Args >
-class handler< event< T, Value, Args... > >
+struct is_event_type< event< T, Value, Args... > > : std::true_type {};
+
+template< class T, class Enable = void >
+class sink;
+
+template< class T, class Enable = void >
+class source;
+
+template< class T >
+class sink< T, std::enable_if_t< is_event_type< T >::value > >
 {
 public:
-	using event_type =  event< T, Value, Args... >;
-	using ptr = std::shared_ptr< handler >;
+	using event_type = T;
+	friend class source< event_type >;
+	using type = typename T::sink_f;
 
-	virtual void handle( event_type defn, Args... args ) = 0;
+	sink() : m_sink_f{ nullptr } {}
 
+	template< class S, class = std::enable_if_t< std::is_convertible< S, type >::value > >
+	sink( S&& snkf ) : m_sink_f{ std::forward< S >( snkf ) } {}
+
+	sink( sink const& rhs ) : m_sink_f{ rhs.m_sink_f } {}
+	sink( sink&& rhs ) : m_sink_f{ std::move( rhs.m_sink_f ) } {}
+
+private:
+	type		m_sink_f;
+};
+
+template< class T >
+struct is_sink : std::false_type {};
+
+template< class E >
+struct is_sink< sink< E > > : std::true_type {};
+
+template< class T >
+class source< T, std::enable_if_t< is_event_type< T >::value > >
+{
+public:
+	using event_type = T;
+	using type = typename T::source_f;
+	source() : m_src_f{ nullptr } {}
+	template< class S, class = std::enable_if_t< std::is_convertible< S, typename event_type::source_f >::value > >
+	source( S&& srcf ) : m_src_f{ std::forward< S >( srcf ) } {}
+
+	source( source const& rhs ) : m_src_f{ rhs.m_src_f } {}
+	source( source&& rhs ) : m_src_f{ std::move( rhs.m_src_f ) } {}
+
+	source& operator=( source const& rhs )
+	{
+		m_src_f = rhs.m_src_f;
+		return *this;
+	}
+
+	source& operator=( source&& rhs )
+	{
+		m_src_f = std::move( rhs.m_src_f );
+		return *this;
+	}
+
+	void
+	fit( sink< event_type >&& snk )
+	{
+		m_src_f( std::move( snk.m_sink_f ) );
+	}
+
+	void
+	fit( sink< event_type > const& snk )
+	{
+		m_src_f( snk.m_sink_f );
+	}
+
+private:
+	typename event_type::source_f		m_src_f;
+};
+
+template< class T >
+struct is_source : std::false_type {};
+
+template< class E >
+struct is_source< source< E > > : std::true_type {};
+
+using test_event = event< int, 0, int >;
+using test_sink = sink< test_event >;
+
+static_assert( is_sink< test_sink >::value );
+static_assert( is_event_type< test_event >::value );
+static_assert( std::is_same< test_event, sink< test_event >::event_type >::value );
+static_assert( std::is_same< test_event::sink_f, sink< test_event >::type >::value );
+
+template< class E  >
+class source_base;
+
+template< class T, T Value, class... Args >
+class source_base< event< T, Value, Args... > > 
+{
+public:
+	using event_type = event< T, Value, Args... >;
+	using source_type = source< event_type >;
+	using sink_type = sink< event_type >;
+
+	template< class Evt >
+	typename std::enable_if_t< std::is_same< Evt, event_type >::value, source< Evt > >
+	get_source()
+	{
+		return source< Evt >{ [=] ( auto&& snk )
+		{
+			this->m_sink = std::forward< decltype( snk ) >( snk );
+		} };
+	}
+
+	template< class Evt, class... Params >
+	typename std::enable_if_t< std::is_same< Evt, event_type >::value >
+	send( Params&&... params )
+	{
+		if ( m_sink )
+		{
+			m_sink( std::forward< Params >( params )... );
+		}
+	}
+
+private:
+	typename event_type::sink_f		m_sink = nullptr;
 };
 
 template< class E, class Derived >
-class handler_spec;
+class sink_base;
 
 template< class Derived, class T, T Value, class... Args >
-class handler_spec< event< T, Value, Args... >, Derived > 
-	: public handler< event< T, Value, Args... > >
+class sink_base< event< T, Value, Args... >, Derived >
 {
 public:
 	using event_type = event< T, Value, Args... >;
-	using method_ptr_type = void ( Derived::* )( Args... );
 
-	handler_spec( method_ptr_type mptr )
+	template< class Evt >
+	typename std::enable_if_t< std::is_same< Evt, event_type >::value, sink< Evt > >
+	get_sink()
+	{
+		return sink< event_type >{ [=] ( auto&&... params ) mutable
+		{
+			static_cast< Derived* >( this )->on( event_type{}, std::forward< decltype( params ) >( params )... );
+		} };
+	}
+};
+
+template< class T >
+struct is_fitting : std::integral_constant< bool, is_source< T >::value || is_sink< T >::value > {};
+
+template< class... Args >
+struct args_are_fittings : std::false_type {};
+
+template< class First, class... Rest >
+struct args_are_fittings< First, Rest... > :
+std::integral_constant< bool, is_fitting< First >::value && args_are_fittings< Rest... >::value > {};
+
+template< class T >
+struct args_are_fittings< T > : is_fitting< T > {};
+
+static_assert( is_fitting< source< test_event > >::value );
+static_assert( args_are_fittings< source< test_event >, test_sink >::value );
+
+template< class T, class Enable = void >
+struct fits_with;
+
+template< class T >
+struct fits_with< T, std::enable_if_t< is_source< T >::value > >
+{
+	using type = sink< typename T::event_type >;
+};
+
+template< class T >
+struct fits_with< T, std::enable_if_t< is_sink< T >::value > >
+{
+	using type = source< typename T::event_type >;
+};
+
+template< class Source, class Sink >
+inline typename std::enable_if_t< is_source< Source >::value && std::is_same< Sink, sink< typename Source::event_type > >::value >
+fit( Source& src, Sink& snk )
+{
+	src.fit( snk );
+}
+
+template< class Sink, class Source >
+inline typename std::enable_if_t< is_source< Source >::value && std::is_same< Sink, sink< typename Source::event_type > >::value >
+fit( Sink& snk, Source& src )
+{
+	src.fit( snk );
+}
+
+template< std::size_t I = 0, class... Tp>
+inline typename std::enable_if_t< I == sizeof...( Tp ) >
+fit_each( std::tuple< Tp... >& a, std::tuple< typename fits_with< Tp >::type... >& b )
+{
+}
+
+template< std::size_t I = 0, class... Tp>
+inline typename std::enable_if_t< I < sizeof...( Tp ) >
+fit_each( std::tuple< Tp... >& a, std::tuple< typename fits_with< Tp >::type... >& b )
+{
+	fit( std::get< I >( a ), std::get< I >( b ) );
+	fit_each< I + 1, Tp... >( a, b );
+}
+
+template< class... Args >
+class connector
+{
+public:
+	friend class connector< typename fits_with< Args >::type... >;
+	static_assert( args_are_fittings< Args... >::value );
+	connector( Args... args )
 	:
-	m_mptr{ mptr }
+	m_tuple{ args... }
 	{}
 
-	virtual void handle( event_type , Args... args ) override
+	void mate( connector< typename fits_with< Args >::type... >& that )
 	{
-		((static_cast< Derived& >(*this)).*m_mptr)( args... );
-	}
-
-protected:
-	method_ptr_type m_mptr;
-};
-
-#if 0
-template< class Derived >
-class handler_spec : public handler
-{
-public:
-	using method_ptr_type = void ( Derived::* )( Args... );
-
-	handler_spec( method_ptr_type mptr )
-	:
-	m_mptr{ mptr }
-	{}
-
-	virtual void handle( event_definition , Args... args ) override
-	{
-		((static_cast< Derived& >(*this)).*m_mptr)( args... );
-	}
-
-protected:
-	method_ptr_type m_mptr;
-};
-#endif
-
-class emitter_base
-{
-public:
-	virtual ~emitter_base() {}
-
-	virtual void disconnect() {}
-};
-
-enum class cardinality
-{
-	simplex,
-	multiplex
-};
-
-template< class E, cardinality K >
-class emitter;
-
-template< class T, T Value, class... Args >
-class emitter< event< T, Value, Args... >, cardinality::simplex > : public emitter_base
-{
-public:
-	using id_type = std::uint64_t;
-	using event_type = event< T, Value, Args... >;
-	using listener_type = typename event_type::listener;
-
-	template< class U >
-	std::enable_if_t< std::is_convertible< U, listener_type >::value , id_type >
-	add_listener( event_type, U&& l )
-	{
-		id_type result = 0;
-		if ( ! m_listener )
-		{
-			m_listener = std::forward< U >( l );
-			m_listener_id = m_next_id++;
-			result = m_listener_id;
-		}
-		return result;
-	}
-
-	id_type add_listener( event_type e, typename handler< event_type >::ptr hp )
-	{
-		return add_listener( e, [=] ( Args... args )
-		{
-			hp->handle( event_type{}, args... );
-		} );
-	}
-
-	bool remove_listener( event_type, id_type id )
-	{
-		bool result = false;
-		if ( id == m_listener_id )
-		{
-			m_listener = nullptr;
-			m_listener_id = 0;
-			result = true;
-		}
-		return result;
-	}
-
-	void remove_all( event_type )
-	{
-		m_listener = nullptr;
-		m_listener_id = 0;
-	}
-
-	virtual void disconnect()
-	{
-		m_listener = nullptr;
-		m_listener_id = 0;
-	}
-
-	std::size_t listener_count( event_type ) const
-	{
-		return ( m_listener ) ? 1 : 0;
-	}
-
-	void emit( event_type, Args... args )
-	{
-		if ( m_listener )
-		{
-			m_listener( args... );
-		}
-	}
-
-private:
-	id_type				m_next_id = 1;
-	listener_type		m_listener = nullptr;
-	id_type				m_listener_id = 0;
-};
-
-template< class T, T Value, class... Args >
-class emitter< event< T, Value, Args... >, cardinality::multiplex > : public emitter_base
-{
-public:
-	using id_type = std::uint64_t;
-	using event_type = event< T, Value, Args... >;
-	using listener_type = typename event_type::listener;
-	using map_type = std::unordered_map< id_type, listener_type >;
-
-	template< class U >
-	id_type add_listener( event_type, U&& l )
-	{
-		id_type id = m_next_id++;
-		m_listeners.emplace_back( id, std::forward< U >( l ) );
-		return id;
-	}
-
-	id_type add_listener( event_type e, typename handler< event_type >::ptr hp )
-	{
-		return add_listener( e, [=] ( Args... args )
-		{
-			hp->handle( event_type{}, args... );
-		} );
-	}
-
-	bool remove_listener( event_type, id_type id )
-	{
-		bool result = false;
-		auto count = m_listeners.erase( id );
-		return count == 1;
-	}
-
-	void remove_all( event_type )
-	{
-		clear();
-	}
-
-	virtual void disconnect()
-	{
-		clear();
-	}
-
-	std::size_t listener_count( event_type ) const
-	{
-		return m_listeners.size();
-	}
-
-	void emit( event_type, Args... args )
-	{
-		for ( auto it = m_listeners.begin(); it != m_listeners.end(); ++it )
-		{
-			(it->second)( args... );
-		}
+		fit_each( m_tuple, that.m_tuple );
 	}
 
 private:
 
-	void clear()
+	std::tuple< Args... >		m_tuple;
+};
+
+template< class T >
+struct complement;
+
+template< class... Args >
+struct complement< connector< Args... > >
+{
+	using type = connector< typename fits_with< Args >::type... >;
+};
+
+using test_event_0 = event< int, 1, bool >;
+using test_event_1 = event< int, 2, std::string const& >;
+
+using tcon0 = connector< source< test_event_0 >, sink< test_event_1 > >;
+
+using tcon1 = complement< tcon0 >::type;
+
+static_assert( std::is_same< fits_with< source< test_event > >::type, sink< test_event > >::value );
+
+
+template< class T, class Derived, class Enable = void >
+struct fitting_base;
+
+template< class T, class Derived >
+struct fitting_base< T, Derived, std::enable_if_t< is_source< T >::value > >
+{
+	using type = source_base< typename T::event_type >;
+};
+
+template< class T, class Derived >
+struct fitting_base< T, Derived, std::enable_if_t< is_sink< T >::value > >
+{
+	using type = sink_base< typename T::event_type, Derived >;
+};
+
+template< class T, class Derived, class Enable = void >
+struct fitting_initializer;
+
+template< class T, class Derived >
+struct fitting_initializer< T, Derived, std::enable_if_t< is_source< T >::value > >
+{
+	source< typename T::event_type >
+	operator()( source_base< typename T::event_type >& s ) const
 	{
-		m_listeners.clear();
+		return s. template get_source< typename T::event_type >();
 	}
-
-	id_type				m_next_id = 1;
-	map_type			m_listeners;
 };
 
-
-
-#if 0
-
-enum class cardinality
+template< class T, class Derived >
+struct fitting_initializer< T, Derived, std::enable_if_t< is_sink< T >::value > >
 {
-	simplex,
-	multiplex
-};
-
-class emitter_base
-{
-public:
-	virtual ~emitter_base() {}
-
-	virtual void disconnect() {}
-};
-
-template< class T, T Value, cardinality K, class... Args >
-struct event_definition 
-{
-	using listener = std::function< void ( Args... ) >;
-
-	class handler
+	sink< typename T::event_type >
+	operator()( sink_base< typename T::event_type, Derived >& s ) const
 	{
-	public:
-		using ptr = std::shared_ptr< handler >;
-
-		virtual void handle( event_definition defn, Args... args ) = 0;
-	};
-
-	template< class Derived >
-	class handler_spec : public handler
-	{
-	public:
-		using method_ptr_type = void ( Derived::* )( Args... );
-
-		handler_spec( method_ptr_type mptr )
-		:
-		m_mptr{ mptr }
-		{}
-
-		virtual void handle( event_definition , Args... args ) override
-		{
-        	((static_cast< Derived& >(*this)).*m_mptr)( args... );
-		}
-
-	protected:
-		method_ptr_type m_mptr;
-	};
-
-	class emitter : public emitter_base
-	{
-		using id_type
+		return s. template get_sink< typename T::event_type >();
 	}
-
-	class emitter : public emitter_base
-	{
-	public:
-
-		using id_type = std::uint64_t;
-
-
-		emitter( cardinality card = cardinality::multiplex )
-		:
-		m_is_simplex{ ( ( card == cardinality::simplex ) ? true : false ) },
-		m_next_id{ 1 }
-		{
-			if ( m_is_simplex )
-			{
-				new ( & m_listeners.m_simplex ) simplex_listener();
-			}
-			else
-			{
-				new ( & m_listeners.m_multiplex ) listener_map();
-			}
-		}
-
-		~emitter()
-		{
-			if ( m_is_simplex )
-			{
-				m_listeners.m_simplex.~simplex_listener();
-			}
-			else
-			{
-				m_listeners.m_multiplex.~listener_map();
-			}
-		}
-
-
-		id_type add_listener( event_definition evt, typename handler::ptr h, std::error_code& err )
-		{
-			return add_listener( evt, err, [=] ( Args... args )
-			{
-				h->handle( event_definition{}, args... );
-			} );
-		}
-
-		id_type add_listener( event_definition evt, typename handler::ptr h )
-		{
-			return add_listener( evt, [=] ( Args... args )
-			{
-				h->handle( event_definition{}, args... );
-			} );
-		}
-
-
-		template< class T >
-		id_type add_listener( event_definition, std::error_code& err, T&& l )
-		{
-			clear_error( err );
-			id_type result = 0;
-			if ( m_is_simplex )
-			{
-				if ( m_listeners.m_simplex.m_listener )
-				{
-					err = make_error_code( std::errc::already_connected );
-					goto exit;
-				}
-				else
-				{
-					result = m_next_id++;
-					m_listeners.m_simplex.m_id = result;
-					m_listeners.m_simplex.m_listener = std::forward< T >( l );
-				}
-			}
-			else
-			{
-				auto id = m_next_id++;
-				m_listeners.m_multiplex.emplace( id, std::forward< T >( l ) );
-				result = id;
-			}
-
-		exit:
-			return result;
-		}
-
-		template< class T >
-		id_type add_listener( event_definition, T&& l )
-		{
-			id_type result = 0;
-			if ( m_is_simplex )
-			{
-				if ( m_listeners.m_simplex.m_listener )
-				{
-					throw std::system_error{ make_error_code( std::errc::already_connected ) };
-				}
-				else
-				{
-					result = m_next_id++;
-					m_listeners.m_simplex.m_id = result;
-					m_listeners.m_simplex.m_listener = std::forward< T >( l );
-				}
-			}
-			else
-			{
-				auto id = m_next_id++;
-				m_listeners.m_multiplex.emplace( id, std::forward< T >( l ) );
-				result = id;
-			}
-
-			return result;
-		}
-
-
-		id_type remove_listener( event_definition, id_type id )
-		{
-			id_type result = 0;
-			if ( m_is_simplex )
-			{
-				if ( m_Listeners.m_simplex.m_id == id )
-				{
-					m_listeners.m_simplex.m_id = 0;
-					m_listeners.m_simplex.m_listener = nullptr;
-					result = id;
-				}
-			}
-			else
-			{
-				auto removed = m_listeners.m_multiplex.erase( id );
-				if ( removed > 0 )
-				{
-					assert( removed == 1 );
-					result = id;
-				}
-			}
-			return result;
-		}
-
-		void emit( event_definition, Args... args )
-		{
-			for ( auto it = m_listeners.begin(); it != m_listeners.end(); ++it )
-			{
-				(it->second)( args... );
-			}
-		}
-
-		std::size_t
-		listener_count( event_definition ) const
-		{
-			return m_listeners.size();
-		}
-
-		std::size_t
-		receiver_count( event_definition e ) const
-		{
-			return handler_count( e ) + listener_count( e );
-		}
-
-		void
-		clear( event_definition )
-		{
-			m_handlers.clear();
-			m_listeners.clear();
-		}
-
-		virtual void disconnect() override
-		{
-			m_handlers.clear();
-			m_listeners.clear();
-		}
-
-	protected:
-		id_type														m_next_id = 1;
-		const bool													m_is_simplex;
-
-		using listener_map = std::unordered_map< id_type, listener >;
-
-		struct simplex_listener
-		{
-			id_type		m_id;
-			listener	m_listener;
-		};
-
-		union listeners
-		{
-			listener_map						m_multiplex;
-			simplex_listener					m_simplex;
-		};
-
-		listeners								m_listeners;
-	};
-
 };
 
-template< class... Events >
-class multi_emitter : public Events::emitter...
+template< class Connector, class Derived >
+class connectable;
+
+template< class Derived, class... Args >
+class connectable< connector< Args... >, Derived >
+:
+public fitting_base< Args, Derived >::type...
 {
 public:
+	using connector_type = connector< Args... >;
 
-	template< class E >
-	void add_handler( E e, typename E::handler::ptr p )
+	connectable()
+	:
+	m_connector{ fitting_initializer< Args, Derived >{}( *this )... }
+	{}
+
+	template< class Connector >
+	typename std::enable_if_t< std::is_same< Connector, connector_type >::value, connector_type& >
+	get_connector()
 	{
-		E::emitter::add_handler( e, p );
+		return m_connector;
 	}
 
-	template< class E >
-	bool remove_handler( E e, typename E::handler::ptr p )
+	template< class T >
+	void
+	mate( T& other )
 	{
-		return E::emitter::remove_handler( e, p );
+		m_connector.mate( other. template get_connector< typename complement< connector_type >::type >() );
 	}
 
-	template< class E >
-	typename E::emitter::id_type add_listener( E e, typename E::listener l )
-	{
-		return E::emitter::add_listener( e, l );
-	}
-
-	template< class E >
-	bool remove_listener( E e, typename E::emitter::id_type id )
-	{
-		return E::emitter::remove_listener( e, E::emitter::id_type );
-	}
-
-	template< class E, class... Args >
-	void emit( E e, Args... args )
-	{
-		E::emitter::emit( e, args... );
-	}
-
-	template< class E >
-	std::size_t handler_count( E e ) const
-	{
-		return E::emitter::handler_count( e );
-	}
-
-	template< class E >
-	std::size_t listener_count( E e ) const
-	{
-		return E::emitter::listener_count( e );
-	}
-
-	template< class E >
-	std::size_t receiver_count( E e ) const
-	{
-		return E::emitter::receiver_count( e );
-	}
-
-	template< class Handler >
-	void add_all_handlers( std::shared_ptr< Handler > hp )
-	{
-		add_multi_handlers< Handler, Events... >( hp );
-	}
-
-	template< class Handler >
-	void remove_all_handlers( std::shared_ptr< Handler > hp )
-	{
-		remove_multi_handlers< Handler, Events... >( hp );
-	}
-
-	template< class Handler, class... _Events >
-	void add_handlers( std::shared_ptr< Handler > hp, _Events... _evts )
-	{
-		add_multi_handlers< Handler, _Events... >( hp );
-	}
-
-	void clear_emitters()
-	{
-		clear_multi_emitters< Events... >();
-	}
-
-	template< class E >
-	void clear( E e )
-	{
-		E::emitter::clear( e );
-	}
-
-	virtual void disconnect() override
-	{
-		clear_emitters();
-	}
-
-	std::size_t
-	total_handler_count() const
-	{
-		return multi_handler_count< Events... >();
-	}
-
-	std::size_t
-	total_listener_count() const
-	{
-		return multi_listener_count< Events... >();
-	}
-
-	std::size_t
-	total_receiver_count() const
-	{
-		return total_handler_count() + total_listener_count();
-	}
-
-protected:
-
-	template< class First, class... Rest >
-	typename std::enable_if_t< ( sizeof...( Rest ) > 0 ), std::size_t >
-	multi_handler_count() const
-	{
-		return handler_count( First{} ) + multi_handler_count< Rest... >();
-	}
-
-	template< class E >
-	std::size_t multi_handler_count() const
-	{
-		return handler_count( E{} );
-	}
-
-	template< class First, class... Rest >
-	typename std::enable_if_t< ( sizeof...( Rest ) > 0 ), std::size_t >
-	multi_listener_count() const
-	{
-		return listener_count( First{} ) + multi_handler_count< Rest... >();
-	}
-
-	template< class E >
-	std::size_t multi_listener_count() const
-	{
-		return listener_count( E{} );
-	}
-
-	template< class Handler, class First, class... Rest >
-	typename std::enable_if_t< ( sizeof...( Rest ) > 0 ) > 
-	add_multi_handlers( std::shared_ptr< Handler > hp )
-	{
-		First::emitter::add_handler( First{}, std::static_pointer_cast< typename First::handler >( hp ) );
-		add_multi_handlers< Handler, Rest... >( hp );
-	}
-
-	template< class Handler, class E >
-	void add_multi_handlers( std::shared_ptr< Handler > hp )
-	{
-		E::emitter::add_handler( E{}, hp );
-	}
-
-	template< class Handler, class First, class... Rest >
-	typename std::enable_if_t< ( sizeof...( Rest ) > 0 ) > 
-	remove_multi_handlers( std::shared_ptr< Handler > hp )
-	{
-		First::emitter::remove_handler( First{}, std::static_pointer_cast< typename First::handler >( hp ) );
-		remove_multi_handlers< Handler, Rest... >( hp );
-	}
-
-	template< class Handler, class E >
-	void remove_multi_handlers( std::shared_ptr< Handler > hp )
-	{
-		E::emitter::remove_handler( E{}, hp );
-	}
-
-	template< class First, class... Rest >
-	typename std::enable_if_t< ( sizeof...( Rest ) > 0 ) >
-	clear_multi_emitters()
-	{
-		First::emitter::clear( First{} );
-		clear_multi_emitters< Rest... >();
-	}
-
-	template< class E >
-	void clear_multi_emitters()
-	{
-		E::emitter::clear( E{} );
-	}
+private:
+	connector_type	m_connector;
 };
-
-#endif 
 
 } // namespace async
 } // namespace logicmill

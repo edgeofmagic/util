@@ -22,46 +22,54 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ASYNC_TIMER_H
-#define LOGICMILL_ASYNC_TIMER_H
+#ifndef LOGICMILL_ASYNC_RESOLVE_REQUEST_UV_H
+#define LOGICMILL_ASYNC_RESOLVE_REQUEST_UV_H
 
-#include <memory>
-#include <functional>
-#include <system_error>
-#include <chrono>
+#include <uv.h>
+#include <logicmill/async/resolve_request.h>
+#include "uv_error.h"
 
-namespace logicmill
+class resolve_request_uv;
+
+struct resolve_request_data
 {
-namespace async
-{
-
-class loop;
-
-class timer
-{
-public:
-	using ptr = std::shared_ptr< timer >;
-	using handler = std::function< void ( timer::ptr ) >;
-
-	virtual ~timer() {}
-
-	virtual void
-	start( std::chrono::milliseconds timeout, std::error_code& err ) = 0;
-
-	virtual void
-	stop( std::error_code& err ) = 0;
-
-	virtual void
-	close() = 0;
-
-	virtual std::shared_ptr< loop >
-	owner() = 0;
-
-	virtual bool
-	is_pending() const = 0;
+	std::shared_ptr< resolve_request_uv >		m_impl_ptr;
 };
 
-} // namespace async
-} // namespace logicmill
 
-#endif // LOGICMILL_ASYNC_TIMER_H
+class resolve_request_uv : public logicmill::async::resolve_request, public std::enable_shared_from_this< resolve_request_uv >
+{
+public:
+
+	using ptr = std::shared_ptr< resolve_request_uv >;
+
+	resolve_request_uv( std::string const& hostname, logicmill::async::resolve_request::handler handler );
+
+	void 
+	start( uv_loop_t* lp, ptr const& self, std::error_code& err );
+
+	virtual ~resolve_request_uv();
+
+	static void 
+	on_resolve( uv_getaddrinfo_t* req, int status, struct addrinfo* result );
+
+	void
+	wipe();
+
+	virtual std::shared_ptr< logicmill::async::loop >
+	owner() override;
+
+	virtual void
+	cancel() override;
+
+	virtual std::string const&
+	hostname() const override;
+
+	uv_getaddrinfo_t									m_uv_req;
+	resolve_request_data								m_data;
+	std::string											m_hostname;
+	logicmill::async::resolve_request::handler			m_handler;
+
+};
+
+#endif /* LOGICMILL_ASYNC_RESOLVE_REQUEST_UV_H */

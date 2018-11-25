@@ -26,20 +26,41 @@
 #define LOGICMILL_TRAITS_H
 
 #include <type_traits>
+#include <tuple>
+#include <utility>
 
 namespace logicmill
 {
 namespace traits
 {
-	template <bool... B>
+	template < bool... B >
 	struct conjunction {};
 
-	template <bool Head, bool... Tail>
-	struct conjunction<Head, Tail...>
-		: std::integral_constant<bool, Head && conjunction<Tail...>::value>{};
+	template < bool Head, bool... Tail >
+	struct conjunction< Head, Tail... >
+		: std::integral_constant< bool, Head && conjunction< Tail... >::value > {};
 
-	template <bool B>
-	struct conjunction<B> : std::integral_constant<bool, B> {};
+	template < bool B >
+	struct conjunction< B > : std::integral_constant< bool, B > {};
+
+	template < class T, template < class... > class Template >
+	struct is_specialization : std::false_type {};
+
+	template <template <class...> class Template, class... Args>
+	struct is_specialization<Template< Args... >, Template > : std::true_type {};
+
+	template< std::size_t I = 0, class FuncT, class... Tp >
+	inline typename std::enable_if_t< I == sizeof...( Tp ) >
+	for_each( std::tuple< Tp... > &, FuncT )
+	{ }
+
+	template< std::size_t I = 0, class FuncT, class... Tp>
+	inline typename std::enable_if_t< I < sizeof...( Tp ) >
+	for_each( std::tuple< Tp... >& t, FuncT f )
+	{
+		f( std::get< I >( t ) );
+		for_each< I + 1, FuncT, Tp... >( t, f );
+	}
 
 } // namespace traits
 } // namespace logicmill

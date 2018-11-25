@@ -331,6 +331,16 @@ TEST_CASE( "logicmill::bstream::mutable_buffer [ smoke ] { dealloc only broker }
 	mutable_buffer mbuf{ &blk, 32, buffer::null_deallocator{} }; // sanitizer will go nuts if stack gets deallocated
 }
 
+TEST_CASE( "logicmill::bstream::const_buffer [ smoke ] { dealloc only broker }" )
+{
+	std::string contents{ "some buffer contents" };
+	bstream::buffer::memory_broker::ptr broker = bstream::buffer::default_broker::get();
+	auto block = broker->allocate( 1024 );
+	memcpy( block, contents.data(), contents.size() );
+	const_buffer cbuf{ block, contents.size(), buffer::default_deallocator{} };
+}
+
+
 TEST_CASE( "logicmill/buffer/smoke/basic" )
 {
 	std::string s1{ "This is some buffer content." };

@@ -22,75 +22,66 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ASYNC_SOCKET_H
-#define LOGICMILL_ASYNC_SOCKET_H
+#ifndef LOGICMILL_ASYNC_TIMER_UV_H
+#define LOGICMILL_ASYNC_TIMER_UV_H
 
-#include <memory>
-#include <functional>
-#include <system_error>
-#include <chrono>
+#include <uv.h>
+#include <logicmill/async/timer.h>
+#include "uv_error.h"
 
-namespace logicmill
+class timer_uv;
+
+struct timer_handle_data
 {
-namespace async
-{
+	std::shared_ptr< timer_uv > m_impl_ptr;
+};
 
-class loop;
-
-namespace tcp
-{
-	class socket
-	{
-	public:
-		using ptr = std::shared_ptr< socket >;
-
-		using connect_handler = std::function< void ( socket::ptr connection, std::error_code& err ) >;
-		using read_handler = std::function< void ( )
-
-		using bind_handler
-		virtual ~socket() {}
-
-		virtual void
-		bind( ip::endpoint const& ep, std::error_code& err, connect_handler handler ) = 0;
-
-		virtual void
-		close( std::error_code& err ) = 0;
-
-		virtual void
-
-		
-	}
-}
-
-class timer
+class timer_uv : public logicmill::async::timer // , public std::enable_shared_from_this< timer_uv >
 {
 public:
-	using ptr = std::shared_ptr< timer >;
-	using handler = std::function< void ( timer::ptr ) >;
 
-	virtual ~timer() {}
+	using ptr = std::shared_ptr< timer_uv >;
 
-	virtual void
-	start( std::chrono::milliseconds timeout ) = 0;
+	timer_uv( uv_loop_t* lp, logicmill::async::timer::handler handler );
 
-	virtual void
-	start( std::chrono::milliseconds timeout, std::error_code& err ) = 0;
+	timer_uv( uv_loop_t* lp, std::error_code& err, logicmill::async::timer::handler handler );
 
-	virtual void
-	stop() = 0;
+	virtual ~timer_uv();
+
+	void
+	init( ptr const& self );
 
 	virtual void
-	stop( std::error_code& err ) = 0;
+	start( std::chrono::milliseconds timeout, std::error_code& err ) override;
 
 	virtual void
-	close() = 0;
+	stop( std::error_code& err ) override;
 
-	virtual std::shared_ptr< loop >
-	owner() = 0;
+	virtual void
+	close() override;
+
+	virtual std::shared_ptr< logicmill::async::loop >
+	owner() override;
+
+	bool 
+	is_active() const;
+
+	virtual bool
+	is_pending() const override;
+
+	void
+	clear();
+
+	static void
+	on_timer_close( uv_handle_t* handle );
+
+	static void
+	on_timer_expire( uv_timer_t* handle );
+
+	uv_timer_t									m_uv_timer;
+	timer_handle_data							m_data;
+	logicmill::async::timer::handler			m_handler;
 
 };
 
-} // namespace async
-} // namespace logicmill
-
-#endif // LOGICMILL_ASYNC_SOCKET_H
+#endif /* LOGICMILL_ASYNC_TIMER_UV_H */

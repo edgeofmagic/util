@@ -38,13 +38,13 @@ namespace async
 
 class loop;
 
-class resolver
+class resolve_request
 {
 public:
-	using ptr = std::shared_ptr< resolver >;
-	using handler = std::function< void( resolver::ptr req, std::deque< ip::address >&& addresses, std::error_code const& err ) >;
+	using ptr = std::shared_ptr< resolve_request >;
+	using handler = std::function< void( resolve_request::ptr req, std::deque< ip::address >&& addresses, std::error_code const& err ) >;
 
-	virtual ~resolver() {}
+	virtual ~resolve_request() {}
 
 	virtual std::shared_ptr< loop >
 	owner() = 0;

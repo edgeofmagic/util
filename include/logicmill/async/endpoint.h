@@ -26,13 +26,15 @@
 #define LOGICMILL_ASYNC_ENDPOINT_H
 
 #include <sstream>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h> 
 #include <logicmill/async/address.h>
 #include <logicmill/async/error.h>
 
 namespace logicmill {
 namespace async {
 namespace ip {
-
 
 class endpoint
 {
@@ -54,7 +56,26 @@ public:
 	:
 	m_addr( rhs.m_addr ),
 	m_port( rhs.m_port )
+	{}
+
+	endpoint( sockaddr_storage const& sockaddr )
+	:
+	m_addr{},
+	m_port{ 0 }
 	{
+		if ( sockaddr.ss_family == AF_INET )
+		{
+			auto addr4 = reinterpret_cast< const sockaddr_in* >( &sockaddr );
+			
+			addr( address{ addr4->sin_addr } );
+			port( ntohs( addr4->sin_port ) );
+		}
+		else if ( sockaddr.ss_family == AF_INET6 )
+		{
+			auto addr6 = reinterpret_cast< const sockaddr_in6* >( &sockaddr );
+			addr( address{ addr6->sin6_addr } );
+			port( ntohs( addr6->sin6_port ) );
+		}
 	}
 
 	~endpoint()
@@ -85,11 +106,11 @@ public:
 	{
 		std::ostringstream os;
 
-		if ( addr.is_v4() )
+		if ( m_addr.is_v4() )
 		{
 			os << m_addr.to_string() << ":" << std::to_string( m_port );
 		}
-		else if ( addr.is_v6() )
+		else if ( m_addr.is_v6() )
 		{
 			os << "[" << m_addr.to_string() << "]:" << m_port;
 		}
@@ -136,6 +157,37 @@ public:
 	{
 		return ( m_addr && m_port );
 	}
+
+	void
+	to_sockaddr( sockaddr_storage &sockaddr ) const
+	{
+		memset( &sockaddr, 0, sizeof( sockaddr ) );
+
+		if ( is_v4() )
+		{
+			auto addr4 = reinterpret_cast< struct sockaddr_in* >( &sockaddr );
+			
+			addr4->sin_family	= AF_INET;
+			addr() >> addr4->sin_addr;
+			addr4->sin_port = htons( port() );
+#if defined( __APPLE__ )
+			addr4->sin_len = sizeof( sockaddr_in );
+#endif
+		}
+		else if ( is_v6() )
+		{
+			auto addr6 = reinterpret_cast< sockaddr_in6* >( &sockaddr );
+			
+			addr6->sin6_family	= AF_INET6;
+			addr() >> addr6->sin6_addr;
+			addr6->sin6_port = htons( port() );
+#if defined( __APPLE__ )
+			addr6->sin6_len = sizeof( sockaddr_in6 );
+#endif
+		}
+	}
+
+
 	
 protected:
 
@@ -165,7 +217,7 @@ struct hash< logicmill::async::ip::endpoint >
 	result_type operator()( const argument_type &v ) const
 	{
 		result_type res	= std::hash< logicmill::async::ip::address >()( v.addr() );		
-		res = ( res << 1 ) + res + std::hash< std::uint16_t >( v.port() );
+		res = ( res << 1 ) + res + std::hash< std::uint16_t >{}( v.port() );
 		return res;
     }
 };

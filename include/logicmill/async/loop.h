@@ -25,19 +25,26 @@
 #ifndef LOGICMILL_ASYNC_LOOP_H
 #define LOGICMILL_ASYNC_LOOP_H
 
+#define BUILD_TCP 1
+#define BUILD_RESOLVER 1
+
 #include <memory>
 #include <functional>
 #include <system_error>
 #include <chrono>
 #include <logicmill/async/timer.h>
-#include <logicmill/async/resolver.h>
+#if ( BUILD_RESOLVER )
+#include <logicmill/async/resolve_request.h>
+#endif
+#if ( BUILD_TCP )
+#include <logicmill/async/tcp.h>
+#endif
+#include <logicmill/async/endpoint.h>
 
 namespace logicmill
 {
 namespace async
 {
-
-class timer;
 
 class loop
 {
@@ -53,35 +60,41 @@ public:
 	virtual
 	~loop() {}
 
-	virtual void
-	run() = 0;
-
 	virtual void 
 	run( std::error_code& err ) = 0;
-
-	virtual void
-	stop() = 0;
 
 	virtual void
 	stop( std::error_code& err ) = 0;
 
 	virtual void
-	close() = 0;
-
-	virtual void
 	close( std::error_code& err ) = 0;
-
-	virtual timer::ptr
-	create_timer( timer::handler hf ) = 0;
 
 	virtual timer::ptr
 	create_timer( std::error_code& err, timer::handler hf ) = 0;
 
-	virtual resolver::ptr
-	create_resolver( std::string const& hostname, resolver::handler hf ) = 0;
+#if ( BUILD_TCP )
 
-	virtual resolver::ptr
-	create_resolver( std::string const& hostname, std::error_code& err, resolver::handler hf ) = 0;
+	virtual tcp::listener::ptr
+	create_tcp_listener( ip::endpoint const& ep, std::error_code& err, tcp::listener::connection_handler&& handler ) = 0;
+		
+	virtual tcp::listener::ptr
+	create_tcp_listener( ip::endpoint const& ep, std::error_code& err, tcp::listener::connection_handler const& handler ) = 0;
+	
+	virtual tcp::channel::ptr
+	connect_tcp_channel( ip::endpoint const& ep, std::error_code& err, tcp::channel::connect_handler&& handler ) = 0;
+
+	virtual tcp::channel::ptr
+	connect_tcp_channel( ip::endpoint const& ep, std::error_code& err, tcp::channel::connect_handler const& handler ) = 0;
+
+#endif
+
+#if ( BUILD_RESOLVER )
+
+	virtual std::shared_ptr< resolve_request >
+	resolve( std::string const& hostname, std::error_code& err, resolve_request::handler hf ) = 0;
+
+#endif
+
 };
 
 } // namespace async

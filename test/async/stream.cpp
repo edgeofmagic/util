@@ -63,14 +63,14 @@ namespace stream_test
 		}
 
 		void
-		on( control_event, control_state state )
+		on(control_event, control_state state)
 		{
-			if ( state == control_state::pause )
+			if (state == control_state::pause)
 			{
 				paused = true;
 				resumed = false;
 			}
-			else if ( state == control_state::resume )
+			else if (state == control_state::resume)
 			{
 				resumed = true;
 				paused = false;

@@ -22,25 +22,25 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/async/endpoint.h>
 #include <doctest.h>
 #include <iostream>
+#include <logicmill/async/endpoint.h>
 
 using namespace logicmill;
 using namespace async;
 using namespace ip;
 
 
-TEST_CASE( "logicmill/async/ip/endpoint/smoke/basic" )
+TEST_CASE("logicmill/async/ip/endpoint/smoke/basic")
 {
 	std::error_code err;
-	endpoint ep{ address{ "192.0.1.2", err }, 80 };
+	endpoint        ep{address{"192.0.1.2", err}, 80};
 
 	sockaddr_storage ss;
 
-	ep.to_sockaddr( ss );
+	ep.to_sockaddr(ss);
 
-	endpoint ep_copy{ ss };
+	endpoint ep_copy{ss};
 
-	CHECK( ep == ep_copy );
+	CHECK(ep == ep_copy);
 }

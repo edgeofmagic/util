@@ -25,18 +25,14 @@
 #ifndef LOGICMILL_ASYNC_LOOP_H
 #define LOGICMILL_ASYNC_LOOP_H
 
-#define BUILD_TCP 1
-
-#include <memory>
-#include <functional>
-#include <system_error>
 #include <chrono>
-#include <logicmill/async/timer.h>
+#include <functional>
+#include <logicmill/async/channel.h>
 #include <logicmill/async/endpoint.h>
-
-#if ( BUILD_TCP )
-#include <logicmill/async/tcp.h>
-#endif
+#include <logicmill/async/timer.h>
+#include <logicmill/async/options.h>
+#include <memory>
+#include <system_error>
 
 namespace logicmill
 {
@@ -46,9 +42,12 @@ namespace async
 class loop
 {
 public:
-	using ptr = std::shared_ptr< loop >;
+	using ptr = std::shared_ptr<loop>;
 
-	using resolve_handler = std::function< void( std::string const& hostname, std::deque< ip::address >&& addresses, std::error_code const& err ) >;
+	using resolve_handler = std::function<
+			void(std::string const& hostname, std::deque<ip::address>&& addresses, std::error_code& err)>;
+
+	using dispatch_handler = std::function<void(loop::ptr const&)>;
 
 	static loop::ptr
 	create();
@@ -56,46 +55,76 @@ public:
 	static loop::ptr
 	get_default();
 
-	virtual
-	~loop() {}
-
-	virtual void 
-	run( std::error_code& err ) = 0;
+	virtual ~loop() {}
 
 	virtual void
-	stop( std::error_code& err ) = 0;
+	run(std::error_code& err)
+			= 0;
 
 	virtual void
-	close( std::error_code& err ) = 0;
+	stop(std::error_code& err)
+			= 0;
+
+	virtual void
+	close(std::error_code& err)
+			= 0;
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, dispatch_handler>::value>
+	dispatch(std::error_code& err, Handler&& handler)
+	{
+		really_dispatch(err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, timer::handler>::value, timer::ptr>
+	create_timer(std::error_code& err, Handler&& handler)
+	{
+		return really_create_timer(err, std::forward<Handler>(handler));
+	}
+
+	virtual listener::ptr
+	create_listener(options const& opt, std::error_code& err, listener::connection_handler&& handler)
+			= 0;
+
+	virtual listener::ptr
+	create_listener(options const& opt, std::error_code& err, listener::connection_handler const& handler)
+			= 0;
+
+	virtual channel::ptr
+	connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler)
+			= 0;
+
+	virtual channel::ptr
+	connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler)
+			= 0;
+
+	virtual void
+	resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler)
+			= 0;
+
+	virtual void
+	resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler)
+			= 0;
+
+protected:
 
 	virtual timer::ptr
-	create_timer( std::error_code& err, timer::handler hf ) = 0;
+	really_create_timer(std::error_code& err, timer::handler const& handler)
+			= 0;
 
-#if ( BUILD_TCP )
-
-	virtual tcp::listener::ptr
-	create_tcp_listener( ip::endpoint const& ep, std::error_code& err, tcp::listener::connection_handler&& handler ) = 0;
-		
-	virtual tcp::listener::ptr
-	create_tcp_listener( ip::endpoint const& ep, std::error_code& err, tcp::listener::connection_handler const& handler ) = 0;
-	
-	virtual tcp::channel::ptr
-	connect_tcp_channel( ip::endpoint const& ep, std::error_code& err, tcp::channel::connect_handler&& handler ) = 0;
-
-	virtual tcp::channel::ptr
-	connect_tcp_channel( ip::endpoint const& ep, std::error_code& err, tcp::channel::connect_handler const& handler ) = 0;
-
-#endif
+	virtual timer::ptr
+	really_create_timer(std::error_code& err, timer::handler&& handler)
+			= 0;
 
 	virtual void
-	resolve( std::string const& hostname, std::error_code& err, resolve_handler&& handler ) = 0;
+	really_dispatch(std::error_code& err, dispatch_handler&& handler) = 0;
 
 	virtual void
-	resolve( std::string const& hostname, std::error_code& err, resolve_handler const& handler ) = 0;
-
+	really_dispatch(std::error_code& err, dispatch_handler const& handler) = 0;
 };
 
-} // namespace async
-} // namespace logicmill
+}    // namespace async
+}    // namespace logicmill
 
-#endif // LOGICMILL_ASYNC_LOOP_H
+#endif    // LOGICMILL_ASYNC_LOOP_H

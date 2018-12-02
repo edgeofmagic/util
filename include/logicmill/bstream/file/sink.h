@@ -25,132 +25,135 @@
 #ifndef LOGICMILL_BSTREAM_FILE_SINK_H
 #define LOGICMILL_BSTREAM_FILE_SINK_H
 
-#include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/buffer.h>
+#include <logicmill/bstream/sink.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE
-#define LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE  16384UL
+#define LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE 16384UL
 #endif
 
-namespace logicmill 
+namespace logicmill
 {
-namespace bstream 
+namespace bstream
 {
 namespace file
 {
 
 namespace detail
 {
-	class sink_test_probe;
+class sink_test_probe;
 }
 
 class sink : public bstream::sink
 {
 public:
-
 	using base = bstream::sink;
 
 	friend class detail::sink_test_probe;
-	
-    static constexpr open_mode default_mode = open_mode::at_begin;
 
-    sink( sink&& rhs );
+	static constexpr open_mode default_mode = open_mode::at_begin;
 
-    sink( std::string const& filename, open_mode mode, std::error_code& err, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+	sink(sink&& rhs);
 
-    sink( std::string const& filename, open_mode mode = default_mode, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+	sink(std::string const& filename,
+		 open_mode          mode,
+		 std::error_code&   err,
+		 size_type          buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
 
-    sink( open_mode mode = default_mode, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+	sink(std::string const& filename,
+		 open_mode          mode        = default_mode,
+		 size_type          buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
 
-    void
-    open( std::string const& filename, open_mode mode, std::error_code& err );
+	sink(open_mode mode = default_mode, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
 
-    void
-    open( std::string const& filename, open_mode mode = default_mode );
+	void
+	open(std::string const& filename, open_mode mode, std::error_code& err);
 
-    void
-    open( std::string const& filename, open_mode mode, int flags_override, std::error_code& err );
+	void
+	open(std::string const& filename, open_mode mode = default_mode);
 
-    void
-    open( std::string const& filename, open_mode mode, int flags_override );
+	void
+	open(std::string const& filename, open_mode mode, int flags_override, std::error_code& err);
 
-    bool
-    is_open() const noexcept
-    {
-        return m_is_open;
-    }
+	void
+	open(std::string const& filename, open_mode mode, int flags_override);
 
-    void
-    close( std::error_code& err );
+	bool
+	is_open() const noexcept
+	{
+		return m_is_open;
+	}
 
-    void
-    close();
+	void
+	close(std::error_code& err);
 
-    void
-    open( std::error_code& err )
-    {
-        really_open( err );
-    }
+	void
+	close();
 
-    void
-    open();
+	void
+	open(std::error_code& err)
+	{
+		really_open(err);
+	}
 
-    open_mode
-    mode() const noexcept
-    {
-        return m_mode;
-    }
+	void
+	open();
 
-    void
-    mode( open_mode m )
-    {
-        m_mode = m;
-        m_flags = to_flags( m );
-    }
+	open_mode
+	mode() const noexcept
+	{
+		return m_mode;
+	}
 
-    int
-    flags() const noexcept
-    {
-        return m_flags;
-    }
+	void
+	mode(open_mode m)
+	{
+		m_mode  = m;
+		m_flags = to_flags(m);
+	}
 
-    void
-    flags( int flags )
-    {
-        m_flags = flags;
-    }
+	int
+	flags() const noexcept
+	{
+		return m_flags;
+	}
 
-    void
-    filename( std::string const& filename )
-    {
-        m_filename = filename;
-    }
+	void
+	flags(int flags)
+	{
+		m_flags = flags;
+	}
 
-    std::string const&
-    filename() const noexcept
-    {
-        return m_filename;
-    }
+	void
+	filename(std::string const& filename)
+	{
+		m_filename = filename;
+	}
 
-    position_type
-    truncate( std::error_code& err );
+	std::string const&
+	filename() const noexcept
+	{
+		return m_filename;
+	}
 
-    position_type
-    truncate();
+	position_type
+	truncate(std::error_code& err);
+
+	position_type
+	truncate();
 
 protected:
-
-    virtual void
-    really_flush( std::error_code& err ) override;
+	virtual void
+	really_flush(std::error_code& err) override;
 
 	virtual bool
-	is_valid_position( position_type pos ) const override;
+	is_valid_position(position_type pos) const override;
 
 	virtual void
-	really_jump( std::error_code& err ) override;
+	really_jump(std::error_code& err) override;
 
-    virtual void
-    really_overflow( size_type, std::error_code& err ) override;
+	virtual void
+	really_overflow(size_type, std::error_code& err) override;
 
 	// virtual size_type
 	// really_get_size() const
@@ -159,36 +162,35 @@ protected:
 	// }
 
 private:
+	static bool
+	is_truncate(int flags);
 
-    static bool
-    is_truncate( int flags );
+	static bool
+	is_append(int flags);
 
-    static bool
-    is_append( int flags );
+	void
+	reset_ptrs()
+	{
+		byte_type* base = m_buf.data();
+		set_ptrs(base, base, base + m_buf.capacity());
+	}
 
-    void
-    reset_ptrs()
-    {
-        byte_type* base = m_buf.data();
-        set_ptrs( base, base, base + m_buf.capacity() );
-    }
+	void
+	really_open(std::error_code& err);
 
-    void 
-    really_open( std::error_code& err );
+	static int
+	to_flags(open_mode mode);
 
-    static int
-    to_flags( open_mode mode );
-
-    mutable_buffer					m_buf;
-    std::string						m_filename;
-    bool							m_is_open;
-    open_mode						m_mode;
-    int								m_flags;
-    int								m_fd;
+	mutable_buffer m_buf;
+	std::string    m_filename;
+	bool           m_is_open;
+	open_mode      m_mode;
+	int            m_flags;
+	int            m_fd;
 };
 
-} // namespace file
-} // namespace bstream
-} // namespace logicmill
+}    // namespace file
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_FILE_RANDOM_SINK_H
+#endif    // LOGICMILL_BSTREAM_FILE_RANDOM_SINK_H

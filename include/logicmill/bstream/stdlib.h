@@ -37,4 +37,4 @@
 #include <logicmill/bstream/stdlib/unordered_set.h>
 #include <logicmill/bstream/stdlib/vector.h>
 
-#endif // LOGICMILL_BSTREAM_STDLIB_H
+#endif    // LOGICMILL_BSTREAM_STDLIB_H

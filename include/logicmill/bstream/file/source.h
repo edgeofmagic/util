@@ -28,19 +28,19 @@
 #include <logicmill/bstream/source.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE
-#define LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE  16384UL
+#define LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE 16384UL
 #endif
 
-namespace logicmill 
+namespace logicmill
 {
-namespace bstream 
+namespace bstream
 {
 namespace file
 {
 
 namespace detail
 {
-	class source_test_probe;
+class source_test_probe;
 }
 
 class source : public bstream::source
@@ -50,69 +50,72 @@ public:
 
 	friend class file::detail::source_test_probe;
 
-    source( size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+	source(size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
 
-    source( std::string const& filename, std::error_code& err, int flag_overrides = 0, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+	source(std::string const& filename,
+		   std::error_code&   err,
+		   int                flag_overrides = 0,
+		   size_type          buffer_size    = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
 
-    source( std::string const& filename, int flag_overrides = 0, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE );
+	source(std::string const& filename,
+		   int                flag_overrides = 0,
+		   size_type          buffer_size    = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
 
-    void
-    open( std::string const& filename, std::error_code& err, int flag_overrides = 0 );
+	void
+	open(std::string const& filename, std::error_code& err, int flag_overrides = 0);
 
-    void
-    open( std::string const& filename, int flag_overrides = 0 );
+	void
+	open(std::string const& filename, int flag_overrides = 0);
 
-    bool
-    is_open() const noexcept
-    {
-        return m_is_open;
-    }
-    
-    void
-    close( std::error_code& err );
+	bool
+	is_open() const noexcept
+	{
+		return m_is_open;
+	}
 
-    void
-    close();
+	void
+	close(std::error_code& err);
+
+	void
+	close();
 
 protected:
-
-    virtual size_type
-    really_underflow( std::error_code& err ) override;
+	virtual size_type
+	really_underflow(std::error_code& err) override;
 
 	virtual size_type
 	really_get_size() const override;
 
-    virtual position_type
-    really_seek( position_type pos, std::error_code& err ) override;
+	virtual position_type
+	really_seek(position_type pos, std::error_code& err) override;
 
 	virtual position_type
 	really_get_position() const override;
 
 protected:
+	size_type
+	load_buffer(std::error_code& err);
 
-    size_type
-    load_buffer( std::error_code& err );
+	void
+	reset_ptrs()
+	{
+		const byte_type* base = m_buf.data();
+		set_ptrs(base, base, base);
+	}
 
-    void
-    reset_ptrs()
-    {
-        const byte_type* base = m_buf.data();
-        set_ptrs( base, base, base );
-    }
+	void
+	really_open(std::error_code& err);
 
-    void 
-    really_open( std::error_code& err );
-
-    mutable_buffer		m_buf;
-    std::string			m_filename;
-    bool				m_is_open;
-    int					m_flags;
-    int					m_fd;
-	size_type			m_size;
+	mutable_buffer m_buf;
+	std::string    m_filename;
+	bool           m_is_open;
+	int            m_flags;
+	int            m_fd;
+	size_type      m_size;
 };
 
-} // namespace file
-} // namespace bstream
-} // namespace logicmill
+}    // namespace file
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_FILE_SOURCE_H
+#endif    // LOGICMILL_BSTREAM_FILE_SOURCE_H

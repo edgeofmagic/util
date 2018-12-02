@@ -25,10 +25,10 @@
 #ifndef LOGICMILL_BSTREAM_IFBSTREAM_H
 #define LOGICMILL_BSTREAM_IFBSTREAM_H
 
-#include <logicmill/bstream/ibstream.h>
-#include <logicmill/bstream/file/source.h>
-#include <logicmill/bstream/utils/memory.h>
 #include <fstream>
+#include <logicmill/bstream/file/source.h>
+#include <logicmill/bstream/ibstream.h>
+#include <logicmill/bstream/utils/memory.h>
 #include <system_error>
 
 namespace logicmill
@@ -39,85 +39,77 @@ namespace bstream
 class ifbstream : public ibstream
 {
 public:
+	ifbstream(context_base const& cntxt = get_default_context()) : ibstream{std::make_unique<file::source>(), cntxt} {}
 
-    ifbstream( context_base const& cntxt = get_default_context() )
-    :
-    ibstream{ std::make_unique< file::source >(), cntxt }
-    {}
+	ifbstream(ifbstream const&) = delete;
+	ifbstream(ifbstream&&)      = delete;
 
-    ifbstream( ifbstream const& ) = delete;
-    ifbstream( ifbstream&& ) = delete;
+	ifbstream(std::unique_ptr<file::source> fbuf, context_base const& cntxt = get_default_context())
+		: ibstream{std::move(fbuf), cntxt}
+	{}
 
-    ifbstream( std::unique_ptr< file::source > fbuf, context_base const& cntxt = get_default_context() )
-    : ibstream{ std::move( fbuf ), cntxt }
-    {}
+	ifbstream(file::source&& fbuf, context_base const& cntxt = get_default_context())
+		: ibstream{std::make_unique<file::source>(std::move(fbuf)), cntxt}
+	{}
 
-    ifbstream( file::source&& fbuf, context_base const& cntxt = get_default_context() )
-    :
-    ibstream{ std::make_unique< file::source >( std::move( fbuf ) ), cntxt }
-    {}
+	ifbstream(std::string const& filename, context_base const& cntxt = get_default_context())
+		: ibstream{std::make_unique<file::source>(filename), cntxt}
+	{}
 
-    ifbstream( std::string const& filename, context_base const& cntxt = get_default_context() )
-    :
-    ibstream{ std::make_unique< file::source >( filename ), cntxt }
-    {}
+	ifbstream(std::string const& filename, std::error_code& err, context_base const& cntxt = get_default_context())
+		: ibstream{std::make_unique<file::source>(filename, err), cntxt}
+	{}
 
-    ifbstream( std::string const& filename, std::error_code& err, context_base const& cntxt = get_default_context() )
-    :
-    ibstream{ std::make_unique< file::source >( filename, err ), cntxt }
-    {}
+	void
+	open(std::string const& filename)
+	{
+		get_filebuf().open(filename);
+	}
 
-    void
-    open( std::string const& filename )
-    {
-        get_filebuf().open( filename );
-    }
+	void
+	open(std::string const& filename, std::error_code& err)
+	{
+		get_filebuf().open(filename, err);
+	}
 
-    void
-    open( std::string const& filename, std::error_code& err )
-    {
-        get_filebuf().open( filename, err );
-    }
+	bool
+	is_open() const
+	{
+		return get_filebuf().is_open();
+	}
 
-    bool
-    is_open() const
-    {
-        return get_filebuf().is_open();
-    }
+	void
+	close()
+	{
+		get_filebuf().close();
+	}
 
-    void
-    close()
-    {
-        get_filebuf().close();
-    }
+	void
+	close(std::error_code& err)
+	{
+		get_filebuf().close(err);
+	}
 
-    void
-    close( std::error_code& err )
-    {
-        get_filebuf().close( err );
-    }
+	file::source&
+	get_filebuf()
+	{
+		return reinterpret_cast<file::source&>(get_streambuf());
+	}
 
-    file::source&
-    get_filebuf()
-    {
-        return reinterpret_cast< file::source& >( get_streambuf() );
-    }
+	file::source const&
+	get_filebuf() const
+	{
+		return reinterpret_cast<file::source const&>(get_streambuf());
+	}
 
-    file::source const&
-    get_filebuf() const
-    {
-        return reinterpret_cast< file::source const& >( get_streambuf() );
-    }
-
-    std::unique_ptr< file::source >
-    release_filebuf()
-    {
-        return bstream::utils::static_unique_ptr_cast< file::source >( release_streambuf() );
-    }
-
+	std::unique_ptr<file::source>
+	release_filebuf()
+	{
+		return bstream::utils::static_unique_ptr_cast<file::source>(release_streambuf());
+	}
 };
 
-} // namespace bstream
-} // namespace logicmill
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_IFBSTREAM_H
+#endif    // LOGICMILL_BSTREAM_IFBSTREAM_H

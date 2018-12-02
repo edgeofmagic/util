@@ -25,10 +25,10 @@
 #ifndef LOGICMILL_ASYNC_TIMER_H
 #define LOGICMILL_ASYNC_TIMER_H
 
-#include <memory>
-#include <functional>
-#include <system_error>
 #include <chrono>
+#include <functional>
+#include <memory>
+#include <system_error>
 
 namespace logicmill
 {
@@ -40,28 +40,30 @@ class loop;
 class timer
 {
 public:
-	using ptr = std::shared_ptr< timer >;
-	using handler = std::function< void ( timer::ptr ) >;
+	using ptr     = std::shared_ptr<timer>;
+	using handler = std::function<void(timer::ptr)>;
 
 	virtual ~timer() {}
 
 	virtual void
-	start( std::chrono::milliseconds timeout, std::error_code& err ) = 0;
+	start(std::chrono::milliseconds timeout, std::error_code& err)
+			= 0;
 
 	virtual void
-	stop( std::error_code& err ) = 0;
+	stop(std::error_code& err)
+			= 0;
 
 	virtual void
 	close() = 0;
 
-	virtual std::shared_ptr< loop >
-	owner() = 0;
+	virtual std::shared_ptr<loop>
+	loop() = 0;
 
 	virtual bool
 	is_pending() const = 0;
 };
 
-} // namespace async
-} // namespace logicmill
+}    // namespace async
+}    // namespace logicmill
 
-#endif // LOGICMILL_ASYNC_TIMER_H
+#endif    // LOGICMILL_ASYNC_TIMER_H

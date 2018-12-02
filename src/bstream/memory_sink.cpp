@@ -129,3 +129,18 @@ memory::sink::release_buffer()
     set_ptrs( nullptr, nullptr, nullptr );
     return const_buffer{ std::move( m_buf ) };
 }
+
+mutable_buffer
+memory::sink::release_mutable_buffer()
+{
+	if ( m_dirty )
+	{
+		flush();
+	}
+    m_buf.size( get_high_watermark() );
+    reset_high_water_mark();
+	m_did_jump = false;
+    m_dirty = false;
+    set_ptrs( nullptr, nullptr, nullptr );
+    return std::move( m_buf );
+}

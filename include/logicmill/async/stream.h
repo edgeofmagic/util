@@ -25,13 +25,13 @@
 #ifndef LOGICMILL_ASYNC_STREAM_H
 #define LOGICMILL_ASYNC_STREAM_H
 
-#include <memory>
-#include <functional>
-#include <system_error>
 #include <chrono>
-#include <logicmill/bstream/buffer.h>
-#include <logicmill/async/event.h>
+#include <functional>
 #include <logicmill/async/error.h>
+#include <logicmill/async/event.h>
+#include <logicmill/bstream/buffer.h>
+#include <memory>
+#include <system_error>
 
 namespace logicmill
 {
@@ -56,96 +56,89 @@ enum class control_state
 	shutdown
 };
 
-using receipt = std::function< void ( id_type id, std::error_code const& err ) >;
+using receipt = std::function<void(id_type id, std::error_code const& err)>;
 
-template< class Payload >
-using data_event = event< stream_event, stream_event::data, Payload, id_type, receipt >;
-using cancel_event = event< stream_event, stream_event::cancel, id_type >;
-using control_event = event< stream_event, stream_event::control, control_state >;
+template<class Payload>
+using data_event = event<stream_event, stream_event::data, Payload, id_type, receipt>;
+using cancel_event = event<stream_event, stream_event::cancel, id_type>;
+using control_event = event<stream_event, stream_event::control, control_state>;
 
-template< class Payload >
-using data_out_connector = connector< source< data_event< Payload > >, source< cancel_event >, sink< control_event > >;
+template<class Payload>
+using data_out_connector = connector<source<data_event<Payload>>, source<cancel_event>, sink<control_event>>;
 
-template< class Payload>
-using data_in_connector = typename complement< data_out_connector< Payload > >::type;
+template<class Payload>
+using data_in_connector = typename complement<data_out_connector<Payload>>::type;
 
-template< class Payload, class Derived >
-using data_out = connectable< data_out_connector< Payload >, Derived >;
+template<class Payload, class Derived>
+using data_out = connectable<data_out_connector<Payload>, Derived>;
 
-template< class Payload, class Derived >
-using data_in = connectable< data_in_connector< Payload >, Derived >;
+template<class Payload, class Derived>
+using data_in = connectable<data_in_connector<Payload>, Derived>;
 
-template< class Payload >
+template<class Payload>
 class duplex_connector
 {
 public:
-
-	duplex_connector( data_out_connector< Payload > const& out, data_in_connector< Payload > const& in )
-	: 
-	m_out_connector{ out },
-	m_in_connector{ in }
+	duplex_connector(data_out_connector<Payload> const& out, data_in_connector<Payload> const& in)
+		: m_out_connector{out}, m_in_connector{in}
 	{}
 
-	template< class In, class Out >
-	duplex_connector( Out&& out, In&& in )
-	: 
-	m_out_connector{ std::forward< Out >( out ) },
-	m_in_connector{ std::forward< In >( in ) }
+	template<class In, class Out>
+	duplex_connector(Out&& out, In&& in) : m_out_connector{std::forward<Out>(out)}, m_in_connector{std::forward<In>(in)}
 	{}
 
 	void
-	mate( duplex_connector& other )
+	mate(duplex_connector& other)
 	{
-		m_out_connector.mate( other.m_in_connector );
-		m_in_connector.mate( other.m_out_connector );
+		m_out_connector.mate(other.m_in_connector);
+		m_in_connector.mate(other.m_out_connector);
 	}
 
 private:
-	data_out_connector< Payload >	m_out_connector;
-	data_in_connector< Payload >	m_in_connector;
+	data_out_connector<Payload> m_out_connector;
+	data_in_connector<Payload> m_in_connector;
 };
 
-template< class Payload, class Derived >
-class duplex : public data_in< Payload, Derived >, public data_out< Payload, Derived >
+template<class Payload, class Derived>
+class duplex : public data_in<Payload, Derived>, public data_out<Payload, Derived>
 {
 public:
-	using data_source_base = typename data_out< Payload, Derived >:: template source_base< data_event< Payload > >;
-	using cancel_source_base = typename data_out< Payload, Derived >:: template source_base< cancel_event >;
-	using control_source_base = typename data_in< Payload, Derived >:: template source_base< control_event >;
+	using data_source_base = typename data_out<Payload, Derived>::template source_base<data_event<Payload>>;
+	using cancel_source_base = typename data_out<Payload, Derived>::template source_base<cancel_event>;
+	using control_source_base = typename data_in<Payload, Derived>::template source_base<control_event>;
 
 	using data_source_base::send;
 	using cancel_source_base::send;
 	using control_source_base::send;
 
-	using data_out< Payload, Derived >::get_connector;
-	using data_in< Payload, Derived >::get_connector;
+	using data_out<Payload, Derived>::get_connector;
+	using data_in<Payload, Derived>::get_connector;
 
 	duplex()
-	:
-	m_connector{ data_out< Payload, Derived >:: template get_connector< data_out_connector< Payload > >(), 
-				 data_in< Payload, Derived >:: template get_connector< data_in_connector< Payload > >() }
+		: m_connector{data_out<Payload, Derived>::template get_connector<data_out_connector<Payload>>(),
+					  data_in<Payload, Derived>::template get_connector<data_in_connector<Payload>>()}
 	{}
 
-	template< class Connector >
-	typename std::enable_if_t< std::is_same< Connector, duplex_connector< Payload > >::value, duplex_connector< Payload >& >
+	template<class Connector>
+	typename std::enable_if_t<std::is_same<Connector, duplex_connector<Payload>>::value, duplex_connector<Payload>&>
 	get_connector()
 	{
 		return m_connector;
 	}
 
-	template< class T >
-	void stack( T& other )
+	template<class T>
+	void
+	stack(T& other)
 	{
-		m_connector.mate( other. template get_connector< duplex_connector< Payload > >() );
+		m_connector.mate(other.template get_connector<duplex_connector<Payload>>());
 	}
 
 private:
-
-	duplex_connector< Payload >		m_connector;
+	duplex_connector<Payload> m_connector;
 };
 
-} // namespace stream
-} // namespace async
-} // namespace logicmill
+}    // namespace stream
+}    // namespace async
+}    // namespace logicmill
 
-#endif // LOGICMILL_ASYNC_STREAM_H
+#endif    // LOGICMILL_ASYNC_STREAM_H

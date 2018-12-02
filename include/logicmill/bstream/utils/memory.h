@@ -31,17 +31,16 @@ namespace logicmill
 {
 namespace bstream
 {
-namespace utils 
+namespace utils
 {
 
-template< class Derived, class Base >
-typename std::enable_if_t< std::is_move_constructible< Derived >::value, std::unique_ptr< Derived > >
-static_unique_ptr_cast( std::unique_ptr< Base >&& p )
+template<class Derived, class Base>
+typename std::enable_if_t<std::is_move_constructible<Derived>::value, std::unique_ptr<Derived>>
+static_unique_ptr_cast(std::unique_ptr<Base>&& p)
 {
-    std::unique_ptr< Derived > derp = 
-        std::make_unique< Derived >( std::move( reinterpret_cast< Derived& >( *p.get() ) ) );
-    p = nullptr;
-    return derp;     
+	std::unique_ptr<Derived> derp = std::make_unique<Derived>(std::move(reinterpret_cast<Derived&>(*p.get())));
+	p                             = nullptr;
+	return derp;
 }
 
 
@@ -74,8 +73,8 @@ dynamic_unique_ptr_cast( std::unique_ptr< Base, Deleter >&& p )
 }
 */
 
-} // namespace utils
-} // namespace bstream
-} // namespace logicmill
+}    // namespace utils
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_UTILS_MEMORY_H
+#endif    // LOGICMILL_BSTREAM_UTILS_MEMORY_H

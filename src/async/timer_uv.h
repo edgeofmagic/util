@@ -25,45 +25,46 @@
 #ifndef LOGICMILL_ASYNC_TIMER_UV_H
 #define LOGICMILL_ASYNC_TIMER_UV_H
 
-#include <uv.h>
-#include <logicmill/async/timer.h>
 #include "uv_error.h"
+#include <logicmill/async/timer.h>
+#include <uv.h>
 
 class timer_uv;
 
 struct timer_handle_data
 {
-	std::shared_ptr< timer_uv > m_impl_ptr;
+	std::shared_ptr<timer_uv> m_impl_ptr;
 };
 
 class timer_uv : public logicmill::async::timer
 {
 public:
+	using ptr = std::shared_ptr<timer_uv>;
 
-	using ptr = std::shared_ptr< timer_uv >;
+	// timer_uv(uv_loop_t* lp, logicmill::async::timer::handler handler);
 
-	timer_uv( uv_loop_t* lp, logicmill::async::timer::handler handler );
+	timer_uv(uv_loop_t* lp, std::error_code& err, logicmill::async::timer::handler const& handler);
 
-	timer_uv( uv_loop_t* lp, std::error_code& err, logicmill::async::timer::handler handler );
+	timer_uv(uv_loop_t* lp, std::error_code& err, logicmill::async::timer::handler&& handler);
 
 	virtual ~timer_uv();
 
 	void
-	init( ptr const& self );
+	init(ptr const& self);
 
 	virtual void
-	start( std::chrono::milliseconds timeout, std::error_code& err ) override;
+	start(std::chrono::milliseconds timeout, std::error_code& err) override;
 
 	virtual void
-	stop( std::error_code& err ) override;
+	stop(std::error_code& err) override;
 
 	virtual void
 	close() override;
 
-	virtual std::shared_ptr< logicmill::async::loop >
-	owner() override;
+	virtual std::shared_ptr<logicmill::async::loop>
+	loop() override;
 
-	bool 
+	bool
 	is_active() const;
 
 	virtual bool
@@ -73,15 +74,14 @@ public:
 	clear();
 
 	static void
-	on_timer_close( uv_handle_t* handle );
+	on_timer_close(uv_handle_t* handle);
 
 	static void
-	on_timer_expire( uv_timer_t* handle );
+	on_timer_expire(uv_timer_t* handle);
 
-	uv_timer_t									m_uv_timer;
-	timer_handle_data							m_data;
-	logicmill::async::timer::handler			m_handler;
-
+	uv_timer_t                       m_uv_timer;
+	timer_handle_data                m_data;
+	logicmill::async::timer::handler m_handler;
 };
 
 #endif /* LOGICMILL_ASYNC_TIMER_UV_H */

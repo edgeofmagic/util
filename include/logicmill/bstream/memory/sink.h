@@ -25,56 +25,54 @@
 #ifndef LOGICMILL_BSTREAM_MEMORY_SINK_H
 #define LOGICMILL_BSTREAM_MEMORY_SINK_H
 
-#include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/buffer.h>
+#include <logicmill/bstream/sink.h>
 
 #ifndef LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE
-#define LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE  16384UL
+#define LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE 16384UL
 #endif
 
-namespace logicmill 
+namespace logicmill
 {
-namespace bstream 
+namespace bstream
 {
 namespace memory
 {
 
 namespace detail
 {
-	class sink_test_probe;
+class sink_test_probe;
 }
 
 class sink : public bstream::sink
 {
 public:
-
 	using base = bstream::sink;
 
 	friend class detail::sink_test_probe;
 
-    sink( 	size_type size = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE, 
-			buffer::memory_broker::ptr broker = buffer::default_broker::get() )
-    :
-    base{},
-    m_buf{ size, broker }
-    {
-        reset_ptrs();
-    }
+	sink(size_type                  size   = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE,
+		 buffer::memory_broker::ptr broker = buffer::default_broker::get())
+		: base{}, m_buf{size, broker}
+	{
+		reset_ptrs();
+	}
 
-    sink( mutable_buffer&& buf )
-    :
-    base{},
-    m_buf{ std::move( buf ) }
-    {
-        reset_ptrs();
-    }
+	sink(mutable_buffer&& buf) : base{}, m_buf{std::move(buf)}
+	{
+		reset_ptrs();
+	}
 
-    sink( sink&& ) = delete;
-    sink( sink const& ) = delete;
-    sink& operator=( sink&& ) = delete;
-    sink& operator=( sink const& ) = delete;
+	sink(sink&&)      = delete;
+	sink(sink const&) = delete;
+	sink&
+	operator=(sink&&)
+			= delete;
+	sink&
+	operator=(sink const&)
+			= delete;
 
-	sink& 
+	sink&
 	clear() noexcept;
 
 	const_buffer
@@ -86,29 +84,31 @@ public:
 	const_buffer
 	release_buffer();
 
+	mutable_buffer
+	release_mutable_buffer();
+
 protected:
-
 	virtual bool
-	is_valid_position( position_type pos ) const override;
+	is_valid_position(position_type pos) const override;
 
-    virtual void
-    really_overflow( size_type, std::error_code& err ) override;
+	virtual void
+	really_overflow(size_type, std::error_code& err) override;
 
-    void
-    resize( size_type size, std::error_code& err );
+	void
+	resize(size_type size, std::error_code& err);
 
-    void
-    reset_ptrs()
-    {
-        byte_type* base = m_buf.data();
-        set_ptrs( base, base, base + m_buf.capacity() );
-    }
+	void
+	reset_ptrs()
+	{
+		byte_type* base = m_buf.data();
+		set_ptrs(base, base, base + m_buf.capacity());
+	}
 
-    mutable_buffer					m_buf;
+	mutable_buffer m_buf;
 };
 
-} // namespace memory
-} // namespace bstream
-} // namespace logicmill
+}    // namespace memory
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_MEMORY_SINK_H
+#endif    // LOGICMILL_BSTREAM_MEMORY_SINK_H

@@ -34,85 +34,66 @@ namespace logicmill
 namespace bstream
 {
 
-template< class K, class V, class Compare, class Alloc >
-struct value_deserializer< std::map< K, V, Compare, Alloc >,
-        typename std::enable_if_t<
-            is_ibstream_readable< K >::value &&
-            is_ibstream_readable< V >::value > >
+template<class K, class V, class Compare, class Alloc>
+struct value_deserializer<std::map<K, V, Compare, Alloc>,
+						  typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
 {
-    std::map< K, V, Compare, Alloc > 
-    operator()( ibstream& is )  const
-    {
-        return get( is );
-    }
-
-    static std::map< K, V, Compare, Alloc >
-    get( ibstream& is )
-    {
-        using pair_type = std::pair< K, V >;
-        using map_type = std::map< K, V, Compare, Alloc >;
-        auto length = is.read_array_header();
-        map_type result;
-        for ( auto i = 0u; i < length; ++i )
-        {
-            result.insert( is.read_as< pair_type >() );
-        }
-        return result;
-    }
-};
-
-template< class K, class V, class Compare, class Alloc >
-struct value_deserializer< std::multimap< K, V, Compare, Alloc >,
-        typename std::enable_if_t<
-            is_ibstream_readable< K >::value &&
-            is_ibstream_readable< V >::value > >
-{
-    std::multimap< K, V, Compare, Alloc > 
-    operator()( ibstream& is )  const
-    {
-        return get( is );
-    }
-
-    static std::multimap< K, V, Compare, Alloc >
-    get( ibstream& is )
-    {
-        using pair_type = std::pair< K, V >;
-        using map_type = std::multimap< K, V, Compare, Alloc >;
-        auto length = is.read_array_header();
-        map_type result;
-        for ( auto i = 0u; i < length; ++i )
-        {
-            result.insert( is.read_as< pair_type >() );
-        }
-        return result;
-    }
-};
-
-template< class K, class V, class Compare, class Alloc >
-struct serializer< std::map< K, V, Compare, Alloc > >
-{
-	static obstream& put( obstream& os, std::map< K, V, Compare, Alloc > const& mp )
+	std::map<K, V, Compare, Alloc>
+	operator()(ibstream& is) const
 	{
-		os.write_array_header( mp.size() );
-		for ( auto it = mp.begin(); it != mp.end(); ++it )
+		return get(is);
+	}
+
+	static std::map<K, V, Compare, Alloc>
+	get(ibstream& is)
+	{
+		using pair_type = std::pair<K, V>;
+		using map_type  = std::map<K, V, Compare, Alloc>;
+		auto     length = is.read_array_header();
+		map_type result;
+		for (auto i = 0u; i < length; ++i)
 		{
-			os.write_array_header( 2 );
-			os << it->first;
-			os << it->second;
+			result.insert(is.read_as<pair_type>());
 		}
-		return os;
+		return result;
 	}
 };
-	
-template< class K, class V, class Compare, class Alloc >
-struct serializer< std::multimap< K, V, Compare, Alloc > >
+
+template<class K, class V, class Compare, class Alloc>
+struct value_deserializer<std::multimap<K, V, Compare, Alloc>,
+						  typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
 {
-	static obstream& put( obstream& os, std::multimap< K, V, Compare, Alloc > const& mp )
+	std::multimap<K, V, Compare, Alloc>
+	operator()(ibstream& is) const
 	{
-		os.write_array_header( mp.size() );
-		for ( auto it = mp.begin(); it != mp.end(); ++it )
+		return get(is);
+	}
+
+	static std::multimap<K, V, Compare, Alloc>
+	get(ibstream& is)
+	{
+		using pair_type = std::pair<K, V>;
+		using map_type  = std::multimap<K, V, Compare, Alloc>;
+		auto     length = is.read_array_header();
+		map_type result;
+		for (auto i = 0u; i < length; ++i)
 		{
-			os.write_array_header( 2 );
+			result.insert(is.read_as<pair_type>());
+		}
+		return result;
+	}
+};
+
+template<class K, class V, class Compare, class Alloc>
+struct serializer<std::map<K, V, Compare, Alloc>>
+{
+	static obstream&
+	put(obstream& os, std::map<K, V, Compare, Alloc> const& mp)
+	{
+		os.write_array_header(mp.size());
+		for (auto it = mp.begin(); it != mp.end(); ++it)
+		{
+			os.write_array_header(2);
 			os << it->first;
 			os << it->second;
 		}
@@ -120,7 +101,24 @@ struct serializer< std::multimap< K, V, Compare, Alloc > >
 	}
 };
 
-} // namespace bstream
-} // namespace logicmill
+template<class K, class V, class Compare, class Alloc>
+struct serializer<std::multimap<K, V, Compare, Alloc>>
+{
+	static obstream&
+	put(obstream& os, std::multimap<K, V, Compare, Alloc> const& mp)
+	{
+		os.write_array_header(mp.size());
+		for (auto it = mp.begin(); it != mp.end(); ++it)
+		{
+			os.write_array_header(2);
+			os << it->first;
+			os << it->second;
+		}
+		return os;
+	}
+};
 
-#endif // LOGICMILL_BSTREAM_STDLIB_MAP_H
+}    // namespace bstream
+}    // namespace logicmill
+
+#endif    // LOGICMILL_BSTREAM_STDLIB_MAP_H

@@ -37,98 +37,94 @@ namespace bstream
 class imbstream : public ibstream
 {
 public:
+	imbstream()                 = delete;
+	imbstream(imbstream const&) = delete;
+	imbstream(imbstream&&)      = delete;
 
-    imbstream() = delete;
-    imbstream( imbstream const& ) = delete;
-    imbstream( imbstream&& ) = delete;
+	using source_type = memory::source<shared_buffer>;
 
-	using source_type = memory::source< shared_buffer >;
+	imbstream(std::unique_ptr<source_type> strmbuf, context_base const& cntxt = get_default_context())
+		: ibstream{std::move(strmbuf), cntxt}
+	{}
 
-    imbstream( std::unique_ptr< source_type > strmbuf, context_base const& cntxt = get_default_context() )
-    : ibstream{ std::move( strmbuf ), cntxt }
-    {}
+	imbstream(buffer const& buf, context_base const& cntxt = get_default_context())
+		: ibstream(std::make_unique<source_type>(buf), cntxt)
+	{}
 
-    imbstream( buffer const& buf, context_base const& cntxt = get_default_context() )
-    :
-    ibstream( std::make_unique< source_type >( buf ), cntxt )
-    {}
+	imbstream(buffer&& buf, context_base const& cntxt = get_default_context())
+		: ibstream{std::make_unique<source_type>(std::move(buf)), cntxt}
+	{}
 
-    imbstream( buffer&& buf, context_base const& cntxt = get_default_context() )
-    :
-    ibstream{ std::make_unique< source_type >( std::move( buf ) ), cntxt }
-    {}
+	void
+	use(std::unique_ptr<source_type> strmbuf)
+	{
+		ibstream::use(std::move(strmbuf));
+		reset();
+	}
 
-    void
-    use( std::unique_ptr< source_type > strmbuf )
-    {
-        ibstream::use( std::move( strmbuf ) );
-        reset();
-    }
+	void
+	use(std::unique_ptr<source_type> strmbuf, std::error_code& err)
+	{
+		ibstream::use(std::move(strmbuf));
+		reset(err);
+	}
 
-    void
-    use( std::unique_ptr< source_type > strmbuf, std::error_code& err )
-    {
-        ibstream::use( std::move( strmbuf ) );
-        reset( err );
-    }
+	void
+	use(mutable_buffer&& buf)
+	{
+		ibstream::use(std::make_unique<source_type>(std::move(buf)));
+		reset();
+	}
 
-    void
-    use ( mutable_buffer&& buf )
-    {
-        ibstream::use( std::make_unique< source_type >( std::move( buf ) ) );
-        reset();
-    }
+	void
+	use(const_buffer&& buf)
+	{
+		ibstream::use(std::make_unique<source_type>(std::move(buf)));
+		reset();
+	}
 
-    void
-    use ( const_buffer&& buf )
-    {
-        ibstream::use( std::make_unique< source_type >( std::move( buf ) ) );
-        reset();
-    }
+	void
+	use(const_buffer const& buf)
+	{
+		ibstream::use(std::make_unique<source_type>(buf));
+		reset();
+	}
 
-    void
-    use ( const_buffer const& buf )
-    {
-        ibstream::use( std::make_unique< source_type >( buf ) );
-        reset();
-    }
+	void
+	use(mutable_buffer&& buf, std::error_code& err)
+	{
+		ibstream::use(std::make_unique<source_type>(std::move(buf)));
+		reset(err);
+	}
 
-    void
-    use( mutable_buffer&& buf, std::error_code& err )
-    {
-        ibstream::use( std::make_unique< source_type >( std::move( buf ) ) );
-        reset( err );
-    }
+	void
+	use(const_buffer&& buf, std::error_code& err)
+	{
+		ibstream::use(std::make_unique<source_type>(std::move(buf)));
+		reset(err);
+	}
 
-    void
-    use( const_buffer&& buf, std::error_code& err )
-    {
-        ibstream::use( std::make_unique< source_type >( std::move( buf ) ) );
-        reset( err );
-    }
+	void
+	use(const_buffer const& buf, std::error_code& err)
+	{
+		ibstream::use(std::make_unique<source_type>(buf));
+		reset(err);
+	}
 
-    void
-    use( const_buffer const& buf, std::error_code& err )
-    {
-        ibstream::use( std::make_unique< source_type >( buf ) );
-        reset( err );
-    }
+	const_buffer
+	get_buffer()
+	{
+		return get_membuf().get_buffer();
+	}
 
-    const_buffer
-    get_buffer()
-    {
-        return get_membuf().get_buffer();
-    }
-
-    source_type&
-    get_membuf()
-    {
-        return reinterpret_cast< source_type& >( * m_strmbuf );
-    }
-
+	source_type&
+	get_membuf()
+	{
+		return reinterpret_cast<source_type&>(*m_strmbuf);
+	}
 };
 
-} // namespace bstream
-} // namespace logicmill
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_IMBSTREAM_H
+#endif    // LOGICMILL_BSTREAM_IMBSTREAM_H

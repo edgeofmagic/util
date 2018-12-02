@@ -26,10 +26,10 @@
 #define LOGICMILL_BSTREAM_TYPES_H
 
 #include <cstdint>
-#include <system_error>
 #include <limits>
+#include <system_error>
 
-namespace logicmill 
+namespace logicmill
 {
 namespace bstream
 {
@@ -50,7 +50,7 @@ using position_type = std::uint64_t;
 /** \brief The type used to represent the a relative offset from an 
  * absolute position in a stream or buffer.
  */
-using offset_type  = std::int64_t;
+using offset_type = std::int64_t;
 
 /** \brief The type used to represent a checksum value calculated for
  * a buffer.
@@ -59,7 +59,7 @@ using checksum_type = std::uint32_t;
 
 /** \brief A value representing an invalid size.
  */
-static constexpr size_type npos = std::numeric_limits< size_type >::max();
+static constexpr size_type npos = std::numeric_limits<size_type>::max();
 
 
 // using size_type = std::size_t;
@@ -84,44 +84,47 @@ enum class open_mode
 	at_begin,
 };
 
-struct as_shared_buffer {};
-struct as_const_buffer {};
-struct as_mutable_buffer {};
+struct as_shared_buffer
+{};
+struct as_const_buffer
+{};
+struct as_mutable_buffer
+{};
 
 namespace detail
 {
 
-template< int N >
+template<int N>
 struct canonical_type;
 
 template<>
-struct canonical_type< 1 >
+struct canonical_type<1>
 {
 	using type = std::uint8_t;
 };
 
 template<>
-struct canonical_type< 2 >
+struct canonical_type<2>
 {
 	using type = std::uint16_t;
 };
 
 template<>
-struct canonical_type< 4 >
+struct canonical_type<4>
 {
 	using type = std::uint32_t;
 };
 
 template<>
-struct canonical_type< 8 >
+struct canonical_type<8>
 {
 	using type = std::uint64_t;
 };
 
-} // namespace detail
+}    // namespace detail
 
 
-} // namespace bstream
-} // namespace logicmill
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_TYPES_H
+#endif    // LOGICMILL_BSTREAM_TYPES_H

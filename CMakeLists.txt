@@ -65,6 +65,8 @@ set(LOGICMILL_SRCS
 	include/logicmill/async/error.h
 	include/logicmill/async/event.h
 	include/logicmill/async/stream.h
+	include/logicmill/async/channel.h
+	include/logicmill/async/framer.h
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
 	src/bstream/ibstream.cpp
@@ -85,6 +87,7 @@ set(LOGICMILL_SRCS
 	src/async/tcp_uv.cpp
 	src/async/address.cpp
 	src/async/error.cpp
+	src/async/framer.cpp
 	src/fs_impl.cpp)
 
 set(LOGICMILL_TEST_SRCS

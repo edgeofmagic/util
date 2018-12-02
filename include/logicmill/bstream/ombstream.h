@@ -25,8 +25,8 @@
 #ifndef LOGICMILL_BSTREAM_OMBSTREAM_H
 #define LOGICMILL_BSTREAM_OMBSTREAM_H
 
-#include <logicmill/bstream/obstream.h>
 #include <logicmill/bstream/memory/sink.h>
+#include <logicmill/bstream/obstream.h>
 #include <logicmill/bstream/utils/memory.h>
 
 namespace logicmill
@@ -37,29 +37,27 @@ namespace bstream
 class ombstream : public obstream
 {
 public:
-    ombstream() = delete;
-    ombstream( ombstream const& ) = delete;
-    ombstream( ombstream&& ) = delete;
+	ombstream()                 = delete;
+	ombstream(ombstream const&) = delete;
+	ombstream(ombstream&&)      = delete;
 
-    ombstream( std::unique_ptr< memory::sink > strmbuf, context_base const& cntxt = get_default_context() )
-    : obstream{ std::move( strmbuf ), cntxt }
-    {}
+	ombstream(std::unique_ptr<memory::sink> strmbuf, context_base const& cntxt = get_default_context())
+		: obstream{std::move(strmbuf), cntxt}
+	{}
 
-    ombstream( mutable_buffer&& buf, context_base const& cntxt = get_default_context() )
-    :
-    obstream{ std::make_unique< memory::sink >( std::move( buf ) ), cntxt }
-    {}
- 
-    ombstream( size_type size, context_base const& cntxt = get_default_context() )
-    :
-    ombstream( std::make_unique< memory::sink >( size ), cntxt )
-    {}
+	ombstream(mutable_buffer&& buf, context_base const& cntxt = get_default_context())
+		: obstream{std::make_unique<memory::sink>(std::move(buf)), cntxt}
+	{}
 
-    const_buffer
-    get_buffer()
-    {
-        return get_membuf().get_buffer();
-    }
+	ombstream(size_type size, context_base const& cntxt = get_default_context())
+		: ombstream(std::make_unique<memory::sink>(size), cntxt)
+	{}
+
+	const_buffer
+	get_buffer()
+	{
+		return get_membuf().get_buffer();
+	}
 
 	mutable_buffer&
 	get_buffer_ref()
@@ -67,26 +65,26 @@ public:
 		return get_membuf().get_buffer_ref();
 	}
 
-    const_buffer
-    release_buffer()
-    {
-        return get_membuf().release_buffer();
-    }
+	const_buffer
+	release_buffer()
+	{
+		return get_membuf().release_buffer();
+	}
 
-    void
-    clear()
-    {
-        get_membuf().clear();
-    }
+	void
+	clear()
+	{
+		get_membuf().clear();
+	}
 
-    memory::sink&
-    get_membuf()
-    {
-        return reinterpret_cast< memory::sink& >( * m_strmbuf );
-    }
+	memory::sink&
+	get_membuf()
+	{
+		return reinterpret_cast<memory::sink&>(*m_strmbuf);
+	}
 };
 
-} // namespace bstream
-} // namespace logicmill
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_OMBSTREAM_H
+#endif    // LOGICMILL_BSTREAM_OMBSTREAM_H

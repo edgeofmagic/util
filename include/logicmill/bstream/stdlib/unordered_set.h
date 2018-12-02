@@ -34,59 +34,60 @@ namespace logicmill
 namespace bstream
 {
 
-template< class T, class Hash, class Equal, class Alloc >
-struct value_deserializer< std::unordered_set< T, Hash, Equal, Alloc >,
-        typename std::enable_if_t< is_ibstream_readable< T >::value > >
+template<class T, class Hash, class Equal, class Alloc>
+struct value_deserializer<std::unordered_set<T, Hash, Equal, Alloc>,
+						  typename std::enable_if_t<is_ibstream_readable<T>::value>>
 {
-    std::unordered_set< T, Hash, Equal, Alloc > 
-    operator()( ibstream& is )  const
-    {
-        return get( is );
-    }
-
-    static std::unordered_set< T, Hash, Equal, Alloc > 
-    get( ibstream& is )
-    {
-        auto length = is.read_array_header();
-        std::unordered_set< T, Hash, Equal, Alloc > result;
-        for ( auto i = 0u; i < length; ++i )
-        {
-            result.emplace( ibstream_initializer< T >::get( is ) );
-        }
-        return result;
-    }
-};	
-
-template< class T, class Hash, class Equal, class Alloc >
-struct value_deserializer< std::unordered_multiset< T, Hash, Equal, Alloc >,
-        typename std::enable_if_t< is_ibstream_readable< T >::value > >
-{
-    std::unordered_multiset< T, Hash, Equal, Alloc > 
-    operator()( ibstream& is )  const
-    {
-        return get( is );
-    }
-
-    static std::unordered_multiset< T, Hash, Equal, Alloc > 
-    get( ibstream& is )
-    {
-        auto length = is.read_array_header();
-        std::unordered_multiset< T, Hash, Equal, Alloc > result;
-        for ( auto i = 0u; i < length; ++i )
-        {
-            result.emplace( ibstream_initializer< T >::get( is ) );
-        }
-        return result;
-    }
-};	
-
-template< class T, class Hash, class Equal, class Alloc >
-struct serializer< std::unordered_set< T, Hash, Equal, Alloc > >
-{
-	static obstream& put( obstream& os, const std::unordered_set< T, Hash, Equal, Alloc >& s )
+	std::unordered_set<T, Hash, Equal, Alloc>
+	operator()(ibstream& is) const
 	{
-		os.write_array_header( s.size() );
-		for ( auto it = s.begin(); it != s.end(); ++it )
+		return get(is);
+	}
+
+	static std::unordered_set<T, Hash, Equal, Alloc>
+	get(ibstream& is)
+	{
+		auto                                      length = is.read_array_header();
+		std::unordered_set<T, Hash, Equal, Alloc> result;
+		for (auto i = 0u; i < length; ++i)
+		{
+			result.emplace(ibstream_initializer<T>::get(is));
+		}
+		return result;
+	}
+};
+
+template<class T, class Hash, class Equal, class Alloc>
+struct value_deserializer<std::unordered_multiset<T, Hash, Equal, Alloc>,
+						  typename std::enable_if_t<is_ibstream_readable<T>::value>>
+{
+	std::unordered_multiset<T, Hash, Equal, Alloc>
+	operator()(ibstream& is) const
+	{
+		return get(is);
+	}
+
+	static std::unordered_multiset<T, Hash, Equal, Alloc>
+	get(ibstream& is)
+	{
+		auto                                           length = is.read_array_header();
+		std::unordered_multiset<T, Hash, Equal, Alloc> result;
+		for (auto i = 0u; i < length; ++i)
+		{
+			result.emplace(ibstream_initializer<T>::get(is));
+		}
+		return result;
+	}
+};
+
+template<class T, class Hash, class Equal, class Alloc>
+struct serializer<std::unordered_set<T, Hash, Equal, Alloc>>
+{
+	static obstream&
+	put(obstream& os, const std::unordered_set<T, Hash, Equal, Alloc>& s)
+	{
+		os.write_array_header(s.size());
+		for (auto it = s.begin(); it != s.end(); ++it)
 		{
 			os << *it;
 		}
@@ -94,13 +95,14 @@ struct serializer< std::unordered_set< T, Hash, Equal, Alloc > >
 	}
 };
 
-template< class T, class Hash, class Equal, class Alloc >
-struct serializer< std::unordered_multiset< T, Hash, Equal, Alloc > >
+template<class T, class Hash, class Equal, class Alloc>
+struct serializer<std::unordered_multiset<T, Hash, Equal, Alloc>>
 {
-	static obstream& put( obstream& os, const std::unordered_multiset< T, Hash, Equal, Alloc >& s )
+	static obstream&
+	put(obstream& os, const std::unordered_multiset<T, Hash, Equal, Alloc>& s)
 	{
-		os.write_array_header( s.size() );
-		for ( auto it = s.begin(); it != s.end(); ++it )
+		os.write_array_header(s.size());
+		for (auto it = s.begin(); it != s.end(); ++it)
 		{
 			os << *it;
 		}
@@ -108,7 +110,7 @@ struct serializer< std::unordered_multiset< T, Hash, Equal, Alloc > >
 	}
 };
 
-} // namespace bstream
-} // namespace logicmill
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_STDLIB_UNORDERED_SET_H
+#endif    // LOGICMILL_BSTREAM_STDLIB_UNORDERED_SET_H

@@ -41,46 +41,46 @@ namespace logicmill
 namespace bstream
 {
 
-template< class Derived >
+template<class Derived>
 class streaming_base
 {
 protected:
-    streaming_base( ibstream& is )
-    {			
-        auto length = is.read_array_header();
-        if ( length != _item_count() )
-        {
-            throw std::system_error{ make_error_code( bstream::errc::member_count_error ) };
-        }
-    }
+	streaming_base(ibstream& is)
+	{
+		auto length = is.read_array_header();
+		if (length != _item_count())
+		{
+			throw std::system_error{make_error_code(bstream::errc::member_count_error)};
+		}
+	}
 
-    streaming_base() {};
+	streaming_base(){};
 
-    obstream& 
-    _serialize( obstream& os ) const
-    {
-        return os.write_array_header( _item_count() );
-    }
-    
-    ibstream&
-    _deserialize( ibstream& is )
-    {
-        auto length = is.read_array_header();
-        if ( length != _item_count() )
-        {
-            throw std::system_error{ make_error_code( bstream::errc::member_count_error ) };
-        }
-        return is;
-    }
-    
-    std::size_t
-    _item_count() const
-    {
-        return static_cast< const Derived& >( *this )._streamed_item_count();
-    }
+	obstream&
+	_serialize(obstream& os) const
+	{
+		return os.write_array_header(_item_count());
+	}
+
+	ibstream&
+	_deserialize(ibstream& is)
+	{
+		auto length = is.read_array_header();
+		if (length != _item_count())
+		{
+			throw std::system_error{make_error_code(bstream::errc::member_count_error)};
+		}
+		return is;
+	}
+
+	std::size_t
+	_item_count() const
+	{
+		return static_cast<const Derived&>(*this)._streamed_item_count();
+	}
 };
 
-} // namespace bstream
-} // namespace logicmill
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_BASE_CLASSES_H
+#endif    // LOGICMILL_BSTREAM_BASE_CLASSES_H

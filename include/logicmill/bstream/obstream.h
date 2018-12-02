@@ -32,14 +32,14 @@
 #ifndef LOGICMILL_BSTREAM_OBSTREAM_H
 #define LOGICMILL_BSTREAM_OBSTREAM_H
 
-#include <logicmill/bstream/obstream_traits.h>
-#include <logicmill/bstream/context.h>
+#include <boost/endian/conversion.hpp>
 #include <logicmill/bstream/buffer.h>
+#include <logicmill/bstream/context.h>
+#include <logicmill/bstream/obstream_traits.h>
 #include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/typecode.h>
-#include <vector>
 #include <unordered_map>
-#include <boost/endian/conversion.hpp>
+#include <vector>
 
 
 namespace logicmill
@@ -47,27 +47,25 @@ namespace logicmill
 namespace bstream
 {
 
-class obstream //: public onumstream
+class obstream    //: public onumstream
 {
 protected:
+	//	obstream() {} // TODO: decide whether to delete certain ctors
 
-//	obstream() {} // TODO: decide whether to delete certain ctors
-		
-public:	
+public:
+	template<class U, class E>
+	friend struct serializer;
 
-    template< class U, class E > friend struct serializer;
-
-    using saved_ptr_info = std::pair< poly_tag_type , std::size_t >;	// ( type_tag, saved_serial_num )
+	using saved_ptr_info = std::pair<poly_tag_type, std::size_t>;    // ( type_tag, saved_serial_num )
 
 	class ptr_deduper
 	{
 	public:
-
 		bool
-		is_saved( std::shared_ptr< void > ptr, saved_ptr_info& info ) const
+		is_saved(std::shared_ptr<void> ptr, saved_ptr_info& info) const
 		{
-			auto it = m_saved_ptrs.find( ptr );
-			if ( it == m_saved_ptrs.end() )
+			auto it = m_saved_ptrs.find(ptr);
+			if (it == m_saved_ptrs.end())
 			{
 				return false;
 			}
@@ -78,9 +76,10 @@ public:
 			}
 		}
 
-		void save_ptr( std::shared_ptr< void > ptr, poly_tag_type tag )
+		void
+		save_ptr(std::shared_ptr<void> ptr, poly_tag_type tag)
 		{
-			m_saved_ptrs.emplace( ptr, std::make_pair( tag, m_next_serial_num ) );
+			m_saved_ptrs.emplace(ptr, std::make_pair(tag, m_next_serial_num));
 			++m_next_serial_num;
 		}
 
@@ -92,16 +91,15 @@ public:
 		}
 
 	private:
-		std::size_t 														m_next_serial_num = 0;
-		std::unordered_map< std::shared_ptr< void >, saved_ptr_info >		m_saved_ptrs; 
+		std::size_t                                               m_next_serial_num = 0;
+		std::unordered_map<std::shared_ptr<void>, saved_ptr_info> m_saved_ptrs;
 	};
 
-	obstream( std::unique_ptr< bstream::sink > strmbuf, context_base const& cntxt = get_default_context() )
-	:
-    m_context{ cntxt.get_context_impl() },
-    m_ptr_deduper{ m_context->dedup_shared_ptrs() ? std::make_unique< ptr_deduper >() : nullptr },
-	m_strmbuf{ std::move( strmbuf ) },
-	m_reverse_order{ cntxt.get_context_impl()->byte_order() != bend::order::native }
+	obstream(std::unique_ptr<bstream::sink> strmbuf, context_base const& cntxt = get_default_context())
+		: m_context{cntxt.get_context_impl()},
+		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
+		  m_strmbuf{std::move(strmbuf)},
+		  m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
 	{}
 
 	bstream::sink&
@@ -116,350 +114,352 @@ public:
 		return *m_strmbuf.get();
 	}
 
-	std::unique_ptr< bstream::sink >
+	std::unique_ptr<bstream::sink>
 	release_streambuf()
 	{
-		return std::move( m_strmbuf );
+		return std::move(m_strmbuf);
 		m_strmbuf = nullptr;
 	}
 
-	obstream& 
-	put( std::uint8_t byte )
+	obstream&
+	put(std::uint8_t byte)
 	{
-		m_strmbuf->put( byte );
-		return *this;                
-	}
-
-	obstream& 
-	put( std::uint8_t byte, std::error_code& err )
-	{
-		m_strmbuf->put( byte, err );
-		return *this;                
-	}
-
-	obstream& 
-	putn( buffer const& buf )
-	{
-		m_strmbuf->putn( buf.data(), buf.size() );
+		m_strmbuf->put(byte);
 		return *this;
 	}
 
-	obstream& 
-	putn( buffer const& buf, std::error_code& err )
+	obstream&
+	put(std::uint8_t byte, std::error_code& err)
 	{
-		m_strmbuf->putn( buf.data(), buf.size(), err );
+		m_strmbuf->put(byte, err);
 		return *this;
 	}
 
-	obstream& 
-	putn( const void* src, size_type nbytes )
+	obstream&
+	putn(buffer const& buf)
 	{
-		m_strmbuf->putn( reinterpret_cast< const byte_type * >( src ), nbytes );
+		m_strmbuf->putn(buf.data(), buf.size());
 		return *this;
 	}
 
-	obstream& 
-	putn( const void* src, size_type nbytes, std::error_code& err )
+	obstream&
+	putn(buffer const& buf, std::error_code& err)
 	{
-		m_strmbuf->putn( reinterpret_cast< const byte_type * >( src ), nbytes, err );
-		return *this;                
+		m_strmbuf->putn(buf.data(), buf.size(), err);
+		return *this;
 	}
 
-	template< class U >
-	typename std::enable_if< std::is_arithmetic< U >::value && sizeof( U ) == 1, obstream& >::type 
-	put_num( U value )
+	obstream&
+	putn(const void* src, size_type nbytes)
 	{
-		return put( static_cast< std::uint8_t >( value ) );
+		m_strmbuf->putn(reinterpret_cast<const byte_type*>(src), nbytes);
+		return *this;
 	}
 
-	template< class U >
-	typename std::enable_if< std::is_arithmetic< U >::value && sizeof( U ) == 1, obstream& >::type 
-	put_num( U value, std::error_code& err )
+	obstream&
+	putn(const void* src, size_type nbytes, std::error_code& err)
 	{
-		return put( static_cast< std::uint8_t >( value ), err );
+		m_strmbuf->putn(reinterpret_cast<const byte_type*>(src), nbytes, err);
+		return *this;
 	}
 
-	template< class U >
-	typename std::enable_if< std::is_arithmetic< U >::value && ( sizeof( U ) > 1 ), obstream& >::type
-	put_num( U value )
+	template<class U>
+	typename std::enable_if<std::is_arithmetic<U>::value && sizeof(U) == 1, obstream&>::type
+	put_num(U value)
 	{
-		constexpr std::size_t usize = sizeof( U );
-		using ctype = typename detail::canonical_type< usize >::type;
+		return put(static_cast<std::uint8_t>(value));
+	}
 
-		m_strmbuf->put_num( value, m_reverse_order );
+	template<class U>
+	typename std::enable_if<std::is_arithmetic<U>::value && sizeof(U) == 1, obstream&>::type
+	put_num(U value, std::error_code& err)
+	{
+		return put(static_cast<std::uint8_t>(value), err);
+	}
+
+	template<class U>
+	typename std::enable_if<std::is_arithmetic<U>::value && (sizeof(U) > 1), obstream&>::type
+	put_num(U value)
+	{
+		constexpr std::size_t usize = sizeof(U);
+		using ctype                 = typename detail::canonical_type<usize>::type;
+
+		m_strmbuf->put_num(value, m_reverse_order);
 
 		return *this;
 	}
 
-	template< class U >
-	typename std::enable_if< std::is_arithmetic< U >::value && ( sizeof( U ) > 1 ), obstream& >::type
-	put_num( U value, std::error_code& err )
+	template<class U>
+	typename std::enable_if<std::is_arithmetic<U>::value && (sizeof(U) > 1), obstream&>::type
+	put_num(U value, std::error_code& err)
 	{
-		m_strmbuf->put_num( value, m_reverse_order, err );
+		m_strmbuf->put_num(value, m_reverse_order, err);
 		return *this;
 	}
 
- 	size_type 
+	size_type
 	size()
 	{
-		return static_cast< size_type >( m_strmbuf->size() );
+		return static_cast<size_type>(m_strmbuf->size());
 	}
 
 	position_type
 	position() const
 	{
-		return m_strmbuf->position();		
+		return m_strmbuf->position();
 	}
 
 	position_type
-	position( position_type pos )
+	position(position_type pos)
 	{
-		return m_strmbuf->position( pos );		
+		return m_strmbuf->position(pos);
 	}
 
 	position_type
-	position( position_type pos, std::error_code& err )
+	position(position_type pos, std::error_code& err)
 	{
-		return m_strmbuf->position( pos, err );
+		return m_strmbuf->position(pos, err);
 	}
 
 	position_type
-	position( offset_type offset, seek_anchor where )
+	position(offset_type offset, seek_anchor where)
 	{
-		return m_strmbuf->position( offset, where );
+		return m_strmbuf->position(offset, where);
 	}
 
 	position_type
-	position( offset_type offset, seek_anchor where, std::error_code& err )
+	position(offset_type offset, seek_anchor where, std::error_code& err)
 	{
-		return m_strmbuf->position( offset, where, err );
+		return m_strmbuf->position(offset, where, err);
 	}
 
-	void 
-	write( const char* src, std::size_t len )
+	void
+	write(const char* src, std::size_t len)
 	{
-		putn( reinterpret_cast< const byte_type* >( src ), len );
+		putn(reinterpret_cast<const byte_type*>(src), len);
 	}
 
 
+	obstream&
+	write_map_header(std::uint32_t size);
 
 	obstream&
-	write_map_header( std::uint32_t size );
+	write_map_header(std::uint32_t size, std::error_code& err);
 
 	obstream&
-	write_map_header( std::uint32_t size, std::error_code& err );
+	write_array_header(std::uint32_t size);
 
 	obstream&
-	write_array_header( std::uint32_t size );     
+	write_array_header(std::uint32_t size, std::error_code& err);
 
 	obstream&
-	write_array_header( std::uint32_t size, std::error_code& err );
+	write_blob_header(std::uint32_t size);
 
 	obstream&
-	write_blob_header( std::uint32_t size );
+	write_blob_header(std::uint32_t size, std::error_code& err);
 
 	obstream&
-	write_blob_header( std::uint32_t size, std::error_code& err );
-
-	obstream&
-	write_blob_body( const void* p, std::size_t size )
+	write_blob_body(const void* p, std::size_t size)
 	{
-		putn( reinterpret_cast< const byte_type * >( p ), size );
+		putn(reinterpret_cast<const byte_type*>(p), size);
 		return *this;
 	}
 
 	obstream&
-	write_blob_body( const void* p, std::size_t size, std::error_code& err )
+	write_blob_body(const void* p, std::size_t size, std::error_code& err)
 	{
-		putn( reinterpret_cast< const byte_type * >( p ), size, err );
+		putn(reinterpret_cast<const byte_type*>(p), size, err);
 		return *this;
 	}
 
 	obstream&
-	write_blob_body( logicmill::bstream::buffer const& blob )
+	write_blob_body(logicmill::bstream::buffer const& blob)
 	{
-		putn( blob.data(), blob.size() );
+		putn(blob.data(), blob.size());
 		return *this;
 	}
 
 	obstream&
-	write_blob_body( logicmill::bstream::buffer const& blob, std::error_code& err )
+	write_blob_body(logicmill::bstream::buffer const& blob, std::error_code& err)
 	{
-		putn( blob.data(), blob.size(), err );
+		putn(blob.data(), blob.size(), err);
 		return *this;
 	}
 
 	obstream&
-	write_blob( const void* p, std::size_t size )
+	write_blob(const void* p, std::size_t size)
 	{
-		write_blob_header( size );
-		write_blob_body( p, size );
+		write_blob_header(size);
+		write_blob_body(p, size);
 		return *this;
 	}
 
 	obstream&
-	write_blob( const void* p, std::size_t size, std::error_code& err )
+	write_blob(const void* p, std::size_t size, std::error_code& err)
 	{
-		write_blob_header( size, err );
-		if ( err ) goto exit;
+		write_blob_header(size, err);
+		if (err)
+			goto exit;
 
-		write_blob_body( p, size, err );
+		write_blob_body(p, size, err);
 
 	exit:
 		return *this;
 	}
 
 	obstream&
-	write_blob( logicmill::bstream::buffer const& buf )
+	write_blob(logicmill::bstream::buffer const& buf)
 	{
-		write_blob_header( buf.size() );
-		write_blob_body( buf );
+		write_blob_header(buf.size());
+		write_blob_body(buf);
 		return *this;
 	}
 
 	obstream&
-	write_blob( logicmill::bstream::buffer const& buf, std::error_code& err )
+	write_blob(logicmill::bstream::buffer const& buf, std::error_code& err)
 	{
-		write_blob_header( buf.size(), err );
-		if ( err ) goto exit;
+		write_blob_header(buf.size(), err);
+		if (err)
+			goto exit;
 
-		write_blob_body( buf, err );
+		write_blob_body(buf, err);
 
 	exit:
 		return *this;
 	}
 
 	obstream&
-	write_object_header( std::uint32_t size )
+	write_object_header(std::uint32_t size)
 	{
-		return write_array_header( size );
+		return write_array_header(size);
 	}
 
 	obstream&
-	write_object_header( std::uint32_t size, std::error_code& err )
+	write_object_header(std::uint32_t size, std::error_code& err)
 	{
-		return write_array_header( size, err );
+		return write_array_header(size, err);
 	}
 
-	template< class T >
-	typename std::enable_if_t< std::is_arithmetic< T >::value, obstream& >	
-	write_ext( std::uint8_t ext_type, T value )
+	template<class T>
+	typename std::enable_if_t<std::is_arithmetic<T>::value, obstream&>
+	write_ext(std::uint8_t ext_type, T value)
 	{
-		put_num( detail::fixext_typecode< sizeof( T ) >::value );
-		put_num( ext_type );
-		put_num( value );
+		put_num(detail::fixext_typecode<sizeof(T)>::value);
+		put_num(ext_type);
+		put_num(value);
 		return *this;
 	}
 
-	template< class T >
-	typename std::enable_if_t< std::is_arithmetic< T >::value, obstream& >	
-	write_ext( std::uint8_t ext_type, T value, std::error_code& err )
+	template<class T>
+	typename std::enable_if_t<std::is_arithmetic<T>::value, obstream&>
+	write_ext(std::uint8_t ext_type, T value, std::error_code& err)
 	{
-		put_num( detail::fixext_typecode< sizeof( T ) >::value, err );
-		if ( err ) goto exit;
+		put_num(detail::fixext_typecode<sizeof(T)>::value, err);
+		if (err)
+			goto exit;
 
-		put_num( ext_type, err );
-		if ( err ) goto exit;
+		put_num(ext_type, err);
+		if (err)
+			goto exit;
 
-		put_num( value, err );
+		put_num(value, err);
 
 	exit:
 		return *this;
 	}
 
 	obstream&
-	write_ext( std::uint8_t ext_type, buffer const& buf );
+	write_ext(std::uint8_t ext_type, buffer const& buf);
 
 	obstream&
-	write_ext( std::uint8_t ext_type, buffer const& buf, std::error_code& err );
+	write_ext(std::uint8_t ext_type, buffer const& buf, std::error_code& err);
 
 	obstream&
-	write_ext( std::uint8_t ext_type, std::vector< std::uint8_t > const& vec );
+	write_ext(std::uint8_t ext_type, std::vector<std::uint8_t> const& vec);
 
 	obstream&
-	write_ext( std::uint8_t ext_type, std::vector< std::uint8_t > const& vec, std::error_code& err );
+	write_ext(std::uint8_t ext_type, std::vector<std::uint8_t> const& vec, std::error_code& err);
 
 	obstream&
-	write_ext_header( std::uint8_t ext_type, std::uint32_t size );
+	write_ext_header(std::uint8_t ext_type, std::uint32_t size);
 
 	obstream&
-	write_ext_header( std::uint8_t ext_type, std::uint32_t size, std::error_code& err  );
+	write_ext_header(std::uint8_t ext_type, std::uint32_t size, std::error_code& err);
 
 	obstream&
-	write_ext( std::uint8_t ext_type, void* data, std::uint32_t size );
+	write_ext(std::uint8_t ext_type, void* data, std::uint32_t size);
 
 	obstream&
-	write_ext( std::uint8_t ext_type, void* data, std::uint32_t size, std::error_code& err );
+	write_ext(std::uint8_t ext_type, void* data, std::uint32_t size, std::error_code& err);
 
 	obstream&
 	write_null_ptr();
 
 	obstream&
-	write_null_ptr( std::error_code& err );
+	write_null_ptr(std::error_code& err);
 
 	obstream&
 	write_nil()
 	{
-		put( typecode::nil );
+		put(typecode::nil);
 		return *this;
 	}
 
 	obstream&
-	write_nil( std::error_code& err )
+	write_nil(std::error_code& err)
 	{
-		put( typecode::nil, err );
+		put(typecode::nil, err);
 		return *this;
 	}
 
 protected:
-
 	void
-	use( std::unique_ptr< bstream::sink > strmbuf )
+	use(std::unique_ptr<bstream::sink> strmbuf)
 	{
-		m_strmbuf = std::move( strmbuf );
+		m_strmbuf = std::move(strmbuf);
 	}
 
-	template< class T, class... Args >
-	typename std::enable_if_t< std::is_base_of< bstream::sink, T >::value >
-	use( Args&&... args )
+	template<class T, class... Args>
+	typename std::enable_if_t<std::is_base_of<bstream::sink, T>::value>
+	use(Args&&... args)
 	{
-		m_strmbuf = std::make_unique< T >( std::forward< Args >( args )... );
+		m_strmbuf = std::make_unique<T>(std::forward<Args>(args)...);
 	}
 
-	template< class T >
+	template<class T>
 	obstream&
-	write_shared_ptr( std::shared_ptr< T > ptr );
+	write_shared_ptr(std::shared_ptr<T> ptr);
 
-	template< class T >
+	template<class T>
 	obstream&
-	write_shared_ptr( std::shared_ptr< T > ptr, std::error_code& err )
+	write_shared_ptr(std::shared_ptr<T> ptr, std::error_code& err)
 	{
 		err.clear();
 		try
 		{
-			write_shared_ptr( ptr );
+			write_shared_ptr(ptr);
 		}
-		catch ( std::system_error const& e )
+		catch (std::system_error const& e)
 		{
 			err = e.code();
 		}
 		return *this;
 	}
 
-	template< class T >
+	template<class T>
 	obstream&
-	write_as_unique_pointer( T *ptr );
+	write_as_unique_pointer(T* ptr);
 
-	template< class T >
+	template<class T>
 	obstream&
-	write_as_unique_pointer( T *ptr, std::error_code& err )
+	write_as_unique_pointer(T* ptr, std::error_code& err)
 	{
 		err.clear();
 		try
 		{
-			write_as_unique_pointer( ptr );
+			write_as_unique_pointer(ptr);
 		}
-		catch ( std::system_error const& e )
+		catch (std::system_error const& e)
 		{
 			err = e.code();
 		}
@@ -467,144 +467,138 @@ protected:
 	}
 
 	obstream&
-	write_error_code( std::error_code const& ecode );
+	write_error_code(std::error_code const& ecode);
 
 	obstream&
-	write_error_code( std::error_code const& ecode, std::error_code& err );
-		
-// private:
-		
-	static std::size_t 
-	map_header_size( std::size_t map_size );
-		
-	static std::size_t 
-	array_header_size( std::size_t array_size );
-		
-	static std::size_t 
-	blob_header_size( std::size_t blob_size );
+	write_error_code(std::error_code const& ecode, std::error_code& err);
 
-    std::shared_ptr< const context_impl_base >      m_context;
-    std::unique_ptr< ptr_deduper >                  m_ptr_deduper;
-	std::unique_ptr< bstream::sink >				m_strmbuf;
-	const bool 										m_reverse_order;
+	// private:
+
+	static std::size_t
+	map_header_size(std::size_t map_size);
+
+	static std::size_t
+	array_header_size(std::size_t array_size);
+
+	static std::size_t
+	blob_header_size(std::size_t blob_size);
+
+	std::shared_ptr<const context_impl_base> m_context;
+	std::unique_ptr<ptr_deduper>             m_ptr_deduper;
+	std::unique_ptr<bstream::sink>           m_strmbuf;
+	const bool                               m_reverse_order;
 };
 
-template< class T >
-inline 
-typename std::enable_if_t < has_serialize_method< T >::value, obstream& >
-operator<< ( obstream& os, const T& value )
+template<class T>
+inline typename std::enable_if_t<has_serialize_method<T>::value, obstream&>
+operator<<(obstream& os, const T& value)
 {
-	return value.serialize( os );
+	return value.serialize(os);
 }
 
-template< class T >
-inline 
-typename std::enable_if_t < ! has_serialize_method< T >::value && has_serializer< T >::value, obstream& >
-operator<< ( obstream& os, const T& value )
+template<class T>
+inline typename std::enable_if_t<!has_serialize_method<T>::value && has_serializer<T>::value, obstream&>
+operator<<(obstream& os, const T& value)
 {
-	return serializer< T >::put( os, value );
+	return serializer<T>::put(os, value);
 }
 
-template< class T >
-struct serializer< T, 
-		typename std::enable_if_t<
-			std::is_integral< T >::value && 
-			!std::numeric_limits< T >::is_signed > >
+template<class T>
+struct serializer<T, typename std::enable_if_t<std::is_integral<T>::value && !std::numeric_limits<T>::is_signed>>
 {
-	static obstream& put( obstream& os, T value )
+	static obstream&
+	put(obstream& os, T value)
 	{
-		if ( value <= typecode::positive_fixint_max )
+		if (value <= typecode::positive_fixint_max)
 		{
-			std::uint8_t val = static_cast< std::uint8_t >( value );
-			os.put( val );
+			std::uint8_t val = static_cast<std::uint8_t>(value);
+			os.put(val);
 		}
-		else if ( value <= std::numeric_limits< std::uint8_t >::max() )
+		else if (value <= std::numeric_limits<std::uint8_t>::max())
 		{
-			os.put( typecode::uint_8 );
-			os.put( static_cast< std::uint8_t >( value ) );
+			os.put(typecode::uint_8);
+			os.put(static_cast<std::uint8_t>(value));
 		}
-		else if ( value <= std::numeric_limits< std::uint16_t >::max() )
+		else if (value <= std::numeric_limits<std::uint16_t>::max())
 		{
-			os.put( typecode::uint_16 );
-			os.put_num( static_cast< std::uint16_t >( value ) );
+			os.put(typecode::uint_16);
+			os.put_num(static_cast<std::uint16_t>(value));
 		}
-		else if ( value <= std::numeric_limits< std::uint32_t >::max() )
+		else if (value <= std::numeric_limits<std::uint32_t>::max())
 		{
-			os.put( typecode::uint_32 );
-			os.put_num( static_cast< std::uint32_t >( value ) );
+			os.put(typecode::uint_32);
+			os.put_num(static_cast<std::uint32_t>(value));
 		}
 		else
 		{
-			os.put( typecode::uint_64 );
-			os.put_num( static_cast< std::uint64_t >( value ) );
+			os.put(typecode::uint_64);
+			os.put_num(static_cast<std::uint64_t>(value));
 		}
 		return os;
 	}
 };
 
-template< class T >
-struct serializer< T, 
-		typename std::enable_if_t<
-			std::is_integral< T >::value && 
-			std::numeric_limits< T >::is_signed > >
+template<class T>
+struct serializer<T, typename std::enable_if_t<std::is_integral<T>::value && std::numeric_limits<T>::is_signed>>
 {
-	static obstream& put( obstream& os, T value )
+	static obstream&
+	put(obstream& os, T value)
 	{
-		if ( value >= 0 )
+		if (value >= 0)
 		{
-			std::uint64_t uvalue = static_cast< std::uint64_t >( value );
+			std::uint64_t uvalue = static_cast<std::uint64_t>(value);
 
-			if ( uvalue <= typecode::positive_fixint_max )
+			if (uvalue <= typecode::positive_fixint_max)
 			{
-				std::uint8_t val = static_cast< std::uint8_t >( uvalue );
-				os.put( val );
+				std::uint8_t val = static_cast<std::uint8_t>(uvalue);
+				os.put(val);
 			}
-			else if ( uvalue <= std::numeric_limits< std::uint8_t >::max() )
+			else if (uvalue <= std::numeric_limits<std::uint8_t>::max())
 			{
-				os.put( typecode::uint_8 );
-				os.put( static_cast< std::uint8_t >( uvalue ) );
+				os.put(typecode::uint_8);
+				os.put(static_cast<std::uint8_t>(uvalue));
 			}
-			else if ( uvalue <= std::numeric_limits< std::uint16_t >::max() )
+			else if (uvalue <= std::numeric_limits<std::uint16_t>::max())
 			{
-				os.put( typecode::uint_16 );
-				os.put_num( static_cast< std::uint16_t >( uvalue ) );
+				os.put(typecode::uint_16);
+				os.put_num(static_cast<std::uint16_t>(uvalue));
 			}
-			else if ( uvalue <= std::numeric_limits< std::uint32_t >::max() )
+			else if (uvalue <= std::numeric_limits<std::uint32_t>::max())
 			{
-				os.put( typecode::uint_32 );
-				os.put_num( static_cast< std::uint32_t >( uvalue ) );
+				os.put(typecode::uint_32);
+				os.put_num(static_cast<std::uint32_t>(uvalue));
 			}
 			else
 			{
-				os.put( typecode::uint_64 );
-				os.put_num( uvalue );
+				os.put(typecode::uint_64);
+				os.put_num(uvalue);
 			}
 		}
 		else
 		{
-			if ( value >= -32 )
+			if (value >= -32)
 			{
-				os.put( static_cast< std::uint8_t >( value ) );
+				os.put(static_cast<std::uint8_t>(value));
 			}
-			else if ( value >= std::numeric_limits< std::int8_t >::min() )
+			else if (value >= std::numeric_limits<std::int8_t>::min())
 			{
-				os.put( typecode::int_8 );
-				os.put_num( static_cast< std::int8_t >( value ) );
+				os.put(typecode::int_8);
+				os.put_num(static_cast<std::int8_t>(value));
 			}
-			else if ( value >= std::numeric_limits< std::int16_t >::min() )
+			else if (value >= std::numeric_limits<std::int16_t>::min())
 			{
-				os.put( typecode::int_16 );
-				os.put_num( static_cast< std::int16_t >( value ) );
+				os.put(typecode::int_16);
+				os.put_num(static_cast<std::int16_t>(value));
 			}
-			else if ( value >= std::numeric_limits< std::int32_t >::min() )
+			else if (value >= std::numeric_limits<std::int32_t>::min())
 			{
-				os.put( typecode::int_32 );
-				os.put_num( static_cast< std::int32_t >( value ) );
+				os.put(typecode::int_32);
+				os.put_num(static_cast<std::int32_t>(value));
 			}
 			else
 			{
-				os.put( typecode::int_64 );
-				os.put_num( static_cast< std::int64_t >( value ) );
+				os.put(typecode::int_64);
+				os.put_num(static_cast<std::int64_t>(value));
 			}
 		}
 		return os;
@@ -612,239 +606,256 @@ struct serializer< T,
 };
 
 template<>
-struct serializer< float >
+struct serializer<float>
 {
-	static obstream& put( obstream& os, float value )
+	static obstream&
+	put(obstream& os, float value)
 	{
-		os.put( typecode::float_32 );
-		os.put_num( value );
+		os.put(typecode::float_32);
+		os.put_num(value);
 		return os;
 	}
 };
 
 template<>
-struct serializer< double >
+struct serializer<double>
 {
-	static obstream& put( obstream& os, double value )
+	static obstream&
+	put(obstream& os, double value)
 	{
-		os.put( typecode::float_64 );
-		os.put_num( value );
+		os.put(typecode::float_64);
+		os.put_num(value);
 		return os;
 	}
 };
 
 template<>
-struct serializer< bool >
+struct serializer<bool>
 {
-	static obstream& put( obstream& os, bool value )
+	static obstream&
+	put(obstream& os, bool value)
 	{
-		if ( value )
+		if (value)
 		{
-			os.put( typecode::bool_true );
+			os.put(typecode::bool_true);
 		}
 		else
 		{
-			os.put( typecode::bool_false );
+			os.put(typecode::bool_false);
 		}
 		return os;
 	}
 };
 
 template<>
-struct serializer< std::string_view >
+struct serializer<std::string_view>
 {
-	static obstream& put( obstream& os, std::string_view const& value )
+	static obstream&
+	put(obstream& os, std::string_view const& value)
 	{
-		if ( value.size() <= 31 )
+		if (value.size() <= 31)
 		{
-			std::uint8_t code = 0xa0 | static_cast< std::uint8_t >( value.size() );
-			os.put( code );
-			os.putn( value.data(), value.size() );
+			std::uint8_t code = 0xa0 | static_cast<std::uint8_t>(value.size());
+			os.put(code);
+			os.putn(value.data(), value.size());
 		}
-		else if ( value.size() <= std::numeric_limits< std::uint8_t >::max() )
+		else if (value.size() <= std::numeric_limits<std::uint8_t>::max())
 		{
-			os.put( typecode::str_8 );
-			os.put_num( static_cast< std::uint8_t >( value.size() ) );
-			os.putn( value.data(), value.size() );
+			os.put(typecode::str_8);
+			os.put_num(static_cast<std::uint8_t>(value.size()));
+			os.putn(value.data(), value.size());
 		}
-		else if ( value.size() <= std::numeric_limits< std::uint16_t >::max() )
+		else if (value.size() <= std::numeric_limits<std::uint16_t>::max())
 		{
-			os.put( typecode::str_16 );
-			os.put_num( static_cast< std::uint16_t >( value.size() ) );
-			os.putn( value.data(), value.size() );
+			os.put(typecode::str_16);
+			os.put_num(static_cast<std::uint16_t>(value.size()));
+			os.putn(value.data(), value.size());
 		}
-		else if ( value.size() <= std::numeric_limits< std::uint32_t >::max() )
+		else if (value.size() <= std::numeric_limits<std::uint32_t>::max())
 		{
-			os.put( typecode::str_32 );
-			os.put_num( static_cast< std::uint32_t >( value.size() ) );
-			os.putn( value.data(), value.size() );
+			os.put(typecode::str_32);
+			os.put_num(static_cast<std::uint32_t>(value.size()));
+			os.putn(value.data(), value.size());
 		}
 		else
 		{
-			throw std::system_error{ make_error_code( bstream::errc::string_length_exceeds_limit ) };
+			throw std::system_error{make_error_code(bstream::errc::string_length_exceeds_limit)};
 		}
 		return os;
 	}
 };
 
 template<>
-struct serializer< logicmill::bstream::string_alias >
+struct serializer<logicmill::bstream::string_alias>
 {
-	static obstream& put( obstream& os, logicmill::bstream::string_alias const& value )
+	static obstream&
+	put(obstream& os, logicmill::bstream::string_alias const& value)
 	{
-		return serializer< std::string_view >::put( os, value.view() );
+		return serializer<std::string_view>::put(os, value.view());
 	}
 };
 
 template<>
-struct serializer< std::string >
+struct serializer<std::string>
 {
-	static obstream& put( obstream& os, std::string const& value )
+	static obstream&
+	put(obstream& os, std::string const& value)
 	{
-		if ( value.size() <= 31 )
+		if (value.size() <= 31)
 		{
-			std::uint8_t code = 0xa0 | static_cast< std::uint8_t >( value.size() );
-			os.put( code );
-			os.putn( value.data(), value.size() );
+			std::uint8_t code = 0xa0 | static_cast<std::uint8_t>(value.size());
+			os.put(code);
+			os.putn(value.data(), value.size());
 		}
-		else if ( value.size() <= std::numeric_limits< std::uint8_t >::max() )
+		else if (value.size() <= std::numeric_limits<std::uint8_t>::max())
 		{
-			os.put( typecode::str_8 );
-			os.put_num( static_cast< std::uint8_t >( value.size() ) );
-			os.putn( value.data(), value.size() );
+			os.put(typecode::str_8);
+			os.put_num(static_cast<std::uint8_t>(value.size()));
+			os.putn(value.data(), value.size());
 		}
-		else if ( value.size() <= std::numeric_limits< std::uint16_t >::max() )
+		else if (value.size() <= std::numeric_limits<std::uint16_t>::max())
 		{
-			os.put( typecode::str_16 );
-			os.put_num( static_cast< std::uint16_t >( value.size() ) );
-			os.putn( value.data(), value.size() );
+			os.put(typecode::str_16);
+			os.put_num(static_cast<std::uint16_t>(value.size()));
+			os.putn(value.data(), value.size());
 		}
-		else if ( value.size() <= std::numeric_limits< std::uint32_t >::max() )
+		else if (value.size() <= std::numeric_limits<std::uint32_t>::max())
 		{
-			os.put( typecode::str_32 );
-			os.put_num( static_cast< std::uint32_t >( value.size() ) );
-			os.putn( value.data(), value.size() );
+			os.put(typecode::str_32);
+			os.put_num(static_cast<std::uint32_t>(value.size()));
+			os.putn(value.data(), value.size());
 		}
 		else
 		{
-			throw std::system_error{ make_error_code( bstream::errc::string_length_exceeds_limit ) };
+			throw std::system_error{make_error_code(bstream::errc::string_length_exceeds_limit)};
 		}
 		return os;
 	}
 };
 
-template< class T >
-struct serializer< std::shared_ptr< T > >
+template<class T>
+struct serializer<std::shared_ptr<T>>
 {
-	static obstream& put( obstream& os, std::shared_ptr< T > const& ptr )
+	static obstream&
+	put(obstream& os, std::shared_ptr<T> const& ptr)
 	{
-		os.write_shared_ptr( ptr );
+		os.write_shared_ptr(ptr);
 		return os;
 	}
 };
 
-template< class T >
-struct serializer< std::unique_ptr< T > >
+template<class T>
+struct serializer<std::unique_ptr<T>>
 {
-	static obstream& put( obstream& os, std::unique_ptr< T > const& ptr )
+	static obstream&
+	put(obstream& os, std::unique_ptr<T> const& ptr)
 	{
-		os.write_as_unique_pointer( ptr.get() );
-		return os;
-	}
-};
-	
-template< class T >
-struct serializer< T, typename std::enable_if_t< std::is_enum< T >::value > >
-{
-	static obstream& put( obstream& os, T val )
-	{
-		os << static_cast< typename std::underlying_type< T >::type >( val );
+		os.write_as_unique_pointer(ptr.get());
 		return os;
 	}
 };
 
-template<>
-struct serializer< logicmill::bstream::buffer >
+template<class T>
+struct serializer<T, typename std::enable_if_t<std::is_enum<T>::value>>
 {
-	static obstream& put( obstream& os, logicmill::bstream::buffer const& val )
+	static obstream&
+	put(obstream& os, T val)
 	{
-		os.write_blob( val );
+		os << static_cast<typename std::underlying_type<T>::type>(val);
 		return os;
 	}
 };
 
 template<>
-struct serializer< std::error_code >
+struct serializer<logicmill::bstream::buffer>
 {
-	static obstream& put( obstream& os, std::error_code const& value )
+	static obstream&
+	put(obstream& os, logicmill::bstream::buffer const& val)
 	{
-		os.write_error_code( value );
+		os.write_blob(val);
 		return os;
 	}
 };
 
-template< class Derived, class Base >
-struct base_serializer< Derived, Base, typename std::enable_if_t<
-	has_serialize_impl_method< Base >::value > >
+template<>
+struct serializer<std::error_code>
 {
-	static obstream& put( obstream& os, Derived const& v )
+	static obstream&
+	put(obstream& os, std::error_code const& value)
 	{
-		return v.Base::serialize_impl( os );
+		os.write_error_code(value);
+		return os;
 	}
 };
 
-template< class Derived, class Base >
-struct base_serializer< Derived, Base, typename std::enable_if_t<
-	! has_serialize_impl_method< Base >::value && has_serialize_method< Base >::value > >
+template<class Derived, class Base>
+struct base_serializer<Derived, Base, typename std::enable_if_t<has_serialize_impl_method<Base>::value>>
 {
-	static obstream& put( obstream& os, Derived const& v )
+	static obstream&
+	put(obstream& os, Derived const& v)
 	{
-		return v.Base::serialize( os );
+		return v.Base::serialize_impl(os);
 	}
 };
 
-template< class Derived, class Base >
-struct base_serializer< Derived, Base, typename std::enable_if_t<
-	! has_serialize_impl_method< Base >::value && ! has_serialize_method< Base >::value && has_serializer< Base >::value > >
+template<class Derived, class Base>
+struct base_serializer<
+		Derived,
+		Base,
+		typename std::enable_if_t<!has_serialize_impl_method<Base>::value && has_serialize_method<Base>::value>>
 {
-	static obstream& put( obstream& os, Derived const& v )
+	static obstream&
+	put(obstream& os, Derived const& v)
 	{
-		return serializer< Base >::put( os, static_cast< const Base& >( v ) );
+		return v.Base::serialize(os);
 	}
 };
 
-template< class T >
+template<class Derived, class Base>
+struct base_serializer<Derived,
+					   Base,
+					   typename std::enable_if_t<!has_serialize_impl_method<Base>::value
+												 && !has_serialize_method<Base>::value && has_serializer<Base>::value>>
+{
+	static obstream&
+	put(obstream& os, Derived const& v)
+	{
+		return serializer<Base>::put(os, static_cast<const Base&>(v));
+	}
+};
+
+template<class T>
 inline obstream&
-obstream::write_shared_ptr( std::shared_ptr< T > ptr )
+obstream::write_shared_ptr(std::shared_ptr<T> ptr)
 {
-	if ( !ptr )
+	if (!ptr)
 	{
 		write_null_ptr();
 	}
 	else
 	{
-		if ( m_ptr_deduper )
+		if (m_ptr_deduper)
 		{
 			saved_ptr_info info;
-			if ( m_ptr_deduper->is_saved( ptr, info ) )
+			if (m_ptr_deduper->is_saved(ptr, info))
 			{
-				write_array_header( 2 );
-				*this << info.first;	// type tag
-				*this << info.second;	// saved index
+				write_array_header(2);
+				*this << info.first;     // type tag
+				*this << info.second;    // saved index
 			}
 			else
 			{
-				auto tag = m_context->get_type_tag( typeid( *ptr ) );
-				write_array_header( 2 );
+				auto tag = m_context->get_type_tag(typeid(*ptr));
+				write_array_header(2);
 				*this << tag;
 				*this << *ptr;
-				m_ptr_deduper->save_ptr( ptr, tag );
+				m_ptr_deduper->save_ptr(ptr, tag);
 			}
 		}
 		else
 		{
-			auto tag = m_context->get_type_tag( typeid( *ptr ) );
-			write_array_header( 2 );
+			auto tag = m_context->get_type_tag(typeid(*ptr));
+			write_array_header(2);
 			*this << tag;
 			*this << *ptr;
 		}
@@ -852,26 +863,25 @@ obstream::write_shared_ptr( std::shared_ptr< T > ptr )
 	return *this;
 }
 
-template< class T >
+template<class T>
 inline obstream&
-obstream::write_as_unique_pointer( T *ptr )
+obstream::write_as_unique_pointer(T* ptr)
 {
-	if ( !ptr )
+	if (!ptr)
 	{
 		write_null_ptr();
 	}
 	else
 	{
-		auto tag = m_context->get_type_tag( typeid( *ptr ) );
-		write_array_header( 2 );
+		auto tag = m_context->get_type_tag(typeid(*ptr));
+		write_array_header(2);
 		*this << tag;
 		*this << *ptr;
 	}
 	return *this;
 }
 
-} // namespace bstream
-} // namespace logicmill
+}    // namespace bstream
+}    // namespace logicmill
 
 #endif /* LOGICMILL_BSTREAM_OBSTREAM_H */
-

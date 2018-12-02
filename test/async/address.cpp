@@ -22,163 +22,161 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/async/address.h>
 #include <doctest.h>
 #include <iostream>
+#include <logicmill/async/address.h>
 
 using namespace logicmill;
 
-TEST_CASE( "logicmill/async/ip/address/smoke/basic" )
+TEST_CASE("logicmill/async/ip/address/smoke/basic")
 {
 	async::ip::address a;
-	CHECK( a.is_v4_any() );
+	CHECK(a.is_v4_any());
 
-	a = async::ip::address{ "::" };
-	CHECK( a.is_v6_any() );
+	a = async::ip::address{"::"};
+	CHECK(a.is_v6_any());
 
 	std::error_code err;
 
-	a = async::ip::address{ "::FFFF:c0:0:2:1", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "::ffff:c0:0:2:1" );
-	CHECK( a.to_uint8( 0 ) == 0 );
-	CHECK( a.to_uint8( 1 ) == 0 );
-	CHECK( a.to_uint8( 2 ) == 0 );
-	CHECK( a.to_uint8( 3 ) == 0 );
-	CHECK( a.to_uint8( 4 ) == 0 );
-	CHECK( a.to_uint8( 5 ) == 0 );
-	CHECK( a.to_uint8( 6 ) == 255 );
-	CHECK( a.to_uint8( 7 ) == 255 );
-	CHECK( a.to_uint8( 8 ) == 0 );
-	CHECK( a.to_uint8( 9 ) == 192 );
-	CHECK( a.to_uint8( 10 ) == 0 );
-	CHECK( a.to_uint8( 11 ) == 0 );
-	CHECK( a.to_uint8( 12 ) == 0 );
-	CHECK( a.to_uint8( 13 ) == 2 );
-	CHECK( a.to_uint8( 14 ) == 0 );
-	CHECK( a.to_uint8( 15 ) == 1 );
+	a = async::ip::address{"::FFFF:c0:0:2:1", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "::ffff:c0:0:2:1");
+	CHECK(a.to_uint8(0) == 0);
+	CHECK(a.to_uint8(1) == 0);
+	CHECK(a.to_uint8(2) == 0);
+	CHECK(a.to_uint8(3) == 0);
+	CHECK(a.to_uint8(4) == 0);
+	CHECK(a.to_uint8(5) == 0);
+	CHECK(a.to_uint8(6) == 255);
+	CHECK(a.to_uint8(7) == 255);
+	CHECK(a.to_uint8(8) == 0);
+	CHECK(a.to_uint8(9) == 192);
+	CHECK(a.to_uint8(10) == 0);
+	CHECK(a.to_uint8(11) == 0);
+	CHECK(a.to_uint8(12) == 0);
+	CHECK(a.to_uint8(13) == 2);
+	CHECK(a.to_uint8(14) == 0);
+	CHECK(a.to_uint8(15) == 1);
 
-	a = async::ip::address{ "::FFFF:c000:201", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "::ffff:192.0.2.1" );
+	a = async::ip::address{"::FFFF:c000:201", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "::ffff:192.0.2.1");
 
-	a = async::ip::address{ "1:2:3:4:0:0:0:0", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "1:2:3:4::" );
+	a = async::ip::address{"1:2:3:4:0:0:0:0", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "1:2:3:4::");
 
-	a = async::ip::address{ "1:2:3:4::", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "1:2:3:4::" );
+	a = async::ip::address{"1:2:3:4::", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "1:2:3:4::");
 
-	a = async::ip::address{ "0:0:0:0:0:ffff:192.0.2.1", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "::ffff:192.0.2.1" );
-	
-	a = async::ip::address{ "::ffff:192.0.2.1", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "::ffff:192.0.2.1" );
-	
-	a = async::ip::address{ "0:0:0:0:0:0:192.0.2.1", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "::192.0.2.1" );
-	CHECK( a.to_uint8( 0 ) == 0 );
-	CHECK( a.to_uint8( 1 ) == 0 );
-	CHECK( a.to_uint8( 2 ) == 0 );
-	CHECK( a.to_uint8( 3 ) == 0 );
-	CHECK( a.to_uint8( 4 ) == 0 );
-	CHECK( a.to_uint8( 5 ) == 0 );
-	CHECK( a.to_uint8( 6 ) == 0 );
-	CHECK( a.to_uint8( 7 ) == 0 );
-	CHECK( a.to_uint8( 8 ) == 0 );
-	CHECK( a.to_uint8( 9 ) == 0 );
-	CHECK( a.to_uint8( 10 ) == 0 );
-	CHECK( a.to_uint8( 11 ) == 0 );
-	CHECK( a.to_uint8( 12 ) == 192);
-	CHECK( a.to_uint8( 13 ) == 0 );
-	CHECK( a.to_uint8( 14 ) == 2 );
-	CHECK( a.to_uint8( 15 ) == 1 );
+	a = async::ip::address{"0:0:0:0:0:ffff:192.0.2.1", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "::ffff:192.0.2.1");
 
-	a = async::ip::address{ "::192.0.2.1", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "::192.0.2.1" );
+	a = async::ip::address{"::ffff:192.0.2.1", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "::ffff:192.0.2.1");
 
-	a = async::ip::address{ "1:0:0:4:5:0:0:8", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "1::4:5:0:0:8" );
+	a = async::ip::address{"0:0:0:0:0:0:192.0.2.1", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "::192.0.2.1");
+	CHECK(a.to_uint8(0) == 0);
+	CHECK(a.to_uint8(1) == 0);
+	CHECK(a.to_uint8(2) == 0);
+	CHECK(a.to_uint8(3) == 0);
+	CHECK(a.to_uint8(4) == 0);
+	CHECK(a.to_uint8(5) == 0);
+	CHECK(a.to_uint8(6) == 0);
+	CHECK(a.to_uint8(7) == 0);
+	CHECK(a.to_uint8(8) == 0);
+	CHECK(a.to_uint8(9) == 0);
+	CHECK(a.to_uint8(10) == 0);
+	CHECK(a.to_uint8(11) == 0);
+	CHECK(a.to_uint8(12) == 192);
+	CHECK(a.to_uint8(13) == 0);
+	CHECK(a.to_uint8(14) == 2);
+	CHECK(a.to_uint8(15) == 1);
 
-	a = async::ip::address{ "1:0:0:4:0:0:0:8", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "1:0:0:4::8" );
+	a = async::ip::address{"::192.0.2.1", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "::192.0.2.1");
 
-	a = async::ip::address{ "::3:0:0:0:7:8", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "0:0:3::7:8" );
+	a = async::ip::address{"1:0:0:4:5:0:0:8", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "1::4:5:0:0:8");
+
+	a = async::ip::address{"1:0:0:4:0:0:0:8", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "1:0:0:4::8");
+
+	a = async::ip::address{"::3:0:0:0:7:8", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "0:0:3::7:8");
 }
 
-TEST_CASE( "logicmill/async/ip/address/smoke/v6_parse_errors" )
+TEST_CASE("logicmill/async/ip/address/smoke/v6_parse_errors")
 {
 	async::ip::address a;
-	CHECK( a.is_v4_any() );
+	CHECK(a.is_v4_any());
 
 	std::error_code err;
 
-	a = async::ip::address( "::1:2:3::ff", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("::1:2:3::ff", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "::1:2:3:4:5:6:7", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("::1:2:3:4:5:6:7", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "1:2:3:4:5:6:7", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("1:2:3:4:5:6:7", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "1:2:3:4:5:6:7:8:9", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("1:2:3:4:5:6:7:8:9", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "1:2:3:4:5:6:7:8::", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("1:2:3:4:5:6:7:8::", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "1:2:3:4:5:6:7::", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("1:2:3:4:5:6:7::", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "1:2:3:4::5:6:7", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("1:2:3:4::5:6:7", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "1:2:3::fg", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("1:2:3::fg", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "::ffff:192.0.2.c0", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("::ffff:192.0.2.c0", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "::ffff:192.0.2", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("::ffff:192.0.2", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "::ffff:192.0.2.1.3", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("::ffff:192.0.2.1.3", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "::ffff:192.0.2:1", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("::ffff:192.0.2:1", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
-	a = async::ip::address( "::ffff:192.0.2:1::", err );
-	CHECK( err );
-	CHECK( err == async::errc::ill_formed_address );
+	a = async::ip::address("::ffff:192.0.2:1::", err);
+	CHECK(err);
+	CHECK(err == async::errc::ill_formed_address);
 
 	// make sure err gets cleared if successful
 
-	a = async::ip::address{ "::FFFF:c0:0:2:1", err };
-	CHECK( ! err );
-	CHECK( a.to_string() == "::ffff:c0:0:2:1" );
-
-
+	a = async::ip::address{"::FFFF:c0:0:2:1", err};
+	CHECK(!err);
+	CHECK(a.to_string() == "::ffff:c0:0:2:1");
 }

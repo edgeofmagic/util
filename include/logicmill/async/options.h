@@ -22,29 +22,57 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ASYNC_TCP_H
-#define LOGICMILL_ASYNC_TCP_H
+#ifndef LOGICMILL_ASYNC_OPTIONS_H
+#define LOGICMILL_ASYNC_OPTIONS_H
 
-#include <logicmill/async/channel.h>
+#include <logicmill/async/endpoint.h>
+#include <memory>
 
 namespace logicmill
 {
 namespace async
 {
 
-class tcp_channel : public channel
+class options
 {
 public:
-	using ptr = std::shared_ptr<tcp_channel>;
-};
+	options(ip::endpoint const& ep)
+	:
+	m_endpoint{ep},
+	m_framing{false}
+	{}
 
-class tcp_listener : public listener
-{
-public:
-	using ptr = std::shared_ptr<tcp_listener>;
+	static options
+	create(ip::endpoint const& ep)
+	{
+		return options{ep};
+	}
+
+	ip::endpoint const& 
+	endpoint() const
+	{
+		return m_endpoint;
+	}
+
+	options&
+	framing(bool value)
+	{
+		m_framing = value;
+		return *this;
+	}
+
+	bool
+	framing() const
+	{
+		return m_framing;
+	}
+
+private:
+	ip::endpoint m_endpoint;
+	bool m_framing;
 };
 
 }    // namespace async
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ASYNC_TCP_H
+#endif    // LOGICMILL_ASYNC_OPTIONS_H

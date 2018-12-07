@@ -72,17 +72,17 @@ namespace ras
 		std::uint64_t add_handler(Reply reply)
 		{
 			auto req_ord = m_context.next_request_ordinal();
-			m_context.add_handler(req_ord, std::make_unique<reply_hndlr_type>(m_context, reply));
+			m_context.add_handler(req_ord, std::make_unique<reply_hndlr_type>(reply));
 			return req_ord;
 		}
 
 		void
-		send_request(std::uint64_t req_ord, std::unique_ptr<bstream::ombstream>&& os, std::chrono::milliseconds timeout)
+		send_request(std::uint64_t req_ord, bstream::ombstream& os, std::chrono::milliseconds timeout)
 		{
 			std::error_code err;
 			if (timeout.count() > 0)
 			{
-				m_context.send_request(std::move(os), timeout, err,
+				m_context.send_request(os, timeout, err,
 				[=] (std::error_code ec)
 				{
 					m_context.cancel_handler(req_ord, std::make_error_code(std::errc::timed_out));
@@ -94,7 +94,7 @@ namespace ras
 			}
 			else
 			{
-				m_context.send_request(std::move(os), err);
+				m_context.send_request(os, err);
 				if (err)
 				{
 					m_context.cancel_handler(req_ord, err);
@@ -135,12 +135,12 @@ namespace ras
 		{
 			auto timeout = base::get_timeout();
 			auto req_ord = base::add_handler(reply);
-			auto os = base::m_context.create_request_stream();
 
-			*os << req_ord << base::m_interface_id << base::m_method_id;
-			os->write_array_header(0);
+			bstream::ombstream os{base::m_context.stream_context()};
 
-			base::send_request(req_ord, std::move(os), timeout);
+			os << req_ord << base::m_interface_id << base::m_method_id;
+			os.write_array_header(0);
+			base::send_request(req_ord, os, timeout);
 		}
 	};
 
@@ -172,13 +172,13 @@ namespace ras
 		{
 			auto timeout = base::get_timeout();
 			auto req_ord = base::add_handler(reply);
-			auto os = base::m_context.create_request_stream();
+			bstream::ombstream os{base::m_context.stream_context()};
 
-			*os << req_ord << base::m_interface_id << base::m_method_id;
-			os->write_array_header(1);
-			*os << first;
+			os << req_ord << base::m_interface_id << base::m_method_id;
+			os.write_array_header(1);
+			os << first;
 
-			base::send_request(req_ord, std::move(os), timeout);
+			base::send_request(req_ord, os, timeout);
 		}
 	};
 
@@ -211,13 +211,13 @@ namespace ras
 		{
 			auto timeout = base::get_timeout();
 			auto req_ord = base::add_handler(reply);
-			auto os = base::m_context.create_request_stream();
+			bstream::ombstream os{base::m_context.stream_context()};
 
-			*os << req_ord << base::m_interface_id << base::m_method_id;
+			os << req_ord << base::m_interface_id << base::m_method_id;
 
-			os->write_array_header(1 + sizeof...(Args));
-			*os << first;
-			append(*os, args...);
+			os.write_array_header(1 + sizeof...(Args));
+			os << first;
+			append(os, args...);
 
 			base::send_request(req_ord, std::move(os), timeout);
 		}
@@ -259,12 +259,12 @@ namespace ras
 		{
 			auto timeout = base::get_timeout();
 			auto req_ord = base::add_handler(reply);
-			auto os = base::m_context.create_request_stream();
+			bstream::ombstream os{base::m_context.stream_context()};
 
-			*os << req_ord << base::m_interface_id << base::m_method_id;
-			os->write_array_header(0);
+			os << req_ord << base::m_interface_id << base::m_method_id;
+			os.write_array_header(0);
 
-			base::send_request(req_ord, std::move(os), timeout);
+			base::send_request(req_ord, os, timeout);
 		}
 	};
 
@@ -287,13 +287,13 @@ namespace ras
 		{
 			auto timeout = base::get_timeout();
 			auto req_ord = base::add_handler(reply);
-			auto os = base::m_context.create_request_stream();
+			bstream::ombstream os{base::m_context.stream_context()};
 
-			*os << req_ord << base::m_interface_id << base::m_method_id;
-			os->write_array_header(sizeof...(Args)); // item_count
-			append(*os, args...);
+			os << req_ord << base::m_interface_id << base::m_method_id;
+			os.write_array_header(sizeof...(Args)); // item_count
+			append(os, args...);
 
-			base::send_request(req_ord, std::move(os), timeout);
+			base::send_request(req_ord, os, timeout);
 		}
 
 	private:

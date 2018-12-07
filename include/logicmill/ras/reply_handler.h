@@ -40,8 +40,6 @@ namespace logicmill
 namespace ras
 {
 
-// TODO: do reply_handlers need references to the context_base?
-
 template<class Reply, class Fail = void, class Enable = void>
 class reply_handler;
 
@@ -49,8 +47,8 @@ template<class Reply, class Fail>
 class reply_handler<Reply, Fail, typename std::enable_if_t<std::is_void<Fail>::value>> : public reply_handler_base
 {
 public:
-	inline reply_handler(client_context_base& context, Reply reply)
-		: m_context{context}, m_reply_stub{reply_stub<Reply>(context, reply)}
+	inline reply_handler(Reply reply)
+		: m_reply_stub{reply_stub<Reply>(reply)}
 	{}
 
 	virtual void
@@ -83,15 +81,14 @@ public:
 
 private:
 	reply_stub<Reply>    m_reply_stub;
-	client_context_base& m_context;
 };
 
 template<class Reply, class Fail>
 class reply_handler<Reply, Fail, typename std::enable_if_t<!std::is_void<Fail>::value>> : public reply_handler_base
 {
 public:
-	reply_handler(client_context_base& context, Reply reply, Fail fail)
-		: m_reply{reply_stub<Reply>(context, reply)}, m_fail{context, fail}
+	reply_handler(Reply reply, Fail fail)
+		: m_reply{reply_stub<Reply>(reply)}, m_fail{fail}
 	{}
 
 	virtual void

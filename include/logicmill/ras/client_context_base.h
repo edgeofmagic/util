@@ -58,33 +58,53 @@ public:
 		bool                    persist;
 	};
 
+	class connect_channel_handler;
+
 	client_context_base(async::loop::ptr const& lp, bstream::context_base const& cntxt);
 
-	// template<class Handler>
-	// typename std::enable_if_t<std::is_convertible<Handler, connect_handler>::value>
-	void
-	connect(async::options const&  opts,
-			std::error_code& err,
-			connect_handler  handler)    // TODO: maybe make function and forward handler
+	friend class client_context_base::connect_channel_handler;
+
+	class connect_channel_handler
 	{
-		async::options opts_override{opts};
-		opts_override.framing(true);
-		m_loop->connect_channel(opts_override, err, [=](async::channel::ptr const& chan, std::error_code err) {
+	public:
+		template<
+				class Handler,
+				class = typename std::enable_if_t<
+						std::is_convertible<Handler, client_context_base::connect_handler>::value>>
+		connect_channel_handler(client_context_base& cntxt, Handler&& handler)
+			: m_context{cntxt}, m_handler{std::forward<Handler>(handler)}
+		{}
+
+		void
+		operator()(async::channel::ptr const& chan, std::error_code err)
+		{
 			if (err)
 			{
-				m_channel.reset();
+				m_context.m_channel.reset();
 			}
 			else
 			{
-				m_channel = chan;
-				m_channel->start_read(
+				m_context.m_channel = chan;
+				m_context.m_channel->start_read(
 						err, [=](async::channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err) {
-							assert(chan == m_channel);
-							on_read(std::move(buf), err);
+							assert(chan == m_context.m_channel);
+							m_context.on_read(std::move(buf), err);
 						});
 			}
-			handler(err);
-		});
+			m_handler(err);
+		}
+
+		client_context_base&                 m_context;
+		client_context_base::connect_handler m_handler;
+	};
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, connect_handler>::value>
+	connect(async::options const& opts, std::error_code& err, Handler&& handler)
+	{
+		async::options opts_override{opts};
+		opts_override.framing(true);
+		m_loop->connect_channel(opts_override, err, connect_channel_handler{*this, std::forward<Handler>(handler)});
 	}
 
 	void
@@ -98,10 +118,6 @@ public:
 				std::forward_as_tuple(req_ord),
 				std::forward_as_tuple(std::move(handler), persist));
 		assert(result.second);
-		// if (!result.second)
-		// {
-		// 	FATAL_ERROR("request id collision");
-		// }
 	}
 
 	virtual ~client_context_base();
@@ -113,14 +129,14 @@ public:
 	}
 
 	void
-	send_request(std::unique_ptr<bstream::ombstream>&& os, std::error_code& err);
+	send_request(bstream::ombstream& os, std::error_code& err);
 
 	void
 	send_request(
-			std::unique_ptr<bstream::ombstream>&& os,
-			millisecs                             timeout,
-			std::error_code&                      err,
-			request_timeout_handler               timeout_handler);
+			bstream::ombstream&     os,
+			millisecs               timeout,
+			std::error_code&        err,
+			request_timeout_handler timeout_handler);
 
 	void
 	on_read(bstream::const_buffer&& buf, std::error_code& err)
@@ -188,6 +204,12 @@ public:
 	clear_transient_timeout()
 	{
 		m_transient_timeout = millisecs{0};
+	}
+
+	bstream::context_base&
+	stream_context()
+	{
+		return m_stream_context;
 	}
 
 protected:

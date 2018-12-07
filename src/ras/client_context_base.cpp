@@ -134,7 +134,7 @@ client_context_base::close()
 // }
 
 void
-client_context_base::send_request(std::unique_ptr<bstream::ombstream>&& os, std::error_code& err)
+client_context_base::send_request(bstream::ombstream& os, std::error_code& err)
 {
 	err.clear();
 	if (!m_channel)
@@ -143,14 +143,14 @@ client_context_base::send_request(std::unique_ptr<bstream::ombstream>&& os, std:
 		goto exit;
 	}
 
-	m_channel->write(os->get_membuf().release_mutable_buffer(), err);
+	m_channel->write(os.release_mutable_buffer(), err);
 
 exit:
 	return;
 }
 
 void
-client_context_base::send_request(std::unique_ptr<bstream::ombstream>&& os,
+client_context_base::send_request(bstream::ombstream& os,
 			 millisecs timeout, std::error_code& err,
 			 request_timeout_handler timeout_handler)
 {
@@ -178,7 +178,7 @@ client_context_base::send_request(std::unique_ptr<bstream::ombstream>&& os,
 	timer->start(timeout, err);
 	if (err) goto exit;
 
-	m_channel->write(os->get_membuf().release_mutable_buffer(), err);
+	m_channel->write(os.release_mutable_buffer(), err);
 
 exit:
 	return;

@@ -142,6 +142,12 @@ public:
 		return std::make_unique<bstream::ombstream>(m_stream_context);
 	}
 
+	bstream::context_base&
+	stream_context()
+	{
+		return m_stream_context;
+	}
+
 	inline interface_stub_base&
 	get_stub(std::size_t index)
 	{

@@ -45,9 +45,6 @@ namespace logicmill
 {
 namespace ras
 {
-
-	// TODO: do stubs need references to the client_context_base?
-
 	template<class T>
 	class reply_stub;
 
@@ -58,10 +55,9 @@ namespace ras
 		
 		using reply_type = std::function< void (std::error_code, Args...)>;
 
-		inline
-		reply_stub(client_context_base& context, reply_type reply) : m_context{context}, m_reply{reply}
-		{
-		}
+		inline reply_stub(reply_type reply)
+			: m_reply{reply}
+		{}
 
 		inline void
 		cancel(std::error_code ec)
@@ -114,7 +110,6 @@ namespace ras
 	private:
 		
 		reply_type m_reply;
-		client_context_base& m_context;
 	};
 
 	/*
@@ -130,7 +125,7 @@ namespace ras
 		using reply_type = std::function< void (Args...)>;
 
 		inline
-		reply_stub(client_context_base& context, reply_type reply) : m_context{context}, m_reply{reply}
+		reply_stub(reply_type reply) : m_reply{reply}
 		{}
 
 		void
@@ -159,7 +154,6 @@ namespace ras
 	private:
 		
 		reply_type m_reply;
-		client_context_base& m_context;
 	};
 
 	class fail_stub
@@ -167,7 +161,7 @@ namespace ras
 	public:
 		
 		inline
-		fail_stub(client_context_base& context, fail_reply reply) : m_context{context}, m_reply{reply}
+		fail_stub(fail_reply reply) : m_reply{reply}
 		{}
 
 		inline void
@@ -210,7 +204,6 @@ namespace ras
 	private:
 		
 		fail_reply m_reply;
-		client_context_base& m_context;
 	};
 
 } // namespace ras

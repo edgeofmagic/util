@@ -26,6 +26,7 @@
 #define LOGICMILL_BSTREAM_CONTEXT_H
 
 #include <boost/endian/conversion.hpp>
+#include <logicmill/bstream/buffer.h>
 #include <logicmill/bstream/error.h>
 #include <logicmill/bstream/error_category_context.h>
 #include <logicmill/bstream/ibstream_traits.h>
@@ -49,14 +50,30 @@ public:
 		return tag != invalid_tag;
 	};
 
-	context_impl_base(bool dedup_shared_ptrs, boost::endian::order byte_order)
-		: error_category_context{}, m_dedup_shared_ptrs{dedup_shared_ptrs}, m_byte_order{byte_order}
+	context_impl_base(
+			bool                       dedup_shared_ptrs,
+			boost::endian::order       byte_order,
+			size_type                  buffer_size = 65536,
+			buffer::memory_broker::ptr broker      = buffer::default_broker::get())
+		: error_category_context{},
+		  m_dedup_shared_ptrs{dedup_shared_ptrs},
+		  m_byte_order{byte_order},
+		  m_buffer_size{buffer_size},
+		  m_broker{broker}
 	{}
 
-	context_impl_base(error_category_context::category_init_list categories,
-					  bool                                       dedup_shared_ptrs,
-					  boost::endian::order                       byte_order)
-		: error_category_context{categories}, m_dedup_shared_ptrs{dedup_shared_ptrs}, m_byte_order{byte_order}
+	context_impl_base(
+			error_category_context::category_init_list categories,
+			bool                                       dedup_shared_ptrs,
+			boost::endian::order                       byte_order,
+			size_type                                  buffer_size = 65536,
+			buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
+
+		: error_category_context{categories},
+		  m_dedup_shared_ptrs{dedup_shared_ptrs},
+		  m_byte_order{byte_order},
+		  m_buffer_size{buffer_size},
+		  m_broker{broker}
 	{}
 
 	virtual ~context_impl_base() {}
@@ -120,9 +137,23 @@ public:
 		return m_byte_order;
 	}
 
+	size_type
+	buffer_size() const
+	{
+		return m_buffer_size;
+	}
+
+	buffer::memory_broker::ptr
+	broker() const
+	{
+		return m_broker;
+	}
+
 private:
-	bool                 m_dedup_shared_ptrs;
-	boost::endian::order m_byte_order;
+	bool                       m_dedup_shared_ptrs;
+	boost::endian::order       m_byte_order;
+	size_type                  m_buffer_size;
+	buffer::memory_broker::ptr m_broker;
 };
 
 using poly_raw_factory_func = std::function<void*(ibstream&)>;
@@ -164,9 +195,10 @@ public:
 		: context_impl_base{dedup_shared_ptrs, byte_order}
 	{}
 
-	context_impl(error_category_context::category_init_list categories,
-				 bool                                       dedup_shared_ptrs,
-				 boost::endian::order                       byte_order)
+	context_impl(
+			error_category_context::category_init_list categories,
+			bool                                       dedup_shared_ptrs,
+			boost::endian::order                       byte_order)
 		: context_impl_base{categories, dedup_shared_ptrs, byte_order}
 	{}
 
@@ -303,6 +335,30 @@ public:
 	get_context_impl() const = 0;
 };
 
+class cloned_context : public context_base
+{
+public:
+	cloned_context(std::shared_ptr<const context_impl_base> const& impl) : m_context_impl{impl} {}
+
+	cloned_context(context_base const& cntxt) : m_context_impl{cntxt.get_context_impl()} {}
+
+	cloned_context&
+	operator=(context_base const& cntxt)
+	{
+		m_context_impl = cntxt.get_context_impl();
+		return *this;
+	}
+
+	virtual std::shared_ptr<const context_impl_base>
+	get_context_impl() const override
+	{
+		return m_context_impl;
+	}
+
+private:
+	std::shared_ptr<const context_impl_base> m_context_impl;
+};
+
 template<class... Args>
 class context : public context_base
 {
@@ -317,11 +373,34 @@ public:
 		: m_context_impl{std::make_shared<const context_impl<Args...>>(categories, dedup_shared_ptrs, byte_order)}
 	{}
 
+	// context(context const& rhs)
+	// : m_context_impl{rhs.m_context_impl}
+	// {}
+
+	// context(context&& rhs)
+	// : m_context_impl{std::move(rhs.m_context_impl)}
+	// {}
+
+	// context&
+	// operator=(context const& rhs)
+	// {
+	// 	m_contest_impl = rhs.m_context_impl;
+	// 	return *this;
+	// }
+
+	// context&
+	// operator=(context&& rhs)
+	// {
+	// 	m_contest_impl = std::move(rhs.m_context_impl);
+	// 	return *this;
+	// }
+
 	virtual std::shared_ptr<const context_impl_base>
 	get_context_impl() const override
 	{
 		return m_context_impl;
 	}
+
 
 private:
 	std::shared_ptr<const context_impl_base> m_context_impl;

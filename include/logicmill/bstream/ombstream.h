@@ -53,6 +53,10 @@ public:
 		: ombstream(std::make_unique<memory::sink>(size), cntxt)
 	{}
 
+	ombstream(context_base const& cntxt = get_default_context())
+		: ombstream{std::make_unique<memory::sink>(mutable_buffer{cntxt.get_context_impl()->buffer_size(), cntxt.get_context_impl()->broker()}), cntxt}
+	{}
+
 	const_buffer
 	get_buffer()
 	{
@@ -75,6 +79,12 @@ public:
 	clear()
 	{
 		get_membuf().clear();
+	}
+
+	mutable_buffer
+	release_mutable_buffer()
+	{
+		return get_membuf().release_mutable_buffer();
 	}
 
 	memory::sink&

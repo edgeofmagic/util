@@ -26,19 +26,15 @@
 #define LOGICMILL_ASYNC_LOOP_UV_H
 
 #include "uv_error.h"
-#include <logicmill/async/loop.h>
-#include <uv.h>
-#include <mutex>
 #include <deque>
+#include <logicmill/async/loop.h>
+#include <mutex>
+#include <uv.h>
 
 
 class resolve_req_uv
 {
 public:
-	uv_getaddrinfo_t                        m_uv_req;
-	std::string                             m_hostname;
-	logicmill::async::loop::resolve_handler m_handler;
-
 	template<
 			class Handler,
 			class = std::enable_if_t<std::is_convertible<Handler, logicmill::async::loop::resolve_handler>::value>>
@@ -50,6 +46,11 @@ public:
 
 	void
 	start(uv_loop_t* lp, std::error_code& err);
+
+private:
+	uv_getaddrinfo_t                        m_uv_req;
+	std::string                             m_hostname;
+	logicmill::async::loop::resolve_handler m_handler;
 
 	static void
 	on_resolve(uv_getaddrinfo_t* req, int status, struct addrinfo* result);
@@ -67,19 +68,29 @@ struct loop_data
 class loop_uv : public logicmill::async::loop
 {
 public:
-	struct use_default_loop
-	{};
+	friend class logicmill::async::loop;
 
 	using ptr  = std::shared_ptr<loop_uv>;
 	using wptr = std::weak_ptr<loop_uv>;
 
-	loop_uv(loop_uv const&) = delete;
-	loop_uv(loop_uv&&)      = delete;
+	struct use_default_loop
+	{};
 
 	loop_uv(use_default_loop flag);    // only use to construct for default loop
 
+	loop_uv();
+
+	virtual ~loop_uv();
+
 	static ptr
 	create_from_default();
+
+	void
+	init(wptr self);
+
+private:
+	loop_uv(loop_uv const&) = delete;
+	loop_uv(loop_uv&&)      = delete;
 
 	static ptr
 	get_loop_ptr(uv_loop_t* lp)
@@ -94,13 +105,6 @@ public:
 	loop_uv&
 	operator=(loop_uv&&)
 			= delete;
-
-	loop_uv();
-
-	void
-	init(wptr self);
-
-	virtual ~loop_uv();
 
 	virtual logicmill::async::timer::ptr
 	really_create_timer(std::error_code& err, logicmill::async::timer::handler const& handler) override;
@@ -121,34 +125,34 @@ public:
 	close(std::error_code& err) override;    // probably should NOT be called from any handler
 
 	virtual logicmill::async::listener::ptr
-	create_listener(
+	really_create_listener(
 			logicmill::async::options const&                 opt,
 			std::error_code&                                 err,
 			logicmill::async::listener::connection_handler&& handler) override;
 
 	virtual logicmill::async::listener::ptr
-	create_listener(
+	really_create_listener(
 			logicmill::async::options const&                      opt,
 			std::error_code&                                      err,
 			logicmill::async::listener::connection_handler const& handler) override;
 
 	virtual logicmill::async::channel::ptr
-	connect_channel(
+	really_connect_channel(
 			logicmill::async::options const&             opt,
 			std::error_code&                             err,
 			logicmill::async::channel::connect_handler&& handler) override;
 
 	virtual logicmill::async::channel::ptr
-	connect_channel(
+	really_connect_channel(
 			logicmill::async::options const&                  opt,
 			std::error_code&                                  err,
 			logicmill::async::channel::connect_handler const& handler) override;
 
 	virtual void
-	resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler) override;
+	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler) override;
 
 	virtual void
-	resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler) override;
+	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler) override;
 
 	virtual void
 	really_dispatch(std::error_code& err, logicmill::async::loop::dispatch_handler const& handler) override;

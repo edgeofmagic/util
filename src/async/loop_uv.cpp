@@ -239,7 +239,10 @@ exit:
 }
 
 async::listener::ptr
-loop_uv::create_listener(async::options const& opt, std::error_code& err, async::listener::connection_handler&& handler)
+loop_uv::really_create_listener(
+		async::options const&                 opt,
+		std::error_code&                      err,
+		async::listener::connection_handler&& handler)
 {
 	err.clear();
 	std::shared_ptr<tcp_listener_uv> listener;
@@ -263,7 +266,7 @@ exit:
 }
 
 async::listener::ptr
-loop_uv::create_listener(
+loop_uv::really_create_listener(
 		async::options const&                      opt,
 		std::error_code&                           err,
 		async::listener::connection_handler const& handler)
@@ -290,7 +293,10 @@ exit:
 }
 
 async::channel::ptr
-loop_uv::connect_channel(async::options const& opt, std::error_code& err, async::channel::connect_handler&& handler)
+loop_uv::really_connect_channel(
+		async::options const&             opt,
+		std::error_code&                  err,
+		async::channel::connect_handler&& handler)
 {
 	err.clear();
 	std::shared_ptr<tcp_channel_uv> cp;
@@ -324,7 +330,7 @@ exit:
 }
 
 async::channel::ptr
-loop_uv::connect_channel(
+loop_uv::really_connect_channel(
 		async::options const&                  opt,
 		std::error_code&                       err,
 		async::channel::connect_handler const& handler)
@@ -361,7 +367,7 @@ exit:
 }
 
 void
-loop_uv::resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler)
+loop_uv::really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler)
 {
 	err.clear();
 
@@ -387,7 +393,7 @@ exit:
 }
 
 void
-loop_uv::resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler)
+loop_uv::really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler)
 {
 	err.clear();
 

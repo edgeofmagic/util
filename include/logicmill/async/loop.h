@@ -29,8 +29,8 @@
 #include <functional>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/endpoint.h>
-#include <logicmill/async/timer.h>
 #include <logicmill/async/options.h>
+#include <logicmill/async/timer.h>
 #include <memory>
 #include <system_error>
 
@@ -45,7 +45,7 @@ public:
 	using ptr = std::shared_ptr<loop>;
 
 	using resolve_handler = std::function<
-			void(std::string const& hostname, std::deque<ip::address>&& addresses, std::error_code& err)>;
+			void(std::string const& hostname, std::deque<ip::address>&& addresses, std::error_code err)>;
 
 	using dispatch_handler = std::function<void(loop::ptr const&)>;
 
@@ -83,32 +83,28 @@ public:
 		return really_create_timer(err, std::forward<Handler>(handler));
 	}
 
-	virtual listener::ptr
-	create_listener(options const& opt, std::error_code& err, listener::connection_handler&& handler)
-			= 0;
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, listener::connection_handler>::value, listener::ptr>
+	create_listener(options const& opts, std::error_code& err, Handler&& handler)
+	{
+		return really_create_listener(opts, err, std::forward<Handler>(handler));
+	}
 
-	virtual listener::ptr
-	create_listener(options const& opt, std::error_code& err, listener::connection_handler const& handler)
-			= 0;
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, channel::connect_handler>::value, channel::ptr>
+	connect_channel(options const& opts, std::error_code& err, Handler&& handler)
+	{
+		return really_connect_channel(opts, err, std::forward<Handler>(handler));
+	}
 
-	virtual channel::ptr
-	connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler)
-			= 0;
-
-	virtual channel::ptr
-	connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler)
-			= 0;
-
-	virtual void
-	resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler)
-			= 0;
-
-	virtual void
-	resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler)
-			= 0;
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, resolve_handler>::value>
+	resolve(std::string const& hostname, std::error_code& err, Handler&& handler)
+	{
+		really_resolve(hostname, err, std::forward<Handler>(handler));
+	}
 
 protected:
-
 	virtual timer::ptr
 	really_create_timer(std::error_code& err, timer::handler const& handler)
 			= 0;
@@ -118,10 +114,36 @@ protected:
 			= 0;
 
 	virtual void
-	really_dispatch(std::error_code& err, dispatch_handler&& handler) = 0;
+	really_dispatch(std::error_code& err, dispatch_handler&& handler)
+			= 0;
 
 	virtual void
-	really_dispatch(std::error_code& err, dispatch_handler const& handler) = 0;
+	really_dispatch(std::error_code& err, dispatch_handler const& handler)
+			= 0;
+
+	virtual listener::ptr
+	really_create_listener(options const& opt, std::error_code& err, listener::connection_handler&& handler)
+			= 0;
+
+	virtual listener::ptr
+	really_create_listener(options const& opt, std::error_code& err, listener::connection_handler const& handler)
+			= 0;
+
+	virtual channel::ptr
+	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler)
+			= 0;
+
+	virtual channel::ptr
+	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler)
+			= 0;
+
+	virtual void
+	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler)
+			= 0;
+
+	virtual void
+	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler)
+			= 0;
 };
 
 }    // namespace async

@@ -116,6 +116,44 @@ TEST_CASE("logicmill/async/loop/smoke/basic")
 	lp->run(err);
 
 	CHECK(!err);
+
+	lp->close(err);
+
+	CHECK(!err);
+}
+
+TEST_CASE("logicmill/async/loop/smoke/default_loop")
+{
+	async::loop::ptr lp = async::loop::get_default();
+	std::error_code  err;
+
+	bool first_visited{false};
+	bool second_visited{false};
+
+	lp->dispatch(err, [&](async::loop::ptr const& loop_ptr)
+	{
+		first_visited = true;
+		std::error_code err;
+		loop_ptr->stop(err);
+		CHECK(!err);
+	});
+
+	lp->run(err);
+	CHECK(!err);
+
+	lp->dispatch(err, [&](async::loop::ptr const& lp)
+	{
+		second_visited = true;
+		std::error_code err;
+		lp->stop(err);
+		CHECK(!err);
+	});
+
+	lp->run(err);
+	CHECK(!err);
+
+	CHECK(first_visited);
+	CHECK(second_visited);
 }
 
 TEST_CASE("logicmill/async/loop/smoke/timer")
@@ -245,7 +283,7 @@ TEST_CASE("logicmill/async/resolver/smoke/basic")
 	lp->resolve(
 			"google.com",
 			err,
-			[&](std::string const& hostname, std::deque<async::ip::address>&& addresses, std::error_code& err) {
+			[&](std::string const& hostname, std::deque<async::ip::address>&& addresses, std::error_code err) {
 				std::cout << "resolver handler called for hostname " << hostname << std::endl;
 				std::cout << "status is " << err.message() << std::endl;
 				if (!err)
@@ -283,7 +321,7 @@ TEST_CASE("logicmill/async/resolver/smoke/not_found_failure")
 	lp->resolve(
 			"no_such_host.com",
 			err,
-			[&](std::string const& hostname, std::deque<async::ip::address>&& addresses, std::error_code& err) {
+			[&](std::string const& hostname, std::deque<async::ip::address>&& addresses, std::error_code err) {
 				std::cout << "resolver handler called for hostname " << hostname << std::endl;
 				std::cout << "status is " << err.message() << std::endl;
 				if (!err)
@@ -326,7 +364,7 @@ TEST_CASE("logicmill/async/resolver/smoke/cancellation_loop_close")
 					err,
 					[&](std::string const&               hostname,
 						std::deque<async::ip::address>&& addresses,
-						std::error_code&           err) {
+						std::error_code           err) {
 						auto                      current = std::chrono::system_clock::now();
 						std::chrono::microseconds elapsed
 								= std::chrono::duration_cast<std::chrono::microseconds>(current - start);

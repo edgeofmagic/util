@@ -21,7 +21,7 @@ connect_request_uv::on_connect(uv_connect_t* req, int status)
 
 /* tcp_write_buf_req_uv */
 
-tcp_channel_uv::ptr
+std::shared_ptr<tcp_channel_uv>
 tcp_write_buf_req_uv::get_channel_shared_ptr(uv_write_t* req)
 {
 	return std::dynamic_pointer_cast<tcp_channel_uv>(tcp_base_uv::get_base_shared_ptr(req->handle));
@@ -41,7 +41,7 @@ tcp_write_buf_req_uv::on_write(uv_write_t* req, int status)
 
 /* tcp_write_bufs_req_uv */
 
-tcp_channel_uv::ptr
+std::shared_ptr<tcp_channel_uv>
 tcp_write_bufs_req_uv::get_channel_shared_ptr(uv_write_t* req)
 {
 	return std::dynamic_pointer_cast<tcp_channel_uv>(tcp_base_uv::get_base_shared_ptr(req->handle));
@@ -93,11 +93,12 @@ tcp_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_
 	}
 	else if (nread > 0)
 	{
-		channel_ptr->m_read_handler(channel_ptr,
-									bstream::const_buffer{reinterpret_cast<bstream::byte_type*>(buf->base),
-														  static_cast<bstream::size_type>(nread),
-														  bstream::buffer::default_deallocator{}},
-									err);
+		channel_ptr->m_read_handler(
+				channel_ptr,
+				bstream::const_buffer{reinterpret_cast<bstream::byte_type*>(buf->base),
+									  static_cast<bstream::size_type>(nread),
+									  bstream::buffer::default_deallocator{}},
+				err);
 	}
 }
 
@@ -137,7 +138,7 @@ tcp_channel_uv::is_closing()
 }
 
 void
-tcp_channel_uv::start_read(std::error_code& err, async::channel::read_handler&& handler)
+tcp_channel_uv::really_start_read(std::error_code& err, async::channel::read_handler&& handler)
 {
 	err.clear();
 	m_read_handler = std::move(handler);
@@ -149,7 +150,7 @@ tcp_channel_uv::start_read(std::error_code& err, async::channel::read_handler&& 
 }
 
 void
-tcp_channel_uv::start_read(std::error_code& err, async::channel::read_handler const& handler)
+tcp_channel_uv::really_start_read(std::error_code& err, async::channel::read_handler const& handler)
 {
 	err.clear();
 	m_read_handler = handler;
@@ -167,11 +168,14 @@ tcp_channel_uv::stop_read()
 }
 
 void
-tcp_channel_uv::really_write(bstream::mutable_buffer&& buf, std::error_code& err, async::channel::write_buffer_handler&& handler)
+tcp_channel_uv::really_write(
+		bstream::mutable_buffer&&              buf,
+		std::error_code&                       err,
+		async::channel::write_buffer_handler&& handler)
 {
 	err.clear();
 	auto request = new tcp_write_buf_req_uv{std::move(buf), std::move(handler)};
-	auto status = request->start(get_stream_handle());
+	auto status  = request->start(get_stream_handle());
 	if (status < 0)
 	{
 		err = map_uv_error(status);
@@ -179,11 +183,14 @@ tcp_channel_uv::really_write(bstream::mutable_buffer&& buf, std::error_code& err
 }
 
 void
-tcp_channel_uv::really_write(bstream::mutable_buffer&& buf, std::error_code& err, async::channel::write_buffer_handler const& handler)
+tcp_channel_uv::really_write(
+		bstream::mutable_buffer&&                   buf,
+		std::error_code&                            err,
+		async::channel::write_buffer_handler const& handler)
 {
 	err.clear();
 	auto request = new tcp_write_buf_req_uv{std::move(buf), handler};
-	auto status = request->start(get_stream_handle());
+	auto status  = request->start(get_stream_handle());
 	if (status < 0)
 	{
 		err = map_uv_error(status);
@@ -191,11 +198,14 @@ tcp_channel_uv::really_write(bstream::mutable_buffer&& buf, std::error_code& err
 }
 
 void
-tcp_channel_uv::really_write(std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err, async::channel::write_buffers_handler&& handler)
+tcp_channel_uv::really_write(
+		std::deque<bstream::mutable_buffer>&&   bufs,
+		std::error_code&                        err,
+		async::channel::write_buffers_handler&& handler)
 {
 	err.clear();
 	auto request = new tcp_write_bufs_req_uv{std::move(bufs), std::move(handler)};
-	auto status = request->start(get_stream_handle());
+	auto status  = request->start(get_stream_handle());
 	if (status < 0)
 	{
 		err = map_uv_error(status);
@@ -203,11 +213,14 @@ tcp_channel_uv::really_write(std::deque<bstream::mutable_buffer>&& bufs, std::er
 }
 
 void
-tcp_channel_uv::really_write(std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err, async::channel::write_buffers_handler const& handler)
+tcp_channel_uv::really_write(
+		std::deque<bstream::mutable_buffer>&&        bufs,
+		std::error_code&                             err,
+		async::channel::write_buffers_handler const& handler)
 {
 	err.clear();
 	auto request = new tcp_write_bufs_req_uv{std::move(bufs), handler};
-	auto status = request->start(get_stream_handle());
+	auto status  = request->start(get_stream_handle());
 	if (status < 0)
 	{
 		err = map_uv_error(status);
@@ -232,16 +245,15 @@ tcp_framed_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const 
 		channel_ptr->read_to_frame(
 				channel_ptr,
 				bstream::const_buffer{reinterpret_cast<bstream::byte_type*>(buf->base),
-										static_cast<bstream::size_type>(nread),
-										bstream::buffer::default_deallocator{}});
+									  static_cast<bstream::size_type>(nread),
+									  bstream::buffer::default_deallocator{}});
 	}
 }
 
 void
 tcp_framed_channel_uv::read_to_frame(ptr channel_ptr, bstream::const_buffer&& buf)
 {
-	assert((is_frame_size_valid() && (m_payload_buffer.size() < m_frame_size))
-			|| (!is_frame_size_valid()));
+	assert((is_frame_size_valid() && (m_payload_buffer.size() < m_frame_size)) || (!is_frame_size_valid()));
 
 	std::size_t current_buffer_position{0};
 	std::size_t remaining_in_buffer{buf.size()};
@@ -290,8 +302,7 @@ tcp_framed_channel_uv::read_to_frame(ptr channel_ptr, bstream::const_buffer&& bu
 				assert(m_payload_buffer.capacity() == m_frame_size);
 				std::size_t nbytes_to_move = std::min(remaining_in_buffer, needed_to_complete);
 				assert(nbytes_to_move > 0);
-				m_payload_buffer.putn(
-						m_payload_buffer.size(), buf.data() + current_buffer_position, nbytes_to_move);
+				m_payload_buffer.putn(m_payload_buffer.size(), buf.data() + current_buffer_position, nbytes_to_move);
 				needed_to_complete -= nbytes_to_move;
 				current_buffer_position += nbytes_to_move;
 				remaining_in_buffer -= nbytes_to_move;
@@ -310,7 +321,7 @@ tcp_framed_channel_uv::read_to_frame(ptr channel_ptr, bstream::const_buffer&& bu
 }
 
 void
-tcp_framed_channel_uv::start_read(std::error_code& err, async::channel::read_handler&& handler)
+tcp_framed_channel_uv::really_start_read(std::error_code& err, async::channel::read_handler&& handler)
 {
 	err.clear();
 	m_read_handler = std::move(handler);
@@ -322,7 +333,7 @@ tcp_framed_channel_uv::start_read(std::error_code& err, async::channel::read_han
 }
 
 void
-tcp_framed_channel_uv::start_read(std::error_code& err, async::channel::read_handler const& handler)
+tcp_framed_channel_uv::really_start_read(std::error_code& err, async::channel::read_handler const& handler)
 {
 	err.clear();
 	m_read_handler = handler;
@@ -335,18 +346,53 @@ tcp_framed_channel_uv::start_read(std::error_code& err, async::channel::read_han
 
 // TODO: change lambdas in really_write(s) to functors, move handler in first two cases
 void
-tcp_framed_channel_uv::really_write(bstream::mutable_buffer&& buf, std::error_code& err, async::channel::write_buffer_handler&& handler)
+tcp_framed_channel_uv::really_write(
+		bstream::mutable_buffer&&              buf,
+		std::error_code&                       err,
+		async::channel::write_buffer_handler&& handler)
 {
 	err.clear();
 	std::deque<bstream::mutable_buffer> frame_bufs;
 	frame_bufs.emplace_back(pack_frame_header(buf.size()));
 	frame_bufs.emplace_back(std::move(buf));
 
-	auto request = new tcp_write_bufs_req_uv{std::move(frame_bufs), 
-	[=] (async::channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err)
+	auto request = new tcp_write_bufs_req_uv{std::move(frame_bufs),
+											 [=](async::channel::ptr const&            chan,
+												 std::deque<bstream::mutable_buffer>&& bufs,
+												 std::error_code err) 
+												 {
+													 if (handler)
+													 {
+													 	handler(chan, std::move(bufs.back()), err);
+													 }
+												 }
+											};
+	auto status  = request->start(get_stream_handle());
+	if (status < 0)
 	{
-		handler(chan, std::move(bufs.back()), err);
-	} };
+		err = map_uv_error(status);
+	}
+}
+
+void
+tcp_framed_channel_uv::really_write(
+		bstream::mutable_buffer&&                   buf,
+		std::error_code&                            err,
+		async::channel::write_buffer_handler const& handler)
+{
+	err.clear();
+	std::deque<bstream::mutable_buffer> frame_bufs;
+	frame_bufs.emplace_back(pack_frame_header(buf.size()));
+	frame_bufs.emplace_back(std::move(buf));
+
+	auto request = new tcp_write_bufs_req_uv{
+			std::move(frame_bufs),
+			[=](async::channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code err) {
+				if (handler)
+				{
+					handler(chan, std::move(bufs.back()), err);
+				}
+			}};
 	auto status = request->start(get_stream_handle());
 	if (status < 0)
 	{
@@ -355,27 +401,10 @@ tcp_framed_channel_uv::really_write(bstream::mutable_buffer&& buf, std::error_co
 }
 
 void
-tcp_framed_channel_uv::really_write(bstream::mutable_buffer&& buf, std::error_code& err, async::channel::write_buffer_handler const& handler)
-{
-	err.clear();
-	std::deque<bstream::mutable_buffer> frame_bufs;
-	frame_bufs.emplace_back(pack_frame_header(buf.size()));
-	frame_bufs.emplace_back(std::move(buf));
-
-	auto request = new tcp_write_bufs_req_uv{std::move(frame_bufs), 
-	[=] (async::channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err)
-	{
-		handler(chan, std::move(bufs.back()), err);
-	} };
-	auto status = request->start(get_stream_handle());
-	if (status < 0)
-	{
-		err = map_uv_error(status);
-	}
-}
-
-void
-tcp_framed_channel_uv::really_write(std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err, async::channel::write_buffers_handler&& handler)
+tcp_framed_channel_uv::really_write(
+		std::deque<bstream::mutable_buffer>&&   bufs,
+		std::error_code&                        err,
+		async::channel::write_buffers_handler&& handler)
 {
 	err.clear();
 	std::uint64_t frame_size{0};
@@ -385,7 +414,7 @@ tcp_framed_channel_uv::really_write(std::deque<bstream::mutable_buffer>&& bufs, 
 	}
 	bufs.emplace_front(pack_frame_header(frame_size));
 	auto request = new tcp_write_bufs_req_uv{std::move(bufs), std::move(handler)};
-	auto status = request->start(get_stream_handle());
+	auto status  = request->start(get_stream_handle());
 	if (status < 0)
 	{
 		err = map_uv_error(status);
@@ -393,7 +422,10 @@ tcp_framed_channel_uv::really_write(std::deque<bstream::mutable_buffer>&& bufs, 
 }
 
 void
-tcp_framed_channel_uv::really_write(std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err, async::channel::write_buffers_handler const& handler)
+tcp_framed_channel_uv::really_write(
+		std::deque<bstream::mutable_buffer>&&        bufs,
+		std::error_code&                             err,
+		async::channel::write_buffers_handler const& handler)
 {
 	err.clear();
 	std::uint64_t frame_size{0};
@@ -403,7 +435,7 @@ tcp_framed_channel_uv::really_write(std::deque<bstream::mutable_buffer>&& bufs, 
 	}
 	bufs.emplace_front(pack_frame_header(frame_size));
 	auto request = new tcp_write_bufs_req_uv{std::move(bufs), handler};
-	auto status = request->start(get_stream_handle());
+	auto status  = request->start(get_stream_handle());
 	if (status < 0)
 	{
 		err = map_uv_error(status);
@@ -518,4 +550,3 @@ tcp_listener_uv::really_close(logicmill::async::listener::close_handler const& h
 		uv_close(get_handle(), tcp_base_uv::on_close);
 	}
 }
-

@@ -30,6 +30,7 @@ using namespace bstream;
 
 const error_category_context::category_init_list error_category_context::m_default_categories =
 {
+	&std::system_category(),
     &std::generic_category(),
     &bstream::error_category()
 };

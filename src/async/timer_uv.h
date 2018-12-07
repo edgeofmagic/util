@@ -41,8 +41,6 @@ class timer_uv : public logicmill::async::timer
 public:
 	using ptr = std::shared_ptr<timer_uv>;
 
-	// timer_uv(uv_loop_t* lp, logicmill::async::timer::handler handler);
-
 	timer_uv(uv_loop_t* lp, std::error_code& err, logicmill::async::timer::handler const& handler);
 
 	timer_uv(uv_loop_t* lp, std::error_code& err, logicmill::async::timer::handler&& handler);
@@ -52,6 +50,10 @@ public:
 	void
 	init(ptr const& self);
 
+	static void
+	on_timer_close(uv_handle_t* handle);
+
+private:
 	virtual void
 	start(std::chrono::milliseconds timeout, std::error_code& err) override;
 
@@ -72,9 +74,6 @@ public:
 
 	void
 	clear();
-
-	static void
-	on_timer_close(uv_handle_t* handle);
 
 	static void
 	on_timer_expire(uv_timer_t* handle);

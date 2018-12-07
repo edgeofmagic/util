@@ -56,7 +56,7 @@ enum class control_state
 	shutdown
 };
 
-using receipt = std::function<void(id_type id, std::error_code const& err)>;
+using receipt = std::function<void(id_type id, std::error_code err)>;
 
 template<class Payload>
 using data_event = event<stream_event, stream_event::data, Payload, id_type, receipt>;

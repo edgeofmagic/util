@@ -353,10 +353,20 @@ obstream::write_null_ptr( std::error_code& err )
 obstream&
 obstream::write_error_code( std::error_code const& ecode )
 {
-	auto category_index = m_context->index_of_category( ecode.category() );
-	write_array_header( 2 );
-	*this << category_index;
-	*this << ecode.value();
+	try
+	{
+		auto category_index = m_context->index_of_category( ecode.category() ); // catch exception thrown by index_of_category
+		write_array_header( 2 );
+		*this << category_index;
+		*this << ecode.value();
+	}
+	catch (std::system_error const& e)
+	{
+		assert(e.code() == bstream::errc::invalid_err_category);
+		write_array_header( 2 );
+		*this << m_context->index_of_category(bstream::error_category());  // guaranteed to be there
+		*this << static_cast<int>(bstream::errc::invalid_err_category);
+	}
 	return *this;
 }
 

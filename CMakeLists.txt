@@ -66,7 +66,32 @@ set(LOGICMILL_SRCS
 	include/logicmill/async/event.h
 	include/logicmill/async/stream.h
 	include/logicmill/async/channel.h
-	include/logicmill/async/framer.h
+
+	include/logicmill/ras/client_context.h
+	include/logicmill/ras/client_context_base.h
+	include/logicmill/ras/client_context_builder.h
+	include/logicmill/ras/error.h
+	include/logicmill/ras/fail_proxy.h
+	include/logicmill/ras/interface_proxy.h
+	include/logicmill/ras/interface_stub.h
+	include/logicmill/ras/interface_stub_base.h
+	include/logicmill/ras/interface_stub_builder.h
+	include/logicmill/ras/macros.h
+	include/logicmill/ras/method_proxy.h
+	include/logicmill/ras/method_stub.h
+	include/logicmill/ras/method_stub_base.h
+	include/logicmill/ras/ras.h
+	include/logicmill/ras/remote_context.h
+	include/logicmill/ras/reply_handler.h
+	include/logicmill/ras/reply_handler_base.h
+	include/logicmill/ras/reply_proxy.h
+	include/logicmill/ras/reply_stub.h
+	include/logicmill/ras/server_context.h
+	include/logicmill/ras/server_context_base.h
+	include/logicmill/ras/server_context_builder.h
+	include/logicmill/ras/traits.h
+	include/logicmill/ras/types.h
+
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
 	src/bstream/ibstream.cpp
@@ -78,7 +103,6 @@ set(LOGICMILL_SRCS
 	src/bstream/file_sink.cpp
 	src/bstream/memory_sink.cpp
 	src/bstream/compound_memory_sink.cpp
-#	src/async/uv_async.cpp
 	src/async/loop_uv.h
 	src/async/loop_uv.cpp
 	src/async/timer_uv.h
@@ -87,7 +111,14 @@ set(LOGICMILL_SRCS
 	src/async/tcp_uv.cpp
 	src/async/address.cpp
 	src/async/error.cpp
-	src/async/framer.cpp
+
+	src/ras/client_context_base.cpp
+	src/ras/error.cpp
+	src/ras/fail_proxy.cpp
+	src/ras/interface_proxy.cpp
+	src/ras/interface_stub_base.cpp
+	src/ras/server_context_base.cpp
+
 	src/fs_impl.cpp)
 
 set(LOGICMILL_TEST_SRCS
@@ -108,6 +139,7 @@ set(LOGICMILL_TEST_SRCS
 #	test/async/event.cpp
 # 	test/async/stream.cpp
 #	test/async/socket_behavior.cpp
+	test/ras/basic.cpp
 	test/test_main.cpp)
 
 add_library(logicmill ${LOGICMILL_SRCS})

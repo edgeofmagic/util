@@ -33,6 +33,11 @@ namespace logicmill
 {
 namespace traits
 {
+
+template<class>
+struct sfinae_true_if : std::true_type
+{};
+
 template<bool... B>
 struct conjunction
 {};
@@ -44,6 +49,57 @@ struct conjunction<Head, Tail...> : std::integral_constant<bool, Head && conjunc
 template<bool B>
 struct conjunction<B> : std::integral_constant<bool, B>
 {};
+
+template<class T, class... Ts>
+struct index;
+
+template<class T, class... Ts>
+struct index<T, T, Ts...> : std::integral_constant<std::size_t, 0>
+{};
+
+template<class T, class U, class... Ts>
+struct index<T, U, Ts...> : std::integral_constant<std::size_t, 1 + index<T, Ts...>::value>
+{};
+
+template<class T, class U>
+struct index_from;
+
+template<class T, template<class...> class ArgCarrier, class... Args>
+struct index_from<T, ArgCarrier<Args...>>
+{
+	static constexpr std::size_t value = index<T, Args...>::value;
+};
+
+template<std::size_t I, typename T>
+struct _indexed
+{
+	using type = T;
+};
+
+template<typename Is, typename... Ts>
+struct _indexer;
+
+template<std::size_t... Is, typename... Ts>
+struct _indexer<std::index_sequence<Is...>, Ts...> : _indexed<Is, Ts>...
+{};
+
+template<std::size_t I, typename T>
+static _indexed<I, T> select(_indexed<I, T>);
+
+template<std::size_t I, typename... Ts>
+using nth_element = typename decltype(select<I>(_indexer<std::index_sequence_for<Ts...>, Ts...>{}))::type;
+
+template<std::size_t I, class ArgCarrier>
+struct nth_element_from;
+
+template<std::size_t I, template<class...> class ArgCarrier, class... Args>
+struct nth_element_from<I, ArgCarrier<Args...>>
+{
+	using type = nth_element<I, Args...>;
+};
+
+// template<std::size_t I, typename... Ts>
+// using nth_element_from = typename decltype(select<I>(_indexer<std::index_sequence_for<Ts...>, Ts...>{}))::type;
 
 template<class T, template<class...> class Template>
 struct is_specialization : std::false_type
@@ -59,12 +115,53 @@ for_each(std::tuple<Tp...>&, FuncT)
 {}
 
 template<std::size_t I = 0, class FuncT, class... Tp>
-inline typename std::enable_if_t < I<sizeof...(Tp)>
-for_each(std::tuple<Tp...>& t, FuncT f)
+		inline typename std::enable_if_t < I<sizeof...(Tp)>
+										   for_each(std::tuple<Tp...>& t, FuncT f)
 {
 	f(std::get<I>(t));
 	for_each<I + 1, FuncT, Tp...>(t, f);
 }
+
+
+template<class... Args>
+struct _arg_list;
+
+template<class... Args>
+struct first_arg;
+
+template<template<class...> class Template, class First, class... Rest>
+struct first_arg<Template<First, Rest...>>
+{
+	using type = First;
+};
+
+template<class T, class U>
+class replace_arg;
+
+template<template<class...> class Template, class Arg1, class Arg2>
+class replace_arg<Template<Arg1>, Arg2>
+{
+public:
+	using type = Template<Arg2>;
+};
+
+template<class List, class Template>
+struct apply_arg_list;
+
+template<template<class...> class List, class... ListArgs, template<class...> class Template, class Arg>
+struct apply_arg_list<List<ListArgs...>, Template<Arg>>
+{
+	using type = _arg_list<Template<ListArgs>...>;
+};
+
+template<class T, class... Args>
+struct apply_args;
+
+template<template<class...> class Template, class U, class... Args>
+struct apply_args<Template<U>, Args...>
+{
+	using type = _arg_list<Template<Args>...>;
+};
 
 }    // namespace traits
 }    // namespace logicmill

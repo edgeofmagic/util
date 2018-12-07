@@ -36,10 +36,9 @@ namespace async
 class options
 {
 public:
-	options(ip::endpoint const& ep)
-	:
-	m_endpoint{ep},
-	m_framing{false}
+	options(ip::endpoint const& ep) : m_endpoint{ep}, m_framing{false} {}
+
+	options(options const& rhs) : m_endpoint{rhs.m_endpoint}, m_framing{rhs.m_framing}
 	{}
 
 	static options
@@ -48,7 +47,7 @@ public:
 		return options{ep};
 	}
 
-	ip::endpoint const& 
+	ip::endpoint const&
 	endpoint() const
 	{
 		return m_endpoint;
@@ -69,7 +68,7 @@ public:
 
 private:
 	ip::endpoint m_endpoint;
-	bool m_framing;
+	bool         m_framing;
 };
 
 }    // namespace async

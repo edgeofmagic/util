@@ -49,7 +49,7 @@ namespace stream_test
 
 		void push()
 		{
-			send< data_event< test_payload_type > >( pload_sent, 0, [=] ( id_type id, std::error_code const& err )
+			send< data_event< test_payload_type > >( pload_sent, 0, [=] ( id_type id, std::error_code err )
 			{
 				CHECK( ! err );
 				CHECK( id == 0 );
@@ -181,7 +181,7 @@ namespace stream_test
 		{
 			std::error_code err;
 			send< data_event< test_payload_type > >( m_payload, 0,
-			[=] ( id_type id, std::error_code const& err )
+			[=] ( id_type id, std::error_code err )
 			{
 				CHECK( ! err );
 				got_receipt = true;
@@ -448,7 +448,7 @@ namespace stream_test_1
 		void push( test_payload_type&& pload )
 		{
 			m_value_last_pushed = *pload;
-			send< data_event< test_payload_type > >( std::move( pload ), 0, [=] ( id_type id, std::error_code const& err )
+			send< data_event< test_payload_type > >( std::move( pload ), 0, [=] ( id_type id, std::error_code err )
 			{
 				CHECK( ! err );
 				got_receipt = true;

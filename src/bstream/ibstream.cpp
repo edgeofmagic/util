@@ -665,5 +665,5 @@ ibstream::read_error_code()
 	}
 	auto category_index = read_as< error_category_context::index_type >();
 	auto value = read_as< error_category_context::index_type >();
-	return std::error_code{ value, m_context->category_from_index( category_index ) };
+	return std::error_code{ value, m_context->category_from_index( category_index ) }; // TODO: catch exception thrown by category_from_index
 }

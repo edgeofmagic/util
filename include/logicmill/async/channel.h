@@ -45,27 +45,26 @@ public:
 	using ptr = std::shared_ptr<channel>;
 
 	using read_handler
-			= std::function<void(channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code& err)>;
+			= std::function<void(channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err)>;
 
 	using write_buffer_handler
-			= std::function<void(channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code& err)>;
+			= std::function<void(channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err)>;
 
 	using write_buffers_handler = std::function<
-			void(channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err)>;
+			void(channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code err)>;
 
-	using connect_handler = std::function<void(channel::ptr const& chan, std::error_code& err)>;
+	using connect_handler = std::function<void(channel::ptr const& chan, std::error_code err)>;
 
 	using close_handler = std::function<void(channel::ptr const& chan)>;
 
 	virtual ~channel() {}
 
-	virtual void
-	start_read(std::error_code& err, read_handler&& handler)
-			= 0;
-
-	virtual void
-	start_read(std::error_code& err, read_handler const& handler)
-			= 0;
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, read_handler>::value>
+	start_read(std::error_code& err, Handler&& handler)
+	{
+		really_start_read(err, std::forward<Handler>(handler));
+	}
 
 	virtual void
 	stop_read()
@@ -104,7 +103,7 @@ public:
 	typename std::enable_if_t<std::is_convertible<H, close_handler>::value>
 	close(H&& handler)
 	{
-		really_close(std::forward<H>( handler));
+		really_close(std::forward<H>(handler));
 	}
 
 	void
@@ -114,7 +113,8 @@ public:
 	}
 
 	virtual bool
-	is_closing() = 0;
+	is_closing()
+			= 0;
 
 protected:
 	virtual void
@@ -134,10 +134,20 @@ protected:
 			= 0;
 
 	virtual void
-	really_close(close_handler&& handler) = 0;
+	really_close(close_handler&& handler)
+			= 0;
 
 	virtual void
-	really_close(close_handler const& handler) = 0;
+	really_close(close_handler const& handler)
+			= 0;
+
+	virtual void
+	really_start_read(std::error_code& err, read_handler&& handler)
+			= 0;
+
+	virtual void
+	really_start_read(std::error_code& err, read_handler const& handler)
+			= 0;
 };
 
 class listener
@@ -145,7 +155,7 @@ class listener
 public:
 	using ptr = std::shared_ptr<listener>;
 	using connection_handler
-			= std::function<void(listener::ptr const& sp, channel::ptr const& chan, std::error_code& err)>;
+			= std::function<void(listener::ptr const& sp, channel::ptr const& chan, std::error_code err)>;
 	using close_handler = std::function<void(listener::ptr const& lp)>;
 
 	virtual ~listener() {}
@@ -154,7 +164,7 @@ public:
 	typename std::enable_if_t<std::is_convertible<H, close_handler>::value>
 	close(H&& handler)
 	{
-		really_close(std::forward<H>( handler));
+		really_close(std::forward<H>(handler));
 	}
 
 	void
@@ -167,12 +177,13 @@ public:
 	loop() = 0;
 
 protected:
+	virtual void
+	really_close(close_handler&& handler)
+			= 0;
 
 	virtual void
-	really_close(close_handler&& handler) = 0;
-
-	virtual void
-	really_close(close_handler const& handler) = 0;
+	really_close(close_handler const& handler)
+			= 0;
 };
 
 }    // namespace async

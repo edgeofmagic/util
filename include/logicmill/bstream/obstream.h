@@ -102,6 +102,14 @@ public:
 		  m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
 	{}
 
+	// obstream(std::unique_ptr<bstream::sink> strmbuf, std::shared_ptr<const context_impl_base> context_impl)
+	// 	: m_context{context_impl},
+	// 	  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
+	// 	  m_strmbuf{std::move(strmbuf)},
+	// 	  m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
+	// {}
+
+
 	bstream::sink&
 	get_streambuf()
 	{

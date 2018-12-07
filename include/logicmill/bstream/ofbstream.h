@@ -39,6 +39,7 @@ namespace bstream
 class ofbstream : public obstream
 {
 public:
+
 	ofbstream(context_base const& cntxt = get_default_context()) : obstream{std::make_unique<file::sink>(), cntxt} {}
 
 	ofbstream(ofbstream const&) = delete;

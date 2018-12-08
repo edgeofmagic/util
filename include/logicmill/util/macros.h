@@ -25,33 +25,6 @@
 #ifndef LOGICMILL_UTIL_MACROS_H
 #define LOGICMILL_UTIL_MACROS_H
 
-// #define BOOST_PP_VARIADICS 1
-
-// #include <boost/preprocessor/punctuation/remove_parens.hpp>
-// #include <boost/preprocessor/punctuation/comma_if.hpp>
-// #include <boost/preprocessor/punctuation/comma.hpp>
-
-// #include <boost/preprocessor/arithmetic/add.hpp>
-// #include <boost/preprocessor/control/if.hpp>
-// #include <boost/preprocessor/control/iif.hpp>
-// #include <boost/preprocessor/facilities/empty.hpp>
-
-// #include <boost/preprocessor/tuple/eat.hpp>
-
-// #include <boost/preprocessor/variadic/to_seq.hpp>
-// #include <boost/preprocessor/variadic/to_list.hpp>
-// #include <boost/preprocessor/variadic/to_array.hpp>
-
-// #include <boost/preprocessor/seq/elem.hpp>
-// #include <boost/preprocessor/seq/for_each_i.hpp>
-
-// #include <boost/preprocessor/array/size.hpp>
-// #include <boost/preprocessor/array/to_seq.hpp>
-
-// #include <boost/preprocessor/list/for_each_i.hpp>
-
-// #include <boost/preprocessor/stringize.hpp>
-
 #include <boost/predef.h>
 
 // disable warning for missing overrides;
@@ -62,28 +35,28 @@
 	#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()										\
 		_Pragma ( "clang diagnostic push" )													\
 		_Pragma ( "clang diagnostic ignored \"-Winconsistent-missing-override\"" )			\
-	/**/
+/**/
 	#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING()										\
 		_Pragma ( "clang diagnostic pop" )													\
-	/**/
+/**/
 #elif ( BOOST_COMP_MSVC )
 // may not be necessary, probably won't work if it is:
 	#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()										\
 //        __pragma( warning( push ) )														\
 //        __pragma( warning( disable : ???? ) )												\
-	/**/
+/**/
 	#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING()										\
 //        __pragma( warning( pop ) )														\
-	/**/
+/**/
 #elif ( BOOST_COMP_GNUC )
 // may not be necessary, probably won't work if it is:
 	#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()										\
 //        _Pragma ( "GCC diagnostic push" )													\
 //        _Pragma ( "GCC diagnostic ignored \"-W????????\"" )								\
-	/**/
+/**/
 	#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING()										\
 //        _Pragma ( "GCC diagnostic pop" )													\
-	/**/
+/**/
 #endif
 
 
@@ -93,28 +66,28 @@
 	#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()									\
 		_Pragma ( "clang diagnostic push" )													\
 		_Pragma ( "clang diagnostic ignored \"-Wunused-value\"" )							\
-	/**/
+/**/
 	#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()									\
 		_Pragma ( "clang diagnostic pop" )													\
-	/**/
+/**/
 #elif ( BOOST_COMP_MSVC )
 // may not be necessary, certainly won't work if it is:
 	#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()									\
 //        __pragma( warning( push ) )														\
 //        __pragma( warning( disable : ???? ) )												\
-	/**/
+/**/
 	#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()									\
 //        __pragma( warning( pop ) )														\
-	/**/
+/**/
 #elif ( BOOST_COMP_GNUC )
 // may not be necessary, certainly won't work if it is:
 	#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()									\
 //        _Pragma ( "GCC diagnostic push" )													\
 //        _Pragma ( "GCC diagnostic ignored \"-W????????\"" )								\
-	/**/
+/**/
 	#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()									\
 //        _Pragma ( "GCC diagnostic pop" )													\
-	/**/
+/**/
 #endif
 
 #endif // LOGICMILL_UTIL_MACROS_H

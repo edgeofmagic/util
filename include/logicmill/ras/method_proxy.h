@@ -79,27 +79,7 @@ namespace ras
 		void
 		send_request(std::uint64_t req_ord, bstream::ombstream& os, std::chrono::milliseconds timeout)
 		{
-			std::error_code err;
-			if (timeout.count() > 0)
-			{
-				m_context.send_request(os, timeout, err,
-				[=] (std::error_code ec)
-				{
-					m_context.cancel_handler(req_ord, std::make_error_code(std::errc::timed_out));
-				});
-				if (err)
-				{
-					m_context.cancel_handler(req_ord, err);
-				}
-			}
-			else
-			{
-				m_context.send_request(os, err);
-				if (err)
-				{
-					m_context.cancel_handler(req_ord, err);
-				}
-			}
+			m_context.send_request(req_ord, os, timeout);
 		}
 
 		std::size_t m_interface_id;

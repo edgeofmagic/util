@@ -66,14 +66,6 @@ public:
 		os << ec;
 		append(os, args...);
 		m_context.send_reply(m_channel, os.release_mutable_buffer());
-
-		// auto os = m_context.create_reply_stream();
-		// *os << m_req_ord;
-		// *os << reply_kind::normal;
-		// os->write_array_header(sizeof...(Args) + 1);
-		// *os << ec;
-		// append(*os, args...);
-		// m_context.send_reply(m_channel, os->release_mutable_buffer());
 	}
 
 private:
@@ -115,14 +107,6 @@ public:
 		os.write_array_header(sizeof...(Args));
 		append(os, args...);
 		m_context.send_reply(m_channel, os.release_mutable_buffer());
-
-
-		// auto os = m_context.create_reply_stream();
-		// *os << m_req_ord;
-		// *os << reply_kind::normal;
-		// os->write_array_header(sizeof...(Args));
-		// append(*os, args...);
-		// m_context.send_reply(m_channel, os->release_mutable_buffer());
 	}
 
 private:

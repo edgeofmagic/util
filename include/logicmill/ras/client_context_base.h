@@ -129,14 +129,10 @@ public:
 	}
 
 	void
-	send_request(bstream::ombstream& os, std::error_code& err);
+	check_async(std::error_code& err);
 
 	void
-	send_request(
-			bstream::ombstream&     os,
-			millisecs               timeout,
-			std::error_code&        err,
-			request_timeout_handler timeout_handler);
+	send_request(std::uint64_t req_ord, bstream::ombstream& os, millisecs timeout);
 
 	void
 	on_read(bstream::const_buffer&& buf, std::error_code& err)

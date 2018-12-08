@@ -98,9 +98,6 @@ struct nth_element_from<I, ArgCarrier<Args...>>
 	using type = nth_element<I, Args...>;
 };
 
-// template<std::size_t I, typename... Ts>
-// using nth_element_from = typename decltype(select<I>(_indexer<std::index_sequence_for<Ts...>, Ts...>{}))::type;
-
 template<class T, template<class...> class Template>
 struct is_specialization : std::false_type
 {};

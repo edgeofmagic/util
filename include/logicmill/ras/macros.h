@@ -32,10 +32,6 @@
 #ifndef LOGICMILL_RAS_MACROS_H
 #define LOGICMILL_RAS_MACROS_H
 
-#ifndef LGCML_RAS_USE_SHORT_NAMES
-#define LGCML_RAS_USE_SHORT_NAMES 1
-#endif
-
 #ifndef BOOST_PP_VARIADICS
 #define BOOST_PP_VARIADICS 1
 #endif
@@ -59,29 +55,29 @@
 #include <logicmill/util/preprocessor.h>
 //#include <logicmill/ras/ras.h>
 
-#define LGCML_RAS_INTERFACES(...)												\
-	LGCML_RAS_INTERFACES_(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))				\
+#define ARMI_INTERFACES(...)													\
+	ARMI_INTERFACES_(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))						\
 	
-#define LGCML_RAS_INTERFACES_(ifaces_seq)										\
+#define ARMI_INTERFACES_(ifaces_seq)											\
 	template<class T>															\
 	class _proxy;																\
 	template<class T>															\
 	class _stub;																\
 	using context_type =														\
 		logicmill::ras::remote_context::context<_proxy<void>, _stub<void>,		\
-			BOOST_PP_SEQ_FOR_EACH_I(LGCML_RAS_LIST_IFACE_, _, ifaces_seq)		\
+			BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)			\
 		>;																		\
 /**/
 
-#define LGCML_RAS_LIST_IFACE_(r, data, n, iface)								\
+#define ARMI_LIST_IFACE_(r, data, n, iface)										\
 	BOOST_PP_COMMA_IF(n) iface													\
 /**/
 
-#define LGCML_RAS_INTERFACE(iface, ...)											\
-	LGCML_RAS_INTERFACE_(iface, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))			\
+#define ARMI_INTERFACE(iface, ...)												\
+	ARMI_INTERFACE_(iface, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))				\
 /**/
 	
-#define LGCML_RAS_INTERFACE_(iface, methods_seq)								\
+#define ARMI_INTERFACE_(iface, methods_seq)										\
 	template<>																	\
 	class _proxy<iface> : public logicmill::ras::interface_proxy				\
 	{																			\
@@ -89,7 +85,7 @@
 		using target_type = iface;												\
 		_proxy(logicmill::ras::client_context_base& context, std::size_t index)	\
 		: logicmill::ras::interface_proxy{context, index} {}					\
-		BOOST_PP_SEQ_FOR_EACH_I(LGCML_RAS_DO_METHOD_PROXY_, iface, methods_seq)	\
+		BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_PROXY_, iface, methods_seq)		\
 	};																			\
 	template<>																	\
 	class _stub<iface> : public logicmill::ras::interface_stub					\
@@ -98,35 +94,35 @@
 		using target_type = iface;												\
 		_stub(logicmill::ras::server_context_base& context, std::size_t index)	\
 		: logicmill::ras::interface_stub(context, index,						\
-		BOOST_PP_SEQ_FOR_EACH_I(LGCML_RAS_DO_METHOD_LIST_, iface, methods_seq)	\
+		BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_LIST_, iface, methods_seq)		\
 		) {}																	\
 	};																			\
 /**/
-		
-#define LGCML_RAS_DO_METHOD_LIST_(r, iface, n, method)							\
+
+#define ARMI_DO_METHOD_LIST_(r, iface, n, method)								\
 	BOOST_PP_COMMA_IF(n) &iface :: method										\
 /**/
 
-#define LGCML_RAS_DO_METHOD_PROXY_(r, iface, n, method)							\
+#define ARMI_DO_METHOD_PROXY_(r, iface, n, method)								\
 	logicmill::ras::method_proxy<decltype(&iface :: method)>					\
 		 method{context(), index(), n};											\
 /**/
 
-#define LGCML_RAS_CONTEXT(...)													\
+#define ARMI_CONTEXT(...)														\
 	BOOST_PP_IIF(																\
 		LGCML_PP_ISEMPTY(__VA_ARGS__),											\
-			LGCML_RAS_CONTEXT_NO_ERRCATEGS_,									\
-			LGCML_RAS_CONTEXT_WITH_ERRCATEGS_)(__VA_ARGS__)						\
+			ARMI_CONTEXT_NO_ERRCATEGS_,											\
+			ARMI_CONTEXT_WITH_ERRCATEGS_)(__VA_ARGS__)							\
 /**/
 
-#define LGCML_RAS_CONTEXT_(err_categ_seq)										\
+#define ARMI_CONTEXT_(err_categ_seq)											\
 	BOOST_PP_IIF(																\
 			LGCML_PP_ISEMPTY(err_categ_seq),									\
-				LGCML_RAS_CONTEXT_NO_ERRCATEGS_,								\
-				LGCML_RAS_CONTEXT_WITH_ERRCATEGS_)(err_categ_seq)				\
+				ARMI_CONTEXT_NO_ERRCATEGS_,										\
+				ARMI_CONTEXT_WITH_ERRCATEGS_)(err_categ_seq)					\
 /**/
 
-#define LGCML_RAS_CONTEXT_NO_ERRCATEGS_(...)									\
+#define ARMI_CONTEXT_NO_ERRCATEGS_(...)											\
 	context_type& context()														\
 	{																			\
 		static context_type ctx;												\
@@ -142,16 +138,16 @@
 	}																			\
 /**/
 
-#define LGCML_RAS_CONTEXT_WITH_ERRCATEGS_(...)									\
-	LGCML_RAS_CONTEXT_WITH_ERRCATEGS_SEQ_(										\
+#define ARMI_CONTEXT_WITH_ERRCATEGS_(...)										\
+	ARMI_CONTEXT_WITH_ERRCATEGS_SEQ_(											\
 		BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))									\
 /**/
 
-#define LGCML_RAS_CONTEXT_WITH_ERRCATEGS_SEQ_(err_categ_seq)					\
+#define ARMI_CONTEXT_WITH_ERRCATEGS_SEQ_(err_categ_seq)							\
 	context_type& context()														\
 	{																			\
 		static context_type ctx{												\
-		BOOST_PP_SEQ_FOR_EACH_I(LGCML_RAS_LIST_ERRCATEG_, _, err_categ_seq)		\
+		BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_ERRCATEG_, _, err_categ_seq)			\
 		};																		\
 		return ctx;																\
 	}																			\
@@ -165,15 +161,10 @@
 	}																			\
 /**/
 
-#define LGCML_RAS_LIST_ERRCATEG_(r, data, n, err_categ)							\
+#define ARMI_LIST_ERRCATEG_(r, data, n, err_categ)								\
 	BOOST_PP_COMMA_IF(n) &(err_categ())											\
 /**/
 
-#if (LGCML_RAS_USE_SHORT_NAMES)
-	#define RAS_INTERFACES LGCML_RAS_INTERFACES
-	#define RAS_INTERFACE LGCML_RAS_INTERFACE
-	#define RAS_CONTEXT LGCML_RAS_CONTEXT
-#endif
 
 #endif /* LOGICMILL_RAS_MACROS_H */
 

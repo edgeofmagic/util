@@ -23,7 +23,6 @@ resolve_req_uv::on_resolve(uv_getaddrinfo_t* req, int status, struct addrinfo* r
 
 	if (!err)
 	{
-
 		for (auto info = result; info != nullptr; info = info->ai_next)
 		{
 			struct sockaddr_storage storage;
@@ -90,7 +89,7 @@ loop_uv::really_create_timer(std::error_code& err, async::timer::handler const& 
 		goto exit;
 	}
 
-	if (!m_uv_loop)    // TODO: propagate this test to other operations
+	if (!m_uv_loop)
 	{
 		err = make_error_code(async::errc::loop_closed);
 		goto exit;
@@ -116,7 +115,7 @@ loop_uv::really_create_timer(std::error_code& err, async::timer::handler&& handl
 		goto exit;
 	}
 
-	if (!m_uv_loop)    // TODO: propagate this test to other operations
+	if (!m_uv_loop)
 	{
 		err = make_error_code(async::errc::loop_closed);
 		goto exit;

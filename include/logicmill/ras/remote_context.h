@@ -56,10 +56,6 @@ public:
 	: m_loop{lp}, m_stream_context{stream_context}
 	{}
 
-	// inline
-	// context() : ecmap_{}
-	// {}
-
 	void
 	loop(async::loop::ptr lp)
 	{

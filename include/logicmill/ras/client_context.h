@@ -49,8 +49,6 @@ public:
 	using base                = logicmill::ras::client_context_builder<Args...>;
 	using proxy_list_carrier  = Template<Args...>;
 	using target_list_carrier = traits::_arg_list<typename Args::target_type...>;
-	// template<class T>
-	// using proxy_of = typename traits::replace_arg<typename traits::first_arg<proxy_list_carrier>::type, T>::type;
 
 	template<class T>
 	using proxy_of = typename traits::nth_element_from<traits::index_from<T, target_list_carrier>::value, proxy_list_carrier>::type;

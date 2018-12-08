@@ -48,7 +48,6 @@ namespace ras
 class server_context_base
 {
 public:
-	// using transport_callback_func = std::function<void(std::uint32_t req_ord)>;
 	using listener_error_handler = std::function<void(std::error_code ec)>;
 	using channel_error_handler  = std::function<void(async::channel::ptr const& ptr, std::error_code ec)>;
 	using close_handler          = std::function<void()>;
@@ -56,27 +55,6 @@ public:
 	server_context_base(std::size_t interface_count, async::loop::ptr lp, bstream::context_base const& stream_context);
 
 	virtual ~server_context_base();
-
-	// void
-	// use_transport(server_transport_impl_base::ptr transport);
-
-	// inline std::size_t
-	// index_of_category(std::error_category const& category) const
-	// {
-	// 	return ecmap_.index_of_category(category);
-	// }
-
-	// inline std::error_category const&
-	// category_from_index(std::size_t index) const
-	// {
-	// 	return ecmap_.category_from_index(index);
-	// }
-
-	// inline bstreams::ostream&
-	// get_reply_buffer()
-	// {
-	// 	return obuf_;
-	// }
 
 	template<class T, class U>
 	typename std::enable_if_t<
@@ -169,20 +147,8 @@ public:
 	void
 	send_reply(async::channel::ptr const& chan, bstream::mutable_buffer&& buf);
 
-	// inline error_category_map const&
-	// get_err_cat_map() const
-	// {
-	// 	return ecmap_;
-	// }
-
-	// void
-	// handle_request(const void* data, std::size_t size, transport_callback_func trans_cb);
-
 	void
 	handle_request(bstream::ibstream& is, async::channel::ptr const& chan);
-
-	// void
-	// handle_error(std::error_code ec);
 
 protected:
 	void

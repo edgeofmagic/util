@@ -28,33 +28,6 @@
 using namespace logicmill;
 using namespace ras;
 
-// client_context_base::client_context_base(error_category_map::init_list_type init_list)
-// : 
-// ecmap_{init_list}, 
-// m_next_request_ordinal{1}, 
-// obuf_{2048}, 
-// m_default_timeout{millisecs{0}}, 
-// m_transient_timeout{millisecs{0}}
-// {}
-
-// client_context_base::client_context_base()
-// :
-// ecmap_{},
-// m_next_request_ordinal{1},
-// obuf_{2048},
-// m_default_timeout{millisecs{0}},
-// m_transient_timeout{millisecs{0}}
-// {}
-
-// client_context_base::client_context_base(error_category_map const& ecmap)
-// :
-// ecmap_{ecmap},
-// m_next_request_ordinal{1},
-// obuf_{2048},
-// m_default_timeout{millisecs{0}},
-// m_transient_timeout{millisecs{0}}
-// {}
-
 client_context_base::client_context_base(async::loop::ptr const& lp, bstream::context_base const& cntxt)
 :
 m_loop{lp},
@@ -64,21 +37,24 @@ m_default_timeout{millisecs{0}},
 m_transient_timeout{millisecs{0}}
 {}
 
+void
+client_context_base::check_async(std::error_code& err)
+{
+	err.clear();
+	if (!m_loop)
+	{
+		err = make_error_code(ras::errc::no_event_loop);
+		goto exit;
+	}
+	if (!m_channel)
+	{
+		err = make_error_code(ras::errc::channel_not_connected);
+		goto exit;
+	}
 
-// void
-// client_context_base::use_transport(client_transport_impl_base::ptr transport)
-// {
-// 	if (transport == nullptr)
-// 	{
-// 		transport_->disassociate();
-// 		transport_.reset();
-// 	}
-// 	else
-// 	{
-// 		transport_ = std::move(transport);
-// 		transport_->associate(this);
-// 	}
-// }
+exit:
+	return;
+}
 
 client_context_base::~client_context_base()
 {
@@ -96,97 +72,36 @@ client_context_base::close()
 	m_channel.reset();
 }
 
-// void
-// request_buffer_size(std::size_t n)
-// {
-// 	m_request_buffer_size = (n < 1024) ? 1024 : n;
-// }
-
-
-
-// void
-// client_context_base::send_request(const void* data, std::size_t size)
-// {
-// 	if (transport_)
-// 	{
-// 		transport_->send_request(data, size);
-// 	}
-// 	else
-// 	{
-// 		throw ras::exceptions::no_transport{};
-// 	}
-// }
-
-// void
-// client_context_base::send_request(const void* data,
-// 			 std::size_t size,
-// 			 millisecs timeout,
-// 			 request_timeout_handler timeout_handler)
-// {
-// 	if (transport_)
-// 	{
-// 		transport_->send_request(data, size, timeout, timeout_handler);
-// 	}
-// 	else
-// 	{
-// 		throw ras::exceptions::no_transport{};
-// 	}
-// }
-
 void
-client_context_base::send_request(bstream::ombstream& os, std::error_code& err)
+client_context_base::send_request(std::uint64_t req_ord, bstream::ombstream& os, millisecs timeout)
 {
-	err.clear();
-	if (!m_channel)
+	std::error_code err;
+	check_async(err);
+	if (err) goto exit;
+
+	if (timeout.count() > 0)
 	{
-		err = make_error_code(ras::errc::channel_not_connected);
-		goto exit;
+		auto timer = m_loop->create_timer(err, [=](async::timer::ptr tp)
+		{
+			cancel_handler(req_ord, std::make_error_code(std::errc::timed_out));
+		});
+		if (err) goto exit;
+
+		timer->start(timeout, err);
+		if (err) goto exit;
 	}
 
 	m_channel->write(os.release_mutable_buffer(), err);
 
 exit:
-	return;
-}
-
-void
-client_context_base::send_request(bstream::ombstream& os,
-			 millisecs timeout, std::error_code& err,
-			 request_timeout_handler timeout_handler)
-{
-	async::timer::ptr timer;
-
-	err.clear();
-	if (!m_loop)
+	if (err)
 	{
-		err = make_error_code(ras::errc::no_event_loop);
-		goto exit;
+		cancel_handler(req_ord, err);
 	}
-	if (!m_channel)
-	{
-		err = make_error_code(ras::errc::channel_not_connected);
-		goto exit;
-	}
-
-	timer = m_loop->create_timer(err, [=](async::timer::ptr tp)
-	{
-		timeout_handler(std::error_code{});
-	});
-
-	if (err) goto exit;
-
-	timer->start(timeout, err);
-	if (err) goto exit;
-
-	m_channel->write(os.release_mutable_buffer(), err);
-
-exit:
-	return;
 }
-
 
 bool
-client_context_base::invoke_handler(bstream::ibstream& is) // TODO: deal with errors in caller (on_read)
+client_context_base::invoke_handler(bstream::ibstream& is)
 {
 	auto req_ord = is.read_as<std::uint64_t>();
 	auto it = m_reply_handler_map.find(req_ord);

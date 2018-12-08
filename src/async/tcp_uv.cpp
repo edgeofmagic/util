@@ -344,7 +344,25 @@ tcp_framed_channel_uv::really_start_read(std::error_code& err, async::channel::r
 	}
 }
 
-// TODO: change lambdas in really_write(s) to functors, move handler in first two cases
+class on_write_buffers
+{
+public:
+	template<class T, class = std::enable_if_t<std::is_convertible<T, async::channel::write_buffer_handler>::value>>
+	on_write_buffers(T&& handler) : m_handler{std::forward<T>(handler)} {}
+
+	void operator()(async::channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code err)
+	{
+		if (m_handler)
+		{
+			m_handler(chan, std::move(bufs.back()), err);
+		}
+	}
+
+private:
+	async::channel::write_buffer_handler m_handler;
+};
+
+
 void
 tcp_framed_channel_uv::really_write(
 		bstream::mutable_buffer&&              buf,
@@ -356,18 +374,9 @@ tcp_framed_channel_uv::really_write(
 	frame_bufs.emplace_back(pack_frame_header(buf.size()));
 	frame_bufs.emplace_back(std::move(buf));
 
-	auto request = new tcp_write_bufs_req_uv{std::move(frame_bufs),
-											 [=](async::channel::ptr const&            chan,
-												 std::deque<bstream::mutable_buffer>&& bufs,
-												 std::error_code err) 
-												 {
-													 if (handler)
-													 {
-													 	handler(chan, std::move(bufs.back()), err);
-													 }
-												 }
-											};
-	auto status  = request->start(get_stream_handle());
+	auto request = new tcp_write_bufs_req_uv{std::move(frame_bufs), on_write_buffers{std::move(handler)}};
+
+	auto status = request->start(get_stream_handle());
 	if (status < 0)
 	{
 		err = map_uv_error(status);
@@ -385,14 +394,8 @@ tcp_framed_channel_uv::really_write(
 	frame_bufs.emplace_back(pack_frame_header(buf.size()));
 	frame_bufs.emplace_back(std::move(buf));
 
-	auto request = new tcp_write_bufs_req_uv{
-			std::move(frame_bufs),
-			[=](async::channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code err) {
-				if (handler)
-				{
-					handler(chan, std::move(bufs.back()), err);
-				}
-			}};
+	auto request = new tcp_write_bufs_req_uv{std::move(frame_bufs), on_write_buffers{handler}};
+
 	auto status = request->start(get_stream_handle());
 	if (status < 0)
 	{

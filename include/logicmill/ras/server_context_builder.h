@@ -51,20 +51,6 @@ namespace ras
 			append_stubs<Args...>();
 		}
 		
-		// inline
-		// server_context_builder(error_category_map const& ecmap) : server_context_base{ecmap, sizeof...(Args)}
-		// {
-		// 	m_stubs.reserve(sizeof...(Args));
-		// 	append_stubs<Args...>();
-		// }
-		
-		// inline
-		// server_context_builder() : server_context_base{sizeof...(Args)}
-		// {
-		// 	m_stubs.reserve(sizeof...(Args));
-		// 	append_stubs<Args...>();
-		// }
-		
 		template<class T>
 		inline void 
 		append_stubs()

@@ -58,13 +58,6 @@ namespace ras
 		: base{lp, stream_context}
 		{}
 
-		// inline server_context() 
-		// : base{}
-		// {}
-
-		// server_context(error_category_map const& ecmap) : base{ecmap} 
-		// {}
-
 		template<class T>
 		inline void 
 		register_impl(std::shared_ptr<T> impl_ptr)

@@ -104,9 +104,9 @@ struct is_error_condition_enum<foo::errc> : public true_type
 
 namespace rfoo
 {
-RAS_INTERFACES(foo::bar)
-RAS_INTERFACE(foo::bar, increment, freak_out)
-RAS_CONTEXT()
+ARMI_INTERFACES(foo::bar)
+ARMI_INTERFACE(foo::bar, increment, freak_out)
+ARMI_CONTEXT()
 }    // namespace rfoo
 
 TEST_CASE("logicmill::ras [ smoke ] { basic functionality }")

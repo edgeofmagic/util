@@ -40,22 +40,7 @@ m_impl_ptrs{interface_count, nullptr}
 
 server_context_base::~server_context_base()
 {
-	// if (transport_)
-	// {
-	// 	transport_->disassociate();
-	// }
 }
-
-// void
-// server_context_base::use_transport(server_transport_impl_base::ptr transport)
-// {
-// 	if (transport_)
-// 	{
-// 		transport_->disassociate();
-// 	}
-// 	transport_ = std::move(transport);
-// 	transport_->associate(this);
-// }
 
 void
 server_context_base::really_bind(async::options const& opts, std::error_code& err)
@@ -131,18 +116,40 @@ server_context_base::handle_request(bstream::ibstream& is, async::channel::ptr c
 	}
 }
 
-// void
-// server_context_base::handle_error(std::error_code ec)
-// {
-// 	if (m_on_error)
-// 	{
-// 		m_on_error(ec);
-// 	}
-// 	else
-// 	{
-// 		std::ostringstream os;
-// 		os << "fatal error in server context: " << ec.message();
-// 		FATAL_ERROR(os.str());
-// 	}
-// }
+void
+server_context_base::cleanup()
+{
+	if (m_on_close)
+	{
+		m_on_listener_error = nullptr;
+		m_on_channel_error  = nullptr;
+		m_on_close();
+		m_on_close = nullptr;
+	}
+}
+
+void
+server_context_base::really_close()
+{
+	if (m_listener)
+	{
+		m_listener->close([=](async::listener::ptr const& lp) {
+			m_listener.reset();
+			if (m_open_channels.empty())
+			{
+				cleanup();
+			}
+		});
+	}
+	for (auto& chan : m_open_channels)
+	{
+		chan->close([=](async::channel::ptr const& c) {
+			m_open_channels.erase(c);
+			if (m_open_channels.empty() && !m_listener)
+			{
+				cleanup();
+			}
+		});
+	}
+}
 

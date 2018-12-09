@@ -40,11 +40,11 @@ namespace logicmill
 namespace armi
 {
 	class client_context_base;
-	
+
 	class interface_proxy
 	{
 	public:
-		
+	
 		inline
 		interface_proxy(client_context_base& context, std::size_t index) : index_{index}, context_{context}
 		{}
@@ -68,7 +68,7 @@ namespace armi
 		timeout(millisecs timeout);
 
 	private:
-		
+
 		const std::size_t index_;
 		client_context_base& context_;
 	};

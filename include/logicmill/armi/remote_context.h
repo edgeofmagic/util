@@ -32,19 +32,17 @@
 #ifndef LOGICMILL_ARMI_REMOTE_CONTEXT_H
 #define LOGICMILL_ARMI_REMOTE_CONTEXT_H
 
-#include <logicmill/bstream/context.h>
 #include <logicmill/armi/client_context.h>
 #include <logicmill/armi/error.h>
 #include <logicmill/armi/server_context.h>
+#include <logicmill/bstream/context.h>
 
 namespace logicmill
 {
 namespace armi
 {
-namespace remote_context
-{
 template<class Proxy, class Stub, class... Interfaces>
-class context
+class remote_context
 {
 public:
 	using proxys              = typename traits::apply_args<Proxy, Interfaces...>::type;
@@ -52,8 +50,10 @@ public:
 	using client_context_type = logicmill::armi::client_context<proxys>;
 	using server_context_type = logicmill::armi::server_context<stubs>;
 
-	context(async::loop::ptr lp = async::loop::get_default(), bstream::context_base const& stream_context = armi::get_default_stream_context())
-	: m_loop{lp}, m_stream_context{stream_context}
+	remote_context(
+			async::loop::ptr             lp             = async::loop::get_default(),
+			bstream::context_base const& stream_context = armi::get_default_stream_context())
+		: m_loop{lp}, m_stream_context{stream_context}
 	{}
 
 	void
@@ -100,7 +100,6 @@ public:
 		return *m_server_context;
 	}
 
-
 private:
 	async::loop::ptr                     m_loop;
 	bstream::cloned_context              m_stream_context;
@@ -108,9 +107,7 @@ private:
 	std::unique_ptr<server_context_type> m_server_context;
 };
 
-}    // namespace remote_context
 }    // namespace armi
 }    // namespace logicmill
-
 
 #endif /* LOGICMILL_ARMI_REMOTE_CONTEXT_H */

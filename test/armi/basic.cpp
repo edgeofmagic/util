@@ -206,7 +206,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 	rfoo::context_type foo_context{lp, foo_stream_context};
 
 
-	foo_context.loop(lp);
+	// foo_context.loop(lp);
 
 	auto bar_impl = std::make_shared<foo::bar>();
 

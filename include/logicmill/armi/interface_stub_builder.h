@@ -60,7 +60,7 @@ namespace armi
 	
 	class interface_stub_builder : public interface_stub_base
 	{
-	public:
+	protected:
 
 		template<class... Args, std::size_t... Ns>
 		inline interface_stub_builder(server_context_base& context, std::size_t index, indices<Ns...> _i, Args... args) 

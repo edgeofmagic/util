@@ -46,13 +46,18 @@ namespace armi
 	class interface_stub_base
 	{
 	public:
-		
+
+		virtual
+		~interface_stub_base() {}
+
+	protected:
+
+		friend class server_context_base;
+
 		inline
 		interface_stub_base(server_context_base& context, std::size_t index) : m_context{context}, m_index{index}
 		{}
 
-		virtual
-		~interface_stub_base() {}
 
 		inline std::size_t
 		index() const
@@ -74,8 +79,6 @@ namespace armi
 
 		void
 		process(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is);
-
-	protected:
 		
 		const std::size_t m_index;
 		server_context_base& m_context;

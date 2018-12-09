@@ -61,9 +61,9 @@
 	class _proxy;                                                                                                      \
 	template<class T>                                                                                                  \
 	class _stub;                                                                                                       \
-	using context_type = logicmill::armi::remote_context::                                                             \
-			context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>;              \
-	/**/
+	using context_type = logicmill::armi::                                                                             \
+			remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>;       \
+/**/
 
 #define ARMI_LIST_IFACE_(r, data, n, iface) BOOST_PP_COMMA_IF(n) iface 
 /**/

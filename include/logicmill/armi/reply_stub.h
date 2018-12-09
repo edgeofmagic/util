@@ -55,11 +55,11 @@ namespace armi
 		
 		using reply_type = std::function< void (std::error_code, Args...)>;
 
-		inline reply_stub(reply_type reply)
+		reply_stub(reply_type reply)
 			: m_reply{reply}
 		{}
 
-		inline void
+		void
 		cancel(std::error_code ec)
 		{
 			m_reply(ec, Args{}...);
@@ -101,7 +101,7 @@ namespace armi
 			}
 		}
 
-		inline void
+		void
 		invoke(std::error_code ec, Args ...args)
 		{
 			m_reply(ec, args...);
@@ -145,7 +145,7 @@ namespace armi
 			}
 		}
 
-		inline void
+		void
 		invoke(Args ...args)
 		{
 			m_reply(args...);
@@ -160,17 +160,16 @@ namespace armi
 	{
 	public:
 		
-		inline
 		fail_stub(fail_reply reply) : m_reply{reply}
 		{}
 
-		inline void
+		void
 		cancel(std::error_code ec)
 		{
 			m_reply(ec);
 		}
 
-		inline void
+		void
 		operator()(bstream::ibstream& is)
 		{
 			std::error_code err;

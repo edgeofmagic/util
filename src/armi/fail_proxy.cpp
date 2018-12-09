@@ -34,11 +34,12 @@ using namespace armi;
 void
 fail_proxy::operator()(std::error_code err)
 {
-	auto os = m_context.create_reply_stream();
-	*os << m_req_ord;
-	*os << reply_kind::fail;
-	os->write_array_header(1);
-	*os << err;
+	bstream::ombstream os{m_context.stream_context()};
+	// auto os = m_context.create_reply_stream();
+	os << m_req_ord;
+	os << reply_kind::fail;
+	os.write_array_header(1);
+	os << err;
 	// error_code_adaptor::put(os, m_context, err);
-	m_context.send_reply(m_channel, os->release_mutable_buffer());
+	m_context.send_reply(m_channel, os.release_mutable_buffer());
 }

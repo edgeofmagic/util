@@ -34,18 +34,6 @@ namespace armi
 			append_proxies<Args...>();
 		}
 
-		// client_context_builder() : client_context_base{}
-		// {
-		// 	m_proxies.reserve(sizeof...(Args));
-		// 	append_proxies<Args...>();
-		// }
-
-		// client_context_builder(error_category_map const& ecmap) : client_context_base{ecmap}
-		// {
-		// 	m_proxies.reserve(sizeof...(Args));
-		// 	append_proxies<Args...>();
-		// }
-
 		template<class T>
 		void
 		append_proxies()

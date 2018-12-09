@@ -161,3 +161,22 @@ client_context_base::cancel_all_reply_handlers(std::error_code ec)
 		it->second.handler->cancel(ec);
 	}
 }
+
+void
+client_context_base::connect_channel_handler::operator()(async::channel::ptr const& chan, std::error_code err)
+{
+	if (err)
+	{
+		m_context.m_channel.reset();
+	}
+	else
+	{
+		m_context.m_channel = chan;
+		m_context.m_channel->start_read(
+				err, [=](async::channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err) {
+					assert(chan == m_context.m_channel);
+					m_context.on_read(std::move(buf), err);
+				});
+	}
+	m_handler(err);
+}

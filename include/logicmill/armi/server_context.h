@@ -53,14 +53,14 @@ public:
 	template<class T>
 	using stub_of = typename traits::replace_arg<typename traits::first_arg<stub_list_carrier>::type, T>::type;
 
-	inline server_context(
+	server_context(
 			async::loop::ptr const&      lp             = async::loop::get_default(),
 			bstream::context_base const& stream_context = armi::get_default_stream_context())
 		: base{lp, stream_context}
 	{}
 
 	template<class T>
-	inline void
+	void
 	register_impl(std::shared_ptr<T> impl_ptr)
 	{
 		logicmill::armi::server_context_base::set_impl(traits::index_from<T, target_list_carrier>::value, impl_ptr);

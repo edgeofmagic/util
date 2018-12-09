@@ -33,18 +33,24 @@
 #define LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H
 
 #include <chrono>
+#include <logicmill/armi/reply_handler_base.h>
+#include <logicmill/armi/types.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
 #include <logicmill/bstream/imbstream.h>
 #include <logicmill/bstream/ombstream.h>
-#include <logicmill/armi/reply_handler_base.h>
-#include <logicmill/armi/types.h>
 #include <unordered_map>
 
 namespace logicmill
 {
 namespace armi
 {
+
+class interface_proxy;
+
+template<class T>
+class method_proxy_base;
+
 class client_context_base
 {
 public:
@@ -58,57 +64,35 @@ public:
 		bool                    persist;
 	};
 
-	class connect_channel_handler;
-
 	client_context_base(async::loop::ptr const& lp, bstream::context_base const& cntxt);
 
-	friend class client_context_base::connect_channel_handler;
-
-	class connect_channel_handler
+	async::loop::ptr
+	loop() const
 	{
-	public:
-		template<
-				class Handler,
-				class = typename std::enable_if_t<
-						std::is_convertible<Handler, client_context_base::connect_handler>::value>>
-		connect_channel_handler(client_context_base& cntxt, Handler&& handler)
-			: m_context{cntxt}, m_handler{std::forward<Handler>(handler)}
-		{}
+		return m_loop;
+	}
 
-		void
-		operator()(async::channel::ptr const& chan, std::error_code err)
-		{
-			if (err)
-			{
-				m_context.m_channel.reset();
-			}
-			else
-			{
-				m_context.m_channel = chan;
-				m_context.m_channel->start_read(
-						err, [=](async::channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err) {
-							assert(chan == m_context.m_channel);
-							m_context.on_read(std::move(buf), err);
-						});
-			}
-			m_handler(err);
-		}
-
-		client_context_base&                 m_context;
-		client_context_base::connect_handler m_handler;
-	};
+	bstream::context_base const&
+	stream_context() const
+	{
+		return m_stream_context;
+	}
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, connect_handler>::value>
-	connect(async::options const& opts, std::error_code& err, Handler&& handler)
-	{
-		async::options opts_override{opts};
-		opts_override.framing(true);
-		m_loop->connect_channel(opts_override, err, connect_channel_handler{*this, std::forward<Handler>(handler)});
-	}
+	connect(async::options const& opts, std::error_code& err, Handler&& handler);
 
 	void
 	close();
+
+	virtual ~client_context_base();
+
+private:
+
+	friend class logicmill::armi::interface_proxy;
+
+	template<class T>
+	friend class logicmill::armi::method_proxy_base;
 
 	void
 	add_handler(std::uint64_t req_ord, reply_handler_base::ptr&& handler, bool persist = false)
@@ -119,8 +103,6 @@ public:
 				std::forward_as_tuple(std::move(handler), persist));
 		assert(result.second);
 	}
-
-	virtual ~client_context_base();
 
 	std::unique_ptr<bstream::ombstream>
 	create_request_stream()
@@ -202,13 +184,27 @@ public:
 		m_transient_timeout = millisecs{0};
 	}
 
-	bstream::context_base&
-	stream_context()
-	{
-		return m_stream_context;
-	}
+	class connect_channel_handler;
+	friend class client_context_base::connect_channel_handler;
 
-protected:
+	class connect_channel_handler
+	{
+	public:
+		template<
+				class Handler,
+				class = typename std::enable_if_t<
+						std::is_convertible<Handler, client_context_base::connect_handler>::value>>
+		connect_channel_handler(client_context_base& cntxt, Handler&& handler)
+			: m_context{cntxt}, m_handler{std::forward<Handler>(handler)}
+		{}
+
+		void
+		operator()(async::channel::ptr const& chan, std::error_code err);
+
+		client_context_base&                 m_context;
+		client_context_base::connect_handler m_handler;
+	};
+
 	async::loop::ptr                                      m_loop;
 	bstream::cloned_context                               m_stream_context;
 	std::uint64_t                                         m_next_request_ordinal;
@@ -220,5 +216,17 @@ protected:
 
 }    // namespace armi
 }    // namespace logicmill
+
+template<class Handler>
+typename std::enable_if_t<std::is_convertible<Handler, logicmill::armi::client_context_base::connect_handler>::value>
+logicmill::armi::client_context_base::connect(
+		logicmill::async::options const& opts,
+		std::error_code&                 err,
+		Handler&&                        handler)
+{
+	logicmill::async::options opts_override{opts};
+	opts_override.framing(true);
+	m_loop->connect_channel(opts_override, err, connect_channel_handler{*this, std::forward<Handler>(handler)});
+}
 
 #endif /* LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H */

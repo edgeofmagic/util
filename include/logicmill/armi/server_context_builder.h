@@ -43,7 +43,6 @@ namespace armi
 	{
 	public:
 		
-		inline
 		server_context_builder(async::loop::ptr const& lp, bstream::context_base const& stream_context) 
 		: server_context_base{sizeof...(Args), lp, stream_context}
 		{
@@ -52,14 +51,14 @@ namespace armi
 		}
 		
 		template<class T>
-		inline void 
+		void 
 		append_stubs()
 		{
 			append_stub<T>();
 		}
 		
 		template<class First_, class... Args_>
-		inline typename std::enable_if_t<(sizeof...(Args_) > 0)>
+		typename std::enable_if_t<(sizeof...(Args_) > 0)>
 		append_stubs()
 		{
 			append_stub<First_>();
@@ -67,7 +66,7 @@ namespace armi
 		}
 		
 		template<class T>
-		inline void 
+		void 
 		append_stub()
 		{
 			std::size_t index = m_stubs.size();

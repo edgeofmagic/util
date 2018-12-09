@@ -45,6 +45,9 @@ namespace logicmill
 {
 namespace armi
 {
+
+class fail_proxy;
+
 class server_context_base
 {
 public:
@@ -69,18 +72,6 @@ public:
 		really_bind(opts_override, err);
 	}
 
-	void
-	cleanup()
-	{
-		if (m_on_close)
-		{
-			m_on_listener_error = nullptr;
-			m_on_channel_error  = nullptr;
-			m_on_close();
-			m_on_close = nullptr;
-		}
-	}
-
 	template<class T>
 	typename std::enable_if_t<std::is_convertible<T, close_handler>::value>
 	close(T&& handler)
@@ -89,30 +80,28 @@ public:
 		really_close();
 	}
 
-	void
-	really_close()
+	bstream::context_base&
+	stream_context()
 	{
-		if (m_listener)
-		{
-			m_listener->close([=](async::listener::ptr const& lp) {
-				m_listener.reset();
-				if (m_open_channels.empty())
-				{
-					cleanup();
-				}
-			});
-		}
-		for (auto& chan : m_open_channels)
-		{
-			chan->close([=](async::channel::ptr const& c) {
-				m_open_channels.erase(c);
-				if (m_open_channels.empty() && !m_listener)
-				{
-					cleanup();
-				}
-			});
-		}
+		return m_stream_context;
 	}
+
+	void
+	send_reply(async::channel::ptr const& chan, bstream::mutable_buffer&& buf);
+
+	std::shared_ptr<void>
+	get_impl(std::size_t index)
+	{
+		return m_impl_ptrs[index];
+	}
+
+protected:
+
+	void
+	cleanup();
+
+	void
+	really_close();
 
 	std::unique_ptr<bstream::ombstream>
 	create_reply_stream()
@@ -120,37 +109,21 @@ public:
 		return std::make_unique<bstream::ombstream>(m_stream_context);
 	}
 
-	bstream::context_base&
-	stream_context()
-	{
-		return m_stream_context;
-	}
-
-	inline interface_stub_base&
+	interface_stub_base&
 	get_stub(std::size_t index)
 	{
 		return *(m_stubs[index]);
 	}
 
-	inline std::shared_ptr<void>
-	get_impl(std::size_t index)
-	{
-		return m_impl_ptrs[index];
-	}
-
-	inline void
+	void
 	set_impl(std::size_t index, std::shared_ptr<void> ptr)
 	{
 		m_impl_ptrs[index] = ptr;
 	}
 
 	void
-	send_reply(async::channel::ptr const& chan, bstream::mutable_buffer&& buf);
-
-	void
 	handle_request(bstream::ibstream& is, async::channel::ptr const& chan);
 
-protected:
 	void
 	really_bind(async::options const& opts, std::error_code& err);
 

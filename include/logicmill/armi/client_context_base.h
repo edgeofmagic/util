@@ -187,6 +187,18 @@ private:
 	class connect_channel_handler;
 	friend class client_context_base::connect_channel_handler;
 
+	class connect_channel_handler_base
+	{
+	public:
+		connect_channel_handler_base(client_context_base& client_context) : m_context{client_context} {}
+
+		virtual void
+		operator()(client_context_base& cntxt, async::channel::ptr chan, std::error_code err) = 0;
+	
+	private:
+		client_context_base&                 m_context;
+	};
+
 	class connect_channel_handler
 	{
 	public:

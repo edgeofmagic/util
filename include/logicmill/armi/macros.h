@@ -54,6 +54,38 @@
 #include <boost/preprocessor/list/for_each_i.hpp>
 #include <logicmill/util/preprocessor.h>
 
+#define ARMI_CONTEXT_A(context_name, ...) ARMI_CONTEXT_A_(context_name, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+
+#define ARMI_CONTEXT_A_(context_name, ifaces_seq)                                                                      \
+	class context_name                                                                                                 \
+	{                                                                                                                  \
+	public:                                                                                                            \
+		template<class T>                                                                                              \
+		class _proxy;                                                                                                  \
+		template<class T>                                                                                              \
+		class _stub;                                                                                                   \
+		using context_type = logicmill::armi::                                                                         \
+				remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>;   \
+		context_name(                                                                                                  \
+				async::loop::ptr             lp             = async::loop::get_default(),                              \
+				bstream::context_base const& stream_context = armi::get_default_stream_context())                      \
+			: m_context{lp, stream_context}                                                                            \
+		{}                                                                                                             \
+		context_type::client_context_type&                                                                             \
+		client()                                                                                                       \
+		{                                                                                                              \
+			return m_context.client();                                                                                 \
+		}                                                                                                              \
+		context_type::server_context_type&                                                                             \
+		server()                                                                                                       \
+		{                                                                                                              \
+			return m_context.server();                                                                                 \
+		}                                                                                                              \
+                                                                                                                       \
+	private:                                                                                                           \
+		context_type m_context;                                                                                        \
+	};
+
 #define ARMI_INTERFACES(...) ARMI_INTERFACES_(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 #define ARMI_INTERFACES_(ifaces_seq)                                                                                   \
@@ -62,10 +94,40 @@
 	template<class T>                                                                                                  \
 	class _stub;                                                                                                       \
 	using context_type = logicmill::armi::                                                                             \
-			remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>;       \
+			remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>; 
 /**/
 
 #define ARMI_LIST_IFACE_(r, data, n, iface) BOOST_PP_COMMA_IF(n) iface 
+/**/
+
+
+#define ARMI_INTERFACE_A(context_name, iface, ...)                                                                     \
+	ARMI_INTERFACE_A_(context_name, iface, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))                                      \
+/**/
+
+#define ARMI_INTERFACE_A_(context_name, iface, methods_seq)                                                            \
+	template<>                                                                                                         \
+	class context_name::_proxy<iface> : public logicmill::armi::interface_proxy                                        \
+	{                                                                                                                  \
+	public:                                                                                                            \
+		using target_type = iface;                                                                                     \
+		_proxy(logicmill::armi::client_context_base& context, std::size_t index)                                       \
+			: logicmill::armi::interface_proxy{context, index}                                                         \
+		{}                                                                                                             \
+		BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_PROXY_, iface, methods_seq)                                             \
+	};                                                                                                                 \
+	template<>                                                                                                         \
+	class context_name::_stub<iface> : public logicmill::armi::interface_stub                                          \
+	{                                                                                                                  \
+	public:                                                                                                            \
+		using target_type = iface;                                                                                     \
+		_stub(logicmill::armi::server_context_base& context, std::size_t index)                                        \
+			: logicmill::armi::interface_stub(                                                                         \
+					  context,                                                                                         \
+					  index,                                                                                           \
+					  BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_LIST_, iface, methods_seq))                               \
+		{}                                                                                                             \
+	};                                                                                                                 \
 /**/
 
 #define ARMI_INTERFACE(iface, ...)                                                                                     \
@@ -95,13 +157,13 @@
 					  BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_LIST_, iface, methods_seq))                               \
 		{}                                                                                                             \
 	};                                                                                                                 \
-	/**/
+/**/
 
 #define ARMI_DO_METHOD_LIST_(r, iface, n, method) BOOST_PP_COMMA_IF(n) & iface ::method 
 /**/
 
 #define ARMI_DO_METHOD_PROXY_(r, iface, n, method)                                                                     \
-	logicmill::armi::method_proxy<decltype(&iface ::method)> method{context(), index(), n};                            \
+	logicmill::armi::method_proxy<decltype(&iface ::method)> method{context(), index(), n}; 
 /**/
 
 #define ARMI_CONTEXT(...)                                                                                              \
@@ -127,11 +189,11 @@
 	context_type::server_context_type& server()                                                                        \
 	{                                                                                                                  \
 		return context().server();                                                                                     \
-	}                                                                                                                  \
+	} 
 /**/
 
 #define ARMI_CONTEXT_WITH_ERRCATEGS_(...)                                                                              \
-	ARMI_CONTEXT_WITH_ERRCATEGS_SEQ_(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))                                            \
+	ARMI_CONTEXT_WITH_ERRCATEGS_SEQ_(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) 
 /**/
 
 #define ARMI_CONTEXT_WITH_ERRCATEGS_SEQ_(err_categ_seq)                                                                \
@@ -147,12 +209,11 @@
 	context_type::server_context_type& server()                                                                        \
 	{                                                                                                                  \
 		return context().server();                                                                                     \
-	}                                                                                                                  \
+	} 
 /**/
 
 #define ARMI_LIST_ERRCATEG_(r, data, n, err_categ) BOOST_PP_COMMA_IF(n) & (err_categ()) 
 /**/
-
 
 #endif /* LOGICMILL_ARMI_MACROS_H */
 

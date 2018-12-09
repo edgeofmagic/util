@@ -109,6 +109,13 @@ ARMI_INTERFACE(foo::bar, increment, freak_out)
 ARMI_CONTEXT()
 }    // namespace rfoo
 
+namespace nfoo
+{
+	ARMI_CONTEXT_A(funk, foo::bar)
+	ARMI_INTERFACE_A(funk, foo::bar, increment, freak_out)
+}
+
+
 TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 {
 
@@ -359,3 +366,87 @@ TEST_CASE("logicmill::armi [ smoke ] { bad error category }")
 	lp->close(err);
 	CHECK(!err);
 }
+
+
+TEST_CASE("logicmill::armi [ smoke ] { error handling, new class containment }")
+{
+
+	bool loop_stop_timer_handler_visited{false};
+	bool client_connect_timer_handler_visited{false};
+	bool client_connect_handler_visited{false};
+
+	std::error_code  err;
+	async::loop::ptr lp = async::loop::create();
+
+	static const bstream::context<> foo_stream_context({&armi::error_category(), &foo::error_category()});
+
+	nfoo::funk funky{lp, foo_stream_context};
+
+	// foo_context.loop(lp);
+
+	auto bar_impl = std::make_shared<foo::bar>();
+
+	funky.server().register_impl(bar_impl);
+
+	auto loop_exit_timer = lp->create_timer(err, [=,&loop_stop_timer_handler_visited](async::timer::ptr tp) {
+		std::error_code err;
+		tp->loop()->stop(err);
+		loop_stop_timer_handler_visited = true;
+		CHECK(!err);
+	});
+	loop_exit_timer->start(std::chrono::milliseconds{5000}, err);
+
+	CHECK(!err);
+
+	async::ip::endpoint bind_ep{async::ip::address::v4_any(), 7001};
+	funky.server().bind(async::options{bind_ep}, err, 
+	[=,&funky](std::error_code err)
+	{
+		std::cout << "listener error handler: " << err.message() << std::endl;
+		CHECK(!err);
+		funky.server().close([=]() { std::cout << "server close handler called on listener error" << std::endl; });
+	},
+	[=](async::channel::ptr const& chan, std::error_code err)
+	{
+		std::cout << "channel error handler: " << err.message() << std::endl;
+		CHECK(!err);
+	});
+
+	CHECK(!err);
+
+	auto client_connect_timer = lp->create_timer(err, [&funky,&client_connect_timer_handler_visited,&client_connect_handler_visited](async::timer::ptr tp)
+	{
+		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
+		async::options connect_opt{connect_ep};
+		std::error_code err;
+		funky.client().connect(async::options{connect_ep}, err, [=,&funky,&client_connect_handler_visited](std::error_code err) {
+			CHECK(!err);
+			funky.client().proxy<foo::bar>()->freak_out(
+					[=](std::error_code err) {
+						CHECK(err == foo::errc::sun_exploded);
+					});
+			client_connect_handler_visited = true;
+		});
+		CHECK(!err);
+		client_connect_timer_handler_visited = true;
+	});
+
+	CHECK(!err);
+
+	client_connect_timer->start(std::chrono::milliseconds{2000}, err);
+	CHECK(!err);
+
+	lp->run(err);
+
+	CHECK(!err);
+
+	CHECK(loop_stop_timer_handler_visited);
+	CHECK(client_connect_timer_handler_visited);
+	CHECK(client_connect_handler_visited);
+
+	CHECK(bar_impl->freak_out_called);
+
+	lp->close(err);
+	CHECK(!err);
+}
+

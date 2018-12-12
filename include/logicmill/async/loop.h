@@ -58,16 +58,13 @@ public:
 	virtual ~loop() {}
 
 	virtual void
-	run(std::error_code& err)
-			= 0;
+	run(std::error_code& err) =0;
 
 	virtual void
-	stop(std::error_code& err)
-			= 0;
+	stop(std::error_code& err) = 0;
 
 	virtual void
-	close(std::error_code& err)
-			= 0;
+	close(std::error_code& err) = 0;
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, dispatch_handler>::value>
@@ -106,44 +103,34 @@ public:
 
 protected:
 	virtual timer::ptr
-	really_create_timer(std::error_code& err, timer::handler const& handler)
-			= 0;
+	really_create_timer(std::error_code& err, timer::handler const& handler) = 0;
 
 	virtual timer::ptr
-	really_create_timer(std::error_code& err, timer::handler&& handler)
-			= 0;
+	really_create_timer(std::error_code& err, timer::handler&& handler) = 0;
 
 	virtual void
-	really_dispatch(std::error_code& err, dispatch_handler&& handler)
-			= 0;
+	really_dispatch(std::error_code& err, dispatch_handler&& handler) = 0;
 
 	virtual void
-	really_dispatch(std::error_code& err, dispatch_handler const& handler)
-			= 0;
+	really_dispatch(std::error_code& err, dispatch_handler const& handler) = 0;
 
 	virtual listener::ptr
-	really_create_listener(options const& opt, std::error_code& err, listener::connection_handler&& handler)
-			= 0;
+	really_create_listener(options const& opt, std::error_code& err, listener::connection_handler&& handler) = 0;
 
 	virtual listener::ptr
-	really_create_listener(options const& opt, std::error_code& err, listener::connection_handler const& handler)
-			= 0;
+	really_create_listener(options const& opt, std::error_code& err, listener::connection_handler const& handler) = 0;
 
 	virtual channel::ptr
-	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler)
-			= 0;
+	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler) = 0;
 
 	virtual channel::ptr
-	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler)
-			= 0;
+	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler) = 0;
 
 	virtual void
-	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler)
-			= 0;
+	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler) = 0;
 
 	virtual void
-	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler)
-			= 0;
+	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler) = 0;
 };
 
 }    // namespace async

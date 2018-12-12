@@ -14,6 +14,7 @@ connect_request_uv::on_connect(uv_connect_t* req, int status)
 {
 	auto            request_ptr = reinterpret_cast<connect_request_uv*>(req);
 	std::error_code err         = map_uv_error(status);
+
 	request_ptr->m_handler(get_channel_shared_ptr(req), err);
 	request_ptr->m_handler = nullptr;
 	delete req;
@@ -88,6 +89,11 @@ tcp_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_
 	assert(channel_ptr);
 	if (nread < 0)
 	{
+		if (buf->base)
+		{
+			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base)
+			);
+		}
 		err = map_uv_error(nread);
 		channel_ptr->m_read_handler(channel_ptr, bstream::const_buffer{}, err);
 	}
@@ -111,24 +117,36 @@ tcp_channel_uv::on_allocate(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 	buf->len                                          = suggested_size;
 }
 
-void
+bool
 tcp_channel_uv::really_close(logicmill::async::channel::close_handler&& handler)
 {
+	bool result{true};
 	if (!uv_is_closing(get_handle()))
 	{
 		m_close_handler = std::move(handler);
 		uv_close(get_handle(), tcp_base_uv::on_close);
 	}
+	else
+	{
+		result = false;
+	}
+	return result;
 }
 
-void
+bool
 tcp_channel_uv::really_close(logicmill::async::channel::close_handler const& handler)
 {
+	bool result{true};
 	if (!uv_is_closing(get_handle()))
 	{
 		m_close_handler = handler;
 		uv_close(get_handle(), tcp_base_uv::on_close);
 	}
+	else
+	{
+		result = false;
+	}
+	return result;
 }
 
 bool
@@ -237,6 +255,11 @@ tcp_framed_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const 
 	assert(channel_ptr);
 	if (nread < 0)
 	{
+		if (buf->base)
+		{
+			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base)
+			);
+		}
 		err = map_uv_error(nread);
 		channel_ptr->m_read_handler(channel_ptr, bstream::const_buffer{}, err);
 	}
@@ -534,22 +557,34 @@ tcp_listener_uv::on_framing_connection(uv_stream_t* handle, int stat)
 	}
 }
 
-void
+bool
 tcp_listener_uv::really_close(logicmill::async::listener::close_handler&& handler)
 {
+	bool result{true};
 	if (!uv_is_closing(get_handle()))
 	{
 		m_close_handler = std::move(handler);
 		uv_close(get_handle(), tcp_base_uv::on_close);
 	}
+	else
+	{
+		result = false;
+	}
+	return result;
 }
 
-void
+bool
 tcp_listener_uv::really_close(logicmill::async::listener::close_handler const& handler)
 {
+	bool result{true};
 	if (!uv_is_closing(get_handle()))
 	{
 		m_close_handler = handler;
 		uv_close(get_handle(), tcp_base_uv::on_close);
 	}
+	else
+	{
+		result = false;
+	}
+	return result;
 }

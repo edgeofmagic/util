@@ -33,21 +33,23 @@
 #define LOGICMILL_ARMI_METHOD_STUB_BASE_H
 
 #include <cstdint>
-#include <logicmill/bstream/ibstream.h>
 #include <logicmill/async/channel.h>
+#include <logicmill/bstream/ibstream.h>
 
 namespace logicmill
 {
 namespace armi
 {
-	class method_stub_base
-	{
-	public:
-		virtual ~method_stub_base() {}
-		virtual void dispatch(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is) const = 0;
-	};
-} // namespace armi
-} // namespace logicmill
+	
+class method_stub_base
+{
+public:
+	virtual ~method_stub_base() {}
+	virtual void
+	dispatch(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is) const = 0;
+};
+
+}    // namespace armi
+}    // namespace logicmill
 
 #endif /* LOGICMILL_ARMI_METHOD_STUB_BASE_H */
-

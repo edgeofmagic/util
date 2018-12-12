@@ -32,104 +32,104 @@ const_buffer
 ibstream::get_msgpack_obj_buf()
 {
 	// allocate bufwriter at most once
-	if ( ! m_bufwriter )
+	if (!m_bufwriter)
 	{
-		m_bufwriter = std::make_unique< bufwriter >( 16 * 1024 ); // whatever...
+		m_bufwriter = std::make_unique<bufwriter>(16 * 1024);    // whatever...
 	}
 
 	m_bufwriter->reset();
-	ingest( *m_bufwriter );
+	ingest(*m_bufwriter);
 	return m_bufwriter->get_buffer();
 }
 
-void 
-ibstream::ingest( bufwriter& os )
+void
+ibstream::ingest(bufwriter& os)
 {
 	auto tcode = get();
-	os.put( tcode );
+	os.put(tcode);
 
-	if ( ( tcode <= typecode::positive_fixint_max ) ||
-		( tcode >= typecode::negative_fixint_min && tcode <= typecode::negative_fixint_max ) )
+	if ((tcode <= typecode::positive_fixint_max)
+		|| (tcode >= typecode::negative_fixint_min && tcode <= typecode::negative_fixint_max))
 	{
 		return;
 	}
-	else if ( tcode <= typecode::fixmap_max )
+	else if (tcode <= typecode::fixmap_max)
 	{
 		std::size_t len = tcode & 0x0f;
-		for ( auto i = 0u; i < len * 2; ++i )
+		for (auto i = 0u; i < len * 2; ++i)
 		{
-			ingest( os );
+			ingest(os);
 		}
 		return;
 	}
-	else if ( tcode <= typecode::fixarray_max )
+	else if (tcode <= typecode::fixarray_max)
 	{
 		std::size_t len = tcode & 0x0f;
-		for ( auto i = 0u; i < len; ++i )
+		for (auto i = 0u; i < len; ++i)
 		{
-			ingest( os );
+			ingest(os);
 		}
 		return;
 	}
-	else if ( tcode <= typecode::fixstr_max )
+	else if (tcode <= typecode::fixstr_max)
 	{
 		std::size_t len = tcode & 0x1f;
-		getn( os.accommodate( len ), len );
-		os.advance( len );
+		getn(os.accommodate(len), len);
+		os.advance(len);
 		return;
 	}
 	else
 	{
-		switch ( tcode )
+		switch (tcode)
 		{
 			case typecode::array_16:
 			{
-				std::uint16_t len = get_num< std::uint16_t >();
-				std::uint16_t len_bigend = bend::endian_reverse( len );
-				os.putn( &len_bigend, sizeof( len_bigend ) );
-				for ( auto i = 0u; i < len; ++i )
+				std::uint16_t len        = get_num<std::uint16_t>();
+				std::uint16_t len_bigend = bend::endian_reverse(len);
+				os.putn(&len_bigend, sizeof(len_bigend));
+				for (auto i = 0u; i < len; ++i)
 				{
-					ingest( os );
+					ingest(os);
 				}
 				return;
 			}
-					
+
 			case typecode::array_32:
 			{
-				std::uint32_t len = get_num< std::uint32_t >();
-				std::uint32_t len_bigend = bend::endian_reverse( len );
-				os.putn( &len_bigend, sizeof( len_bigend ) );
-				for ( auto i = 0u; i < len; ++i )
+				std::uint32_t len        = get_num<std::uint32_t>();
+				std::uint32_t len_bigend = bend::endian_reverse(len);
+				os.putn(&len_bigend, sizeof(len_bigend));
+				for (auto i = 0u; i < len; ++i)
 				{
-					ingest( os );
+					ingest(os);
 				}
 				return;
 			}
-					
+
 			case typecode::map_16:
 			{
-				std::uint16_t len = get_num< std::uint16_t >();
-				std::uint16_t len_bigend = bend::endian_reverse( len );
-				os.putn( &len_bigend, sizeof( len_bigend ) );
-				for ( auto i = 0u; i < len * 2; ++i )
+				std::uint16_t len        = get_num<std::uint16_t>();
+				std::uint16_t len_bigend = bend::endian_reverse(len);
+				os.putn(&len_bigend, sizeof(len_bigend));
+				for (auto i = 0u; i < len * 2; ++i)
 				{
-					ingest( os );
+					ingest(os);
 				}
 				return;
 			}
-					
+
 			case typecode::map_32:
 			{
-				std::uint32_t len = get_num< std::uint32_t >();
-				std::uint32_t len_bigend = bend::endian_reverse( len );
-				os.putn( &len_bigend, sizeof( len_bigend ) );
-				for ( auto i = 0u; i < len * 2; ++i )
+				std::uint32_t len        = get_num<std::uint32_t>();
+				std::uint32_t len_bigend = bend::endian_reverse(len);
+				os.putn(&len_bigend, sizeof(len_bigend));
+				for (auto i = 0u; i < len * 2; ++i)
 				{
-					ingest( os );
+					ingest(os);
 				}
 				return;
 			}
-					
+
 			case typecode::nil:
 			case typecode::unused:
 			case typecode::bool_false:
@@ -141,15 +141,15 @@ ibstream::ingest( bufwriter& os )
 			case typecode::uint_8:
 			case typecode::int_8:
 			{
-				os.put( get() );
+				os.put(get());
 				return;
 			}
 
 			case typecode::uint_16:
 			case typecode::int_16:
 			{
-				os.put( get() );
-				os.put( get() );
+				os.put(get());
+				os.put(get());
 				return;
 			}
 
@@ -157,10 +157,10 @@ ibstream::ingest( bufwriter& os )
 			case typecode::int_32:
 			case typecode::float_32:
 			{
-				os.put( get() );
-				os.put( get() );
-				os.put( get() );
-				os.put( get() );
+				os.put(get());
+				os.put(get());
+				os.put(get());
+				os.put(get());
 				return;
 			}
 
@@ -168,114 +168,113 @@ ibstream::ingest( bufwriter& os )
 			case typecode::int_64:
 			case typecode::float_64:
 			{
-				getn( os.accommodate( 8 ), 8 );
-				os.advance( 8 );
+				getn(os.accommodate(8), 8);
+				os.advance(8);
 				return;
 			}
 
 			case typecode::str_8:
 			case typecode::bin_8:
 			{
-				auto len = get_num< std::uint8_t >();
-				os.put( len );
-				getn( os.accommodate( len ), len );
-				os.advance( len );
+				auto len = get_num<std::uint8_t>();
+				os.put(len);
+				getn(os.accommodate(len), len);
+				os.advance(len);
 				return;
 			}
 
 			case typecode::str_16:
 			case typecode::bin_16:
 			{
-				std::uint16_t len = get_num< std::uint16_t >();
-				std::uint16_t len_bigend = bend::endian_reverse( len );
-				os.putn( &len_bigend, sizeof( len_bigend ) );
-				getn( os.accommodate( len ), len );
-				os.advance( len );
+				std::uint16_t len        = get_num<std::uint16_t>();
+				std::uint16_t len_bigend = bend::endian_reverse(len);
+				os.putn(&len_bigend, sizeof(len_bigend));
+				getn(os.accommodate(len), len);
+				os.advance(len);
 				return;
 			}
 
 			case typecode::str_32:
 			case typecode::bin_32:
 			{
-				std::uint32_t len = get_num< std::uint32_t >();
-				std::uint32_t len_bigend = bend::endian_reverse( len );
-				os.putn( &len_bigend, sizeof( len_bigend ) );
-				getn( os.accommodate( len ), len );
-				os.advance( len );
+				std::uint32_t len        = get_num<std::uint32_t>();
+				std::uint32_t len_bigend = bend::endian_reverse(len);
+				os.putn(&len_bigend, sizeof(len_bigend));
+				getn(os.accommodate(len), len);
+				os.advance(len);
 				return;
 			}
 
 			case typecode::fixext_1:
 			{
-				os.put( get() ); // type
-				os.put( get() ); // val
+				os.put(get());    // type
+				os.put(get());    // val
 				return;
 			}
 
 			case typecode::fixext_2:
 			{
-				os.put( get() ); // type
-				os.put( get() ); // val[0 ]
-				os.put( get() ); // val[1 ]
+				os.put(get());    // type
+				os.put(get());    // val[0 ]
+				os.put(get());    // val[1 ]
 				return;
 			}
 
 			case typecode::fixext_4:
 			{
-				os.put( get() ); // type
-				os.put( get() ); // val[0 ]
-				os.put( get() ); // val[1 ]
-				os.put( get() ); // val[2 ]
-				os.put( get() ); // val[3 ]
+				os.put(get());    // type
+				os.put(get());    // val[0 ]
+				os.put(get());    // val[1 ]
+				os.put(get());    // val[2 ]
+				os.put(get());    // val[3 ]
 				return;
 			}
 
 			case typecode::fixext_8:
 			{
-				getn( os.accommodate( 1 + 8 ), 1 + 8 );
-				os.advance( 1 + 8 );
+				getn(os.accommodate(1 + 8), 1 + 8);
+				os.advance(1 + 8);
 				return;
 			}
 
 			case typecode::fixext_16:
 			{
-				getn( os.accommodate( 1 + 16 ), 1 + 16 );
-				os.advance( 1 + 16 );
+				getn(os.accommodate(1 + 16), 1 + 16);
+				os.advance(1 + 16);
 				return;
 			}
 
 			case typecode::ext_8:
 			{
-				auto len = get_num< std::uint8_t >();
-				os.put( len );
-				os.put( get() ); // type
-				getn( os.accommodate( len ), len );
-				os.advance( len );
+				auto len = get_num<std::uint8_t>();
+				os.put(len);
+				os.put(get());    // type
+				getn(os.accommodate(len), len);
+				os.advance(len);
 				return;
 			}
 
 			case typecode::ext_16:
 			{
-				std::uint16_t len = get_num< std::uint16_t >();
-				std::uint16_t len_bigend = bend::endian_reverse( len );
-				os.putn( &len_bigend, sizeof( len_bigend ) );
-				os.put( get() ); // type
-				getn( os.accommodate( len ), len );
-				os.advance( len );
+				std::uint16_t len        = get_num<std::uint16_t>();
+				std::uint16_t len_bigend = bend::endian_reverse(len);
+				os.putn(&len_bigend, sizeof(len_bigend));
+				os.put(get());    // type
+				getn(os.accommodate(len), len);
+				os.advance(len);
 				return;
 			}
 
 			case typecode::ext_32:
 			{
-				std::uint32_t len = get_num< std::uint32_t >();
-				std::uint32_t len_bigend = bend::endian_reverse( len );
-				os.putn( &len_bigend, sizeof( len_bigend ) );
-				os.put( get() ); // type
-				getn( os.accommodate( len ), len );
-				os.advance( len );
+				std::uint32_t len        = get_num<std::uint32_t>();
+				std::uint32_t len_bigend = bend::endian_reverse(len);
+				os.putn(&len_bigend, sizeof(len_bigend));
+				os.put(get());    // type
+				getn(os.accommodate(len), len);
+				os.advance(len);
 				return;
 			}
-
 		}
 	}
 }
@@ -285,34 +284,34 @@ std::size_t
 ibstream::read_string_header()
 {
 	std::size_t length = 0ul;
-	auto tcode = get();
-	if (tcode >= typecode::fixstr_min && tcode <= typecode::fixstr_max )
+	auto        tcode  = get();
+	if (tcode >= typecode::fixstr_min && tcode <= typecode::fixstr_max)
 	{
 		std::uint8_t mask = 0x1f;
-		length = tcode & mask;
+		length            = tcode & mask;
 	}
 	else
 	{
-		switch(tcode )
+		switch (tcode)
 		{
 			case typecode::str_8:
 			{
-				length = get_num< std::uint8_t >();
+				length = get_num<std::uint8_t>();
 			}
 			break;
 			case typecode::str_16:
 			{
-				length = get_num< std::uint16_t >();
+				length = get_num<std::uint16_t>();
 			}
 			break;
 			case typecode::str_32:
 			{
-				length = get_num< std::uint32_t >();
+				length = get_num<std::uint32_t>();
 			}
 			break;
 			default:
 			{
-				throw std::system_error{ make_error_code( bstream::errc::expected_string ) };
+				throw std::system_error{make_error_code(bstream::errc::expected_string)};
 			}
 		}
 	}
@@ -320,7 +319,7 @@ ibstream::read_string_header()
 }
 
 std::size_t
-ibstream::read_string_header( std::error_code& ec )
+ibstream::read_string_header(std::error_code& ec)
 {
 	ec.clear();
 	std::size_t result = 0ul;
@@ -328,48 +327,48 @@ ibstream::read_string_header( std::error_code& ec )
 	{
 		result = read_string_header();
 	}
-	catch ( std::system_error const& e )
+	catch (std::system_error const& e)
 	{
 		ec = e.code();
 	}
 	return result;
 }
 
-std::size_t 
+std::size_t
 ibstream::read_array_header()
 {
 	std::size_t length = 0;
-	auto tcode = get();
-	if (tcode >= typecode::fixarray_min && tcode <= typecode::fixarray_max )
+	auto        tcode  = get();
+	if (tcode >= typecode::fixarray_min && tcode <= typecode::fixarray_max)
 	{
 		std::uint8_t mask = 0x0f;
-		length = tcode & mask;
+		length            = tcode & mask;
 	}
 	else
 	{
-		switch (tcode )
+		switch (tcode)
 		{
 			case typecode::array_16:
 			{
-				length = get_num< std::uint16_t >();
+				length = get_num<std::uint16_t>();
 			}
 			break;
 			case typecode::array_32:
 			{
-				length = get_num< std::uint32_t >();
+				length = get_num<std::uint32_t>();
 			}
 			break;
 			default:
 			{
-				throw std::system_error{ make_error_code( bstream::errc::expected_array ) };
+				throw std::system_error{make_error_code(bstream::errc::expected_array)};
 			}
 		}
 	}
 	return length;
 }
 
-std::size_t 
-ibstream::read_array_header( std::error_code& ec )
+std::size_t
+ibstream::read_array_header(std::error_code& ec)
 {
 	ec.clear();
 	std::size_t result = 0;
@@ -377,7 +376,7 @@ ibstream::read_array_header( std::error_code& ec )
 	{
 		result = read_array_header();
 	}
-	catch ( std::system_error const& e )
+	catch (std::system_error const& e)
 	{
 		ec = e.code();
 	}
@@ -388,29 +387,29 @@ std::size_t
 ibstream::read_map_header()
 {
 	std::size_t length = 0;
-	auto tcode = get();
-	if (tcode >= typecode::fixmap_min && tcode <= typecode::fixarray_max )
+	auto        tcode  = get();
+	if (tcode >= typecode::fixmap_min && tcode <= typecode::fixarray_max)
 	{
 		std::uint8_t mask = 0x0f;
-		length = tcode & mask;
+		length            = tcode & mask;
 	}
 	else
 	{
-		switch (tcode )
+		switch (tcode)
 		{
-		case typecode::map_16:
+			case typecode::map_16:
 			{
-				length = get_num< std::uint16_t >();
+				length = get_num<std::uint16_t>();
 			}
 			break;
 			case typecode::map_32:
 			{
-				length = get_num< std::uint32_t >();
+				length = get_num<std::uint32_t>();
 			}
 			break;
 			default:
 			{
-				throw std::system_error{ make_error_code( bstream::errc::expected_map ) };
+				throw std::system_error{make_error_code(bstream::errc::expected_map)};
 			}
 		}
 	}
@@ -418,7 +417,7 @@ ibstream::read_map_header()
 }
 
 std::size_t
-ibstream::read_map_header( std::error_code& ec )
+ibstream::read_map_header(std::error_code& ec)
 {
 	ec.clear();
 	std::size_t result = 0;
@@ -426,7 +425,7 @@ ibstream::read_map_header( std::error_code& ec )
 	{
 		result = read_map_header();
 	}
-	catch ( std::system_error const& e )
+	catch (std::system_error const& e)
 	{
 		ec = e.code();
 	}
@@ -434,106 +433,106 @@ ibstream::read_map_header( std::error_code& ec )
 }
 
 ibstream&
-ibstream::check_map_key(std::string const& key )
+ibstream::check_map_key(std::string const& key)
 {
-	auto name = read_as< std::string >();
-	if (name != key )
+	auto name = read_as<std::string>();
+	if (name != key)
 	{
-		throw std::system_error{ make_error_code( bstream::errc::unexpected_map_key ) };
+		throw std::system_error{make_error_code(bstream::errc::unexpected_map_key)};
 	}
 	return *this;
 }
 
 ibstream&
-ibstream::check_map_key(std::string const& key, std::error_code& ec )
+ibstream::check_map_key(std::string const& key, std::error_code& ec)
 {
 	ec.clear();
-	auto name = read_as< std::string >();
-	if (name != key )
+	auto name = read_as<std::string>();
+	if (name != key)
 	{
-		ec = make_error_code( bstream::errc::unexpected_map_key );
+		ec = make_error_code(bstream::errc::unexpected_map_key);
 	}
 	return *this;
 }
 
 ibstream&
-ibstream::check_array_header(std::size_t expected )
+ibstream::check_array_header(std::size_t expected)
 {
 	auto actual = read_array_header();
-	if (actual != expected )
+	if (actual != expected)
 	{
-		throw std::system_error{ make_error_code( bstream::errc::unexpected_array_size ) };
+		throw std::system_error{make_error_code(bstream::errc::unexpected_array_size)};
 	}
 	return *this;
 }
 
 ibstream&
-ibstream::check_array_header(std::size_t expected, std::error_code& ec )
+ibstream::check_array_header(std::size_t expected, std::error_code& ec)
 {
 	ec.clear();
 	auto actual = read_array_header();
-	if (actual != expected )
+	if (actual != expected)
 	{
-		ec = make_error_code( bstream::errc::unexpected_array_size );
+		ec = make_error_code(bstream::errc::unexpected_array_size);
 	}
 	return *this;
 }
 
 ibstream&
-ibstream::check_map_header(std::size_t expected )
+ibstream::check_map_header(std::size_t expected)
 {
 	auto actual = read_map_header();
-	if (actual != expected )
+	if (actual != expected)
 	{
-		throw std::system_error{ make_error_code( bstream::errc::unexpected_map_size ) };
+		throw std::system_error{make_error_code(bstream::errc::unexpected_map_size)};
 	}
 	return *this;
 }
 
 ibstream&
-ibstream::check_map_header(std::size_t expected, std::error_code& ec )
+ibstream::check_map_header(std::size_t expected, std::error_code& ec)
 {
 	ec.clear();
 	auto actual = read_map_header();
-	if (actual != expected )
+	if (actual != expected)
 	{
-		ec = make_error_code( bstream::errc::unexpected_map_size );
+		ec = make_error_code(bstream::errc::unexpected_map_size);
 	}
 	return *this;
 }
 
-std::size_t 
+std::size_t
 ibstream::read_blob_header()
 {
 	std::size_t length = 0;
-	auto tcode = get();
-	switch (tcode )
+	auto        tcode  = get();
+	switch (tcode)
 	{
 		case typecode::bin_8:
 		{
-			length = get_num< std::uint8_t >();
+			length = get_num<std::uint8_t>();
 		}
 		break;
 		case typecode::bin_16:
 		{
-			length = get_num< std::uint16_t >();
+			length = get_num<std::uint16_t>();
 		}
 		break;
 		case typecode::bin_32:
 		{
-			length = get_num< std::uint32_t >();
+			length = get_num<std::uint32_t>();
 		}
 		break;
 		default:
 		{
-			throw std::system_error{ make_error_code( bstream::errc::expected_blob ) };
+			throw std::system_error{make_error_code(bstream::errc::expected_blob)};
 		}
 	}
 	return length;
 }
 
-std::size_t 
-ibstream::read_blob_header( std::error_code& ec )
+std::size_t
+ibstream::read_blob_header(std::error_code& ec)
 {
 	ec.clear();
 	std::size_t result = 0;
@@ -541,7 +540,7 @@ ibstream::read_blob_header( std::error_code& ec )
 	{
 		result = read_blob_header();
 	}
-	catch ( std::system_error const& e )
+	catch (std::system_error const& e)
 	{
 		ec = e.code();
 	}
@@ -549,106 +548,106 @@ ibstream::read_blob_header( std::error_code& ec )
 }
 
 logicmill::bstream::shared_buffer
-ibstream::read_blob_shared( std::error_code& ec )
+ibstream::read_blob_shared(std::error_code& ec)
 {
-	auto nbytes = read_blob_header( ec );
-	if ( ec )
+	auto nbytes = read_blob_header(ec);
+	if (ec)
 	{
 		return shared_buffer{};
 	}
 	else
 	{
-		return read_blob_body_shared( nbytes, ec );
+		return read_blob_body_shared(nbytes, ec);
 	}
 }
 
 logicmill::bstream::const_buffer
-ibstream::read_blob( std::error_code& ec )
+ibstream::read_blob(std::error_code& ec)
 {
-	auto nbytes = read_blob_header( ec );
-	if ( ec )
+	auto nbytes = read_blob_header(ec);
+	if (ec)
 	{
 		return const_buffer{};
 	}
 	else
 	{
-		return read_blob_body( nbytes, ec );
+		return read_blob_body(nbytes, ec);
 	}
 }
 
 std::size_t
-ibstream::read_ext_header( std::uint8_t& ext_type )
+ibstream::read_ext_header(std::uint8_t& ext_type)
 {
 	std::size_t length = 0;
-	auto tcode = get();
-	switch (tcode )
+	auto        tcode  = get();
+	switch (tcode)
 	{
 		case typecode::fixext_1:
 		{
-			length = 1;
-			ext_type = get_num< std::uint8_t >();
+			length   = 1;
+			ext_type = get_num<std::uint8_t>();
 		}
 		break;
 		case typecode::fixext_2:
 		{
-			length = 2;
-			ext_type = get_num< std::uint8_t >();
+			length   = 2;
+			ext_type = get_num<std::uint8_t>();
 		}
 		break;
 		case typecode::fixext_4:
 		{
-			length = 4;
-			ext_type = get_num< std::uint8_t >();
+			length   = 4;
+			ext_type = get_num<std::uint8_t>();
 		}
 		break;
 		case typecode::fixext_8:
 		{
-			length = 8;
-			ext_type = get_num< std::uint8_t >();
+			length   = 8;
+			ext_type = get_num<std::uint8_t>();
 		}
 		break;
 		case typecode::fixext_16:
 		{
-			length = 16;
-			ext_type = get_num< std::uint8_t >();
+			length   = 16;
+			ext_type = get_num<std::uint8_t>();
 		}
 		break;
 		case typecode::ext_8:
 		{
-			length = get_num< std::uint8_t >();
-			ext_type = get_num< std::uint8_t >();
+			length   = get_num<std::uint8_t>();
+			ext_type = get_num<std::uint8_t>();
 		}
 		break;
 		case typecode::ext_16:
 		{
-			length = get_num< std::uint16_t >();
-			ext_type = get_num< std::uint8_t >();
+			length   = get_num<std::uint16_t>();
+			ext_type = get_num<std::uint8_t>();
 		}
 		break;
 		case typecode::ext_32:
 		{
-			length = get_num< std::uint32_t >();
-			ext_type = get_num< std::uint8_t >();
+			length   = get_num<std::uint32_t>();
+			ext_type = get_num<std::uint8_t>();
 		}
 		break;
 		default:
 		{
-			throw std::system_error{ make_error_code( bstream::errc::expected_extern ) };
+			throw std::system_error{make_error_code(bstream::errc::expected_extern)};
 		}
 	}
 	return length;
 }
 
 std::size_t
-ibstream::read_ext_header( std::uint8_t& ext_type, std::error_code& ec )
+ibstream::read_ext_header(std::uint8_t& ext_type, std::error_code& ec)
 {
 	ec.clear();
 	std::size_t result = 0;
 	try
 	{
-		result = read_ext_header( ext_type );
+		result = read_ext_header(ext_type);
 	}
-	catch ( std::system_error const& e )
+	catch (std::system_error const& e)
 	{
 		ec = e.code();
 	}
@@ -659,18 +658,18 @@ std::error_code
 ibstream::read_error_code()
 {
 	auto n = read_array_header();
-	if ( n != 2 )
+	if (n != 2)
 	{
-		throw std::system_error{ make_error_code( bstream::errc::invalid_header_for_error_code ) };
+		throw std::system_error{make_error_code(bstream::errc::invalid_header_for_error_code)};
 	}
-	auto category_index = read_as< error_category_context::index_type >();
-	auto value = read_as< error_category_context::index_type >();
+	auto category_index = read_as<error_category_context::index_type>();
+	auto value          = read_as<error_category_context::index_type>();
 
 	std::error_code result;
 
 	try
 	{
-		result = std::error_code{ value, m_context->category_from_index( category_index ) };
+		result = std::error_code{value, m_context->category_from_index(category_index)};
 	}
 	catch (std::system_error const& e)
 	{

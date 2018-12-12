@@ -25,8 +25,6 @@
 #include <logicmill/bstream/error.h>
 
 using namespace logicmill;
-// using namespace bstream;
-
 
 class bstream_category_impl : public std::error_category
 {

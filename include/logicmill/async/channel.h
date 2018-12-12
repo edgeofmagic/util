@@ -67,8 +67,7 @@ public:
 	}
 
 	virtual void
-	stop_read()
-			= 0;
+	stop_read() = 0;
 
 	virtual std::shared_ptr<loop>
 	loop() = 0;
@@ -100,54 +99,45 @@ public:
 	}
 
 	template<class H>
-	typename std::enable_if_t<std::is_convertible<H, close_handler>::value>
+	typename std::enable_if_t<std::is_convertible<H, close_handler>::value, bool>
 	close(H&& handler)
 	{
-		really_close(std::forward<H>(handler));
+		return really_close(std::forward<H>(handler));
 	}
 
-	void
+	bool
 	close()
 	{
-		really_close(nullptr);
+		return really_close(nullptr);
 	}
 
 	virtual bool
-	is_closing()
-			= 0;
+	is_closing() = 0;
 
 protected:
 	virtual void
-	really_write(bstream::mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler)
-			= 0;
+	really_write(bstream::mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler) = 0;
 
 	virtual void
-	really_write(bstream::mutable_buffer&& buf, std::error_code& err, write_buffer_handler const& handler)
-			= 0;
+	really_write(bstream::mutable_buffer&& buf, std::error_code& err, write_buffer_handler const& handler) = 0;
 
 	virtual void
-	really_write(std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler&& handler)
-			= 0;
+	really_write(std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler&& handler) = 0;
 
 	virtual void
-	really_write(std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler const& handler)
-			= 0;
+	really_write(std::deque<bstream::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler const& handler) = 0;
+
+	virtual bool
+	really_close(close_handler&& handler) = 0;
+
+	virtual bool
+	really_close(close_handler const& handler) = 0;
 
 	virtual void
-	really_close(close_handler&& handler)
-			= 0;
+	really_start_read(std::error_code& err, read_handler&& handler) = 0;
 
 	virtual void
-	really_close(close_handler const& handler)
-			= 0;
-
-	virtual void
-	really_start_read(std::error_code& err, read_handler&& handler)
-			= 0;
-
-	virtual void
-	really_start_read(std::error_code& err, read_handler const& handler)
-			= 0;
+	really_start_read(std::error_code& err, read_handler const& handler) = 0;
 };
 
 class listener
@@ -161,29 +151,27 @@ public:
 	virtual ~listener() {}
 
 	template<class H>
-	typename std::enable_if_t<std::is_convertible<H, close_handler>::value>
+	typename std::enable_if_t<std::is_convertible<H, close_handler>::value, bool>
 	close(H&& handler)
 	{
-		really_close(std::forward<H>(handler));
+		return really_close(std::forward<H>(handler));
 	}
 
-	void
+	bool
 	close()
 	{
-		really_close(nullptr);
+		return really_close(nullptr);
 	}
 
 	virtual std::shared_ptr<loop>
 	loop() = 0;
 
 protected:
-	virtual void
-	really_close(close_handler&& handler)
-			= 0;
+	virtual bool
+	really_close(close_handler&& handler) = 0;
 
-	virtual void
-	really_close(close_handler const& handler)
-			= 0;
+	virtual bool
+	really_close(close_handler const& handler) = 0;
 };
 
 }    // namespace async

@@ -26,11 +26,11 @@
 #define LOGICMILL_ASYNC_TCP_UV_H
 
 #include "uv_error.h"
-#include <logicmill/async/endpoint.h>
-#include <logicmill/async/tcp.h>
-#include <logicmill/async/options.h>
-#include <uv.h>
 #include <boost/endian/conversion.hpp>
+#include <logicmill/async/endpoint.h>
+#include <logicmill/async/options.h>
+#include <logicmill/async/tcp.h>
+#include <uv.h>
 
 class tcp_channel_uv;
 class tcp_listener_uv;
@@ -38,9 +38,9 @@ class tcp_listener_uv;
 class connect_request_uv
 {
 public:
-
-	template<class Handler,
-			 class = std::enable_if_t<std::is_convertible<Handler, logicmill::async::channel::connect_handler>::value>>
+	template<
+			class Handler,
+			class = std::enable_if_t<std::is_convertible<Handler, logicmill::async::channel::connect_handler>::value>>
 	connect_request_uv(Handler&& handler) : m_handler{std::forward<Handler>(handler)}
 	{
 		assert(reinterpret_cast<uv_connect_t*>(this) == &m_uv_connect_request);
@@ -62,22 +62,20 @@ public:
 	on_connect(uv_connect_t* req, int status);
 
 private:
-
 	uv_connect_t                               m_uv_connect_request;
 	logicmill::async::channel::connect_handler m_handler;
 
 	static std::shared_ptr<tcp_channel_uv>
 	get_channel_shared_ptr(uv_connect_t* req);
-
 };
 
 class tcp_write_buf_req_uv
 {
 public:
-
-	template<class Handler,
-			 class = std::enable_if_t<
-					 std::is_convertible<Handler, logicmill::async::channel::write_buffer_handler>::value>>
+	template<
+			class Handler,
+			class = std::enable_if_t<
+					std::is_convertible<Handler, logicmill::async::channel::write_buffer_handler>::value>>
 	tcp_write_buf_req_uv(logicmill::bstream::mutable_buffer&& buf, Handler&& handler)
 		: m_write_handler{std::forward<Handler>(handler)},
 		  m_buffer{std::move(buf)},
@@ -93,7 +91,6 @@ public:
 	}
 
 private:
-
 	~tcp_write_buf_req_uv() {}
 
 	static std::shared_ptr<tcp_channel_uv>
@@ -112,10 +109,10 @@ private:
 class tcp_write_bufs_req_uv
 {
 public:
-
-	template<class Handler,
-			 class = std::enable_if_t<
-					 std::is_convertible<Handler, logicmill::async::channel::write_buffers_handler>::value>>
+	template<
+			class Handler,
+			class = std::enable_if_t<
+					std::is_convertible<Handler, logicmill::async::channel::write_buffers_handler>::value>>
 	tcp_write_bufs_req_uv(std::deque<logicmill::bstream::mutable_buffer>&& bufs, Handler&& handler)
 		: m_write_handler{std::forward<Handler>(handler)},
 		  m_buffers{std::move(bufs)},
@@ -139,7 +136,6 @@ public:
 	}
 
 private:
-
 	~tcp_write_bufs_req_uv()
 	{
 		if (m_uv_buffers)
@@ -163,7 +159,6 @@ private:
 class tcp_base_uv
 {
 public:
-
 	static std::shared_ptr<tcp_base_uv>
 	get_base_shared_ptr(uv_stream_t* stream_handle)
 	{
@@ -186,7 +181,6 @@ public:
 	}
 
 protected:
-
 	using ptr = std::shared_ptr<tcp_base_uv>;
 
 	struct handle_data
@@ -284,10 +278,11 @@ public:
 		sockaddr_storage saddr;
 		ep.to_sockaddr(saddr);
 		auto req  = new connect_request_uv(std::forward<Handler>(handler));
-		int  stat = uv_tcp_connect(req->get_uv_connect_request(),
-                                  get_tcp_handle(),
-                                  reinterpret_cast<sockaddr*>(&saddr),
-                                  connect_request_uv::on_connect);
+		int  stat = uv_tcp_connect(
+                req->get_uv_connect_request(),
+                get_tcp_handle(),
+                reinterpret_cast<sockaddr*>(&saddr),
+                connect_request_uv::on_connect);
 		if (stat < 0)
 		{
 			err = map_uv_error(stat);
@@ -300,7 +295,6 @@ public:
 	}
 
 protected:
-
 	virtual void
 	clear_handler() override
 	{
@@ -340,29 +334,33 @@ protected:
 	is_closing() override;
 
 	virtual void
-	really_write(logicmill::bstream::mutable_buffer&&              buf,
-		  std::error_code&                                  err,
-		  logicmill::async::channel::write_buffer_handler&& handler) override;
+	really_write(
+			logicmill::bstream::mutable_buffer&&              buf,
+			std::error_code&                                  err,
+			logicmill::async::channel::write_buffer_handler&& handler) override;
 
 	virtual void
-	really_write(logicmill::bstream::mutable_buffer&&                   buf,
-		  std::error_code&                                       err,
-		  logicmill::async::channel::write_buffer_handler const& handler) override;
+	really_write(
+			logicmill::bstream::mutable_buffer&&                   buf,
+			std::error_code&                                       err,
+			logicmill::async::channel::write_buffer_handler const& handler) override;
 
 	virtual void
-	really_write(std::deque<logicmill::bstream::mutable_buffer>&&   bufs,
-		  std::error_code&                                   err,
-		  logicmill::async::channel::write_buffers_handler&& handler) override;
+	really_write(
+			std::deque<logicmill::bstream::mutable_buffer>&&   bufs,
+			std::error_code&                                   err,
+			logicmill::async::channel::write_buffers_handler&& handler) override;
 
 	virtual void
-	really_write(std::deque<logicmill::bstream::mutable_buffer>&&        bufs,
-		  std::error_code&                                        err,
-		  logicmill::async::channel::write_buffers_handler const& handler) override;
+	really_write(
+			std::deque<logicmill::bstream::mutable_buffer>&&        bufs,
+			std::error_code&                                        err,
+			logicmill::async::channel::write_buffers_handler const& handler) override;
 
-	virtual void
+	virtual bool
 	really_close(logicmill::async::channel::close_handler&& handler) override;
 
-	virtual void
+	virtual bool
 	really_close(logicmill::async::channel::close_handler const& handler) override;
 
 	logicmill::async::channel::read_handler  m_read_handler;
@@ -372,17 +370,11 @@ protected:
 class tcp_framed_channel_uv : public tcp_channel_uv
 {
 public:
-
-	tcp_framed_channel_uv()
-	:
-	  m_header_byte_count{0},
-	  m_frame_size{-1}
-	{}
+	tcp_framed_channel_uv() : m_header_byte_count{0}, m_frame_size{-1} {}
 
 private:
-
-	using ptr = std::shared_ptr<tcp_framed_channel_uv>;
-	using frame_size_type = std::int64_t;
+	using ptr                           = std::shared_ptr<tcp_framed_channel_uv>;
+	using frame_size_type               = std::int64_t;
 	static constexpr bool reverse_order = boost::endian::order::native != boost::endian::order::big;
 
 	static logicmill::bstream::mutable_buffer
@@ -399,7 +391,7 @@ private:
 		::memcpy(&packed_frame_size, buf_ptr, sizeof(packed_frame_size));
 		return boost::endian::big_to_native(packed_frame_size);
 	}
-	
+
 	static void
 	on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_t* buf);
 
@@ -422,14 +414,16 @@ private:
 			logicmill::async::channel::write_buffer_handler const& handler) override;
 
 	virtual void
-	really_write(std::deque<logicmill::bstream::mutable_buffer>&&   bufs,
-		  std::error_code&                                   err,
-		  logicmill::async::channel::write_buffers_handler&& handler) override;
+	really_write(
+			std::deque<logicmill::bstream::mutable_buffer>&&   bufs,
+			std::error_code&                                   err,
+			logicmill::async::channel::write_buffers_handler&& handler) override;
 
 	virtual void
-	really_write(std::deque<logicmill::bstream::mutable_buffer>&&        bufs,
-		  std::error_code&                                        err,
-		  logicmill::async::channel::write_buffers_handler const& handler) override;
+	really_write(
+			std::deque<logicmill::bstream::mutable_buffer>&&        bufs,
+			std::error_code&                                        err,
+			logicmill::async::channel::write_buffers_handler const& handler) override;
 
 
 	void
@@ -448,21 +442,21 @@ private:
 		return m_header_byte_count == sizeof(frame_size_type);
 	}
 
-	std::size_t                m_header_byte_count;
-	frame_size_type            m_frame_size;
-	logicmill::bstream::byte_type m_header_buf[sizeof(frame_size_type)];
-	logicmill::bstream::mutable_buffer    m_payload_buffer;
+	std::size_t                        m_header_byte_count;
+	frame_size_type                    m_frame_size;
+	logicmill::bstream::byte_type      m_header_buf[sizeof(frame_size_type)];
+	logicmill::bstream::mutable_buffer m_payload_buffer;
 };
 
 class tcp_listener_uv : public tcp_base_uv, public logicmill::async::tcp_listener
 {
 public:
-
 	using ptr = std::shared_ptr<tcp_listener_uv>;
 
-	template<class Handler,
-			 class = std::enable_if_t<
-					 std::is_convertible<Handler, logicmill::async::listener::connection_handler>::value>>
+	template<
+			class Handler,
+			class = std::enable_if_t<
+					std::is_convertible<Handler, logicmill::async::listener::connection_handler>::value>>
 	tcp_listener_uv(logicmill::async::ip::endpoint const& ep, Handler&& handler)
 		: m_endpoint{ep}, m_connection_handler{std::forward<Handler>(handler)}
 	{}
@@ -482,7 +476,6 @@ public:
 	}
 
 private:
-
 	static ptr
 	get_shared_listener(uv_stream_t* handle)
 	{
@@ -519,15 +512,15 @@ private:
 		return get_loop();
 	}
 
-	virtual void
+	virtual bool
 	really_close(logicmill::async::listener::close_handler&& handler) override;
 
-	virtual void
+	virtual bool
 	really_close(logicmill::async::listener::close_handler const& handler) override;
 
 	logicmill::async::ip::endpoint                 m_endpoint;
 	logicmill::async::listener::connection_handler m_connection_handler;
-	logicmill::async::listener::close_handler       m_close_handler;
+	logicmill::async::listener::close_handler      m_close_handler;
 };
 
 #endif /* LOGICMILL_ASYNC_TCP_UV_H */

@@ -37,46 +37,45 @@
 namespace logicmill
 {
 namespace armi
-{	
-	template <class... Args>
-	class server_context_builder : public server_context_base
-	{
-	public:
-		
-		server_context_builder(async::loop::ptr const& lp, bstream::context_base const& stream_context) 
+{
+template<class... Args>
+class server_context_builder : public server_context_base
+{
+public:
+	server_context_builder(async::loop::ptr const& lp, bstream::context_base const& stream_context)
 		: server_context_base{sizeof...(Args), lp, stream_context}
-		{
-			m_stubs.reserve(sizeof...(Args));
-			append_stubs<Args...>();
-		}
-		
-		template<class T>
-		void 
-		append_stubs()
-		{
-			append_stub<T>();
-		}
-		
-		template<class First_, class... Args_>
-		typename std::enable_if_t<(sizeof...(Args_) > 0)>
-		append_stubs()
-		{
-			append_stub<First_>();
-			append_stubs<Args_...>();
-		}
-		
-		template<class T>
-		void 
-		append_stub()
-		{
-			std::size_t index = m_stubs.size();
-			m_stubs.emplace_back(std::unique_ptr<interface_stub_base>(new T{*this, 0}));
-		}		
-	};
+	{
+		m_stubs.reserve(sizeof...(Args));
+		append_stubs<Args...>();
+	}
 
-} // namespace armi
-} // namespace logicmill
+	template<class T>
+	void
+	append_stubs()
+	{
+		append_stub<T>();
+	}
+
+	template<class First_, class... Args_>
+	typename std::enable_if_t<(sizeof...(Args_) > 0)>
+	append_stubs()
+	{
+		append_stub<First_>();
+		append_stubs<Args_...>();
+	}
+
+	template<class T>
+	void
+	append_stub()
+	{
+
+		std::size_t index = m_stubs.size();
+		m_stubs.emplace_back(std::unique_ptr<interface_stub_base>(new T{*this, index}));
+	}
+};
+
+}    // namespace armi
+}    // namespace logicmill
 
 
 #endif /* SERVER_CONTEXT_BUILDER_H */
-

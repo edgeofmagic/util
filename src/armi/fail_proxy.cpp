@@ -23,7 +23,6 @@
  */
 
 #include <logicmill/armi/fail_proxy.h>
-// #include <logicmill/armi/error_code_adaptor.h>
 #include <logicmill/bstream/ombstream.h>
 #include <logicmill/armi/server_context_base.h>
 #include <logicmill/armi/types.h>
@@ -35,11 +34,9 @@ void
 fail_proxy::operator()(std::error_code err)
 {
 	bstream::ombstream os{m_context.stream_context()};
-	// auto os = m_context.create_reply_stream();
 	os << m_req_ord;
 	os << reply_kind::fail;
 	os.write_array_header(1);
 	os << err;
-	// error_code_adaptor::put(os, m_context, err);
 	m_context.send_reply(m_channel, os.release_mutable_buffer());
 }

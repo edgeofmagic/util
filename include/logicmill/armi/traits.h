@@ -32,40 +32,39 @@
 #ifndef LOGICMILL_ARMI_TRAITS_H
 #define LOGICMILL_ARMI_TRAITS_H
 
-#include <type_traits>
 #include <functional>
+#include <type_traits>
 // #include <logicmill/traits.h>
 
 namespace logicmill
 {
 namespace armi
 {
-	template<class F, class Enable = void>
-	struct is_error_safe_reply : public std::false_type {};
+template<class F, class Enable = void>
+struct is_error_safe_reply : public std::false_type
+{};
 
-	template<class F, class Enable = void>
-	struct is_reply : public std::false_type {};
+template<class F, class Enable = void>
+struct is_reply : public std::false_type
+{};
 
-	template<class... Args>
-	struct is_reply<std::function< void (Args...)>, void> : public std::true_type {};
+template<class... Args>
+struct is_reply<std::function<void(Args...)>, void> : public std::true_type
+{};
 
-	template<class... Args>
-	struct is_error_safe_reply
-	<
-		std::function<void ( std::error_code, Args...)>,
-		typename std::enable_if_t
-		<
-			traits::conjunction
-					<std::is_default_constructible<std::remove_cv_t<std::remove_reference_t<Args>>>::value...>::value
-		>
-	>
-	: public std::true_type {};
+template<class... Args>
+struct is_error_safe_reply<
+		std::function<void(std::error_code, Args...)>,
+		typename std::enable_if_t<traits::conjunction<
+				std::is_default_constructible<std::remove_cv_t<std::remove_reference_t<Args>>>::value...>::value>>
+	: public std::true_type
+{};
 
-	template<>
-	struct is_error_safe_reply <std::function< void ( std::error_code) >> : public std::true_type {};
+template<>
+struct is_error_safe_reply<std::function<void(std::error_code)>> : public std::true_type
+{};
 
-} // namespace armi
-} // namespace logicmill
+}    // namespace armi
+}    // namespace logicmill
 
 #endif /* LOGICMILL_ARMI_TRAITS_H */
-

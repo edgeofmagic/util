@@ -28,94 +28,97 @@ using namespace logicmill;
 using namespace bstream;
 
 void
-obmultibuf::really_flush( std::error_code& err )
+obmultibuf::really_flush(std::error_code& err)
 {
-    err.clear();
-    assert( m_dirty && m_pnext > m_dirty_start );
+	err.clear();
+	assert(m_dirty && m_pnext > m_dirty_start);
 }
 
 void
-obmembuf::really_jump( std::error_code& err )
+obmembuf::really_jump(std::error_code& err)
 {
 	err.clear();
-	assert( m_did_jump );
-	assert( is_valid_position( m_jump_to ) );
+	assert(m_did_jump);
+	assert(is_valid_position(m_jump_to));
 
-	if ( m_dirty )
+	if (m_dirty)
 	{
-		flush( err );
+		flush(err);
 	}
 
-    auto hwm = get_high_watermark();
+	auto hwm = get_high_watermark();
 
-    if ( hwm < m_jump_to )
-    {
+	if (hwm < m_jump_to)
+	{
 		auto gap = m_jump_to - hwm;
 
-		really_fill( 0, gap );
+		really_fill(0, gap);
 
-        assert( ppos() == m_jump_to );
-    }
-    else
-    {
+		assert(ppos() == m_jump_to);
+	}
+	else
+	{
 		m_pnext = m_pbase + m_jump_to;
-        assert( ppos() == m_jump_to );
-    }
+		assert(ppos() == m_jump_to);
+	}
 	m_did_jump = false;
 }
 
 
 position_type
-obmultibuf::really_seek( seek_anchor where, offset_type offset, std::error_code& err )
+obmultibuf::really_seek(seek_anchor where, offset_type offset, std::error_code& err)
 {
-    err.clear();
-    position_type result = bstream::npos;
+	err.clear();
+	position_type result = bstream::npos;
 
-	if ( dirty )
+	if (dirty)
 	{
-		flush( err );
-		if ( err ) goto exit;
-	}	
-
-    switch ( where )
-    {
-        case seek_anchor::current:
-        {
-            result = ppos() + offset;
-        }
-        break;
-
-        case seek_anchor::end:
-        {
-            auto end_pos = get_high_watermark(); // high watermark is current from flush() above
-            result = end_pos + offset;
-        }
-        break;
-
-        case seek_anchor::begin:
-        {
-            result = offset;
-        }
-        break;
-    }
-
-    if ( result < 0 )
-    {
-        err = make_error_code( std::errc::invalid_argument );
-        result = bstream::npos;
-    }
-	else if ( result >= m_pbase_offset && result <= m_pbase_offset + ( m_pend - m_pbase ) ) // position is in current buffer
-	{
-		m_pnext = m_pbase + ( result - m_pbase_offset );
+		flush(err);
+		if (err)
+			goto exit;
 	}
-	else if ( result > m_offsets.back() + m_bufs.back().capacity() ) // position is past end of allocated space
+
+	switch (where)
+	{
+		case seek_anchor::current:
+		{
+			result = ppos() + offset;
+		}
+		break;
+
+		case seek_anchor::end:
+		{
+			auto end_pos = get_high_watermark();    // high watermark is current from flush() above
+			result       = end_pos + offset;
+		}
+		break;
+
+		case seek_anchor::begin:
+		{
+			result = offset;
+		}
+		break;
+	}
+
+	if (result < 0)
+	{
+		err    = make_error_code(std::errc::invalid_argument);
+		result = bstream::npos;
+	}
+	else if (
+			result >= m_pbase_offset
+			&& result <= m_pbase_offset + (m_pend - m_pbase))    // position is in current buffer
+	{
+		m_pnext = m_pbase + (result - m_pbase_offset);
+	}
+	else if (result > m_offsets.back() + m_bufs.back().capacity())    // position is past end of allocated space
 	{
 		m_pbase_offset = result;
-		m_pbase = nullptr;
-		m_pnext = nullptr;
-		m_end = nullptr;
+		m_pbase        = nullptr;
+		m_pnext        = nullptr;
+		m_end          = nullptr;
 	}
-	else // find the buffer, or set past end of buffers
+	else    // find the buffer, or set past end of buffers
 	{
 		end_pos == get_high_watermark();
 		// assert( ( end_pos >= m_offsets.back() ) && ( end_pos <= ( m_offsets.back() + m_bufs.back().capacity() ) );
@@ -133,7 +136,7 @@ obmultibuf::really_seek( seek_anchor where, offset_type offset, std::error_code&
 			// position at end
 			m_current_buf = m_bufs.size() - 1;
 			reset_ptrs();
-			m_pnext = m_pbase + ( end_pos - m_offsets.back() );
+			m_pnext = m_pbase + (end_pos - m_offsets.back());
 		}
 		else
 
@@ -141,102 +144,101 @@ obmultibuf::really_seek( seek_anchor where, offset_type offset, std::error_code&
 		{
 			// find buffer with binary search of m_offsets
 
-			m_offsets.push_back( end_pos ); // makes the binary search much easier
-			std::size_t left = 0;
+			m_offsets.push_back(end_pos);    // makes the binary search much easier
+			std::size_t left  = 0;
 			std::size_t right = m_offsets.size() - 1;
-			while ( left <= right )
+			while (left <= right)
 			{
-				std::size middle = ( left + right ) >> 1;
-				if ( result < m_offsets[ middle ] )
+				std::size middle = (left + right) >> 1;
+				if (result < m_offsets[middle])
 				{
 					right = middle - 1;
 				}
-				else if ( result > m_offsets[ middle + 1 ] )
+				else if (result > m_offsets[middle + 1])
 			}
 
 		}
 		position_type end_alloc = m_offsets.back() + m_bufs.back().capacity();
-
 	}
 
 
-    else if ( result >= static_cast< position_type >( m_pend - m_pbase ) )
-    {
-        resize( result );
-        auto new_base = m_buf.data();
-        set_ptrs( new_base, new_base + result, new_base + m_buf.size() );
-    }
-    else
-    {
-        m_pnext = m_pbase + result;
-    }
-
-	if ( hwm >= result )
+	else if (result >= static_cast<position_type>(m_pend - m_pbase))
 	{
-		m_last_touched = result; // keep really_touch from being called unnecessarily
+		resize(result);
+		auto new_base = m_buf.data();
+		set_ptrs(new_base, new_base + result, new_base + m_buf.size());
+	}
+	else
+	{
+		m_pnext = m_pbase + result;
+	}
+
+	if (hwm >= result)
+	{
+		m_last_touched = result;    // keep really_touch from being called unnecessarily
 	}
 
 exit:
-    return result;
+	return result;
 }
 
 void
-obmultibuf::really_overflow( size_type n, std::error_code& err )
+obmultibuf::really_overflow(size_type n, std::error_code& err)
 {
-    err.clear();
-    assert( std::less_equal< byte_type * >()( m_pnext, m_pend ) );
-    assert( ( m_pnext - m_pbase ) + n > m_buf.size() );
-    auto pos = ppos();
-    size_type required = ( m_pnext - m_pbase ) + n;
-    resize( required );
+	err.clear();
+	assert(std::less_equal<byte_type*>()(m_pnext, m_pend));
+	assert((m_pnext - m_pbase) + n > m_buf.size());
+	auto      pos      = ppos();
+	size_type required = (m_pnext - m_pbase) + n;
+	resize(required);
 	// assert( m_buf.is_mutable() );
-    auto new_base = m_buf.data();
-    set_ptrs( new_base, new_base + pos, new_base + m_buf.capacity() );
+	auto new_base = m_buf.data();
+	set_ptrs(new_base, new_base + pos, new_base + m_buf.capacity());
 }
 
-obmultibuf& 
+obmultibuf&
 obmultibuf::clear() noexcept
 {
 	reset_ptrs();
 	reset_high_water_mark();
 	m_last_touched = 0UL;
-	m_dirty = false;
+	m_dirty        = false;
 	return *this;
 }
 
 const_buffer
 obmultibuf::get_buffer()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-	return const_buffer{ m_buf, 0, static_cast< buffer::size_type >( get_high_watermark() ) };
+	return const_buffer{m_buf, 0, static_cast<buffer::size_type>(get_high_watermark())};
 	// return m_buf.slice( 0, get_high_watermark() );
 }
 
 mutable_buffer&
 obmultibuf::get_buffer_ref()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
+	m_buf.size(get_high_watermark());
 	return m_buf;
 }
 
 const_buffer
 obmultibuf::release_buffer()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
-    reset_high_water_mark();
-    m_last_touched = 0UL;
-    m_dirty = false;
-    set_ptrs( nullptr, nullptr, nullptr );
-    return const_buffer{ std::move( m_buf ) };
+	m_buf.size(get_high_watermark());
+	reset_high_water_mark();
+	m_last_touched = 0UL;
+	m_dirty        = false;
+	set_ptrs(nullptr, nullptr, nullptr);
+	return const_buffer{std::move(m_buf)};
 }

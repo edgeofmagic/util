@@ -34,10 +34,10 @@
 
 #include <cstdint>
 #include <functional>
+#include <logicmill/armi/interface_stub_base.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
 #include <logicmill/bstream/ombstream.h>
-#include <logicmill/armi/interface_stub_base.h>
 #include <memory>
 #include <unordered_set>
 
@@ -51,33 +51,26 @@ class fail_proxy;
 class server_context_base
 {
 public:
-	using listener_error_handler = std::function<void(std::error_code ec)>;
-	using channel_error_handler  = std::function<void(async::channel::ptr const& ptr, std::error_code ec)>;
-	using close_handler          = std::function<void()>;
+	using channel_error_handler = std::function<void(async::channel::ptr const& ptr, std::error_code ec)>;
+	using close_handler         = std::function<void()>;
 
 	server_context_base(std::size_t interface_count, async::loop::ptr lp, bstream::context_base const& stream_context);
 
 	virtual ~server_context_base();
 
-	template<class T, class U>
-	typename std::enable_if_t<
-			std::is_convertible<T, listener_error_handler>::value
-			&& std::is_convertible<U, channel_error_handler>::value>
-	bind(async::options const& opts, std::error_code& err, T&& on_listener_error, U&& on_channel_error)
-	{
-		async::options opts_override{opts};
-		opts_override.framing(true);
-		m_on_listener_error = std::forward<T>(on_listener_error);
-		m_on_channel_error  = std::forward<U>(on_channel_error);
-		really_bind(opts_override, err);
-	}
-
 	template<class T>
-	typename std::enable_if_t<std::is_convertible<T, close_handler>::value>
+	typename std::enable_if_t<std::is_convertible<T, close_handler>::value, bool>
 	close(T&& handler)
 	{
 		m_on_close = std::forward<T>(handler);
-		really_close();
+		return really_close();
+	}
+
+	bool
+	close()
+	{
+		m_on_close = nullptr;
+		return really_close();
 	}
 
 	bstream::context_base&
@@ -96,11 +89,32 @@ public:
 	}
 
 protected:
+	class error_handler_wrapper_base
+	{
+	public:
+		virtual ~error_handler_wrapper_base() {}
+
+		virtual void
+		invoke(std::error_code err)
+				= 0;
+	};
+
+	void
+	on_listener_error_default()
+	{
+		close();
+	}
+
+	void
+	on_channel_error_default(async::channel::ptr const& chan)
+	{
+		chan->close();
+	}
 
 	void
 	cleanup();
 
-	void
+	bool
 	really_close();
 
 	std::unique_ptr<bstream::ombstream>
@@ -133,7 +147,7 @@ protected:
 	std::vector<std::unique_ptr<interface_stub_base>> m_stubs;
 	std::vector<std::shared_ptr<void>>                m_impl_ptrs;
 	channel_error_handler                             m_on_channel_error;
-	listener_error_handler                            m_on_listener_error;
+	std::unique_ptr<error_handler_wrapper_base>       m_on_server_error;
 	close_handler                                     m_on_close;
 	std::unordered_set<async::channel::ptr>           m_open_channels;
 };

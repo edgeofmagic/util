@@ -27,7 +27,6 @@
 #include <logicmill/armi/fail_proxy.h>
 #include <logicmill/armi/error.h>
 
-
 using namespace logicmill;
 using namespace armi;
 

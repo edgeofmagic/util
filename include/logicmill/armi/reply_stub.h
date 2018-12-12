@@ -32,11 +32,11 @@
 #ifndef LOGICMILL_ARMI_REPLY_STUB_H
 #define LOGICMILL_ARMI_REPLY_STUB_H
 
-#include <system_error>
 #include <functional>
-#include <type_traits>
 #include <logicmill/armi/client_context_base.h>
 #include <logicmill/armi/error.h>
+#include <system_error>
+#include <type_traits>
 // #include <logicmill/armi/error_code_adaptor.h>
 #include <logicmill/bstream/ibstream.h>
 
@@ -45,169 +45,158 @@ namespace logicmill
 {
 namespace armi
 {
-	template<class T>
-	class reply_stub;
 
-	template<class... Args>
-	class reply_stub<std::function< void (std::error_code, Args...)>>
+template<class T>
+class reply_stub;
+
+template<class... Args>
+class reply_stub<std::function<void(std::error_code, Args...)>>
+{
+public:
+	using reply_type = std::function<void(std::error_code, Args...)>;
+
+	reply_stub(reply_type reply) : m_reply{reply} {}
+
+	void
+	cancel(std::error_code ec)
 	{
-	public:
-		
-		using reply_type = std::function< void (std::error_code, Args...)>;
+		m_reply(ec, Args{}...);
+		// This is why the parameters of a reply must be default_constructible
+		// when the method doesn't have a fail reply (in case you were wondering).
+	}
 
-		reply_stub(reply_type reply)
-			: m_reply{reply}
-		{}
-
-		void
-		cancel(std::error_code ec)
+	void
+	operator()(bstream::ibstream& is)
+	{
+		std::error_code err;
+		auto            item_count = is.read_array_header(err);
+		if (err)
 		{
-			m_reply(ec, Args{}...);
-			// This is why the parameters of a reply must be default_constructible
-			// when the method doesn't have a fail reply (in case you were wondering).
+			cancel(err);
 		}
-
-		void
-		operator()(bstream::ibstream & is)
+		else
 		{
-			std::error_code err;
-			auto item_count = is.read_array_header(err);
-			if (err)
+			if (!expected_count<sizeof...(Args) + 1>(item_count))
 			{
-				cancel(err);
+				cancel(make_error_code(armi::errc::invalid_argument_count));
 			}
 			else
 			{
-				if (!expected_count<sizeof...(Args) + 1 > (item_count))
+				try
 				{
-					cancel(make_error_code(armi::errc::invalid_argument_count));
+					std::error_code ec = is.read_as<std::error_code>();
+					invoke(ec, is.read_as<typename std::remove_const_t<typename std::remove_reference_t<Args>>>()...);
 				}
-				else
+				catch (std::system_error const& e)
 				{
-					try
-					{
-						std::error_code ec = is.read_as<std::error_code>();
-						invoke(ec, is.read_as<typename std::remove_const_t<typename std::remove_reference_t<Args>>> ()...);
-					}
-					catch (std::system_error const& e)
-					{
-						cancel(e.code());
-					}
-					catch (std::exception const& e)
-					{
-						cancel(make_error_code(armi::errc::exception_thrown_by_reply_handler));
-					}
+					cancel(e.code());
+				}
+				catch (std::exception const& e)
+				{
+					cancel(make_error_code(armi::errc::exception_thrown_by_reply_handler));
 				}
 			}
 		}
+	}
 
-		void
-		invoke(std::error_code ec, Args ...args)
-		{
-			m_reply(ec, args...);
-		}
-
-	private:
-		
-		reply_type m_reply;
-	};
-
-	/*
-	 *	This specialization is used for replies in signatures that have a 
-	 *	fail lambda; it omits the error_code parameter. On errors, system_error
-	 *	exceptions are thrown, to be caught by the calling reply_handler.
-	 */
-	template<class... Args>
-	class reply_stub<std::function< void (Args...)>>
+	void
+	invoke(std::error_code ec, Args... args)
 	{
-	public:
-		
-		using reply_type = std::function< void (Args...)>;
+		m_reply(ec, args...);
+	}
 
-		inline
-		reply_stub(reply_type reply) : m_reply{reply}
-		{}
+private:
+	reply_type m_reply;
+};
 
-		void
-		operator()(bstream::ibstream& is)
-		{
-			auto item_count = is.read_array_header();
+/*
+ *	This specialization is used for replies in signatures that have a 
+ *	fail lambda; it omits the error_code parameter. On errors, system_error
+ *	exceptions are thrown, to be caught by the calling reply_handler.
+ */
+template<class... Args>
+class reply_stub<std::function<void(Args...)>>
+{
+public:
+	using reply_type = std::function<void(Args...)>;
 
-			// this reply stub throws exceptions, because it has no cancel method
-			// they are caught by the calling reply_handler
-			if (!expected_count<sizeof...(Args)>(item_count))
-			{
-				throw std::system_error{make_error_code(armi::errc::invalid_argument_count)};
-			}
-			else
-			{
-				invoke(is.read_as<typename std::remove_const_t<typename std::remove_reference_t<Args>>>()...);
-			}
-		}
+	inline reply_stub(reply_type reply) : m_reply{reply} {}
 
-		void
-		invoke(Args ...args)
-		{
-			m_reply(args...);
-		}
-
-	private:
-		
-		reply_type m_reply;
-	};
-
-	class fail_stub
+	void
+	operator()(bstream::ibstream& is)
 	{
-	public:
-		
-		fail_stub(fail_reply reply) : m_reply{reply}
-		{}
+		auto item_count = is.read_array_header();
 
-		void
-		cancel(std::error_code ec)
+		// this reply stub throws exceptions, because it has no cancel method
+		// they are caught by the calling reply_handler
+		if (!expected_count<sizeof...(Args)>(item_count))
 		{
-			m_reply(ec);
+			throw std::system_error{make_error_code(armi::errc::invalid_argument_count)};
+		}
+		else
+		{
+			invoke(is.read_as<typename std::remove_const_t<typename std::remove_reference_t<Args>>>()...);
+		}
+	}
+
+	void
+	invoke(Args... args)
+	{
+		m_reply(args...);
+	}
+
+private:
+	reply_type m_reply;
+};
+
+class fail_stub
+{
+public:
+	fail_stub(fail_reply reply) : m_reply{reply} {}
+
+	void
+	cancel(std::error_code ec)
+	{
+		m_reply(ec);
+	}
+
+	void
+	operator()(bstream::ibstream& is)
+	{
+		std::error_code err;
+		auto            item_count = is.read_array_header(err);
+		if (err)
+		{
+			m_reply(err);
+			goto exit;
+		}
+		if (!expected_count<1>(item_count))
+		{
+			m_reply(make_error_code(armi::errc::invalid_argument_count));
+			goto exit;
 		}
 
-		void
-		operator()(bstream::ibstream& is)
 		{
-			std::error_code err;
-			auto item_count = is.read_array_header(err);
+			std::error_code err_from_stream = is.read_as<std::error_code>(err);
 			if (err)
 			{
 				m_reply(err);
-				goto exit;
 			}
-			if (!expected_count<1>(item_count))
+			else
 			{
-				m_reply(make_error_code(armi::errc::invalid_argument_count));
-				goto exit;
+				m_reply(err_from_stream);
 			}
-
-			{
-				std::error_code err_from_stream = is.read_as<std::error_code>(err);
-				if (err)
-				{
-					m_reply(err);
-				}
-				else
-				{
-					m_reply(err_from_stream);
-				}
-			}
-		exit:
-			return;
 		}
+	exit:
+		return;
+	}
 
-	private:
-		
-		fail_reply m_reply;
-	};
+private:
+	fail_reply m_reply;
+};
 
-} // namespace armi
-} // namespace logicmill
+}    // namespace armi
+}    // namespace logicmill
 
 
 #endif /* LOGICMILL_ARMI_REPLY_STUB_H */
-

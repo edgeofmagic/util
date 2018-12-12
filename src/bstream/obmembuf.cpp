@@ -28,107 +28,107 @@ using namespace logicmill;
 using namespace bstream;
 
 void
-obmembuf::really_flush( std::error_code& err )
+obmembuf::really_flush(std::error_code& err)
 {
-    err.clear();
-    assert( m_dirty && m_pnext > m_dirty_start );
+	err.clear();
+	assert(m_dirty && m_pnext > m_dirty_start);
 }
 
 void
-obmembuf::really_jump( std::error_code& err )
+obmembuf::really_jump(std::error_code& err)
 {
 	err.clear();
-	assert( m_did_jump );
-	assert( is_valid_position( m_jump_to ) );
+	assert(m_did_jump);
+	assert(is_valid_position(m_jump_to));
 
-	if ( m_dirty )
+	if (m_dirty)
 	{
-		flush( err );
+		flush(err);
 	}
 
-    auto hwm = get_high_watermark();
+	auto hwm = get_high_watermark();
 
-    if ( hwm < m_jump_to )
-    {
+	if (hwm < m_jump_to)
+	{
 		auto gap = m_jump_to - hwm;
 
-		really_fill( 0, gap );
+		really_fill(0, gap);
 		// set_high_watermark();
 
-        assert( ppos() == m_jump_to );
-        // assert( get_high_watermark() == m_jump_to );
-    }
-    else
-    {
+		assert(ppos() == m_jump_to);
+		// assert( get_high_watermark() == m_jump_to );
+	}
+	else
+	{
 		m_pnext = m_pbase + m_jump_to;
-        assert( ppos() == m_jump_to );
-    }
+		assert(ppos() == m_jump_to);
+	}
 	m_did_jump = false;
 }
 
 bool
-obmembuf::is_valid_position( position_type pos ) const
+obmembuf::is_valid_position(position_type pos) const
 {
-    return pos >= 0;
+	return pos >= 0;
 }
 
 void
-obmembuf::really_overflow( size_type n, std::error_code& err )
+obmembuf::really_overflow(size_type n, std::error_code& err)
 {
-    err.clear();
-    assert( std::less_equal< byte_type * >()( m_pnext, m_pend ) );
-    assert( ( m_pnext - m_pbase ) + n > m_buf.size() );
-    auto pos = ppos();
-    size_type required = ( m_pnext - m_pbase ) + n;
-    resize( required );
+	err.clear();
+	assert(std::less_equal<byte_type*>()(m_pnext, m_pend));
+	assert((m_pnext - m_pbase) + n > m_buf.size());
+	auto      pos      = ppos();
+	size_type required = (m_pnext - m_pbase) + n;
+	resize(required);
 	// assert( m_buf.is_mutable() );
-    auto new_base = m_buf.data();
-    set_ptrs( new_base, new_base + pos, new_base + m_buf.capacity() );
+	auto new_base = m_buf.data();
+	set_ptrs(new_base, new_base + pos, new_base + m_buf.capacity());
 }
 
-obmembuf& 
+obmembuf&
 obmembuf::clear() noexcept
 {
 	reset_ptrs();
 	reset_high_water_mark();
 	m_did_jump = false;
-	m_dirty = false;
+	m_dirty    = false;
 	return *this;
 }
 
 const_buffer
 obmembuf::get_buffer()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
-	return const_buffer{ m_buf };
+	m_buf.size(get_high_watermark());
+	return const_buffer{m_buf};
 }
 
 mutable_buffer&
 obmembuf::get_buffer_ref()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
+	m_buf.size(get_high_watermark());
 	return m_buf;
 }
 
 const_buffer
 obmembuf::release_buffer()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
-    reset_high_water_mark();
+	m_buf.size(get_high_watermark());
+	reset_high_water_mark();
 	m_did_jump = false;
-    m_dirty = false;
-    set_ptrs( nullptr, nullptr, nullptr );
-    return const_buffer{ std::move( m_buf ) };
+	m_dirty    = false;
+	set_ptrs(nullptr, nullptr, nullptr);
+	return const_buffer{std::move(m_buf)};
 }

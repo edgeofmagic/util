@@ -613,7 +613,7 @@ protected:
 		m_capacity{ size },
 		m_data{ data }
 		{
-			std::cout << "constructing dealloc-only allocation" << std::endl;
+			// std::cout << "constructing dealloc-only allocation" << std::endl;
 		}
 
 		~allocation()

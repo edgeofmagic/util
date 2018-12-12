@@ -32,44 +32,43 @@
 #ifndef LOGICMILL_ARMI_TYPES_H
 #define LOGICMILL_ARMI_TYPES_H
 
-#include <cstdint>
-#include <system_error>
 #include <chrono>
+#include <cstdint>
 #include <functional>
-#include <logicmill/bstream/context.h>
 #include <logicmill/armi/error.h>
+#include <logicmill/bstream/context.h>
+#include <system_error>
 
 namespace logicmill
 {
 namespace armi
 {
-	using fail_reply = std::function<void (std::error_code ec)>;
+using fail_reply = std::function<void(std::error_code ec)>;
 
-	using millisecs = std::chrono::milliseconds;
+using millisecs = std::chrono::milliseconds;
 
-	inline bstream::context_base const&
-	get_default_stream_context()
-	{
-		static const bstream::context<> default_context({&armi::error_category()});
-		return default_context;
-	}
+inline bstream::context_base const&
+get_default_stream_context()
+{
+	static const bstream::context<> default_context({&armi::error_category()});
+	return default_context;
+}
 
-	enum class reply_kind
-	{
-		normal,
-		fail
-	};
+enum class reply_kind
+{
+	normal,
+	fail
+};
 
-	template<std::size_t N>
-	inline bool
-	expected_count(std::size_t count)
-	{
-		return count == N;
-	}
-	
-} // namespace armi
-} // namespace logicmill
+template<std::size_t N>
+inline bool
+expected_count(std::size_t count)
+{
+	return count == N;
+}
+
+}    // namespace armi
+}    // namespace logicmill
 
 
 #endif /* LOGICMILL_ARMI_TYPES_H */
-

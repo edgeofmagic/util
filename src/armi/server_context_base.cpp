@@ -30,7 +30,6 @@
 using namespace logicmill;
 using namespace armi;
 
-
 server_context_base::server_context_base(std::size_t interface_count, async::loop::ptr lp, bstream::context_base const& stream_context)
 :
 m_loop{lp},
@@ -49,7 +48,14 @@ server_context_base::really_bind(async::options const& opts, std::error_code& er
 	{
 		if (err)
 		{
-			m_on_listener_error(err);
+			if (m_on_server_error)
+			{
+				m_on_server_error->invoke(err);
+			}
+			else
+			{
+				on_listener_error_default();
+			}
 		}
 		else
 		{
@@ -62,12 +68,15 @@ server_context_base::really_bind(async::options const& opts, std::error_code& er
 					{
 						m_on_channel_error(chan, err);
 					}
+					else
+					{
+						on_channel_error_default(chan);
+					}
 				}
 				else
 				{
 					bstream::imbstream is{std::move(buf), m_stream_context};
 					handle_request(is, chan);
-
 				}
 			});
 		}
@@ -121,35 +130,60 @@ server_context_base::cleanup()
 {
 	if (m_on_close)
 	{
-		m_on_listener_error = nullptr;
-		m_on_channel_error  = nullptr;
 		m_on_close();
 		m_on_close = nullptr;
 	}
 }
 
-void
+bool
 server_context_base::really_close()
 {
+	bool result{false};
 	if (m_listener)
 	{
-		m_listener->close([=](async::listener::ptr const& lp) {
+		bool listener_did_close = m_listener->close([=](async::listener::ptr const& lp) {
 			m_listener.reset();
 			if (m_open_channels.empty())
 			{
 				cleanup();
 			}
 		});
+		if (listener_did_close)
+		{
+			result = true;
+		}
+		else
+		{
+			m_listener.reset();
+		}
 	}
-	for (auto& chan : m_open_channels)
+	auto it = m_open_channels.begin();
+	while (it != m_open_channels.end())
 	{
-		chan->close([=](async::channel::ptr const& c) {
+		bool channel_did_close =
+		(*it)->close([=](async::channel::ptr const& c) {
 			m_open_channels.erase(c);
 			if (m_open_channels.empty() && !m_listener)
 			{
 				cleanup();
 			}
 		});
+		if (channel_did_close)
+		{
+			result = true;
+			++it;
+		}
+		else
+		{
+			it = m_open_channels.erase(it);
+		}
 	}
+	if (!result) // there was no deferred closing action; wipe everything
+	{
+		m_listener.reset(); // probably unnecessary, but whatever
+		m_open_channels.clear(); // ditto
+		m_on_close = nullptr;
+	}
+	return result;
 }
 

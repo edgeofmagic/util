@@ -33,59 +33,55 @@
 #define LOGICMILL_ARMI_INTERFACE_STUB_BASE_H
 
 #include <cstdint>
-#include <logicmill/bstream/ibstream.h>
 #include <logicmill/async/channel.h>
+#include <logicmill/bstream/ibstream.h>
 
 namespace logicmill
 {
 namespace armi
 {
-	class server_context_base;
-	class method_stub_base;
+class server_context_base;
+class method_stub_base;
 
-	class interface_stub_base
+class interface_stub_base
+{
+public:
+	virtual ~interface_stub_base() {}
+
+protected:
+	friend class server_context_base;
+
+	inline interface_stub_base(server_context_base& context, std::size_t index) : m_context{context}, m_index{index} {}
+
+
+	inline std::size_t
+	index() const
 	{
-	public:
+		return m_index;
+	}
 
-		virtual
-		~interface_stub_base() {}
+	inline server_context_base&
+	context()
+	{
+		return m_context;
+	}
 
-	protected:
+	virtual std::size_t
+	method_count() const noexcept
+			= 0;
 
-		friend class server_context_base;
+	virtual method_stub_base&
+	get_method_stub(std::size_t index)
+			= 0;
 
-		inline
-		interface_stub_base(server_context_base& context, std::size_t index) : m_context{context}, m_index{index}
-		{}
+	void
+	process(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is);
 
+	const std::size_t    m_index;
+	server_context_base& m_context;
+};
 
-		inline std::size_t
-		index() const
-		{
-			return m_index;
-		}
-
-		inline server_context_base&
-		context()
-		{
-			return m_context;
-		}
-
-		virtual std::size_t 
-		method_count() const noexcept = 0;
-
-		virtual method_stub_base& 
-		get_method_stub(std::size_t index) = 0;
-
-		void
-		process(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is);
-		
-		const std::size_t m_index;
-		server_context_base& m_context;
-	};
-
-} // namespace armi
-} // namespace logicmill
+}    // namespace armi
+}    // namespace logicmill
 
 #endif /* LOGICMILL_ARMI_INTERFACE_STUB_BASE_H */
-

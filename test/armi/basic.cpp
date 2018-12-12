@@ -1,15 +1,41 @@
 #include <doctest.h>
+#include <logicmill/armi/armi.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
-#include <logicmill/armi/armi.h>
 
+#define END_LOOP(loop_ptr, delay_ms)                                                                                   \
+	{                                                                                                                  \
+		std::error_code _err;                                                                                          \
+		auto            loop_exit_timer = loop_ptr->create_timer(_err, [](async::timer::ptr tp) {                      \
+            std::error_code err;                                                                            \
+            tp->loop()->stop(err);                                                                          \
+            CHECK(!err);                                                                                    \
+        });                                                                                                 \
+		CHECK(!_err);                                                                                                  \
+		loop_exit_timer->start(std::chrono::milliseconds{delay_ms}, _err);                                             \
+		CHECK(!_err);                                                                                                  \
+	}
+
+
+#define DELAYED_ACTION_BEGIN(_loop_ptr)                                                                                \
+{                                                                                                                      \
+	std::error_code _err;                                                                                              \
+	auto _action_timer = _loop_ptr->create_timer(_err, [&](async::timer::ptr tp)                                       \
+
+#define DELAYED_ACTION_END(_delay_ms)                                                                                  \
+	);                                                                                                                 \
+	CHECK(!_err);                                                                                                      \
+	_action_timer->start(std::chrono::milliseconds{_delay_ms}, _err);                                                  \
+	CHECK(!_err);                                                                                                      \
+}
 
 using namespace logicmill;
 
 namespace foo
 {
 using increment_reply = std::function<void(std::error_code, int n_plus_1)>;
-using error_reply = std::function< void (std::error_code) >;
+using decrement_reply = std::function<void(std::error_code, int n_minus_1)>;
+using error_reply     = std::function<void(std::error_code)>;
 
 enum class errc
 {
@@ -22,16 +48,16 @@ enum class errc
 class foo_category_impl : public std::error_category
 {
 public:
-	virtual const char* 
+	virtual const char*
 	name() const noexcept override
 	{
 		return "foo";
 	}
 
-	virtual std::string 
-	message( int ev ) const noexcept override
+	virtual std::string
+	message(int ev) const noexcept override
 	{
-		switch ( static_cast< foo::errc > (ev) )
+		switch (static_cast<foo::errc>(ev))
 		{
 			case foo::errc::ok:
 				return "success";
@@ -50,20 +76,20 @@ public:
 inline std::error_category const&
 error_category() noexcept
 {
-    static foo::foo_category_impl instance;
-    return instance;
+	static foo::foo_category_impl instance;
+	return instance;
 }
 
 inline std::error_condition
 make_error_condition(errc e)
 {
-    return std::error_condition( static_cast< int >( e ), foo::error_category() );
+	return std::error_condition(static_cast<int>(e), foo::error_category());
 }
 
 inline std::error_code
 make_error_code(errc e)
 {
-    return std::error_code( static_cast< int >( e ), foo::error_category() );
+	return std::error_code(static_cast<int>(e), foo::error_category());
 }
 
 class bar
@@ -87,194 +113,165 @@ public:
 	bool freak_out_called{false};
 };
 
+class boo
+{
+public:
+	boo(async::loop::ptr lp) : loop{lp} {}
+
+	void
+	decrement(decrement_reply reply, int n)
+	{
+		std::error_code err;
+		async::timer::ptr timer = loop->create_timer(err, [=](async::timer::ptr tp)
+		{
+			decrement_called = true;
+			reply(std::error_code{}, n - 1);
+		});
+		CHECK(!err);
+		timer->start(std::chrono::milliseconds{2000}, err);
+		CHECK(!err);
+	}
+
+	async::loop::ptr loop;
+	bool decrement_called{false};
+};
+
 }    // namespace foo
 
-
-namespace std
-{
-
 template<>
-struct is_error_condition_enum<foo::errc> : public true_type
+struct std::is_error_condition_enum<foo::errc> : public true_type
 {};
 
-}    // namespace std
-
-
-
+using async::ip::endpoint;
+using async::ip::address;
 
 namespace rfoo
 {
-ARMI_INTERFACES(foo::bar)
-ARMI_INTERFACE(foo::bar, increment, freak_out)
-ARMI_CONTEXT()
+static const bstream::context<> foo_stream_context({&armi::error_category(), &foo::error_category()});
+
+ARMI_CONTEXT(remote, foo::bar, foo::boo);
+ARMI_INTERFACE(remote, foo::bar, increment, freak_out);
+ARMI_INTERFACE(remote, foo::boo, decrement);
 }    // namespace rfoo
 
-namespace nfoo
-{
-	ARMI_CONTEXT_A(funk, foo::bar)
-	ARMI_INTERFACE_A(funk, foo::bar, increment, freak_out)
-}
-
-
+#if 1
 TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 {
-
-	bool loop_stop_timer_handler_visited{false};
 	bool client_connect_timer_handler_visited{false};
 	bool client_connect_handler_visited{false};
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::context().loop(lp);
+	rfoo::remote context{lp};
 
-	auto bar_impl = std::make_shared<foo::bar>();
+	context.server().register_impl(std::make_shared<foo::bar>());
 
-	rfoo::server().register_impl(bar_impl);
+	END_LOOP(lp, 5000);
 
-	auto loop_exit_timer = lp->create_timer(err, [=,&loop_stop_timer_handler_visited](async::timer::ptr tp) {
-		std::error_code err;
-		tp->loop()->stop(err);
-		loop_stop_timer_handler_visited = true;
-		CHECK(!err);
-	});
-	loop_exit_timer->start(std::chrono::milliseconds{5000}, err);
-
+	context.server().bind(
+			async::options{endpoint{address::v4_any(), 7001}},
+			err,
+			[](rfoo::remote::server_context_type& server, std::error_code err) {
+				std::cout << "listener error handler: " << err.message() << std::endl;
+				CHECK(!err);
+				server.close(
+						[=]() { std::cout << "server close handler called on listener error" << std::endl; });
+			},
+			[](async::channel::ptr const& chan, std::error_code err) {
+				std::cout << "channel error handler: " << err.message() << std::endl;
+				CHECK(!err);
+			});
 	CHECK(!err);
 
-	async::ip::endpoint bind_ep{async::ip::address::v4_any(), 7001};
-	rfoo::server().bind(async::options{bind_ep}, err, 
-	[=](std::error_code err)
-	{
-		std::cout << "listener error handler: " << err.message() << std::endl;
-		CHECK(!err);
-		rfoo::server().close([=]() { std::cout << "server close handler called on listener error" << std::endl; });
-	},
-	[=](async::channel::ptr const& chan, std::error_code err)
-	{
-		std::cout << "channel error handler: " << err.message() << std::endl;
-		CHECK(!err);
-	});
-
-	CHECK(!err);
-
-	auto client_connect_timer = lp->create_timer(err, [&client_connect_timer_handler_visited,&client_connect_handler_visited](async::timer::ptr tp)
-	{
-		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
-		async::options connect_opt{connect_ep};
+	auto client_connect_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
 		std::error_code err;
-		rfoo::client().connect(async::options{connect_ep}, err, [=,&client_connect_handler_visited](std::error_code err) {
-			CHECK(!err);
-			rfoo::client().proxy<foo::bar>()->increment(
-					[=](std::error_code err, int result) {
-						CHECK(!err);
-						CHECK(result == 28);
-					},
-					27);
-			client_connect_handler_visited = true;
-		});
+		context.client().connect(
+				async::options{endpoint{address::v4_loopback(), 7001}},
+				err,
+				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+					CHECK(!err);
+					client.proxy<foo::bar>().increment(
+							[](std::error_code err, int result) {
+								CHECK(!err);
+								CHECK(result == 28);
+							},
+							27);
+					client_connect_handler_visited = true;
+				});
 		CHECK(!err);
 		client_connect_timer_handler_visited = true;
 	});
-
 	CHECK(!err);
 
 	client_connect_timer->start(std::chrono::milliseconds{2000}, err);
 	CHECK(!err);
 
 	lp->run(err);
-
 	CHECK(!err);
 
-	CHECK(loop_stop_timer_handler_visited);
 	CHECK(client_connect_timer_handler_visited);
 	CHECK(client_connect_handler_visited);
-
-	CHECK(bar_impl->increment_called);
+	CHECK(context.server().get_impl<foo::bar>()->increment_called);
 
 	lp->close(err);
 	CHECK(!err);
 }
 
-
 TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 {
-
-	bool loop_stop_timer_handler_visited{false};
 	bool client_connect_timer_handler_visited{false};
 	bool client_connect_handler_visited{false};
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-
-	static const bstream::context<> foo_stream_context({&armi::error_category(), &foo::error_category()});
-
-	rfoo::context_type foo_context{lp, foo_stream_context};
-
-
-	// foo_context.loop(lp);
+	rfoo::remote context{lp, rfoo::foo_stream_context};
 
 	auto bar_impl = std::make_shared<foo::bar>();
 
-	foo_context.server().register_impl(bar_impl);
+	context.server().register_impl(bar_impl);
 
-	auto loop_exit_timer = lp->create_timer(err, [=,&loop_stop_timer_handler_visited](async::timer::ptr tp) {
-		std::error_code err;
-		tp->loop()->stop(err);
-		loop_stop_timer_handler_visited = true;
-		CHECK(!err);
-	});
-	loop_exit_timer->start(std::chrono::milliseconds{5000}, err);
+	END_LOOP(lp, 5000);
 
+	context.server().bind(
+			async::options{endpoint{address::v4_any(), 7001}},
+			err,
+			[&](rfoo::remote::server_context_type& server, std::error_code err) {
+				std::cout << "listener error handler: " << err.message() << std::endl;
+				CHECK(!err);
+				server.close(
+						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+			},
+			[](async::channel::ptr const& chan, std::error_code err) {
+				std::cout << "channel error handler: " << err.message() << std::endl;
+				CHECK(!err);
+			});
 	CHECK(!err);
 
-	async::ip::endpoint bind_ep{async::ip::address::v4_any(), 7001};
-	foo_context.server().bind(async::options{bind_ep}, err, 
-	[=,&foo_context](std::error_code err)
-	{
-		std::cout << "listener error handler: " << err.message() << std::endl;
-		CHECK(!err);
-		foo_context.server().close([=]() { std::cout << "server close handler called on listener error" << std::endl; });
-	},
-	[=](async::channel::ptr const& chan, std::error_code err)
-	{
-		std::cout << "channel error handler: " << err.message() << std::endl;
-		CHECK(!err);
-	});
-
-	CHECK(!err);
-
-	auto client_connect_timer = lp->create_timer(err, [&foo_context,&client_connect_timer_handler_visited,&client_connect_handler_visited](async::timer::ptr tp)
-	{
-		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
-		async::options connect_opt{connect_ep};
-		std::error_code err;
-		foo_context.client().connect(async::options{connect_ep}, err, [=,&foo_context,&client_connect_handler_visited](std::error_code err) {
-			CHECK(!err);
-			foo_context.client().proxy<foo::bar>()->freak_out(
-					[=](std::error_code err) {
-						CHECK(err == foo::errc::sun_exploded);
-					});
-			client_connect_handler_visited = true;
-		});
+	auto client_connect_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
+		std::error_code     err;
+		context.client().connect(
+				async::options{endpoint{address::v4_loopback(), 7001}},
+				err, [&](rfoo::remote::client_context_type& client, std::error_code err) {
+					CHECK(!err);
+					client.proxy<foo::bar>().freak_out(
+							[](std::error_code err) { CHECK(err == foo::errc::sun_exploded); });
+					client_connect_handler_visited = true;
+				});
 		CHECK(!err);
 		client_connect_timer_handler_visited = true;
 	});
-
 	CHECK(!err);
 
 	client_connect_timer->start(std::chrono::milliseconds{2000}, err);
 	CHECK(!err);
 
 	lp->run(err);
-
 	CHECK(!err);
 
-	CHECK(loop_stop_timer_handler_visited);
 	CHECK(client_connect_timer_handler_visited);
 	CHECK(client_connect_handler_visited);
-
 	CHECK(bar_impl->freak_out_called);
 
 	lp->close(err);
@@ -283,170 +280,310 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 
 TEST_CASE("logicmill::armi [ smoke ] { bad error category }")
 {
+	static const bstream::context<> stream_context({&armi::error_category()});
 
-	bool loop_stop_timer_handler_visited{false};
 	bool client_connect_timer_handler_visited{false};
 	bool client_connect_handler_visited{false};
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-
-	static const bstream::context<> foo_stream_context({&armi::error_category()});
-
-	rfoo::context_type foo_context{lp, foo_stream_context};
-
-
-	foo_context.loop(lp);
+	rfoo::remote context{lp, stream_context};
 
 	auto bar_impl = std::make_shared<foo::bar>();
 
-	foo_context.server().register_impl(bar_impl);
+	context.server().register_impl(bar_impl);
 
-	auto loop_exit_timer = lp->create_timer(err, [=,&loop_stop_timer_handler_visited](async::timer::ptr tp) {
-		std::error_code err;
-		tp->loop()->stop(err);
-		loop_stop_timer_handler_visited = true;
-		CHECK(!err);
-	});
-	loop_exit_timer->start(std::chrono::milliseconds{5000}, err);
+	END_LOOP(lp, 5000);
 
+	context.server().bind(
+			async::options{endpoint{address::v4_any(), 7001}},
+			err,
+			[&](rfoo::remote::server_context_type& server, std::error_code err) {
+				std::cout << "listener error handler: " << err.message() << std::endl;
+				CHECK(!err);
+				server.close(
+						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+			},
+			[](async::channel::ptr const& chan, std::error_code err) {
+				std::cout << "channel error handler: " << err.message() << std::endl;
+				CHECK(!err);
+			});
 	CHECK(!err);
 
-	async::ip::endpoint bind_ep{async::ip::address::v4_any(), 7001};
-	foo_context.server().bind(async::options{bind_ep}, err, 
-	[=,&foo_context](std::error_code err)
-	{
-		std::cout << "listener error handler: " << err.message() << std::endl;
-		CHECK(!err);
-		foo_context.server().close([=]() { std::cout << "server close handler called on listener error" << std::endl; });
-	},
-	[=](async::channel::ptr const& chan, std::error_code err)
-	{
-		std::cout << "channel error handler: " << err.message() << std::endl;
-		CHECK(!err);
-	});
-
-	CHECK(!err);
-
-	auto client_connect_timer = lp->create_timer(err, [&foo_context,&client_connect_timer_handler_visited,&client_connect_handler_visited](async::timer::ptr tp)
-	{
-		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
-		async::options connect_opt{connect_ep};
-		std::error_code err;
-		foo_context.client().connect(async::options{connect_ep}, err, [=,&foo_context,&client_connect_handler_visited](std::error_code err) {
-			CHECK(!err);
-			foo_context.client().proxy<foo::bar>()->freak_out(
-					[=](std::error_code err) {
-						CHECK(err == bstream::errc::invalid_err_category);
-						// CHECK(err == foo::errc::sun_exploded);
-						
-					});
-			client_connect_handler_visited = true;
-		});
+	auto client_connect_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
+		std::error_code     err;
+		context.client().connect(
+				async::options{endpoint{address::v4_loopback(), 7001}},
+				err, [&](rfoo::remote::client_context_type& client, std::error_code err) {
+					CHECK(!err);
+					client.proxy<foo::bar>().freak_out(
+							[](std::error_code err) { CHECK(err == bstream::errc::invalid_err_category); });
+					client_connect_handler_visited = true;
+				});
 		CHECK(!err);
 		client_connect_timer_handler_visited = true;
 	});
-
 	CHECK(!err);
 
 	client_connect_timer->start(std::chrono::milliseconds{2000}, err);
 	CHECK(!err);
 
 	lp->run(err);
-
 	CHECK(!err);
 
-	CHECK(loop_stop_timer_handler_visited);
 	CHECK(client_connect_timer_handler_visited);
 	CHECK(client_connect_handler_visited);
-
 	CHECK(bar_impl->freak_out_called);
 
 	lp->close(err);
 	CHECK(!err);
 }
 
+TEST_CASE("logicmill::armi [ smoke ] { close re-open client }")
+{
+	bool client_connect_timer_handler_visited{false};
+	bool client_connect_handler_visited{false};
 
-TEST_CASE("logicmill::armi [ smoke ] { error handling, new class containment }")
+	unsigned client_reply_handler_count{0};
+
+	std::error_code  err;
+	async::loop::ptr lp = async::loop::create();
+
+	rfoo::remote context{lp, rfoo::foo_stream_context};
+
+	auto bar_impl = std::make_shared<foo::bar>();
+
+	context.server().register_impl(bar_impl);
+
+	END_LOOP(lp, 5000);
+
+	context.server().bind(
+			async::options{endpoint{address::v4_any(), 7001}},
+			err,
+			[&](rfoo::remote::server_context_type& server, std::error_code err) {
+				std::cout << "listener error handler: " << err.message() << std::endl;
+				server.close(
+						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+			},
+			[](async::channel::ptr const& chan, std::error_code err) {
+				CHECK(err == async::errc::end_of_file);
+				std::cout << "channel error handler: " << err.message() << std::endl;
+				chan->close();
+			});
+
+	CHECK(!err);
+
+	DELAYED_ACTION_BEGIN(lp)
+	{
+		std::error_code err;
+		context.client().connect(
+				async::options{endpoint{address::v4_loopback(), 7001}},
+				err,
+				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+					CHECK(!err);
+					client.proxy<foo::bar>().increment(
+							[=,&client_reply_handler_count](std::error_code err, int result) {
+								CHECK(!err);
+								CHECK(result == 43);
+								++client_reply_handler_count;
+							},
+							42);
+				});
+		CHECK(!err);
+	}
+	DELAYED_ACTION_END(2000)
+
+	DELAYED_ACTION_BEGIN(lp)
+	{
+		context.client().close([&]()
+		{
+		std::error_code err;
+		context.client().connect(
+				async::options{endpoint{address::v4_loopback(), 7001}},
+				err,
+				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+					CHECK(!err);
+					client.proxy<foo::bar>().increment(
+							[=,&client_reply_handler_count](std::error_code err, int result) {
+								CHECK(!err);
+								CHECK(result == 128);
+								++client_reply_handler_count;
+							},
+							127);
+				});
+		CHECK(!err);
+		});
+	}
+	DELAYED_ACTION_END(3000)
+
+	lp->run(err);
+
+	context.server().close(nullptr);
+	CHECK(!err);
+	CHECK(client_reply_handler_count == 2);
+	CHECK(bar_impl->increment_called);
+
+	lp->close(err);
+	CHECK(!err);
+}
+
+TEST_CASE("logicmill::armi [ smoke ] { close server before client request }")
 {
 
-	bool loop_stop_timer_handler_visited{false};
 	bool client_connect_timer_handler_visited{false};
 	bool client_connect_handler_visited{false};
+
+	unsigned client_reply_handler_count{0};
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	static const bstream::context<> foo_stream_context({&armi::error_category(), &foo::error_category()});
-
-	nfoo::funk funky{lp, foo_stream_context};
-
-	// foo_context.loop(lp);
+	rfoo::remote context{lp, rfoo::foo_stream_context};
 
 	auto bar_impl = std::make_shared<foo::bar>();
 
-	funky.server().register_impl(bar_impl);
+	context.server().register_impl(bar_impl);
 
-	auto loop_exit_timer = lp->create_timer(err, [=,&loop_stop_timer_handler_visited](async::timer::ptr tp) {
+	END_LOOP(lp, 5000);
+
+	context.server().bind(
+			async::options{endpoint{address::v4_any(), 7001}},
+			err,
+			[&](rfoo::remote::server_context_type& server, std::error_code err) {
+				std::cout << "listener error handler: " << err.message() << std::endl;
+				server.close(
+						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+			},
+			[](async::channel::ptr const& chan, std::error_code err) {
+				CHECK(err == async::errc::end_of_file);
+				std::cout << "channel error handler: " << err.message() << std::endl;
+				chan->close();
+			});
+
+	CHECK(!err);
+
+	DELAYED_ACTION_BEGIN(lp)
+	{
 		std::error_code err;
-		tp->loop()->stop(err);
-		loop_stop_timer_handler_visited = true;
+		context.client().connect(
+				async::options{endpoint{address::v4_loopback(), 7001}},
+				err,
+				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+					CHECK(!err);
+					client.proxy<foo::bar>().increment(
+							[=,&client_reply_handler_count](std::error_code err, int result) {
+								CHECK(!err);
+								CHECK(result == 43);
+								++client_reply_handler_count;
+							},
+							42);
+				});
 		CHECK(!err);
-	});
-	loop_exit_timer->start(std::chrono::milliseconds{5000}, err);
+	}
+	DELAYED_ACTION_END(2000)
 
-	CHECK(!err);
-
-	async::ip::endpoint bind_ep{async::ip::address::v4_any(), 7001};
-	funky.server().bind(async::options{bind_ep}, err, 
-	[=,&funky](std::error_code err)
+	DELAYED_ACTION_BEGIN(lp)
 	{
-		std::cout << "listener error handler: " << err.message() << std::endl;
-		CHECK(!err);
-		funky.server().close([=]() { std::cout << "server close handler called on listener error" << std::endl; });
-	},
-	[=](async::channel::ptr const& chan, std::error_code err)
+		context.server().close();
+	}
+	DELAYED_ACTION_END(3000)
+
+	DELAYED_ACTION_BEGIN(lp)
 	{
-		std::cout << "channel error handler: " << err.message() << std::endl;
-		CHECK(!err);
-	});
-
-	CHECK(!err);
-
-	auto client_connect_timer = lp->create_timer(err, [&funky,&client_connect_timer_handler_visited,&client_connect_handler_visited](async::timer::ptr tp)
-	{
-		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
-		async::options connect_opt{connect_ep};
-		std::error_code err;
-		funky.client().connect(async::options{connect_ep}, err, [=,&funky,&client_connect_handler_visited](std::error_code err) {
-			CHECK(!err);
-			funky.client().proxy<foo::bar>()->freak_out(
-					[=](std::error_code err) {
-						CHECK(err == foo::errc::sun_exploded);
-					});
-			client_connect_handler_visited = true;
-		});
-		CHECK(!err);
-		client_connect_timer_handler_visited = true;
-	});
-
-	CHECK(!err);
-
-	client_connect_timer->start(std::chrono::milliseconds{2000}, err);
-	CHECK(!err);
+		context.client().proxy<foo::bar>().increment(
+			[=,&client_reply_handler_count](std::error_code err, int result)
+			{
+				std::cout << "client request on closed server, err is " << err.message() << std::endl;
+				++client_reply_handler_count;
+			},
+			127);
+	}
+	DELAYED_ACTION_END(4000)
 
 	lp->run(err);
-
 	CHECK(!err);
-
-	CHECK(loop_stop_timer_handler_visited);
-	CHECK(client_connect_timer_handler_visited);
-	CHECK(client_connect_handler_visited);
-
-	CHECK(bar_impl->freak_out_called);
+	CHECK(client_reply_handler_count == 2);
+	CHECK(bar_impl->increment_called);
 
 	lp->close(err);
 	CHECK(!err);
 }
 
+#endif
+
+TEST_CASE("logicmill::armi [ smoke ] { client closes before server sends reply }")
+{
+	std::error_code  err;
+	async::loop::ptr lp = async::loop::create();
+
+	rfoo::remote context{lp, rfoo::foo_stream_context};
+
+	context.server().register_impl(std::make_shared<foo::boo>(lp));
+
+	END_LOOP(lp, 5000);
+
+	unsigned channel_error_handler_count{0};
+	unsigned client_reply_handler_count{0};
+
+	context.server().bind(
+			async::options{endpoint{address::v4_any(), 7001}},
+			err,
+			[](rfoo::remote::server_context_type& server, std::error_code err) {
+				std::cout << "listener error handler: " << err.message() << std::endl;
+				server.close(
+						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+			},
+			[&](async::channel::ptr const& chan, std::error_code err) {
+
+				if (channel_error_handler_count == 0)
+				{
+					CHECK(err == async::errc::end_of_file);
+					++channel_error_handler_count;
+					chan->close();
+				}
+				else
+				{
+					CHECK(channel_error_handler_count == 1);
+					CHECK(err == armi::errc::channel_not_connected);
+					++channel_error_handler_count;
+				}
+			});
+
+	CHECK(!err);
+
+	DELAYED_ACTION_BEGIN(lp)
+	{
+		std::error_code err;
+		context.client().connect(
+				async::options{endpoint{address::v4_loopback(), 7001}},
+				err,
+				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+					CHECK(!err);
+					client.proxy<foo::boo>().decrement(
+							[=,&client_reply_handler_count](std::error_code err, int result) {
+								++client_reply_handler_count;
+								CHECK(err == std::errc::operation_canceled);
+							},
+							1);
+				});
+		CHECK(!err);
+	}
+	DELAYED_ACTION_END(1000)
+
+	DELAYED_ACTION_BEGIN(lp)
+	{
+		context.client().close();
+	}
+	DELAYED_ACTION_END(2000)
+
+	lp->run(err);
+	CHECK(!err);
+
+	CHECK(channel_error_handler_count == 2);
+	CHECK(client_reply_handler_count == 1);
+	CHECK(context.server().get_impl<foo::boo>()->decrement_called);
+
+	lp->close(err);
+	CHECK(!err);
+}

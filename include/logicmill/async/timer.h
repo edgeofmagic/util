@@ -46,12 +46,10 @@ public:
 	virtual ~timer() {}
 
 	virtual void
-	start(std::chrono::milliseconds timeout, std::error_code& err)
-			= 0;
+	start(std::chrono::milliseconds timeout, std::error_code& err) = 0;
 
 	virtual void
-	stop(std::error_code& err)
-			= 0;
+	stop(std::error_code& err) = 0;
 
 	virtual void
 	close() = 0;

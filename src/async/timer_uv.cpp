@@ -105,7 +105,6 @@ void
 timer_uv::on_timer_close(uv_handle_t* handle)
 {
 	assert(uv_handle_get_type(handle) == uv_handle_type::UV_TIMER);
-	// auto timer_handle = reinterpret_cast< uv_timer_t* >( handle );
 	auto self_raw_ptr = reinterpret_cast<timer_handle_data*>(handle->data)->m_impl_ptr.get();
 	assert(reinterpret_cast<uv_handle_t*>(&(self_raw_ptr->m_uv_timer)) == handle);
 	self_raw_ptr->clear();
@@ -120,7 +119,6 @@ timer_uv::on_timer_expire(uv_timer_t* handle)
 
 	if (!uv_is_active(reinterpret_cast<uv_handle_t*>(handle)))
 	{
-		// std::cout << "timer refcount is " << data->m_impl_ptr.use_count() << std::endl;
 		if (data->m_impl_ptr.use_count() <= 1)
 		{
 			// The timer is not active. If the self-reference ( in m_data ) is the only extant reference,

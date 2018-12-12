@@ -54,9 +54,9 @@
 #include <boost/preprocessor/list/for_each_i.hpp>
 #include <logicmill/util/preprocessor.h>
 
-#define ARMI_CONTEXT_A(context_name, ...) ARMI_CONTEXT_A_(context_name, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+#define ARMI_CONTEXT(context_name, ...) ARMI_CONTEXT_(context_name, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
-#define ARMI_CONTEXT_A_(context_name, ifaces_seq)                                                                      \
+#define ARMI_CONTEXT_(context_name, ifaces_seq)                                                                        \
 	class context_name                                                                                                 \
 	{                                                                                                                  \
 	public:                                                                                                            \
@@ -66,25 +66,27 @@
 		class _stub;                                                                                                   \
 		using context_type = logicmill::armi::                                                                         \
 				remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>;   \
+		using client_context_type = context_type::client_context_type;                                                 \
+		using server_context_type = context_type::server_context_type;                                                 \
 		context_name(                                                                                                  \
 				async::loop::ptr             lp             = async::loop::get_default(),                              \
 				bstream::context_base const& stream_context = armi::get_default_stream_context())                      \
 			: m_context{lp, stream_context}                                                                            \
 		{}                                                                                                             \
-		context_type::client_context_type&                                                                             \
+		client_context_type&                                                                                           \
 		client()                                                                                                       \
 		{                                                                                                              \
 			return m_context.client();                                                                                 \
 		}                                                                                                              \
-		context_type::server_context_type&                                                                             \
+		server_context_type&                                                                                           \
 		server()                                                                                                       \
 		{                                                                                                              \
 			return m_context.server();                                                                                 \
 		}                                                                                                              \
-                                                                                                                       \
 	private:                                                                                                           \
 		context_type m_context;                                                                                        \
 	};
+/**/
 
 #define ARMI_INTERFACES(...) ARMI_INTERFACES_(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
@@ -101,11 +103,11 @@
 /**/
 
 
-#define ARMI_INTERFACE_A(context_name, iface, ...)                                                                     \
-	ARMI_INTERFACE_A_(context_name, iface, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))                                      \
+#define ARMI_INTERFACE(context_name, iface, ...)                                                                       \
+	ARMI_INTERFACE_(context_name, iface, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))                                        \
 /**/
 
-#define ARMI_INTERFACE_A_(context_name, iface, methods_seq)                                                            \
+#define ARMI_INTERFACE_(context_name, iface, methods_seq)                                                              \
 	template<>                                                                                                         \
 	class context_name::_proxy<iface> : public logicmill::armi::interface_proxy                                        \
 	{                                                                                                                  \
@@ -130,6 +132,7 @@
 	};                                                                                                                 \
 /**/
 
+#if 0
 #define ARMI_INTERFACE(iface, ...)                                                                                     \
 	ARMI_INTERFACE_(iface, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))                                                      \
 /**/
@@ -159,6 +162,8 @@
 	};                                                                                                                 \
 /**/
 
+#endif
+
 #define ARMI_DO_METHOD_LIST_(r, iface, n, method) BOOST_PP_COMMA_IF(n) & iface ::method 
 /**/
 
@@ -166,6 +171,7 @@
 	logicmill::armi::method_proxy<decltype(&iface ::method)> method{context(), index(), n}; 
 /**/
 
+#if 0
 #define ARMI_CONTEXT(...)                                                                                              \
 	BOOST_PP_IIF(LGCML_PP_ISEMPTY(__VA_ARGS__), ARMI_CONTEXT_NO_ERRCATEGS_, ARMI_CONTEXT_WITH_ERRCATEGS_)              \
 	(__VA_ARGS__) 
@@ -214,6 +220,7 @@
 
 #define ARMI_LIST_ERRCATEG_(r, data, n, err_categ) BOOST_PP_COMMA_IF(n) & (err_categ()) 
 /**/
+#endif
 
 #endif /* LOGICMILL_ARMI_MACROS_H */
 

@@ -25,20 +25,26 @@
 #include <logicmill/bstream/error_category_context.h>
 #include <logicmill/bstream/error.h>
 
+#include <iostream>
+
 using namespace logicmill;
 using namespace bstream;
 
-const error_category_context::category_init_list error_category_context::m_default_categories =
+
+error_category_context::category_init_list const&
+error_category_context::default_categories()
 {
-	&std::system_category(),
-    &std::generic_category(),
-    &bstream::error_category()
+	static const category_init_list catlist
+			= {&std::system_category(), &std::generic_category(), &bstream::error_category()};
+	return catlist;
 };
+
 
 error_category_context::error_category_context( category_init_list init_list )
 {
-	m_category_vector.reserve( init_list.size() + m_default_categories.size() );
-	m_category_vector.insert(m_category_vector.end(), m_default_categories.begin(), m_default_categories.end() );
+	auto& def_categories = default_categories();
+	m_category_vector.reserve( init_list.size() + def_categories.size() );
+	m_category_vector.insert(m_category_vector.end(), def_categories.begin(), def_categories.end() );
 	m_category_vector.insert(m_category_vector.end(), init_list.begin(), init_list.end() );
 
 	for ( auto i = 0u; i < m_category_vector.size(); ++i )
@@ -49,8 +55,9 @@ error_category_context::error_category_context( category_init_list init_list )
 
 error_category_context::error_category_context()
 {
-	m_category_vector.reserve( m_default_categories.size() );
-	m_category_vector.insert(m_category_vector.end(), m_default_categories.begin(), m_default_categories.end() );
+	auto& def_categories = default_categories();
+	m_category_vector.reserve( def_categories.size() );
+	m_category_vector.insert(m_category_vector.end(), def_categories.begin(), def_categories.end() );
 
 	for ( auto i = 0u; i < m_category_vector.size(); ++i )
 	{

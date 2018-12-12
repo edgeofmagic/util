@@ -33,15 +33,15 @@
 #include <unordered_map>
 
 #if 1
-#define LOGICMILL_ASYNC_USE_SENDER_BASE( _source_base_ )						\
-	using _source_base_::fit;												\
-	using _source_base_::get_fitting;											\
-	using _source_base_::send;												\
-	using _source_base_::is_paired;											\
+#define LOGICMILL_ASYNC_USE_SENDER_BASE(_source_base_)                                                                 \
+	using _source_base_::fit;                                                                                          \
+	using _source_base_::get_fitting;                                                                                  \
+	using _source_base_::send;                                                                                         \
+	using _source_base_::is_paired;                                                                                    \
 /**/
 
-#define LOGICMILL_ASYNC_USE_RECEIVER_BASE( _sink_base_ )					\
-	using _sink_base_::get_fitting;											\
+#define LOGICMILL_ASYNC_USE_RECEIVER_BASE(_sink_base_)                                                                 \
+	using _sink_base_::get_fitting;                                                                                    \
 /**/
 # endif 
 

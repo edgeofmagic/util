@@ -14,55 +14,54 @@
 #ifndef LOGICMILL_ARMI_CLIENT_CONTEXT_BUILDER_H
 #define LOGICMILL_ARMI_CLIENT_CONTEXT_BUILDER_H
 
-#include <memory>
-#include <vector>
 #include <logicmill/armi/client_context_base.h>
 #include <logicmill/armi/interface_proxy.h>
+#include <memory>
+#include <vector>
 
 namespace logicmill
 {
 namespace armi
 {
-	template <class... Args>
-	class client_context_builder : public client_context_base
-	{
-	public:
-		client_context_builder(async::loop::ptr const& lp, bstream::context_base const& stream_context)
+template<class... Args>
+class client_context_builder : public client_context_base
+{
+public:
+	client_context_builder(async::loop::ptr const& lp, bstream::context_base const& stream_context)
 		: client_context_base{lp, stream_context}
-		{
-			m_proxies.reserve(sizeof...(Args));
-			append_proxies<Args...>();
-		}
+	{
+		m_proxies.reserve(sizeof...(Args));
+		append_proxies<Args...>();
+	}
 
-		template<class T>
-		void
-		append_proxies()
-		{
-			append_proxy<T>();
-		}
+	template<class T>
+	void
+	append_proxies()
+	{
+		append_proxy<T>();
+	}
 
-		template<class First_, class... Args_>
-		typename std::enable_if<(sizeof...(Args_) > 0)>::type
-		append_proxies()
-		{
-			append_proxy<First_>();
-			append_proxies<Args_...>();
-		}
+	template<class First_, class... Args_>
+	typename std::enable_if<(sizeof...(Args_) > 0)>::type
+	append_proxies()
+	{
+		append_proxy<First_>();
+		append_proxies<Args_...>();
+	}
 
-		template<class T>
-		void
-		append_proxy()
-		{
-			std::size_t index = m_proxies.size();
-			m_proxies.push_back(std::make_shared<T>(*this, index));
-		}
+	template<class T>
+	void
+	append_proxy()
+	{
+		std::size_t index = m_proxies.size();
+		m_proxies.push_back(std::make_unique<T>(*this, index));
+	}
 
-	protected:
-		std::vector<std::shared_ptr<armi::interface_proxy>> m_proxies;
-	};
+protected:
+	std::vector<std::unique_ptr<armi::interface_proxy>> m_proxies;
+};
 
-} // namespace armi
-} // namespace logicmill
+}    // namespace armi
+}    // namespace logicmill
 
 #endif /* LOGICMILL_ARMI_CLIENT_CONTEXT_BUILDER_H */
-

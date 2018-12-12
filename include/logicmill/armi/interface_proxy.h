@@ -39,43 +39,37 @@ namespace logicmill
 {
 namespace armi
 {
-	class client_context_base;
+class client_context_base;
 
-	class interface_proxy
+class interface_proxy
+{
+public:
+	inline interface_proxy(client_context_base& context, std::size_t index) : index_{index}, context_{context} {}
+
+	virtual ~interface_proxy();
+
+	inline std::size_t
+	index() const
 	{
-	public:
-	
-		inline
-		interface_proxy(client_context_base& context, std::size_t index) : index_{index}, context_{context}
-		{}
+		return index_;
+	}
 
-		virtual
-		~interface_proxy();
+	inline client_context_base&
+	context()
+	{
+		return context_;
+	}
 
-		inline std::size_t
-		index() const
-		{
-			return index_;
-		}
+	interface_proxy&
+	timeout(millisecs timeout);
 
-		inline client_context_base&
-		context()
-		{
-			return context_;
-		}
+private:
+	const std::size_t    index_;
+	client_context_base& context_;
+};
 
-		interface_proxy& 
-		timeout(millisecs timeout);
-
-	private:
-
-		const std::size_t index_;
-		client_context_base& context_;
-	};
-
-} // namespace armi
-} // namespace logicmill
+}    // namespace armi
+}    // namespace logicmill
 
 
 #endif /* LOGICMILL_ARMI_INTERFACE_PROXY_H */
-

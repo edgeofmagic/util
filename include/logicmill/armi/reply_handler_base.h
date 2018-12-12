@@ -32,27 +32,30 @@
 #ifndef LOGICMILL_ARMI_REPLY_HANDLER_BASE_H
 #define LOGICMILL_ARMI_REPLY_HANDLER_BASE_H
 
-#include <memory>
 #include <logicmill/bstream/ibstream.h>
+#include <memory>
 #include <system_error>
 
 namespace logicmill
 {
 namespace armi
 {
-	
-	class reply_handler_base
-	{
-	public:
-		virtual ~reply_handler_base() {}
-		using ptr = std::unique_ptr<reply_handler_base>;
-		virtual void handle_reply(bstream::ibstream& is) = 0;
-		virtual void cancel(std::error_code ec) = 0;
-	};
-	
-} // namespace armi
-} // namespace logicmill
+
+class reply_handler_base
+{
+public:
+	virtual ~reply_handler_base() {}
+	using ptr = std::unique_ptr<reply_handler_base>;
+	virtual void
+	handle_reply(bstream::ibstream& is)
+			= 0;
+	virtual void
+	cancel(std::error_code ec)
+			= 0;
+};
+
+}    // namespace armi
+}    // namespace logicmill
 
 
 #endif /* LOGICMILL_ARMI_REPLY_HANDLER_BASE_H */
-

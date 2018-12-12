@@ -28,39 +28,39 @@ using namespace logicmill;
 using namespace bstream;
 
 void
-memory::sink::really_overflow( size_type n, std::error_code& err )
+memory::sink::really_overflow(size_type n, std::error_code& err)
 {
 	err.clear();
-	assert( std::less_equal< byte_type * >()( m_next, m_end ) );
-	assert( ( m_next - m_base ) + n > m_buf.size() );
-	auto pos = ppos();
-	size_type required = ( m_next - m_base ) + n;
-	resize( required, err );
-	if ( ! err )
+	assert(std::less_equal<byte_type*>()(m_next, m_end));
+	assert((m_next - m_base) + n > m_buf.size());
+	auto      pos      = ppos();
+	size_type required = (m_next - m_base) + n;
+	resize(required, err);
+	if (!err)
 	{
 		auto new_base = m_buf.data();
-		set_ptrs( new_base, new_base + pos, new_base + m_buf.capacity() );
+		set_ptrs(new_base, new_base + pos, new_base + m_buf.capacity());
 	}
 }
 
 void
-memory::sink::resize( size_type size, std::error_code& err )
+memory::sink::resize(size_type size, std::error_code& err)
 {
 	err.clear();
-	size_type cushioned_size = ( size * 3 ) / 2;
+	size_type cushioned_size = (size * 3) / 2;
 
-	if ( ! m_buf.is_expandable() )
+	if (!m_buf.is_expandable())
 	{
-		err = make_error_code( std::errc::no_buffer_space );
+		err = make_error_code(std::errc::no_buffer_space);
 		goto exit;
 	}
 
 	// force a hard lower bound to avoid non-resizing dilemma in resizing, when cushioned == size == 1
-	m_buf.expand( std::max( 16UL, cushioned_size ) );
+	m_buf.expand(std::max(16UL, cushioned_size));
 
-	if ( m_buf.capacity() < cushioned_size )
+	if (m_buf.capacity() < cushioned_size)
 	{
-		err = make_error_code( std::errc::no_buffer_space );
+		err = make_error_code(std::errc::no_buffer_space);
 		goto exit;
 	}
 
@@ -69,78 +69,78 @@ exit:
 }
 
 bool
-memory::sink::is_valid_position( position_type pos ) const
+memory::sink::is_valid_position(position_type pos) const
 {
 	bool result = false;
-	if ( m_buf.is_expandable() )
+	if (m_buf.is_expandable())
 	{
 		result = pos >= 0;
 	}
 	else
 	{
-		result = ( pos >= 0 ) && ( pos <= ( m_end - m_base ) );
+		result = (pos >= 0) && (pos <= (m_end - m_base));
 	}
-    return result;
+	return result;
 }
 
-memory::sink& 
+memory::sink&
 memory::sink::clear() noexcept
 {
 	reset_ptrs();
 	reset_high_water_mark();
 	m_did_jump = false;
-	m_dirty = false;
+	m_dirty    = false;
 	return *this;
 }
 
 const_buffer
 memory::sink::get_buffer()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
-	return const_buffer{ m_buf };
+	m_buf.size(get_high_watermark());
+	return const_buffer{m_buf};
 }
 
 mutable_buffer&
 memory::sink::get_buffer_ref()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
+	m_buf.size(get_high_watermark());
 	return m_buf;
 }
 
 const_buffer
 memory::sink::release_buffer()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
-    reset_high_water_mark();
+	m_buf.size(get_high_watermark());
+	reset_high_water_mark();
 	m_did_jump = false;
-    m_dirty = false;
-    set_ptrs( nullptr, nullptr, nullptr );
-    return const_buffer{ std::move( m_buf ) };
+	m_dirty    = false;
+	set_ptrs(nullptr, nullptr, nullptr);
+	return const_buffer{std::move(m_buf)};
 }
 
 mutable_buffer
 memory::sink::release_mutable_buffer()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
-    m_buf.size( get_high_watermark() );
-    reset_high_water_mark();
+	m_buf.size(get_high_watermark());
+	reset_high_water_mark();
 	m_did_jump = false;
-    m_dirty = false;
-    set_ptrs( nullptr, nullptr, nullptr );
-    return std::move( m_buf );
+	m_dirty    = false;
+	set_ptrs(nullptr, nullptr, nullptr);
+	return std::move(m_buf);
 }

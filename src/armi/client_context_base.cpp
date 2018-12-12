@@ -29,12 +29,11 @@ using namespace logicmill;
 using namespace armi;
 
 client_context_base::client_context_base(async::loop::ptr const& lp, bstream::context_base const& cntxt)
-:
-m_loop{lp},
-m_stream_context{cntxt},
-m_next_request_ordinal{1}, 
-m_default_timeout{millisecs{0}}, 
-m_transient_timeout{millisecs{0}}
+	: m_loop{lp},
+	  m_stream_context{cntxt},
+	  m_next_request_ordinal{1},
+	  m_default_timeout{millisecs{0}},
+	  m_transient_timeout{millisecs{0}}
 {}
 
 void
@@ -61,15 +60,34 @@ client_context_base::~client_context_base()
 	close();
 }
 
-void
-client_context_base::close()
+bool
+client_context_base::really_close(std::error_code err)
 {
-	cancel_all_reply_handlers(make_error_code(std::errc::operation_canceled));
+	bool result{false};
+	cancel_all_reply_handlers(err);
 	if (m_channel)
 	{
-		m_channel->close();
+		result = m_channel->close([=](async::channel::ptr chan) {
+			m_channel.reset();
+			if (m_on_close)
+			{
+				m_on_close();
+				m_on_close = nullptr;
+			}
+		});
 	}
-	m_channel.reset();
+	if (!result)
+	{
+		m_channel.reset();
+		m_on_close = nullptr;
+	}
+	return result;
+}
+
+bool
+client_context_base::really_close()
+{
+	return really_close(make_error_code(std::errc::operation_canceled));
 }
 
 void
@@ -77,18 +95,20 @@ client_context_base::send_request(std::uint64_t req_ord, bstream::ombstream& os,
 {
 	std::error_code err;
 	check_async(err);
-	if (err) goto exit;
+	if (err)
+		goto exit;
 
 	if (timeout.count() > 0)
 	{
-		auto timer = m_loop->create_timer(err, [=](async::timer::ptr tp)
-		{
+		auto timer = m_loop->create_timer(err, [=](async::timer::ptr tp) {
 			cancel_handler(req_ord, std::make_error_code(std::errc::timed_out));
 		});
-		if (err) goto exit;
+		if (err)
+			goto exit;
 
 		timer->start(timeout, err);
-		if (err) goto exit;
+		if (err)
+			goto exit;
 	}
 
 	m_channel->write(os.release_mutable_buffer(), err);
@@ -104,7 +124,7 @@ bool
 client_context_base::invoke_handler(bstream::ibstream& is)
 {
 	auto req_ord = is.read_as<std::uint64_t>();
-	auto it = m_reply_handler_map.find(req_ord);
+	auto it      = m_reply_handler_map.find(req_ord);
 	if (it == m_reply_handler_map.end())
 	{
 		return false;
@@ -137,7 +157,7 @@ client_context_base::cancel_handler(std::uint64_t req_ord, std::error_code ec)
 }
 
 bool
-client_context_base::cancel_handler(std::uint64_t req_ord) // no notification
+client_context_base::cancel_handler(std::uint64_t req_ord)    // no notification
 {
 	auto it = m_reply_handler_map.find(req_ord);
 	if (it == m_reply_handler_map.end())
@@ -154,29 +174,8 @@ client_context_base::cancel_handler(std::uint64_t req_ord) // no notification
 void
 client_context_base::cancel_all_reply_handlers(std::error_code ec)
 {
-	for (auto it = m_reply_handler_map.begin();
-		 it != m_reply_handler_map.end();
-		 it = m_reply_handler_map.erase(it))
+	for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); it = m_reply_handler_map.erase(it))
 	{
 		it->second.handler->cancel(ec);
 	}
-}
-
-void
-client_context_base::connect_channel_handler::operator()(async::channel::ptr const& chan, std::error_code err)
-{
-	if (err)
-	{
-		m_context.m_channel.reset();
-	}
-	else
-	{
-		m_context.m_channel = chan;
-		m_context.m_channel->start_read(
-				err, [=](async::channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err) {
-					assert(chan == m_context.m_channel);
-					m_context.on_read(std::move(buf), err);
-				});
-	}
-	m_handler(err);
 }

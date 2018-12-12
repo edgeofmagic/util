@@ -22,18 +22,18 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/source.h>
 #include <logicmill/bstream/error.h>
+#include <logicmill/bstream/source.h>
 
 using namespace logicmill;
 using namespace bstream;
 
 position_type
-source::really_seek( position_type pos, std::error_code& err )
+source::really_seek(position_type pos, std::error_code& err)
 {
-    err.clear();
-    m_next = m_base + pos;
-    return pos;
+	err.clear();
+	m_next = m_base + pos;
+	return pos;
 }
 
 position_type
@@ -43,11 +43,11 @@ source::really_get_position() const
 }
 
 size_type
-source::really_underflow( std::error_code& err )
+source::really_underflow(std::error_code& err)
 {
-    err.clear();
+	err.clear();
 	m_next = m_end;
-    return 0UL;
+	return 0UL;
 }
 
 void
@@ -62,207 +62,212 @@ source::really_get_size() const
 	return m_end - m_base;
 }
 
-byte_type 
-source::get( std::error_code& err )
+byte_type
+source::get(std::error_code& err)
 {
 	err.clear();
-    byte_type result = 0;
-    if ( m_next >= m_end )
-    {
-        assert( m_next == m_end );
-        auto available = underflow( err );
-        if ( err ) goto exit;
-        if ( available < 1 )
-        {
-            err = make_error_code( bstream::errc::read_past_end_of_stream );
-            goto exit;
-        }
-    }
-    assert( m_next < m_end );
-    result = *m_next++;
+	byte_type result = 0;
+	if (m_next >= m_end)
+	{
+		assert(m_next == m_end);
+		auto available = underflow(err);
+		if (err)
+			goto exit;
+		if (available < 1)
+		{
+			err = make_error_code(bstream::errc::read_past_end_of_stream);
+			goto exit;
+		}
+	}
+	assert(m_next < m_end);
+	result = *m_next++;
 exit:
-    return result;
+	return result;
 }
 
 byte_type
 source::get()
 {
-    if ( m_next >= m_end )
-    {
-        assert( m_next == m_end );
-        if ( underflow() < 1 )
-        {
-            throw std::system_error{ make_error_code( bstream::errc::read_past_end_of_stream ) };
-        }
-    }
-    assert( m_next < m_end );
-    return *m_next++;
+	if (m_next >= m_end)
+	{
+		assert(m_next == m_end);
+		if (underflow() < 1)
+		{
+			throw std::system_error{make_error_code(bstream::errc::read_past_end_of_stream)};
+		}
+	}
+	assert(m_next < m_end);
+	return *m_next++;
 }
 
 byte_type
-source::peek( std::error_code& err )
+source::peek(std::error_code& err)
 {
 	err.clear();
-    byte_type result = 0;
-    if ( m_next >= m_end )
-    {
-        assert( m_next == m_end );
-        auto available = underflow( err );
-        if ( err ) goto exit;
-        if ( available < 1 )
-        {
-            err = make_error_code( bstream::errc::read_past_end_of_stream );
-            goto exit;
-        }
-    }
-    assert( m_next < m_end );
-    result = * m_next;
+	byte_type result = 0;
+	if (m_next >= m_end)
+	{
+		assert(m_next == m_end);
+		auto available = underflow(err);
+		if (err)
+			goto exit;
+		if (available < 1)
+		{
+			err = make_error_code(bstream::errc::read_past_end_of_stream);
+			goto exit;
+		}
+	}
+	assert(m_next < m_end);
+	result = *m_next;
 exit:
-    return result;
+	return result;
 }
 
 byte_type
 source::peek()
 {
-    if ( m_next >= m_end )
-    {
-        assert( m_next == m_end );
-        if ( underflow() < 1 )
-        {
-            throw std::system_error{ make_error_code( bstream::errc::read_past_end_of_stream ) };
-        }
-    }
-    assert( m_next < m_end );
-    return * m_next;
+	if (m_next >= m_end)
+	{
+		assert(m_next == m_end);
+		if (underflow() < 1)
+		{
+			throw std::system_error{make_error_code(bstream::errc::read_past_end_of_stream)};
+		}
+	}
+	assert(m_next < m_end);
+	return *m_next;
 }
 
 shared_buffer
-source::get_shared_slice( size_type n, std::error_code& err )
+source::get_shared_slice(size_type n, std::error_code& err)
 {
 	err.clear();
-	mutable_buffer buf{ n };
-	auto got = getn( buf.data(), n, err );
-	if ( err )
+	mutable_buffer buf{n};
+	auto           got = getn(buf.data(), n, err);
+	if (err)
 	{
 		return shared_buffer{};
 	}
 	else
 	{
-		assert( n == got );
-		buf.size( got );
-		return shared_buffer{ std::move( buf ) };
+		assert(n == got);
+		buf.size(got);
+		return shared_buffer{std::move(buf)};
 	}
 }
 
 shared_buffer
-source::get_shared_slice( size_type n )
+source::get_shared_slice(size_type n)
 {
-    mutable_buffer buf{ n };
-    auto got = getn( buf.data(), n );
-    buf.size( got );
-	return shared_buffer{ std::move( buf ) };
+	mutable_buffer buf{n};
+	auto           got = getn(buf.data(), n);
+	buf.size(got);
+	return shared_buffer{std::move(buf)};
 }
 
 const_buffer
-source::get_slice( size_type n, std::error_code& err )
+source::get_slice(size_type n, std::error_code& err)
 {
 	err.clear();
-	mutable_buffer buf{ n };
-	auto got = getn( buf.data(), n, err );
-	if ( err )
+	mutable_buffer buf{n};
+	auto           got = getn(buf.data(), n, err);
+	if (err)
 	{
 		return const_buffer{};
 	}
 	else
 	{
-		assert( n == got );
-		buf.size( got );
-		return const_buffer{ std::move( buf ) };
+		assert(n == got);
+		buf.size(got);
+		return const_buffer{std::move(buf)};
 	}
 }
 
 const_buffer
-source::get_slice( size_type n )
+source::get_slice(size_type n)
 {
-    mutable_buffer buf{ n };
-    auto got = getn( buf.data(), n );
-    buf.size( got );
-	return const_buffer{ std::move( buf ) };
+	mutable_buffer buf{n};
+	auto           got = getn(buf.data(), n);
+	buf.size(got);
+	return const_buffer{std::move(buf)};
 }
 
-size_type 
-source::getn( byte_type* dst, size_type n, std::error_code& err )
+size_type
+source::getn(byte_type* dst, size_type n, std::error_code& err)
 {
 	err.clear();
 	size_type result = 0;
 	// optimize for the available case
-	if ( n < m_end - m_next )
+	if (n < m_end - m_next)
 	{
-		::memcpy( dst, m_next, n );
+		::memcpy(dst, m_next, n);
 		m_next += n;
 		result = n;
 	}
 	else
 	{
-		byte_type* p = dst;
+		byte_type* p    = dst;
 		byte_type* endp = dst + n;
-		while ( p < endp )
+		while (p < endp)
 		{
-			if ( m_next >= m_end )
+			if (m_next >= m_end)
 			{
-				assert( m_next == m_end );
-				auto available = underflow( err );
-				if ( err ) goto exit;
-				if ( available < 1 )
+				assert(m_next == m_end);
+				auto available = underflow(err);
+				if (err)
+					goto exit;
+				if (available < 1)
 				{
-					err = make_error_code( bstream::errc::read_past_end_of_stream );
+					err = make_error_code(bstream::errc::read_past_end_of_stream);
 					goto exit;
 				}
 			}
-			size_type chunk_size = std::min( static_cast< size_type >( m_end - m_next ), static_cast< size_type >( endp - p ) );
-			if ( chunk_size < 1 ) break;
-			::memcpy( p, m_next, chunk_size );
+			size_type chunk_size = std::min(static_cast<size_type>(m_end - m_next), static_cast<size_type>(endp - p));
+			if (chunk_size < 1)
+				break;
+			::memcpy(p, m_next, chunk_size);
 			p += chunk_size;
 			m_next += chunk_size;
 		}
-		result = static_cast< size_type >( p - dst );
+		result = static_cast<size_type>(p - dst);
 	}
 exit:
 	return result;
 }
 
-size_type 
-source::getn( byte_type* dst, size_type n )
+size_type
+source::getn(byte_type* dst, size_type n)
 {
 	size_type result = 0;
 	// optimize for the available case
-	if ( n < m_end - m_next )
+	if (n < m_end - m_next)
 	{
-		::memcpy( dst, m_next, n );
+		::memcpy(dst, m_next, n);
 		m_next += n;
 		result = n;
 	}
 	else
 	{
-		byte_type* p = dst;
+		byte_type* p    = dst;
 		byte_type* endp = dst + n;
-		while ( p < endp )
+		while (p < endp)
 		{
-			if ( m_next >= m_end )
+			if (m_next >= m_end)
 			{
-				assert( m_next == m_end );
-				if ( underflow() < 1 )
+				assert(m_next == m_end);
+				if (underflow() < 1)
 				{
-            		throw std::system_error{ make_error_code( bstream::errc::read_past_end_of_stream ) };
+					throw std::system_error{make_error_code(bstream::errc::read_past_end_of_stream)};
 				}
 			}
-			size_type chunk_size = std::min( static_cast< size_type >( m_end - m_next ), static_cast< size_type >( endp - p ) );
-			if ( chunk_size < 1 ) break;
-			::memcpy( p, m_next, chunk_size );
+			size_type chunk_size = std::min(static_cast<size_type>(m_end - m_next), static_cast<size_type>(endp - p));
+			if (chunk_size < 1)
+				break;
+			::memcpy(p, m_next, chunk_size);
 			p += chunk_size;
 			m_next += chunk_size;
 		}
-		result = static_cast< size_type >( p - dst );
+		result = static_cast<size_type>(p - dst);
 	}
 	return result;
 }
@@ -270,92 +275,93 @@ source::getn( byte_type* dst, size_type n )
 size_type
 source::underflow()
 {
-    std::error_code err;
-    auto available = really_underflow( err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
-    return available;
+	std::error_code err;
+	auto            available = really_underflow(err);
+	if (err)
+	{
+		throw std::system_error{err};
+	}
+	return available;
 }
 
 position_type
-source::new_position( offset_type offset, seek_anchor where ) const
+source::new_position(offset_type offset, seek_anchor where) const
 {
-    position_type result = bstream::npos;
+	position_type result = bstream::npos;
 
-    switch ( where )
-    {
-        case seek_anchor::current:
-        {
-            result = really_get_position() + offset;
-        }
-        break;
+	switch (where)
+	{
+		case seek_anchor::current:
+		{
+			result = really_get_position() + offset;
+		}
+		break;
 
-        case seek_anchor::end:
-        {
-            result = really_get_size() + offset;
-        }
-        break;
+		case seek_anchor::end:
+		{
+			result = really_get_size() + offset;
+		}
+		break;
 
-        case seek_anchor::begin:
-        {
-            result = offset;
-        }
-        break;
-    }
+		case seek_anchor::begin:
+		{
+			result = offset;
+		}
+		break;
+	}
 
 	return result;
 }
 
 position_type
-source::position( offset_type offset, seek_anchor where, std::error_code& err )
+source::position(offset_type offset, seek_anchor where, std::error_code& err)
 {
-    err.clear();
-	position_type result = new_position( offset, where );
+	err.clear();
+	position_type result = new_position(offset, where);
 
-    if ( result < 0 || result > ( really_get_size() ) )
-    {
-        err = make_error_code( std::errc::invalid_seek );
-        result = bstream::npos;
-        goto exit;
-    }
+	if (result < 0 || result > (really_get_size()))
+	{
+		err    = make_error_code(std::errc::invalid_seek);
+		result = bstream::npos;
+		goto exit;
+	}
 
-	result = really_seek( result, err );
-	if ( err ) goto exit;
+	result = really_seek(result, err);
+	if (err)
+		goto exit;
 
 exit:
 	return result;
 }
 
 position_type
-source::position( position_type pos )
+source::position(position_type pos)
 {
-    std::error_code err;
-    auto result = position( static_cast< offset_type >( pos ), seek_anchor::begin, err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
-    return result;
+	std::error_code err;
+	auto            result = position(static_cast<offset_type>(pos), seek_anchor::begin, err);
+	if (err)
+	{
+		throw std::system_error{err};
+	}
+	return result;
 }
 
 position_type
-source::position( offset_type offset, seek_anchor where )
+source::position(offset_type offset, seek_anchor where)
 {
-    std::error_code err;
-    auto result = position( offset, where, err );
-    if ( err )
-    {
-        throw std::system_error{ err };
-    }
-    return result;
+	std::error_code err;
+	auto            result = position(offset, where, err);
+	if (err)
+	{
+		throw std::system_error{err};
+	}
+	return result;
 }
 
 position_type
-source::position( position_type pos, std::error_code& err )
+source::position(position_type pos, std::error_code& err)
 {
-	return position( static_cast< offset_type >( pos ), seek_anchor::begin, err );
+	return position(static_cast<offset_type>(pos), seek_anchor::begin, err);
 }
 
 position_type

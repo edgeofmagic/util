@@ -54,10 +54,12 @@ public:
 	index_type
 	index_of_category(std::error_category const& category) const;
 
+	static category_init_list const&
+	default_categories();
+
 private:
 	category_vector                 m_category_vector;
 	category_map                    m_category_map;
-	static const category_init_list m_default_categories;
 };
 
 }    // namespace bstream

@@ -53,6 +53,8 @@ public:
 	template<class T>
 	using stub_of = typename traits::replace_arg<typename traits::first_arg<stub_list_carrier>::type, T>::type;
 
+	using server_error_handler = std::function<void(server_context& server, std::error_code ec)>;
+
 	server_context(
 			async::loop::ptr const&      lp             = async::loop::get_default(),
 			bstream::context_base const& stream_context = armi::get_default_stream_context())
@@ -65,7 +67,82 @@ public:
 	{
 		logicmill::armi::server_context_base::set_impl(traits::index_from<T, target_list_carrier>::value, impl_ptr);
 	}
+
+	template<class T>
+	std::shared_ptr<T>
+	get_impl()
+	{
+		return std::static_pointer_cast<T>(
+				server_context_base::get_impl(traits::index_from<T, target_list_carrier>::value));
+	}
+
+private:
+	class error_handler_wrapper : public server_context_base::error_handler_wrapper_base
+	{
+	public:
+		template<
+				class Handler,
+				class = typename std::enable_if_t<
+						std::is_convertible<Handler, server_context::server_error_handler>::value>>
+		error_handler_wrapper(server_context& cntxt, Handler&& handler)
+			: m_server_context{cntxt}, m_handler{std::forward<Handler>(handler)}
+		{}
+
+		virtual void
+		invoke(std::error_code err) override
+		{
+			m_handler(m_server_context, err);
+		}
+
+		server_context&                      m_server_context;
+		server_context::server_error_handler m_handler;
+	};
+
+public:
+	template<class T, class U>
+	typename std::enable_if_t<
+			std::is_convertible<T, server_error_handler>::value
+					&& std::is_convertible<U, server_context_base::channel_error_handler>::value,
+			server_context&>
+	bind(async::options const& opts, std::error_code& err, T&& on_listener_error, U&& on_channel_error)
+	{
+		async::options opts_override{opts};
+		opts_override.framing(true);
+		server_context_base::m_on_server_error
+				= std::make_unique<error_handler_wrapper>(*this, std::forward<T>(on_listener_error));
+		server_context_base::m_on_channel_error = std::forward<U>(on_channel_error);
+		server_context_base::really_bind(opts_override, err);
+		return *this;
+	}
+
+	server_context&
+	bind(async::options const& opts, std::error_code& err)
+	{
+		async::options opts_override{opts};
+		opts_override.framing(true);
+		server_context_base::really_bind(opts_override, err);
+		return *this;
+	}
+
+	template<class T>
+	typename std::enable_if_t<std::is_convertible<T, server_error_handler>::value, server_context&>
+	on_listener_error(T&& handler)
+	{
+		server_context_base::m_on_server_error
+				= std::make_unique<error_handler_wrapper>(*this, std::forward<T>(handler));
+		return *this;
+	}
+
+	template<class T>
+	typename std::
+			enable_if_t<std::is_convertible<T, server_context_base::channel_error_handler>::value, server_context&>
+			on_channel_error(T&& handler)
+	{
+		server_context_base::m_on_channel_error = std::forward<T>(handler);
+		return *this;
+	}
 };
+
 }    // namespace armi
 }    // namespace logicmill
 

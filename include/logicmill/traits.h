@@ -119,7 +119,6 @@ template<std::size_t I = 0, class FuncT, class... Tp>
 	for_each<I + 1, FuncT, Tp...>(t, f);
 }
 
-
 template<class... Args>
 struct _arg_list;
 

@@ -28,11 +28,15 @@
 #include <chrono>
 #include <functional>
 #include <logicmill/async/channel.h>
+#include <logicmill/async/transceiver.h>
 #include <logicmill/async/endpoint.h>
 #include <logicmill/async/options.h>
 #include <logicmill/async/timer.h>
 #include <memory>
 #include <system_error>
+
+
+#define BUILD_UDP 1
 
 namespace logicmill
 {
@@ -94,12 +98,29 @@ public:
 		return really_connect_channel(opts, err, std::forward<Handler>(handler));
 	}
 
+#if (BUILD_UDP)
+	transceiver::ptr
+	create_transceiver(options const& opts, std::error_code& err)
+	{
+		return really_create_transceiver(opts, err);
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, transceiver::receive_handler>::value, transceiver::ptr>
+	create_transceiver(options const& opts, std::error_code& err, Handler&& handler)
+	{
+		return really_create_transceiver(opts, err, std::forward<Handler>(handler));
+	}
+#endif
+
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, resolve_handler>::value>
 	resolve(std::string const& hostname, std::error_code& err, Handler&& handler)
 	{
 		really_resolve(hostname, err, std::forward<Handler>(handler));
 	}
+
+
 
 protected:
 	virtual timer::ptr
@@ -125,6 +146,17 @@ protected:
 
 	virtual channel::ptr
 	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler) = 0;
+
+#if (BUILD_UDP)
+	virtual transceiver::ptr
+	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler&& handler) = 0;
+
+	virtual transceiver::ptr
+	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler const& handler) = 0;
+
+	virtual transceiver::ptr
+	really_create_transceiver(options const& opt, std::error_code& err) = 0;
+#endif
 
 	virtual void
 	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler) = 0;

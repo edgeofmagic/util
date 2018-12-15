@@ -42,29 +42,60 @@ namespace ip
 class endpoint
 {
 public:
-	endpoint() : m_addr{}, m_port{0} {}
+	endpoint() : m_addr{}, m_port{0}, m_dirty{true} {}
 
-	endpoint(const address& host, std::uint16_t port) : m_addr{host}, m_port{port} {}
+	endpoint(const address& host, std::uint16_t port) : m_addr{host}, m_port{port}, m_dirty{true} {}
 
-	endpoint(const endpoint& rhs) : m_addr(rhs.m_addr), m_port(rhs.m_port) {}
+	endpoint(const endpoint& rhs) : m_addr(rhs.m_addr), m_port(rhs.m_port), m_dirty{true} {}
 
-	endpoint(sockaddr_storage const& sockaddr) : m_addr{}, m_port{0}
+	endpoint(sockaddr_storage const& sockaddr, std::error_code& err) : m_addr{}, m_port{0}, m_dirty{true}
 	{
+		err.clear();
+		::memcpy(&m_sockaddr, &sockaddr, sizeof(sockaddr_storage));
 		if (sockaddr.ss_family == AF_INET)
 		{
 			auto addr4 = reinterpret_cast<const sockaddr_in*>(&sockaddr);
 
 			addr(address{addr4->sin_addr});
 			port(ntohs(addr4->sin_port));
+			m_dirty = false;
 		}
 		else if (sockaddr.ss_family == AF_INET6)
 		{
 			auto addr6 = reinterpret_cast<const sockaddr_in6*>(&sockaddr);
 			addr(address{addr6->sin6_addr});
 			port(ntohs(addr6->sin6_port));
+			m_dirty = false;
+		}
+		else
+		{
+			err = make_error_code(std::errc::address_family_not_supported);
 		}
 	}
 
+	endpoint(sockaddr_storage const& sockaddr) : m_addr{}, m_port{0}, m_dirty{true}
+	{
+		::memcpy(&m_sockaddr, &sockaddr, sizeof(sockaddr_storage));
+		if (sockaddr.ss_family == AF_INET)
+		{
+			auto addr4 = reinterpret_cast<const sockaddr_in*>(&sockaddr);
+
+			addr(address{addr4->sin_addr});
+			port(ntohs(addr4->sin_port));
+			m_dirty = false;
+		}
+		else if (sockaddr.ss_family == AF_INET6)
+		{
+			auto addr6 = reinterpret_cast<const sockaddr_in6*>(&sockaddr);
+			addr(address{addr6->sin6_addr});
+			port(ntohs(addr6->sin6_port));
+			m_dirty = false;
+		}
+		else
+		{
+			throw std::system_error{ make_error_code(std::errc::address_family_not_supported) };
+		}		
+	}
 	~endpoint() {}
 
 	endpoint&
@@ -72,6 +103,11 @@ public:
 	{
 		m_addr = rhs.m_addr;
 		m_port = rhs.m_port;
+		m_dirty = rhs.m_dirty;
+		if (!m_dirty)
+		{
+			::memcpy(&m_sockaddr, &rhs.m_sockaddr, sizeof(sockaddr_storage));
+		}
 		return *this;
 	}
 
@@ -124,7 +160,11 @@ public:
 	void
 	addr(const ip::address& addr)
 	{
-		m_addr = addr;
+		if (addr != m_addr)
+		{
+			m_addr = addr;
+			m_dirty = true;
+		}
 	}
 
 	std::uint16_t
@@ -136,7 +176,11 @@ public:
 	void
 	port(std::uint16_t val)
 	{
-		m_port = val;
+		if (val != m_port)
+		{
+			m_port = val;
+			m_dirty = true;
+		}
 	}
 
 	explicit operator bool() const
@@ -144,14 +188,44 @@ public:
 		return (m_addr && m_port);
 	}
 
+	sockaddr_storage const&
+	get_sockaddr() const
+	{
+		if (m_dirty)
+		{
+			make_sockaddr();
+			m_dirty = false;
+		}
+		return m_sockaddr;
+	}
+
+	const sockaddr*
+	get_sockaddr_ptr() const
+	{
+		return reinterpret_cast<const sockaddr*>(&get_sockaddr());
+	}
+	
 	void
 	to_sockaddr(sockaddr_storage& sockaddr) const
 	{
 		memset(&sockaddr, 0, sizeof(sockaddr));
+		if (m_dirty)
+		{
+			make_sockaddr();
+			m_dirty = false;
+		}
+		::memcpy(&sockaddr, &m_sockaddr, sizeof(sockaddr_storage));
+	}
+
+protected:
+
+	void make_sockaddr() const
+	{
+		memset(&m_sockaddr, 0, sizeof(m_sockaddr));
 
 		if (is_v4())
 		{
-			auto addr4 = reinterpret_cast<struct sockaddr_in*>(&sockaddr);
+			auto addr4 = reinterpret_cast<struct sockaddr_in*>(&m_sockaddr);
 
 			addr4->sin_family = AF_INET;
 			addr() >> addr4->sin_addr;
@@ -162,7 +236,7 @@ public:
 		}
 		else if (is_v6())
 		{
-			auto addr6 = reinterpret_cast<sockaddr_in6*>(&sockaddr);
+			auto addr6 = reinterpret_cast<sockaddr_in6*>(&m_sockaddr);
 
 			addr6->sin6_family = AF_INET6;
 			addr() >> addr6->sin6_addr;
@@ -173,10 +247,10 @@ public:
 		}
 	}
 
-
-protected:
 	address       m_addr;
 	std::uint16_t m_port;
+	mutable bool			m_dirty;
+	mutable sockaddr_storage m_sockaddr;
 };
 
 inline std::ostream&

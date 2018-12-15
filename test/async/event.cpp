@@ -282,7 +282,7 @@ public:
 
 using namespace event_test;
 
-TEST_CASE("logicmill/async/event/smoke/listener/lambda")
+TEST_CASE("logicmill::async::event [ smoke ] { lambda }")
 {
 
 	functor_victim nicole;
@@ -299,7 +299,7 @@ TEST_CASE("logicmill/async/event/smoke/listener/lambda")
 	CHECK(nicole.message() == "Die, bitch!");
 }
 
-TEST_CASE("logicmill/async/event/smoke/listener/functor/move")
+TEST_CASE("logicmill::async::event::sink [ smoke ] { functor move }")
 {
 	lambda_victim nicole;
 
@@ -314,7 +314,7 @@ TEST_CASE("logicmill/async/event/smoke/listener/functor/move")
 	CHECK(nicole.message() == "Die, bitch!");
 }
 
-TEST_CASE("logicmill/async/event/smoke/connector")
+TEST_CASE("logicmill::async::event::connector [ smoke ] { 1 }")
 {
 	lambda_victim  nicole;
 	functor_victim jfk;
@@ -339,7 +339,7 @@ TEST_CASE("logicmill/async/event/smoke/connector")
 	CHECK(jfk.message() == "Bang, bang bang!");
 }
 
-TEST_CASE("logicmill/async/event/smoke/connector")
+TEST_CASE("logicmill::async::event::connector [ smoke ] { 2 }")
 {
 	victim nicole;
 
@@ -355,7 +355,7 @@ TEST_CASE("logicmill/async/event/smoke/connector")
 }
 
 
-TEST_CASE("logicmill/async/event/smoke/connectable")
+TEST_CASE("logicmill::async::event::connectable [ smoke ] { simple }")
 {
 	murder top;
 	redrum bottom;
@@ -375,7 +375,7 @@ TEST_CASE("logicmill/async/event/smoke/connectable")
 	CHECK(bottom.message() == "Die, bitch!");
 }
 
-TEST_CASE("logicmill/async/event/smoke/connectable/complex")
+TEST_CASE("logicmill::async::event::connectable [ smoke ] { complex }")
 {
 	foo f;
 	oof o;

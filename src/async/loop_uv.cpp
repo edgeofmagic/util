@@ -1,8 +1,11 @@
 #include "loop_uv.h"
 #include "tcp_uv.h"
 #include "timer_uv.h"
+#include "udp_uv.h"
 
 using namespace logicmill;
+
+using logicmill::async::ip::address;
 
 void
 resolve_req_uv::start(uv_loop_t* lp, std::error_code& err)
@@ -17,9 +20,9 @@ exit:
 void
 resolve_req_uv::on_resolve(uv_getaddrinfo_t* req, int status, struct addrinfo* result)
 {
-	auto                                      request = reinterpret_cast<resolve_req_uv*>(req);
-	std::error_code                           err     = map_uv_error(status);
-	std::deque<logicmill::async::ip::address> addresses;
+	auto                request = reinterpret_cast<resolve_req_uv*>(req);
+	std::error_code     err     = map_uv_error(status);
+	std::deque<address> addresses;
 
 	if (!err)
 	{
@@ -30,7 +33,7 @@ resolve_req_uv::on_resolve(uv_getaddrinfo_t* req, int status, struct addrinfo* r
 			memset(&storage, 0, sizeof(storage));
 			memcpy(&storage, info->ai_addr, info->ai_addrlen);
 
-			logicmill::async::ip::address addr;
+			address addr;
 
 			if (info->ai_family == AF_INET)
 			{
@@ -77,8 +80,8 @@ loop_uv::~loop_uv()
 	close(err);
 }
 
-async::timer::ptr
-loop_uv::really_create_timer(std::error_code& err, async::timer::handler const& handler)
+timer::ptr
+loop_uv::really_create_timer(std::error_code& err, timer::handler const& handler)
 {
 	err.clear();
 	timer_uv::ptr result;
@@ -103,8 +106,8 @@ exit:
 	return result;
 }
 
-async::timer::ptr
-loop_uv::really_create_timer(std::error_code& err, async::timer::handler&& handler)
+timer::ptr
+loop_uv::really_create_timer(std::error_code& err, timer::handler&& handler)
 {
 	err.clear();
 	timer_uv::ptr result;
@@ -170,35 +173,43 @@ loop_uv::on_walk(uv_handle_t* handle, void*)
 		auto handle_type = uv_handle_get_type(handle);
 		switch (handle_type)
 		{
-		case uv_handle_type::UV_TIMER:
-		{
-			if (!uv_is_closing(handle))
+			case uv_handle_type::UV_TIMER:
 			{
-				uv_close(handle, timer_uv::on_timer_close);
+				if (!uv_is_closing(handle))
+				{
+					uv_close(handle, timer_uv::on_timer_close);
+				}
 			}
-		}
-		break;
-		case uv_handle_type::UV_TCP:
-		{
-			if (!uv_is_closing(handle))
+			break;
+			case uv_handle_type::UV_TCP:
 			{
-				uv_close(handle, tcp_base_uv::on_close);
+				if (!uv_is_closing(handle))
+				{
+					uv_close(handle, tcp_base_uv::on_close);
+				}
 			}
-		}
-		break;
-		case uv_handle_type::UV_ASYNC:
-		{
-			if (!uv_is_closing(handle))
+			break;
+			case uv_handle_type::UV_ASYNC:
 			{
-				uv_close(handle, nullptr);
+				if (!uv_is_closing(handle))
+				{
+					uv_close(handle, nullptr);
+				}
 			}
-		}
-		break;
-		default:
-		{
-			// std::cout << "closing loop handles, unexpected handle type: " << handle_type << std::endl;
-		}
-		break;
+			break;
+			case uv_handle_type::UV_UDP:
+			{
+				if (!uv_is_closing(handle))
+				{
+					uv_close(handle, udp_transceiver_uv::on_close);
+				}
+			}
+			break;
+			default:
+			{
+				// std::cout << "closing loop handles, unexpected handle type: " << handle_type << std::endl;
+			}
+			break;
 		}
 	}
 }
@@ -237,11 +248,8 @@ exit:
 	return;
 }
 
-async::listener::ptr
-loop_uv::really_create_listener(
-		async::options const&                 opt,
-		std::error_code&                      err,
-		async::listener::connection_handler&& handler)
+listener::ptr
+loop_uv::really_create_listener(options const& opt, std::error_code& err, listener::connection_handler&& handler)
 {
 	err.clear();
 	std::shared_ptr<tcp_listener_uv> listener;
@@ -264,11 +272,8 @@ exit:
 	return listener;
 }
 
-async::listener::ptr
-loop_uv::really_create_listener(
-		async::options const&                      opt,
-		std::error_code&                           err,
-		async::listener::connection_handler const& handler)
+listener::ptr
+loop_uv::really_create_listener(options const& opt, std::error_code& err, listener::connection_handler const& handler)
 {
 	err.clear();
 	std::shared_ptr<tcp_listener_uv> listener;
@@ -291,11 +296,8 @@ exit:
 	return listener;
 }
 
-async::channel::ptr
-loop_uv::really_connect_channel(
-		async::options const&             opt,
-		std::error_code&                  err,
-		async::channel::connect_handler&& handler)
+channel::ptr
+loop_uv::really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler)
 {
 	err.clear();
 	std::shared_ptr<tcp_channel_uv> cp;
@@ -328,11 +330,8 @@ exit:
 	return cp;
 }
 
-async::channel::ptr
-loop_uv::really_connect_channel(
-		async::options const&                  opt,
-		std::error_code&                       err,
-		async::channel::connect_handler const& handler)
+channel::ptr
+loop_uv::really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler)
 {
 	err.clear();
 	std::shared_ptr<tcp_channel_uv> cp;
@@ -364,6 +363,94 @@ loop_uv::really_connect_channel(
 exit:
 	return cp;
 }
+
+udp_transceiver_uv::ptr
+loop_uv::setup_transceiver(options const& opts, std::error_code& err)
+{
+	err.clear();
+	std::shared_ptr<udp_transceiver_uv> tp;
+
+	if (!m_uv_loop)
+	{
+		err = make_error_code(async::errc::loop_closed);
+		goto exit;
+	}
+
+	tp = std::make_shared<udp_transceiver_uv>();
+
+	tp->init(m_uv_loop, tp, err);
+	if (err)
+		goto exit;
+
+	tp->bind(opts, err);
+	if (err)
+		goto exit;
+
+exit:
+	return tp;
+}
+
+transceiver::ptr
+loop_uv::really_create_transceiver(options const& opts, std::error_code& err, transceiver::receive_handler&& handler)
+{
+	err.clear();
+	std::shared_ptr<udp_transceiver_uv> tp;
+
+	if (!handler)
+	{
+		err = make_error_code(std::errc::invalid_argument);
+		goto exit;
+	}
+
+	tp = setup_transceiver(opts, err);
+	if (err)
+		goto exit;
+
+	tp->start_receive(err, std::move(handler));
+
+exit:
+	return tp;
+}
+
+transceiver::ptr
+loop_uv::really_create_transceiver(
+		options const&                      opts,
+		std::error_code&                    err,
+		transceiver::receive_handler const& handler)
+{
+	err.clear();
+	std::shared_ptr<udp_transceiver_uv> tp;
+
+	if (!handler)
+	{
+		err = make_error_code(std::errc::invalid_argument);
+		goto exit;
+	}
+
+	tp = setup_transceiver(opts, err);
+	if (err)
+		goto exit;
+
+	tp->start_receive(err, handler);
+
+exit:
+	return tp;
+}
+
+transceiver::ptr
+loop_uv::really_create_transceiver(options const& opts, std::error_code& err)
+{
+	err.clear();
+	std::shared_ptr<udp_transceiver_uv> tp;
+
+	tp = setup_transceiver(opts, err);
+	if (err)
+		goto exit;
+
+exit:
+	return tp;
+}
+
 
 void
 loop_uv::really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler)
@@ -440,14 +527,14 @@ loop_uv::create_from_default()
 	}
 }
 
-async::loop::ptr
-async::loop::get_default()
+loop::ptr
+loop::get_default()
 {
 	return loop_uv::create_from_default();
 }
 
-async::loop::ptr
-async::loop::create()
+loop::ptr
+loop::create()
 {
 	auto lp = std::make_shared<loop_uv>();
 	lp->init(lp);
@@ -455,7 +542,7 @@ async::loop::create()
 }
 
 void
-loop_uv::really_dispatch(std::error_code& err, async::loop::dispatch_handler const& handler)
+loop_uv::really_dispatch(std::error_code& err, loop::dispatch_handler const& handler)
 {
 	err.clear();
 	if (!handler)
@@ -488,7 +575,7 @@ exit:
 }
 
 void
-loop_uv::really_dispatch(std::error_code& err, async::loop::dispatch_handler&& handler)
+loop_uv::really_dispatch(std::error_code& err, loop::dispatch_handler&& handler)
 {
 	err.clear();
 	if (!handler)

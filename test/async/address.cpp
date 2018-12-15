@@ -28,7 +28,7 @@
 
 using namespace logicmill;
 
-TEST_CASE("logicmill/async/ip/address/smoke/basic")
+TEST_CASE("logicmill::async::ip::address [ smoke ] { basic }")
 {
 	async::ip::address a;
 	CHECK(a.is_v4_any());
@@ -115,7 +115,7 @@ TEST_CASE("logicmill/async/ip/address/smoke/basic")
 	CHECK(a.to_string() == "0:0:3::7:8");
 }
 
-TEST_CASE("logicmill/async/ip/address/smoke/v6_parse_errors")
+TEST_CASE("logicmill::async::ip::address [ smoke ] { v6_parse_errors }")
 {
 	async::ip::address a;
 	CHECK(a.is_v4_any());

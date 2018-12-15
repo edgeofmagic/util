@@ -35,6 +35,8 @@
 class tcp_channel_uv;
 class tcp_listener_uv;
 
+using logicmill::async::ip::endpoint;
+
 class connect_request_uv
 {
 public:
@@ -180,6 +182,9 @@ public:
 		return reinterpret_cast<uv_stream_t*>(&m_tcp_handle);
 	}
 
+	endpoint
+	really_get_endpoint(std::error_code& err);
+
 protected:
 	using ptr = std::shared_ptr<tcp_base_uv>;
 
@@ -294,17 +299,18 @@ public:
 		}
 	}
 
+	virtual endpoint
+	get_endpoint(std::error_code& err) override
+	{
+		return really_get_endpoint(err);
+	}
+
+	virtual endpoint
+	get_peer_endpoint(std::error_code& err) override;
+
 protected:
 	virtual void
-	clear_handler() override
-	{
-		if (m_close_handler)
-		{
-			m_close_handler(std::dynamic_pointer_cast<tcp_channel_uv>(m_data.m_self_ptr));
-			m_close_handler = nullptr;
-		}
-		m_read_handler = nullptr;
-	}
+	clear_handler() override;
 
 	static void
 	on_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
@@ -473,6 +479,12 @@ public:
 			m_close_handler = nullptr;
 		}
 		m_connection_handler = nullptr;
+	}
+
+	virtual endpoint
+	get_endpoint(std::error_code& err) override
+	{
+		return really_get_endpoint(err);
 	}
 
 private:

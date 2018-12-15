@@ -31,13 +31,21 @@
 #include <mutex>
 #include <uv.h>
 
+using logicmill::async::ip::endpoint;
+using logicmill::bstream::mutable_buffer;
+using logicmill::async::transceiver;
+using logicmill::async::listener;
+using logicmill::async::channel;
+using logicmill::async::options;
+using logicmill::async::timer;
+using logicmill::async::loop;
 
 class resolve_req_uv
 {
 public:
 	template<
 			class Handler,
-			class = std::enable_if_t<std::is_convertible<Handler, logicmill::async::loop::resolve_handler>::value>>
+			class = std::enable_if_t<std::is_convertible<Handler, loop::resolve_handler>::value>>
 	resolve_req_uv(std::string const& hostname, Handler&& handler)
 		: m_hostname{hostname}, m_handler{std::forward<Handler>(handler)}
 	{
@@ -50,13 +58,14 @@ public:
 private:
 	uv_getaddrinfo_t                        m_uv_req;
 	std::string                             m_hostname;
-	logicmill::async::loop::resolve_handler m_handler;
+	loop::resolve_handler m_handler;
 
 	static void
 	on_resolve(uv_getaddrinfo_t* req, int status, struct addrinfo* result);
 };
 
 class loop_uv;
+class udp_transceiver_uv;
 
 struct loop_data
 {
@@ -65,10 +74,10 @@ struct loop_data
 	get_loop_ptr();
 };
 
-class loop_uv : public logicmill::async::loop
+class loop_uv : public loop
 {
 public:
-	friend class logicmill::async::loop;
+	friend class loop;
 
 	using ptr  = std::shared_ptr<loop_uv>;
 	using wptr = std::weak_ptr<loop_uv>;
@@ -106,11 +115,11 @@ private:
 	operator=(loop_uv&&)
 			= delete;
 
-	virtual logicmill::async::timer::ptr
-	really_create_timer(std::error_code& err, logicmill::async::timer::handler const& handler) override;
+	virtual timer::ptr
+	really_create_timer(std::error_code& err, timer::handler const& handler) override;
 
-	virtual logicmill::async::timer::ptr
-	really_create_timer(std::error_code& err, logicmill::async::timer::handler&& handler) override;
+	virtual timer::ptr
+	really_create_timer(std::error_code& err, timer::handler&& handler) override;
 
 	virtual void
 	run(std::error_code& err) override;
@@ -124,29 +133,41 @@ private:
 	virtual void
 	close(std::error_code& err) override;    // probably should NOT be called from any handler
 
-	virtual logicmill::async::listener::ptr
+	virtual listener::ptr
 	really_create_listener(
-			logicmill::async::options const&                 opt,
+			options const&                 opt,
 			std::error_code&                                 err,
-			logicmill::async::listener::connection_handler&& handler) override;
+			listener::connection_handler&& handler) override;
 
-	virtual logicmill::async::listener::ptr
+	virtual listener::ptr
 	really_create_listener(
-			logicmill::async::options const&                      opt,
+			options const&                      opt,
 			std::error_code&                                      err,
-			logicmill::async::listener::connection_handler const& handler) override;
+			listener::connection_handler const& handler) override;
 
-	virtual logicmill::async::channel::ptr
+	virtual channel::ptr
 	really_connect_channel(
-			logicmill::async::options const&             opt,
+			options const&             opt,
 			std::error_code&                             err,
-			logicmill::async::channel::connect_handler&& handler) override;
+			channel::connect_handler&& handler) override;
 
-	virtual logicmill::async::channel::ptr
+	virtual channel::ptr
 	really_connect_channel(
-			logicmill::async::options const&                  opt,
+			options const&                  opt,
 			std::error_code&                                  err,
-			logicmill::async::channel::connect_handler const& handler) override;
+			channel::connect_handler const& handler) override;
+
+	virtual transceiver::ptr
+	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler&& handler) override;
+
+	virtual transceiver::ptr
+	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler const& handler) override;
+
+	virtual transceiver::ptr
+	really_create_transceiver(options const& opt, std::error_code& err) override;
+
+	std::shared_ptr<udp_transceiver_uv>
+	setup_transceiver(options const& opts, std::error_code& err);
 
 	virtual void
 	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler) override;
@@ -155,10 +176,10 @@ private:
 	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler) override;
 
 	virtual void
-	really_dispatch(std::error_code& err, logicmill::async::loop::dispatch_handler const& handler) override;
+	really_dispatch(std::error_code& err, loop::dispatch_handler const& handler) override;
 
 	virtual void
-	really_dispatch(std::error_code& err, logicmill::async::loop::dispatch_handler&& handler) override;
+	really_dispatch(std::error_code& err, loop::dispatch_handler&& handler) override;
 
 	bool
 	try_dispatch_front(ptr const& lp);
@@ -173,12 +194,12 @@ private:
 			;
 	}
 
-	uv_async_t                                           m_async_handle;
-	std::deque<logicmill::async::loop::dispatch_handler> m_dispatch_queue;
-	std::recursive_mutex                                 m_dispatch_queue_mutex;
-	uv_loop_t*                                           m_uv_loop;
-	loop_data                                            m_data;
-	bool                                                 m_is_default_loop;
+	uv_async_t                         m_async_handle;
+	std::deque<loop::dispatch_handler> m_dispatch_queue;
+	std::recursive_mutex               m_dispatch_queue_mutex;
+	uv_loop_t*                         m_uv_loop;
+	loop_data                          m_data;
+	bool                               m_is_default_loop;
 };
 
 #endif /* LOGICMILL_ASYNC_LOOP_UV_H */

@@ -30,8 +30,7 @@ using namespace logicmill;
 using namespace async;
 using namespace ip;
 
-
-TEST_CASE("logicmill/async/ip/endpoint/smoke/basic")
+TEST_CASE("logicmill::async::ip::endpoint [ smoke ] { basic }")
 {
 	std::error_code err;
 	endpoint        ep{address{"192.0.1.2", err}, 80};
@@ -40,7 +39,11 @@ TEST_CASE("logicmill/async/ip/endpoint/smoke/basic")
 
 	ep.to_sockaddr(ss);
 
-	endpoint ep_copy{ss};
+	endpoint ep_copy{ss, err};
+	CHECK(!err);
 
-	CHECK(ep == ep_copy);
+	endpoint ep_copy2{ep_copy.get_sockaddr(), err};
+	CHECK(!err);
+
+	CHECK(ep == ep_copy2);
 }

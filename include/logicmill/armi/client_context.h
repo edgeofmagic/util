@@ -126,7 +126,6 @@ public:
 		opts_override.framing(true);
 		client_context_base::loop()->connect_channel(opts_override, err, connect_channel_handler{*this, std::forward<Handler>(handler)});
 	}
-
 };
 
 }    // namespace armi

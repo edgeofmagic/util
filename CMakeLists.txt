@@ -109,6 +109,8 @@ set(LOGICMILL_SRCS
 	src/async/timer_uv.cpp
 	src/async/tcp_uv.h
 	src/async/tcp_uv.cpp
+	src/async/udp_uv.h
+	src/async/udp_uv.cpp
 	src/async/address.cpp
 	src/async/error.cpp
 
@@ -136,7 +138,8 @@ set(LOGICMILL_TEST_SRCS
 	test/async/address.cpp
 	test/async/endpoint.cpp
 	test/async/tcp.cpp
-#	test/async/event.cpp
+	test/async/udp.cpp
+	test/async/event.cpp
 # 	test/async/stream.cpp
 #	test/async/socket_behavior.cpp
 	test/armi/basic.cpp

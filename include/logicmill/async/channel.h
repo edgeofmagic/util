@@ -29,6 +29,7 @@
 #include <deque>
 #include <functional>
 #include <logicmill/bstream/buffer.h>
+#include <logicmill/async/endpoint.h>
 #include <memory>
 #include <system_error>
 
@@ -114,6 +115,12 @@ public:
 	virtual bool
 	is_closing() = 0;
 
+	virtual ip::endpoint
+	get_endpoint(std::error_code& err) = 0;
+
+	virtual ip::endpoint
+	get_peer_endpoint(std::error_code& err) = 0;
+
 protected:
 	virtual void
 	really_write(bstream::mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler) = 0;
@@ -162,6 +169,9 @@ public:
 	{
 		return really_close(nullptr);
 	}
+
+	virtual ip::endpoint
+	get_endpoint(std::error_code& err) = 0;
 
 	virtual std::shared_ptr<loop>
 	loop() = 0;

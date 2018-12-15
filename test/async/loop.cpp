@@ -88,7 +88,7 @@ TEST_CASE("logicmill::async::loop [ smoke ] { dispatch }")
 	CHECK(!err);
 }
 
-TEST_CASE("logicmill/async/loop/smoke/basic { nullptr handler }")
+TEST_CASE("logicmill::async::loop [ smoke ] { nullptr handler }")
 {
 	async::loop::ptr lp = async::loop::create();
 	std::error_code  err;
@@ -101,7 +101,7 @@ TEST_CASE("logicmill/async/loop/smoke/basic { nullptr handler }")
 }
 
 
-TEST_CASE("logicmill/async/loop/smoke/basic")
+TEST_CASE("logicmill::async::loop [ smoke ] { basic }")
 {
 	async::loop::ptr lp = async::loop::create();
 	std::error_code  err;
@@ -122,7 +122,7 @@ TEST_CASE("logicmill/async/loop/smoke/basic")
 	CHECK(!err);
 }
 
-TEST_CASE("logicmill/async/loop/smoke/default_loop")
+TEST_CASE("logicmill::async::loop [ smoke ] { default loop }")
 {
 	async::loop::ptr lp = async::loop::get_default();
 	std::error_code  err;
@@ -156,7 +156,7 @@ TEST_CASE("logicmill/async/loop/smoke/default_loop")
 	CHECK(second_visited);
 }
 
-TEST_CASE("logicmill/async/loop/smoke/timer")
+TEST_CASE("logicmill::async::loop::timer [ smoke ] { basic }")
 {
 	async::loop::ptr lp = async::loop::create();
 
@@ -187,7 +187,7 @@ TEST_CASE("logicmill/async/loop/smoke/timer")
 	CHECK(!err);
 }
 
-TEST_CASE("logicmill/async/loop/smoke/timer_close_before_expire")
+TEST_CASE("logicmill::async::loop::timer [ smoke ] { close before expire }")
 {
 	async::loop::ptr lp = async::loop::create();
 
@@ -224,7 +224,7 @@ TEST_CASE("logicmill/async/loop/smoke/timer_close_before_expire")
 	// lp->close();
 }
 
-TEST_CASE("logicmill/async/loop/smoke/timer_stop_before_expire")
+TEST_CASE("logicmill::async::loop::timer [ smoke ] { stop before expire }")
 {
 	async::loop::ptr lp = async::loop::create();
 
@@ -275,7 +275,7 @@ TEST_CASE("logicmill/async/loop/smoke/timer_stop_before_expire")
 #endif
 
 
-TEST_CASE("logicmill/async/resolver/smoke/basic")
+TEST_CASE("logicmill::async::resolver [ smoke ] { basic }")
 {
 	std::error_code err;
 
@@ -313,7 +313,7 @@ TEST_CASE("logicmill/async/resolver/smoke/basic")
 	CHECK(!err);
 }
 
-TEST_CASE("logicmill/async/resolver/smoke/not_found_failure")
+TEST_CASE("logicmill::async::resolver [ smoke ] { not found failure }")
 {
 	std::error_code err;
 
@@ -350,7 +350,7 @@ TEST_CASE("logicmill/async/resolver/smoke/not_found_failure")
 	// lp->close();
 }
 
-TEST_CASE("logicmill/async/resolver/smoke/cancellation_loop_close")
+TEST_CASE("logicmill::async::resolver [ smoke ] { cancellation loop close }")
 {
 	{
 

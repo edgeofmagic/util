@@ -60,8 +60,10 @@ public:
 		return context_;
 	}
 
-	interface_proxy&
-	timeout(millisecs timeout);
+protected:
+
+	void
+	transient_timeout(millisecs timeout);
 
 private:
 	const std::size_t    index_;

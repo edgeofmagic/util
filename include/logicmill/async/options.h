@@ -36,9 +36,24 @@ namespace async
 class options
 {
 public:
-	options(ip::endpoint const& ep) : m_endpoint{ep}, m_framing{false} {}
+	options(ip::endpoint const& ep)
+		: m_endpoint{ep},
+		  m_framing{false},
+		  m_nodelay_was_set{false},
+		  m_nodelay{false},
+		  m_keepalive_was_set{false},
+		  m_keepalive{false},
+		  m_keepalive_time{std::chrono::seconds{0}}
+	{}
 
-	options(options const& rhs) : m_endpoint{rhs.m_endpoint}, m_framing{rhs.m_framing}
+	options(options const& rhs)
+		: m_endpoint{rhs.m_endpoint},
+		  m_framing{rhs.m_framing},
+		  m_nodelay_was_set{rhs.m_nodelay_was_set},
+		  m_nodelay{rhs.m_nodelay},
+		  m_keepalive_was_set{rhs.m_keepalive_was_set},
+		  m_keepalive{rhs.m_keepalive},
+		  m_keepalive_time{rhs.m_keepalive_time}
 	{}
 
 	static options
@@ -66,9 +81,49 @@ public:
 		return m_framing;
 	}
 
+	options&
+	nodelay(bool value)
+	{
+		m_nodelay = value;
+		m_nodelay_was_set = true;
+		return *this;
+	}
+
+	bool
+	nodelay() const
+	{
+		return m_nodelay;
+	}
+
+	options&
+	keepalive(bool value, std::chrono::seconds period)
+	{
+		m_keepalive = value;
+		m_keepalive_time = period;
+		m_keepalive_was_set = true;
+		return *this;
+	}
+
+	bool
+	keepalive() const
+	{
+		return m_keepalive;
+	}
+
+	std::chrono::seconds
+	keepalive_time() const
+	{
+		return m_keepalive_time;
+	}
+
 private:
-	ip::endpoint m_endpoint;
-	bool         m_framing;
+	ip::endpoint         m_endpoint;
+	bool                 m_framing;
+	bool                 m_nodelay_was_set;
+	bool                 m_nodelay;
+	bool                 m_keepalive_was_set;
+	bool                 m_keepalive;
+	std::chrono::seconds m_keepalive_time;
 };
 
 }    // namespace async

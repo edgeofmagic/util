@@ -36,6 +36,8 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { basic functionality }")
 	bool listener_handler_did_execute{false};
 	bool channel_connect_handler_did_execute{false};
 
+	async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
+
 	std::error_code     err;
 	auto                lp = loop::create();
 
@@ -60,8 +62,15 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { basic functionality }")
 
 	auto connect_timer = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {
 		std::error_code     err;
-		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
+		std::cout << "connect_ep: " << connect_ep.to_string() << std::endl;
 		lp->connect_channel(async::options{connect_ep}, err, [&](channel::ptr const& chan, std::error_code err) {
+			CHECK(!err);
+			auto peer_ep = chan->get_peer_endpoint(err);
+			CHECK(!err);
+			CHECK(peer_ep == connect_ep);
+			std::cout << "endpoint from get_peer_endpoint: " << peer_ep.to_string() << std::endl;
+			auto chan_ep = chan->get_endpoint(err);
+			std::cout << "endpoint from get_endpoint: " << chan_ep.to_string() << std::endl;
 			chan->close();
 			channel_connect_handler_did_execute = true;
 		});
@@ -105,7 +114,8 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { error on bad address }")
 
 	async::ip::endpoint listen_ep{async::ip::address{"11.42.53.5"}, 7001};
     	auto                lstnr = lp->create_listener(async::options{listen_ep},
-        err, [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+        err, [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) 
+			{
                 CHECK(!err);
                 chan->close();
                 ls->close();

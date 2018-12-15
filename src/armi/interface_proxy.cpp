@@ -28,11 +28,10 @@
 using namespace logicmill;
 using namespace armi;
 
-interface_proxy& 
-interface_proxy::timeout(millisecs timeout)
+void
+interface_proxy::transient_timeout(millisecs timeout)
 {
 	context_.transient_timeout(timeout);
-	return *this;
 }
 
 interface_proxy::~interface_proxy() 

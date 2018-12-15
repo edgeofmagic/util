@@ -62,13 +62,46 @@ tcp_write_bufs_req_uv::on_write(uv_write_t* req, int status)
 
 /* tcp_base_uv */
 
+
+endpoint
+tcp_base_uv::really_get_endpoint(std::error_code& err)
+{
+	endpoint result;
+	sockaddr_storage saddr;
+	int sockaddr_size{sizeof(sockaddr_storage)};
+	err.clear();
+	auto stat = uv_tcp_getsockname(&m_tcp_handle, reinterpret_cast<sockaddr*>(&saddr), &sockaddr_size);
+	if (stat < 0)
+	{
+		err = map_uv_error(stat);
+
+	}
+	else
+	{
+		result = endpoint{saddr, err};
+	}
+	return result;
+}
+
 std::shared_ptr<logicmill::async::loop>
 tcp_base_uv::get_loop()
 {
 	return reinterpret_cast<loop_data*>(reinterpret_cast<uv_handle_t*>(&m_tcp_handle)->loop->data)->get_loop_ptr();
 }
 
+
 /* tcp_channel_uv */
+
+void
+tcp_channel_uv::clear_handler()
+{
+	if (m_close_handler)
+	{
+		m_close_handler(std::dynamic_pointer_cast<tcp_channel_uv>(m_data.m_self_ptr));
+		m_close_handler = nullptr;
+	}
+	m_read_handler = nullptr;
+}
 
 void
 tcp_channel_uv::init(uv_loop_t* lp, ptr const& self, std::error_code& err)
@@ -244,6 +277,27 @@ tcp_channel_uv::really_write(
 		err = map_uv_error(status);
 	}
 }
+
+endpoint
+tcp_channel_uv::get_peer_endpoint(std::error_code& err)
+{
+	endpoint result;
+	sockaddr_storage saddr;
+	int sockaddr_size{sizeof(sockaddr_storage)};
+	err.clear();
+	auto stat = uv_tcp_getpeername(&m_tcp_handle, reinterpret_cast<sockaddr*>(&saddr), &sockaddr_size);
+	if (stat < 0)
+	{
+		err = map_uv_error(stat);
+
+	}
+	else
+	{
+		result = endpoint{saddr, err};
+	}
+	return result;
+}
+
 
 // tcp_framed_channel_uv
 

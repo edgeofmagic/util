@@ -176,6 +176,12 @@ public:
 		tcp_base->clear();
 	}
 
+	const uv_stream_t*
+	get_stream_handle() const
+	{
+		return reinterpret_cast<const uv_stream_t*>(&m_tcp_handle);
+	}
+
 	uv_stream_t*
 	get_stream_handle()
 	{
@@ -307,6 +313,12 @@ public:
 
 	virtual endpoint
 	get_peer_endpoint(std::error_code& err) override;
+
+	virtual std::size_t
+	get_queue_size() const override
+	{
+		return get_stream_handle()->write_queue_size;
+	}
 
 protected:
 	virtual void

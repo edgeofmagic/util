@@ -110,7 +110,9 @@ public:
 		}
 	};
 
-	sink<kill_event> get_sink(kill_event)
+	template<class T>
+	std::enable_if_t<std::is_same<T,kill_event>::value,sink<T>>
+	get_sink()
 	{
 		return sink<kill_event>{kill_functor(*this)};
 	}
@@ -143,9 +145,12 @@ public:
 		return m_message;
 	}
 
-	sink<kill_event> get_sink(kill_event)
+	template<class T>
+	std::enable_if_t<std::is_same<T,kill_event>::value,sink<T>>
+	get_sink()
 	{
 		return sink<kill_event>{[=](std::string const& s) { this->die(s); }};
+
 	}
 
 	bool        m_is_dead;
@@ -278,7 +283,143 @@ public:
 	int  ring_num  = 0;
 };
 
+class combo_b;
+
+class combo_a : public connectable<foo_con, combo_a>, public connectable<oof_con, combo_a>
+{
+public:
+
+
+	using foo_base = connectable<foo_con, combo_a>;
+	using oof_base = connectable<oof_con, combo_a>;
+
+	using source_base<squeal_event>::send;
+	using source_base<honk_event>::send;
+
+	using source_base<beep_event>::send;
+	using source_base<ring_event>::send;
+
+	using foo_base::get_connector;
+	using oof_base::get_connector;
+	using foo_base::mate;
+	using oof_base::mate;
+
+	combo_a(combo_b& b);        
+
+
+	bool beep_flag;
+	int beep_i;
+	bool ring_flag;
+	int ring_i;
+	std::string str;
+	char ch;
+	std::shared_ptr<int> intp;
+
+	void
+	send_beep()
+	{
+		send<beep_event>(false, 1);
+	}
+
+	void
+	send_ring()
+	{
+		send<ring_event>(true, 2);
+	}
+
+	void
+	on(beep_event, bool b, int i)
+	{
+		beep_flag = b;
+		beep_i = i;
+	}
+
+	void
+	on(ring_event, bool b, int i)
+	{
+		ring_flag = b;
+		ring_i = i;
+	}
+
+	void
+	send_squeal()
+	{
+		send<squeal_event>("hello", 'Z');
+	}
+
+	void
+	on(squeal_event, std::string const& s, char c)
+	{
+		str = s;
+		ch = c;
+	} 
+
+	void
+	send_honk()
+	{
+		send<honk_event>(std::make_shared<int>(3));
+	}
+
+	void
+	on(honk_event, std::shared_ptr<int> ip)
+	{
+		intp = ip;
+	}
+
+};
+
+class combo_b : public connectable<foo_con, combo_b>, public connectable<oof_con, combo_b>
+{
+public:
+
+	using foo_base = connectable<foo_con, combo_b>;
+	using oof_base = connectable<oof_con, combo_b>;
+
+	using source_base<squeal_event>::send;
+	using source_base<honk_event>::send;
+
+	using source_base<beep_event>::send;
+	using source_base<ring_event>::send;
+
+	using foo_base::get_connector;
+	using oof_base::get_connector;
+	using foo_base::mate;
+	using oof_base::mate;
+
+	void
+	on(beep_event, bool b, int i)
+	{
+		send<beep_event>(b, i);
+	}
+
+	void
+	on(ring_event, bool b, int i)
+	{
+		send<ring_event>(b, i);
+	}
+
+	void
+	on(squeal_event, std::string const& s, char c)
+	{
+		send<squeal_event>(s, c);
+	} 
+
+	void
+	on(honk_event, std::shared_ptr<int> ip)
+	{
+		send<honk_event>(ip);
+	}
+
+};
+
 }    // namespace event_test
+
+event_test::combo_a::combo_a(combo_b& b)
+{
+	get_connector<foo_con>().mate(b.get_connector<oof_con>());
+	get_connector<oof_con>().mate(b.get_connector<foo_con>());
+}
+
 
 using namespace event_test;
 
@@ -289,7 +430,7 @@ TEST_CASE("logicmill::async::event [ smoke ] { lambda }")
 
 	killer oh_jay;
 
-	oh_jay.get_source<kill_event>().fit(nicole.get_sink(kill_event{}));
+	oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
 
 
 	oh_jay.send<kill_event>("Die, bitch!");
@@ -305,7 +446,7 @@ TEST_CASE("logicmill::async::event::sink [ smoke ] { functor move }")
 
 	killer oh_jay;
 
-	oh_jay.get_source<kill_event>().fit(nicole.get_sink(kill_event{}));
+	oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
 
 	oh_jay.send<kill_event>("Die, bitch!");
 
@@ -322,8 +463,8 @@ TEST_CASE("logicmill::async::event::connector [ smoke ] { 1 }")
 	killer oh_jay;
 	killer lee_harvey;
 
-	connector<source<kill_event>, sink<kill_event>> left{oh_jay.get_source<kill_event>(), jfk.get_sink(kill_event{})};
-	connector<sink<kill_event>, source<kill_event>> right{nicole.get_sink(kill_event{}),
+	connector<source<kill_event>, sink<kill_event>> left{oh_jay.get_source<kill_event>(), jfk.get_sink<kill_event>()};
+	connector<sink<kill_event>, source<kill_event>> right{nicole.get_sink<kill_event>(),
 														  lee_harvey.get_source<kill_event>()};
 
 	left.mate(right);
@@ -397,6 +538,186 @@ TEST_CASE("logicmill::async::event::connectable [ smoke ] { complex }")
 	CHECK(f.squeal_string == "zoot");
 	CHECK(f.squeal_char == 'x');
 	CHECK(*f.honk_ptr == 42);
+}
+namespace event_test
+{
+
+using top_surface = surface<foo_con, oof_con>;
+
+using bottom_surface = surface<oof_con, foo_con>;
+
+class top : public stackable<top_surface, top>
+{
+public:
+
+	using foo_base = connectable<foo_con, top>;
+	using oof_base = connectable<oof_con, top>;
+
+	using source_base<squeal_event>::send;
+	using source_base<honk_event>::send;
+
+	using source_base<beep_event>::send;
+	using source_base<ring_event>::send;
+
+	// using foo_base::get_connector;
+	// using oof_base::get_connector;
+	// using foo_base::mate;
+	// using oof_base::mate;
+
+	bool beep_flag;
+	int beep_i;
+	bool ring_flag;
+	int ring_i;
+	std::string str;
+	char ch;
+	std::shared_ptr<int> intp;
+
+	void
+	send_beep()
+	{
+		send<beep_event>(false, 1);
+	}
+
+	void
+	send_ring()
+	{
+		send<ring_event>(true, 2);
+	}
+
+	void
+	on(beep_event, bool b, int i)
+	{
+		beep_flag = b;
+		beep_i = i;
+	}
+
+	void
+	on(ring_event, bool b, int i)
+	{
+		ring_flag = b;
+		ring_i = i;
+	}
+
+	void
+	send_squeal()
+	{
+		send<squeal_event>("hello", 'Z');
+	}
+
+	void
+	on(squeal_event, std::string const& s, char c)
+	{
+		str = s;
+		ch = c;
+	} 
+
+	void
+	send_honk()
+	{
+		send<honk_event>(std::make_shared<int>(3));
+	}
+
+	void
+	on(honk_event, std::shared_ptr<int> ip)
+	{
+		intp = ip;
+	}
+
+};
+
+class bottom : public stackable<bottom_surface, bottom>
+{
+public:
+
+	using foo_base = connectable<foo_con, top>;
+	using oof_base = connectable<oof_con, top>;
+
+	using source_base<squeal_event>::send;
+	using source_base<honk_event>::send;
+
+	using source_base<beep_event>::send;
+	using source_base<ring_event>::send;
+
+	// using foo_base::get_connector;
+	// using oof_base::get_connector;
+	// using foo_base::mate;
+	// using oof_base::mate;
+
+	void
+	on(beep_event, bool b, int i)
+	{
+		send<beep_event>(b, i);
+	}
+
+	void
+	on(ring_event, bool b, int i)
+	{
+		send<ring_event>(b, i);
+	}
+
+	void
+	on(squeal_event, std::string const& s, char c)
+	{
+		send<squeal_event>(s, c);
+	} 
+
+	void
+	on(honk_event, std::shared_ptr<int> ip)
+	{
+		send<honk_event>(ip);
+	}
+
+};
+
+}
+
+TEST_CASE("logicmill::async::event::connectable [ smoke ] { double wrap }")
+{
+	combo_b b;
+	combo_a a(b);
+
+	a.send_beep();
+	a.send_ring();
+	a.send_squeal();
+	a.send_honk();
+
+
+	CHECK(a.beep_flag == false);
+	CHECK(a.beep_i == 1);
+	CHECK(a.ring_flag == true);
+	CHECK(a.ring_i == 2);
+	CHECK(a.str == "hello");
+	CHECK(a.ch == 'Z');
+	CHECK(*a.intp == 3);
+
+	b.send<beep_event>(true, 27);
+	CHECK(a.beep_flag == true);
+	CHECK(a.beep_i == 27);  
+
+}
+
+TEST_CASE("logicmill::async::event::surface [ smoke ] { basic }")
+{
+	top t;
+	bottom b;
+
+	// t.get_surface<top_surface>().stack(b.get_surface<bottom_surface>());
+
+	t.stack(b);
+
+	t.send_beep();
+	t.send_ring();
+	t.send_squeal();
+	t.send_honk();
+
+
+	CHECK(t.beep_flag == false);
+	CHECK(t.beep_i == 1);
+	CHECK(t.ring_flag == true);
+	CHECK(t.ring_i == 2);
+	CHECK(t.str == "hello");
+	CHECK(t.ch == 'Z');
+	CHECK(*t.intp == 3);
 }
 
 #if 0

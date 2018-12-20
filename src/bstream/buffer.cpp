@@ -34,3 +34,16 @@ buffer::dump( std::ostream& os ) const
 {
 	utils::dumpster{}.dump( os, m_data, m_size );
 }
+
+mutable_buffer::mutable_buffer(const_buffer&& cbuf)
+	:
+
+	  buffer{cbuf.m_data, cbuf.m_size},
+	  m_alloc{std::move(cbuf.m_alloc)},
+	  m_capacity{m_alloc->capacity()}
+{
+	cbuf.m_data = nullptr;
+	cbuf.m_size = 0;
+	assert(m_data == m_alloc->data());
+	ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
+}

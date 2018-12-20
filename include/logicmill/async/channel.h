@@ -121,6 +121,9 @@ public:
 	virtual ip::endpoint
 	get_peer_endpoint(std::error_code& err) = 0;
 
+	virtual std::size_t
+	get_queue_size() const = 0;
+
 protected:
 	virtual void
 	really_write(bstream::mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler) = 0;

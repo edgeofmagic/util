@@ -27,6 +27,8 @@
 #include <logicmill/async/loop.h>
 #include <logicmill/bstream/buffer.h>
 
+#include <logicmill/async/tcp.h>
+
 using namespace logicmill;
 using namespace async;
 
@@ -484,5 +486,108 @@ TEST_CASE("logicmill::async::tcp_frameing_listener [ smoke ] { framing connect r
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(channel_read_handler_did_execute);
 	CHECK(channel_write_handler_did_execute);
+	CHECK(!err);
+}
+
+TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
+{
+	bool listener_connection_handler_did_execute{false};
+	bool listener_read_handler_did_execute{false};
+	bool listener_write_handler_did_execute{false};
+	bool channel_connect_handler_did_execute{false};
+	bool driver_read_handler{false};
+	bool channel_write_handler_did_execute{false};
+
+	tcp_stream_driver::ptr drvrp;
+
+	std::error_code     err;
+	auto                lp = loop::create();
+	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
+	auto                lstnr = lp->create_listener(async::options{listen_ep},
+            err, [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+                CHECK(!err);
+
+                std::error_code read_err;
+                chan->start_read(
+                        read_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+                            CHECK(!err);
+                            CHECK(buf.as_string() == "first test payload");
+
+                            std::error_code write_err;
+                            cp->write(
+                                    bstream::mutable_buffer{"reply to first payload"},
+                                    write_err,
+                                    [&](channel::ptr const&       chan,
+                                        bstream::mutable_buffer&& buf,
+                                        std::error_code err) {
+                                        CHECK(!err);
+                                        CHECK(buf.as_string() == "reply to first payload");
+                                        listener_write_handler_did_execute = true;
+                                    });
+                            CHECK(!write_err);
+                            listener_read_handler_did_execute = true;
+                        });
+                CHECK(!read_err);
+                listener_connection_handler_did_execute = true;
+            });
+
+	CHECK(!err);
+
+	auto connect_timer = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {
+		std::error_code     err;
+		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
+
+		lp->connect_channel(async::options{connect_ep}, err, [&](channel::ptr const& chan, std::error_code err) {
+			CHECK(!err);
+
+			drvrp = std::make_shared<tcp_stream_driver>(chan);
+
+			drvrp->on_control([=](async::control_state cstate, std::error_code err)
+			{
+				std::cout << "control event in driver: " << static_cast<int>(cstate) << ", " << err.message() << std::endl;
+			});
+
+			drvrp->start_read([&](std::deque<bstream::mutable_buffer>&& bufs) {
+						CHECK(bufs.front().as_string() == "reply to first payload");
+						driver_read_handler = true;
+					});
+
+			std::deque<bstream::mutable_buffer> bufs;
+			bufs.emplace_back(bstream::mutable_buffer{"first test payload"});
+			drvrp->write(std::move(bufs));
+
+			CHECK(!err);
+			channel_connect_handler_did_execute = true;
+		});
+		CHECK(!err);
+	});
+	CHECK(!err);
+
+	auto shutdown_timer = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {
+		std::error_code err;
+		lp->stop(err);
+		CHECK(!err);
+	});
+	CHECK(!err);
+
+	connect_timer->start(std::chrono::milliseconds{1000}, err);
+	CHECK(!err);
+
+	shutdown_timer->start(std::chrono::milliseconds{3000}, err);
+	CHECK(!err);
+	CHECK(connect_timer->is_pending());
+
+	connect_timer.reset();
+
+	lp->run(err);
+	CHECK(!err);
+
+	lp->close(err);
+	CHECK(listener_connection_handler_did_execute);
+	CHECK(listener_read_handler_did_execute);
+	CHECK(listener_write_handler_did_execute);
+	CHECK(channel_connect_handler_did_execute);
+	CHECK(driver_read_handler);
+	// CHECK(channel_write_handler_did_execute);
 	CHECK(!err);
 }

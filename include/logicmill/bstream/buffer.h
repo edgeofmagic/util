@@ -95,6 +95,8 @@ namespace logicmill
 namespace bstream
 {
 
+class const_buffer;
+
 /** \brief Represents and manages a contiguous region of memory.
  * 
  * An instance of buffer represents and manages a contiguous region of memory, as a 2-tuple consisting of 
@@ -1038,6 +1040,8 @@ public:
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	}
 
+	mutable_buffer(const_buffer&& cbuf);
+
 	mutable_buffer
 	fork()
 	{
@@ -1327,6 +1331,7 @@ protected:
 
 public:
 
+	friend class mutable_buffer;
 	friend class shared_buffer;
 
 	const_buffer()

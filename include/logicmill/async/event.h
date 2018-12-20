@@ -33,14 +33,14 @@
 #include <unordered_set>
 
 #if 1
-#define LOGICMILL_ASYNC_USE_SENDER_BASE(_source_base_)                                                                 \
+#define LOGICMILL_ASYNC_USE_SOURCE_BASE(_source_base_)                                                                 \
 	using _source_base_::fit;                                                                                          \
-	using _source_base_::get_fitting;                                                                                  \
+	using _source_base_::get_source;                                                                                   \
 	using _source_base_::send;                                                                                         \
 	using _source_base_::is_paired;                                                                                    \
-	/**/
+/**/
 
-#define LOGICMILL_ASYNC_USE_RECEIVER_BASE(_sink_base_)                                                                 \
+#define LOGICMILL_ASYNC_USE_SINK_BASE(_sink_base_)                                                                     \
 	using _sink_base_::get_fitting;                                                                                    \
 /**/
 #endif
@@ -398,15 +398,17 @@ template<class E>
 struct is_source<source<E>> : std::true_type
 {};
 
+namespace _static_test
+{
 /* static testing of type relationships */
-using test_event = event<int, 0, int>;
-using test_sink  = sink<test_event>;
+using test_event_0 = event<int, 0, int>;
+using test_sink_0  = sink<test_event_0>;
 
-static_assert(is_sink<test_sink>::value);
-static_assert(is_event_type<test_event>::value);
-static_assert(std::is_same<test_event, sink<test_event>::event_type>::value);
-static_assert(std::is_same<test_event::sink_f, sink<test_event>::type>::value);
-/* end static testing of type relationships */
+static_assert(is_sink<test_sink_0>::value);
+static_assert(is_event_type<test_event_0>::value);
+static_assert(std::is_same<test_event_0, sink<test_event_0>::event_type>::value);
+static_assert(std::is_same<test_event_0::sink_f, sink<test_event_0>::type>::value);
+}
 
 template<class E>
 class source_base;
@@ -476,8 +478,11 @@ template<class T>
 struct args_are_fittings<T> : is_fitting<T>
 {};
 
-static_assert(is_fitting<source<test_event>>::value);
-static_assert(args_are_fittings<source<test_event>, test_sink>::value);
+namespace _static_test
+{
+static_assert(is_fitting<source<test_event_0>>::value);
+static_assert(args_are_fittings<source<test_event_0>, test_sink_0>::value);
+}
 
 template<class T, class Enable = void>
 struct fits_with;
@@ -543,6 +548,15 @@ private:
 };
 
 template<class T>
+struct is_connector : std::false_type
+{};
+
+template<class... Args>
+struct is_connector<connector<Args...>> : std::true_type
+{};
+
+
+template<class T>
 struct complement;
 
 template<class... Args>
@@ -551,15 +565,20 @@ struct complement<connector<Args...>>
 	using type = connector<typename fits_with<Args>::type...>;
 };
 
-using test_event_0 = event<int, 1, bool>;
-using test_event_1 = event<int, 2, std::string const&>;
+namespace _static_test
+{
+using test_event_1 = event<int, 1, bool>;
+using test_event_2 = event<int, 2, std::string const&>;
 
-using tcon0 = connector<source<test_event_0>, sink<test_event_1>>;
+using tcon0 = connector<source<test_event_1>, sink<test_event_2>>;
 
 using tcon1 = complement<tcon0>::type;
 
-static_assert(std::is_same<fits_with<source<test_event>>::type, sink<test_event>>::value);
-
+static_assert(std::is_same<fits_with<source<test_event_0>>::type, sink<test_event_0>>::value);
+static_assert(is_connector<tcon0>::value);
+static_assert(is_connector<tcon1>::value);
+static_assert(!is_connector<test_event_1>::value);
+}    // namespace _static_test
 
 template<class T, class Derived, class Enable = void>
 struct fitting_base;
@@ -626,6 +645,107 @@ public:
 
 private:
 	connector_type m_connector;
+};
+
+
+template<class... Args>
+struct args_are_connectors : std::false_type
+{};
+
+template<class First, class... Rest>
+struct args_are_connectors<First, Rest...>
+	: std::integral_constant<bool, is_connector<First>::value && args_are_connectors<Rest...>::value>
+{};
+
+template<class T>
+struct args_are_connectors<T> : is_connector<T>
+{};
+
+template<std::size_t I = 0, class... Tp>
+inline typename std::enable_if_t<I == sizeof...(Tp)>
+mate_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>& b)
+{}
+
+template<std::size_t I = 0, class... Tp>
+		inline typename std::enable_if_t
+		<(I < sizeof...(Tp))>
+		  mate_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>& b)
+{
+	std::get<I>(a).mate(std::get<I>(b));
+	mate_each<I + 1, Tp...>(a, b);
+}
+
+
+template<class... Args>
+class surface
+{
+public:
+	friend class surface<typename complement<Args>::type...>;
+	static_assert(args_are_connectors<Args...>::value);
+
+	template<class... _Args>
+	surface(_Args&&... _args) : m_tuple{std::forward<_Args>(_args)...} {}
+
+	template<class T>
+	T&
+	get_connector()
+	{
+		return std::get<T>(m_tuple);
+	}
+
+	void
+	stack(surface<typename complement<Args>::type...>& that)
+	{
+		mate_each(m_tuple, that.m_tuple);
+	}
+
+private:
+	std::tuple<Args...> m_tuple;
+};
+
+template<class... Args>
+struct complement<surface<Args...>>
+{
+	using type = surface<typename complement<Args>::type...>;
+};
+
+
+template<class Surface, class Derived>
+class stackable;
+
+template<class Derived, class... Args>
+class stackable<surface<Args...>, Derived> : public connectable<Args, Derived>...
+{
+public:
+	using surface_type = surface<Args...>;
+
+	// stackable() : m_surface{connector_initializer<Args, Derived>{}(*this)...} {}
+
+	stackable() : m_surface{connectable<Args, Derived>::template get_connector<Args>()...} {}
+
+	template<class T>
+	T&
+	get_connector()
+	{
+		return std::get<T>(m_surface);
+	}
+
+	template<class Surface>
+	typename std::enable_if_t<std::is_same<Surface, surface_type>::value, surface_type&>
+	get_surface()
+	{
+		return m_surface;
+	}
+
+	template<class T>
+	void
+	stack(T& other)
+	{
+		m_surface.stack(other.template get_surface<typename complement<surface_type>::type>());
+	}
+
+private:
+	surface_type m_surface;
 };
 
 }    // namespace async

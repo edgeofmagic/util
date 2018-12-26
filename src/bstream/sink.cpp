@@ -114,8 +114,9 @@ bstream::sink::put(byte_type byte, std::error_code& err)
 	if (m_did_jump)
 	{
 		really_jump(err);
+		if (err) goto exit;
 	}
-	if (m_next >= m_end)
+	if (m_base == nullptr || m_next >= m_end)
 	{
 		assert(m_next == m_end);
 		overflow(1, err);
@@ -144,7 +145,7 @@ bstream::sink::put(byte_type byte)
 		if (err)
 			throw std::system_error{err};
 	}
-	if (m_next >= m_end)
+	if (m_base == nullptr || m_next >= m_end)
 	{
 		assert(m_next == m_end);
 		overflow(1);
@@ -168,6 +169,7 @@ bstream::sink::putn(const byte_type* src, size_type n, std::error_code& err)
 	if (m_did_jump)
 	{
 		really_jump(err);
+		if (err) goto exit;
 	}
 
 	if (n <= static_cast<size_type>(m_end - m_next))    // optimize for common case ( no overflow )
@@ -186,7 +188,7 @@ bstream::sink::putn(const byte_type* src, size_type n, std::error_code& err)
 		auto limit = src + n;
 		while (p < limit)
 		{
-			if (m_next >= m_end)
+			if (m_base == nullptr || m_next >= m_end)
 			{
 				assert(m_next == m_end);    // just checking
 				overflow(limit - p, err);
@@ -239,7 +241,7 @@ bstream::sink::putn(const byte_type* src, size_type n)
 			auto limit = src + n;
 			while (p < limit)
 			{
-				if (m_next >= m_end)
+				if (m_base == nullptr || m_next >= m_end)
 				{
 					assert(m_next == m_end);    // just checking
 					overflow(limit - p);
@@ -271,42 +273,45 @@ bstream::sink::filln(const byte_type fill_byte, size_type n, std::error_code& er
 	if (m_did_jump)
 	{
 		really_jump(err);
+		if (err) goto exit;
 	}
 
-	if (n <= static_cast<size_type>(m_end - m_next))    // optimize for common case ( no overflow )
-	{
-		if (!m_dirty)
-		{
-			m_dirty_start = m_next;
-			m_dirty       = true;
-		}
-		::memset(m_next, fill_byte, n);
-		m_next += n;
-	}
-	else
-	{
-		size_type remaining = n;
-		while (remaining > 0)
-		{
-			if (m_next >= m_end)
-			{
-				assert(m_next == m_end);    // just checking
-				overflow(remaining, err);
-				if (err)
-					goto exit;
-				assert(!m_dirty);
-			}
-			if (!m_dirty)
-			{
-				m_dirty_start = m_next;
-				m_dirty       = true;
-			}
-			size_type chunk_size = std::min(static_cast<size_type>(m_end - m_next), remaining);
-			::memset(m_next, fill_byte, chunk_size);
-			remaining -= chunk_size;
-			m_next += chunk_size;
-		}
-	}
+	really_fill(fill_byte, n);
+
+	// if (n <= static_cast<size_type>(m_end - m_next))    // optimize for common case ( no overflow )
+	// {
+	// 	if (!m_dirty)
+	// 	{
+	// 		m_dirty_start = m_next;
+	// 		m_dirty       = true;
+	// 	}
+	// 	::memset(m_next, fill_byte, n);
+	// 	m_next += n;
+	// }
+	// else
+	// {
+	// 	size_type remaining = n;
+	// 	while (remaining > 0)
+	// 	{
+	// 		if (m_base == nullptr || m_next >= m_end)
+	// 		{
+	// 			assert(m_next == m_end);    // just checking
+	// 			overflow(remaining, err);
+	// 			if (err)
+	// 				goto exit;
+	// 			assert(!m_dirty);
+	// 		}
+	// 		if (!m_dirty)
+	// 		{
+	// 			m_dirty_start = m_next;
+	// 			m_dirty       = true;
+	// 		}
+	// 		size_type chunk_size = std::min(static_cast<size_type>(m_end - m_next), remaining);
+	// 		::memset(m_next, fill_byte, chunk_size);
+	// 		remaining -= chunk_size;
+	// 		m_next += chunk_size;
+	// 	}
+	// }
 
 exit:
 	return;
@@ -331,7 +336,7 @@ bstream::sink::really_fill(byte_type fill_byte, size_type n)
 		size_type remaining = n;
 		while (remaining > 0)
 		{
-			if (m_next >= m_end)
+			if (m_base == nullptr || m_next >= m_end)
 			{
 				assert(m_next == m_end);    // just checking
 				overflow(remaining);
@@ -500,7 +505,7 @@ bstream::sink::really_jump(std::error_code& err)
 	err.clear();
 	assert(m_did_jump);
 	assert(is_valid_position(m_jump_to));
-	assert(!m_dirty);
+	assert(!m_dirty); // previously flushed
 
 	auto hwm = get_high_watermark();
 

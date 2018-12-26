@@ -1940,7 +1940,6 @@ private:
 
 #endif
 
-
 } // namespace bstream
 } // namespace logicmill
 

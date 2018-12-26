@@ -100,7 +100,7 @@ protected:
 	};
 
 	void
-	on_listener_error_default()
+	on_acceptor_error_default()
 	{
 		close();
 	}
@@ -143,7 +143,7 @@ protected:
 
 	async::loop::ptr                                  m_loop;
 	bstream::cloned_context                           m_stream_context;
-	async::listener::ptr                              m_listener;
+	async::acceptor::ptr                              m_acceptor;
 	std::vector<std::unique_ptr<interface_stub_base>> m_stubs;
 	std::vector<std::shared_ptr<void>>                m_impl_ptrs;
 	channel_error_handler                             m_on_channel_error;

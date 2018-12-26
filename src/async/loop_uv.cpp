@@ -248,11 +248,11 @@ exit:
 	return;
 }
 
-listener::ptr
-loop_uv::really_create_listener(options const& opt, std::error_code& err, listener::connection_handler&& handler)
+acceptor::ptr
+loop_uv::really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler)
 {
 	err.clear();
-	std::shared_ptr<tcp_listener_uv> listener;
+	std::shared_ptr<tcp_acceptor_uv> acceptor;
 
 	if (!handler)
 	{
@@ -266,17 +266,17 @@ loop_uv::really_create_listener(options const& opt, std::error_code& err, listen
 		goto exit;
 	}
 
-	listener = std::make_shared<tcp_listener_uv>(opt.endpoint(), std::move(handler));
-	listener->init(m_uv_loop, listener, opt, err);
+	acceptor = std::make_shared<tcp_acceptor_uv>(opt.endpoint(), std::move(handler));
+	acceptor->init(m_uv_loop, acceptor, opt, err);
 exit:
-	return listener;
+	return acceptor;
 }
 
-listener::ptr
-loop_uv::really_create_listener(options const& opt, std::error_code& err, listener::connection_handler const& handler)
+acceptor::ptr
+loop_uv::really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler const& handler)
 {
 	err.clear();
-	std::shared_ptr<tcp_listener_uv> listener;
+	std::shared_ptr<tcp_acceptor_uv> acceptor;
 
 	if (!handler)
 	{
@@ -290,10 +290,10 @@ loop_uv::really_create_listener(options const& opt, std::error_code& err, listen
 		goto exit;
 	}
 
-	listener = std::make_shared<tcp_listener_uv>(opt.endpoint(), handler);
-	listener->init(m_uv_loop, listener, opt, err);
+	acceptor = std::make_shared<tcp_acceptor_uv>(opt.endpoint(), handler);
+	acceptor->init(m_uv_loop, acceptor, opt, err);
 exit:
-	return listener;
+	return acceptor;
 }
 
 channel::ptr

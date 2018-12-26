@@ -31,11 +31,26 @@ void
 compound_memory::sink::really_overflow( size_type n, std::error_code& err )
 {
 	err.clear();
+	if (m_base == nullptr)
+	{
+		assert(m_bufs.size() == 0);
+		assert(m_current == 0);
+		assert(get_high_watermark() == 0);
+		assert(m_did_jump = false);
+    	assert(m_dirty = false);
+		assert(m_base_offset = 0);
+		m_bufs.emplace_back( mutable_buffer{ m_segment_capacity, m_broker } );
+        reset_ptrs();
+	}
 	assert( ppos() == ( m_current + 1 ) * m_segment_capacity );
 	m_bufs[ m_current ].size( m_segment_capacity );
 	if ( m_current == m_bufs.size() - 1 ) // last buffer in deque, extend deque
 	{
 		m_bufs.emplace_back( m_bufs[ m_current ].fork() );
+	}
+	else
+	{
+		assert(get_high_watermark() > ppos());
 	}
 	++m_current;
 	reset_ptrs();
@@ -96,7 +111,6 @@ compound_memory::sink::set_size()
 		assert( hwm_seg_pos > 0 && hwm_seg_pos <= m_segment_capacity );
 
 		m_bufs[ hwm_segment ].size( hwm_seg_pos );
-
 	}
 }
 

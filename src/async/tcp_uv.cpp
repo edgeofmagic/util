@@ -522,10 +522,10 @@ tcp_framed_channel_uv::really_write(
 	}
 }
 
-// tcp_listener_uv
+// tcp_acceptor_uv
 
 void
-tcp_listener_uv::init(uv_loop_t* lp, ptr const& self, logicmill::async::options const& opt, std::error_code& err)
+tcp_acceptor_uv::init(uv_loop_t* lp, ptr const& self, logicmill::async::options const& opt, std::error_code& err)
 {
 	err.clear();
 	set_self_ptr(self);
@@ -550,69 +550,69 @@ exit:
 }
 
 void
-tcp_listener_uv::on_connection(uv_stream_t* handle, int stat)
+tcp_acceptor_uv::on_connection(uv_stream_t* handle, int stat)
 {
-	auto listener_ptr = std::dynamic_pointer_cast<tcp_listener_uv>(get_base_shared_ptr(handle));
+	auto acceptor_ptr = std::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(handle));
 
 	if (stat < 0)
 	{
 		std::error_code err = map_uv_error(stat);
-		listener_ptr->m_connection_handler(listener_ptr, nullptr, err);
+		acceptor_ptr->m_connection_handler(acceptor_ptr, nullptr, err);
 	}
 	else
 	{
 		std::error_code err;
 		auto            channel_ptr = std::make_shared<tcp_channel_uv>();
-		channel_ptr->init(listener_ptr->get_handle()->loop, channel_ptr, err);
+		channel_ptr->init(acceptor_ptr->get_handle()->loop, channel_ptr, err);
 		if (err)
 		{
-			listener_ptr->m_connection_handler(listener_ptr, channel_ptr, err);
+			acceptor_ptr->m_connection_handler(acceptor_ptr, channel_ptr, err);
 		}
 		else
 		{
-			int status = uv_accept(listener_ptr->get_stream_handle(), channel_ptr->get_stream_handle());
+			int status = uv_accept(acceptor_ptr->get_stream_handle(), channel_ptr->get_stream_handle());
 			if (status)
 			{
 				err = map_uv_error(status);
 			}
-			listener_ptr->m_connection_handler(listener_ptr, channel_ptr, err);
+			acceptor_ptr->m_connection_handler(acceptor_ptr, channel_ptr, err);
 		}
 	}
 }
 
 void
-tcp_listener_uv::on_framing_connection(uv_stream_t* handle, int stat)
+tcp_acceptor_uv::on_framing_connection(uv_stream_t* handle, int stat)
 {
-	auto listener_ptr = std::dynamic_pointer_cast<tcp_listener_uv>(get_base_shared_ptr(handle));
+	auto acceptor_ptr = std::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(handle));
 
 	if (stat < 0)
 	{
 		std::error_code err = map_uv_error(stat);
-		listener_ptr->m_connection_handler(listener_ptr, nullptr, err);
+		acceptor_ptr->m_connection_handler(acceptor_ptr, nullptr, err);
 	}
 	else
 	{
 		std::error_code err;
 		auto            channel_ptr = std::make_shared<tcp_framed_channel_uv>();
-		channel_ptr->init(listener_ptr->get_handle()->loop, channel_ptr, err);
+		channel_ptr->init(acceptor_ptr->get_handle()->loop, channel_ptr, err);
 		if (err)
 		{
-			listener_ptr->m_connection_handler(listener_ptr, channel_ptr, err);
+			acceptor_ptr->m_connection_handler(acceptor_ptr, channel_ptr, err);
 		}
 		else
 		{
-			int status = uv_accept(listener_ptr->get_stream_handle(), channel_ptr->get_stream_handle());
+			int status = uv_accept(acceptor_ptr->get_stream_handle(), channel_ptr->get_stream_handle());
 			if (status)
 			{
 				err = map_uv_error(status);
 			}
-			listener_ptr->m_connection_handler(listener_ptr, channel_ptr, err);
+			acceptor_ptr->m_connection_handler(acceptor_ptr, channel_ptr, err);
 		}
 	}
 }
 
 bool
-tcp_listener_uv::really_close(logicmill::async::listener::close_handler&& handler)
+tcp_acceptor_uv::really_close(logicmill::async::acceptor::close_handler&& handler)
 {
 	bool result{true};
 	if (!uv_is_closing(get_handle()))
@@ -628,7 +628,7 @@ tcp_listener_uv::really_close(logicmill::async::listener::close_handler&& handle
 }
 
 bool
-tcp_listener_uv::really_close(logicmill::async::listener::close_handler const& handler)
+tcp_acceptor_uv::really_close(logicmill::async::acceptor::close_handler const& handler)
 {
 	bool result{true};
 	if (!uv_is_closing(get_handle()))

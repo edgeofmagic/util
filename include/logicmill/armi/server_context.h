@@ -104,12 +104,12 @@ public:
 			std::is_convertible<T, server_error_handler>::value
 					&& std::is_convertible<U, server_context_base::channel_error_handler>::value,
 			server_context&>
-	bind(async::options const& opts, std::error_code& err, T&& on_listener_error, U&& on_channel_error)
+	bind(async::options const& opts, std::error_code& err, T&& on_acceptor_error, U&& on_channel_error)
 	{
 		async::options opts_override{opts};
 		opts_override.framing(true);
 		server_context_base::m_on_server_error
-				= std::make_unique<error_handler_wrapper>(*this, std::forward<T>(on_listener_error));
+				= std::make_unique<error_handler_wrapper>(*this, std::forward<T>(on_acceptor_error));
 		server_context_base::m_on_channel_error = std::forward<U>(on_channel_error);
 		server_context_base::really_bind(opts_override, err);
 		return *this;
@@ -126,7 +126,7 @@ public:
 
 	template<class T>
 	typename std::enable_if_t<std::is_convertible<T, server_error_handler>::value, server_context&>
-	on_listener_error(T&& handler)
+	on_acceptor_error(T&& handler)
 	{
 		server_context_base::m_on_server_error
 				= std::make_unique<error_handler_wrapper>(*this, std::forward<T>(handler));

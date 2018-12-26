@@ -150,15 +150,15 @@ protected:
 	really_start_read(std::error_code& err, read_handler const& handler) = 0;
 };
 
-class listener
+class acceptor
 {
 public:
-	using ptr = std::shared_ptr<listener>;
+	using ptr = std::shared_ptr<acceptor>;
 	using connection_handler
-			= std::function<void(listener::ptr const& sp, channel::ptr const& chan, std::error_code err)>;
-	using close_handler = std::function<void(listener::ptr const& lp)>;
+			= std::function<void(acceptor::ptr const& sp, channel::ptr const& chan, std::error_code err)>;
+	using close_handler = std::function<void(acceptor::ptr const& lp)>;
 
-	virtual ~listener() {}
+	virtual ~acceptor() {}
 
 	template<class H>
 	typename std::enable_if_t<std::is_convertible<H, close_handler>::value, bool>

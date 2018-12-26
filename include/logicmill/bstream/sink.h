@@ -211,6 +211,15 @@ public:
 		using ctype                 = typename detail::canonical_type<usize>::type;
 
 		using byte_vec = byte_type[usize];
+
+		if (m_did_jump)
+		{
+			std::error_code err;
+			really_jump(err);
+			if (err)
+				throw std::system_error{err};
+		}
+
 		if ((m_end - m_next) >= usize)
 		{
 			if (reverse)
@@ -241,6 +250,13 @@ public:
 		using ctype                 = typename detail::canonical_type<usize>::type;
 
 		using byte_vec = byte_type[usize];
+
+		if (m_did_jump)
+		{
+			really_jump(err);
+			if (err) goto exit;
+		}
+
 		if ((m_end - m_next) >= usize)
 		{
 			if (reverse)
@@ -260,6 +276,9 @@ public:
 					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
+
+	exit:
+		return;
 	}
 
 	template<class U>
@@ -270,6 +289,15 @@ public:
 		using ctype                 = typename detail::canonical_type<usize>::type;
 
 		using byte_vec = byte_type[usize];
+
+		if (m_did_jump)
+		{
+			std::error_code err;
+			really_jump(err);
+			if (err)
+				throw std::system_error{err};
+		}
+
 		if ((m_end - m_next) >= usize)
 		{
 			if (reverse)
@@ -304,6 +332,13 @@ public:
 		using ctype                 = typename detail::canonical_type<usize>::type;
 
 		using byte_vec = byte_type[usize];
+
+		if (m_did_jump)
+		{
+			really_jump(err);
+			if (err) goto exit;
+		}
+
 		if ((m_end - m_next) >= usize)
 		{
 			if (reverse)
@@ -327,6 +362,8 @@ public:
 					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
+	exit:
+		return;
 	}
 
 	template<class U>
@@ -337,6 +374,15 @@ public:
 		using ctype                 = typename detail::canonical_type<usize>::type;
 
 		using byte_vec = byte_type[usize];
+
+		if (m_did_jump)
+		{
+			std::error_code err;
+			really_jump(err);
+			if (err)
+				throw std::system_error{err};
+		}
+
 		if ((m_end - m_next) >= usize)
 		{
 			if (reverse)
@@ -379,6 +425,13 @@ public:
 		using ctype                 = typename detail::canonical_type<usize>::type;
 
 		using byte_vec = byte_type[usize];
+
+		if (m_did_jump)
+		{
+			really_jump(err);
+			if (err) goto exit;
+		}
+
 		if ((m_end - m_next) >= usize)
 		{
 			if (reverse)
@@ -410,6 +463,8 @@ public:
 					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
+	exit:
+		return;
 	}
 
 	void

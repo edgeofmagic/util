@@ -34,7 +34,7 @@
 using logicmill::async::ip::endpoint;
 using logicmill::bstream::mutable_buffer;
 using logicmill::async::transceiver;
-using logicmill::async::listener;
+using logicmill::async::acceptor;
 using logicmill::async::channel;
 using logicmill::async::options;
 using logicmill::async::timer;
@@ -133,17 +133,17 @@ private:
 	virtual void
 	close(std::error_code& err) override;    // probably should NOT be called from any handler
 
-	virtual listener::ptr
-	really_create_listener(
+	virtual acceptor::ptr
+	really_create_acceptor(
 			options const&                 opt,
 			std::error_code&                                 err,
-			listener::connection_handler&& handler) override;
+			acceptor::connection_handler&& handler) override;
 
-	virtual listener::ptr
-	really_create_listener(
+	virtual acceptor::ptr
+	really_create_acceptor(
 			options const&                      opt,
 			std::error_code&                                      err,
-			listener::connection_handler const& handler) override;
+			acceptor::connection_handler const& handler) override;
 
 	virtual channel::ptr
 	really_connect_channel(

@@ -103,13 +103,13 @@ template<class Payload, class Derived>
 class duplex : public data_in<Payload, Derived>, public data_out<Payload, Derived>
 {
 public:
-	using data_source_base = typename data_out<Payload, Derived>::template source_base<data_event<Payload>>;
-	using cancel_source_base = typename data_out<Payload, Derived>::template source_base<cancel_event>;
-	using control_source_base = typename data_in<Payload, Derived>::template source_base<control_event>;
+	using data_emitter = typename data_out<Payload, Derived>::template emitter<data_event<Payload>>;
+	using cancel_emitter = typename data_out<Payload, Derived>::template emitter<cancel_event>;
+	using control_emitter = typename data_in<Payload, Derived>::template emitter<control_event>;
 
-	using data_source_base::send;
-	using cancel_source_base::send;
-	using control_source_base::send;
+	using data_emitter::send;
+	using cancel_emitter::send;
+	using control_emitter::send;
 
 	using data_out<Payload, Derived>::get_connector;
 	using data_in<Payload, Derived>::get_connector;

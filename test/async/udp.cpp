@@ -58,7 +58,7 @@ using namespace async;
 
 TEST_CASE("logicmill::async::udp [ smoke ] { basic functionality }")
 {
-	bool listener_handler_did_execute{false};
+	bool acceptor_handler_did_execute{false};
 	bool send_timer_did_execute{false};
 
 	std::error_code     err;

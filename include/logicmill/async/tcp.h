@@ -43,10 +43,10 @@ public:
 	using ptr = std::shared_ptr<tcp_channel>;
 };
 
-class tcp_listener : public listener
+class tcp_acceptor : public acceptor
 {
 public:
-	using ptr = std::shared_ptr<tcp_listener>;
+	using ptr = std::shared_ptr<tcp_acceptor>;
 };
 
 enum class stream_event
@@ -82,8 +82,8 @@ public:
 	using out_base = connectable<data_out_connector, tcp_stream>;
 	using in_base = connectable<data_in_connector, tcp_stream>;
 
-	using source_base<data_event>::send;
-	using source_base<control_event>::send;
+	using emitter<data_event>::send;
+	using emitter<control_event>::send;
 
 	using out_base::get_connector;
 	using in_base::get_connector;
@@ -237,14 +237,14 @@ public:
 	using out_base = connectable<data_out_connector, tcp_stream_driver>;
 	using in_base = connectable<data_in_connector, tcp_stream_driver>;
 
-	using data_source_base = typename out_base::template source_base<data_event>;
-	// using control_sink_base = typename out_base::template sink_base<control_event>;
+	using data_emitter = typename out_base::template emitter<data_event>;
+	// using control_listener = typename out_base::template listener<control_event>;
 
-	// using data_sink_base = typename in_base::template sink_base<data_event>;
-	using control_source_base = typename in_base::template source_base<control_event>;
+	// using data_listener = typename in_base::template listener<data_event>;
+	using control_emitter = typename in_base::template emitter<control_event>;
 
-	using source_base<data_event>::send;
-	using source_base<control_event>::send;
+	using emitter<data_event>::send;
+	using emitter<control_event>::send;
 
 	using out_base::get_connector;
 	using in_base::get_connector;
@@ -256,10 +256,10 @@ public:
 
 	// tcp_stream_driver(tcp_stream::ptr strm) : m_stream{strm}
 	// {
-		// source_base<data_event>::get_source<data_event>().fit(m_stream->sink_base<data_event, tcp_stream>::get_sink<data_event>());
-		// source_base<control_event>::get_source<control_event>().fit(m_stream->sink_base<control_event, tcp_stream>::get_sink<control_event>());
-		// m_stream->source_base<data_event>::get_source<data_event>().fit(this->sink_base<data_event, tcp_stream_driver>::get_sink<data_event>());
-		// m_stream->source_base<control_event>::get_source<control_event>().fit(this->sink_base<control_event, tcp_stream_driver>::get_sink<control_event>());
+		// emitter<data_event>::get_source<data_event>().fit(m_stream->listener<data_event, tcp_stream>::get_sink<data_event>());
+		// emitter<control_event>::get_source<control_event>().fit(m_stream->listener<control_event, tcp_stream>::get_sink<control_event>());
+		// m_stream->emitter<data_event>::get_source<data_event>().fit(this->listener<data_event, tcp_stream_driver>::get_sink<data_event>());
+		// m_stream->emitter<control_event>::get_source<control_event>().fit(this->listener<control_event, tcp_stream_driver>::get_sink<control_event>());
 
 
 		// get_connector<data_in_connector>().mate(m_stream->get_connector<data_out_connector>());

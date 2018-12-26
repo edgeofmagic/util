@@ -43,10 +43,10 @@ using kill_event  = async::event<actions, actions::kill, std::string const&>;
 using start_event = async::event<actions, actions::start, int>;
 using stop_event  = async::event<actions, actions::stop, bool>;
 
-class killer : public async::source_base<kill_event>
+class killer : public async::emitter<kill_event>
 {};
 
-class victim : public async::sink_base<kill_event, victim>
+class victim : public async::listener<kill_event, victim>
 {
 public:
 	void
@@ -111,10 +111,17 @@ public:
 	};
 
 	template<class T>
-	std::enable_if_t<std::is_same<T,kill_event>::value,sink<T>>
+	std::enable_if_t<std::is_same<T, kill_event>::value, sink<T>>
 	get_sink()
 	{
 		return sink<kill_event>{kill_functor(*this)};
+	}
+
+	template<class T, class Emitter>
+	std::enable_if_t<std::is_same<T, kill_event>::value && async::has_get_source_method<Emitter, T>::value>
+	fit(Emitter& e)
+	{
+		e.template get_source<T>().fit(get_sink<T>());
 	}
 
 	bool        m_is_dead;
@@ -146,11 +153,17 @@ public:
 	}
 
 	template<class T>
-	std::enable_if_t<std::is_same<T,kill_event>::value,sink<T>>
+	std::enable_if_t<std::is_same<T, kill_event>::value, sink<T>>
 	get_sink()
 	{
 		return sink<kill_event>{[=](std::string const& s) { this->die(s); }};
+	}
 
+	template<class T, class Emitter>
+	std::enable_if_t<std::is_same<T, kill_event>::value && async::has_get_source_method<Emitter, T>::value>
+	fit(Emitter& e)
+	{
+		e.template get_source<T>().fit(get_sink<T>());
 	}
 
 	bool        m_is_dead;
@@ -233,8 +246,8 @@ using foo_con = connector<source<beep_event>, source<ring_event>, sink<squeal_ev
 class foo : public connectable<foo_con, foo>
 {
 public:
-	using source_base<beep_event>::send;
-	using source_base<ring_event>::send;
+	using emitter<beep_event>::send;
+	using emitter<ring_event>::send;
 
 	void
 	on(squeal_event, std::string const& s, char c)
@@ -260,8 +273,8 @@ using oof_con = complement<foo_con>::type;
 class oof : public connectable<complement<foo_con>::type, oof>
 {
 public:
-	using source_base<squeal_event>::send;
-	using source_base<honk_event>::send;
+	using emitter<squeal_event>::send;
+	using emitter<honk_event>::send;
 
 	void
 	on(beep_event, bool b, int i)
@@ -288,31 +301,29 @@ class combo_b;
 class combo_a : public connectable<foo_con, combo_a>, public connectable<oof_con, combo_a>
 {
 public:
-
-
 	using foo_base = connectable<foo_con, combo_a>;
 	using oof_base = connectable<oof_con, combo_a>;
 
-	using source_base<squeal_event>::send;
-	using source_base<honk_event>::send;
+	using emitter<squeal_event>::send;
+	using emitter<honk_event>::send;
 
-	using source_base<beep_event>::send;
-	using source_base<ring_event>::send;
+	using emitter<beep_event>::send;
+	using emitter<ring_event>::send;
 
 	using foo_base::get_connector;
 	using oof_base::get_connector;
 	using foo_base::mate;
 	using oof_base::mate;
 
-	combo_a(combo_b& b);        
+	combo_a(combo_b& b);
 
 
-	bool beep_flag;
-	int beep_i;
-	bool ring_flag;
-	int ring_i;
-	std::string str;
-	char ch;
+	bool                 beep_flag;
+	int                  beep_i;
+	bool                 ring_flag;
+	int                  ring_i;
+	std::string          str;
+	char                 ch;
 	std::shared_ptr<int> intp;
 
 	void
@@ -331,14 +342,14 @@ public:
 	on(beep_event, bool b, int i)
 	{
 		beep_flag = b;
-		beep_i = i;
+		beep_i    = i;
 	}
 
 	void
 	on(ring_event, bool b, int i)
 	{
 		ring_flag = b;
-		ring_i = i;
+		ring_i    = i;
 	}
 
 	void
@@ -351,8 +362,8 @@ public:
 	on(squeal_event, std::string const& s, char c)
 	{
 		str = s;
-		ch = c;
-	} 
+		ch  = c;
+	}
 
 	void
 	send_honk()
@@ -365,21 +376,19 @@ public:
 	{
 		intp = ip;
 	}
-
 };
 
 class combo_b : public connectable<foo_con, combo_b>, public connectable<oof_con, combo_b>
 {
 public:
-
 	using foo_base = connectable<foo_con, combo_b>;
 	using oof_base = connectable<oof_con, combo_b>;
 
-	using source_base<squeal_event>::send;
-	using source_base<honk_event>::send;
+	using emitter<squeal_event>::send;
+	using emitter<honk_event>::send;
 
-	using source_base<beep_event>::send;
-	using source_base<ring_event>::send;
+	using emitter<beep_event>::send;
+	using emitter<ring_event>::send;
 
 	using foo_base::get_connector;
 	using oof_base::get_connector;
@@ -402,14 +411,13 @@ public:
 	on(squeal_event, std::string const& s, char c)
 	{
 		send<squeal_event>(s, c);
-	} 
+	}
 
 	void
 	on(honk_event, std::shared_ptr<int> ip)
 	{
 		send<honk_event>(ip);
 	}
-
 };
 
 }    // namespace event_test
@@ -423,15 +431,17 @@ event_test::combo_a::combo_a(combo_b& b)
 
 using namespace event_test;
 
-TEST_CASE("logicmill::async::event [ smoke ] { lambda }")
+TEST_CASE("logicmill::async::event [ smoke ] { functor }")
 {
 
 	functor_victim nicole;
 
 	killer oh_jay;
 
-	oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
-
+	// oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
+	// fit<kill_event>(oh_jay, nicole);
+	// oh_jay.fit<kill_event>(nicole);
+	nicole.fit<kill_event>(oh_jay);
 
 	oh_jay.send<kill_event>("Die, bitch!");
 
@@ -440,13 +450,32 @@ TEST_CASE("logicmill::async::event [ smoke ] { lambda }")
 	CHECK(nicole.message() == "Die, bitch!");
 }
 
-TEST_CASE("logicmill::async::event::sink [ smoke ] { functor move }")
+TEST_CASE("logicmill::async::event [ smoke ] { naked emitter }")
+{
+
+	functor_victim nicole;
+
+	emitter<kill_event> oh_jay;
+
+	// oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
+	// fit<kill_event>(oh_jay, nicole);
+	// oh_jay.fit<kill_event>(nicole);
+	oh_jay.fit<kill_event>(nicole);
+
+	oh_jay.send<kill_event>("Die, bitch!");
+
+	CHECK(nicole.is_dead());
+	CHECK(nicole.message() == "Die, bitch!");
+}
+
+TEST_CASE("logicmill::async::event::sink [ smoke ] { lambda move }")
 {
 	lambda_victim nicole;
 
 	killer oh_jay;
 
-	oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
+	// oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
+	nicole.fit<kill_event>(oh_jay);
 
 	oh_jay.send<kill_event>("Die, bitch!");
 
@@ -466,7 +495,6 @@ TEST_CASE("logicmill::async::event::connector [ smoke ] { 1 }")
 	connector<source<kill_event>, sink<kill_event>> left{oh_jay.get_source<kill_event>(), jfk.get_sink<kill_event>()};
 	connector<sink<kill_event>, source<kill_event>> right{nicole.get_sink<kill_event>(),
 														  lee_harvey.get_source<kill_event>()};
-
 	left.mate(right);
 
 	oh_jay.send<kill_event>("Die, bitch!");
@@ -539,9 +567,9 @@ TEST_CASE("logicmill::async::event::connectable [ smoke ] { complex }")
 	CHECK(f.squeal_char == 'x');
 	CHECK(*f.honk_ptr == 42);
 }
+
 namespace event_test
 {
-
 using top_surface = surface<foo_con, oof_con>;
 
 using bottom_surface = surface<oof_con, foo_con>;
@@ -549,27 +577,26 @@ using bottom_surface = surface<oof_con, foo_con>;
 class top : public stackable<top_surface, top>
 {
 public:
-
 	using foo_base = connectable<foo_con, top>;
 	using oof_base = connectable<oof_con, top>;
 
-	using source_base<squeal_event>::send;
-	using source_base<honk_event>::send;
+	using emitter<squeal_event>::send;
+	using emitter<honk_event>::send;
 
-	using source_base<beep_event>::send;
-	using source_base<ring_event>::send;
+	using emitter<beep_event>::send;
+	using emitter<ring_event>::send;
 
 	// using foo_base::get_connector;
 	// using oof_base::get_connector;
 	// using foo_base::mate;
 	// using oof_base::mate;
 
-	bool beep_flag;
-	int beep_i;
-	bool ring_flag;
-	int ring_i;
-	std::string str;
-	char ch;
+	bool                 beep_flag;
+	int                  beep_i;
+	bool                 ring_flag;
+	int                  ring_i;
+	std::string          str;
+	char                 ch;
 	std::shared_ptr<int> intp;
 
 	void
@@ -588,14 +615,14 @@ public:
 	on(beep_event, bool b, int i)
 	{
 		beep_flag = b;
-		beep_i = i;
+		beep_i    = i;
 	}
 
 	void
 	on(ring_event, bool b, int i)
 	{
 		ring_flag = b;
-		ring_i = i;
+		ring_i    = i;
 	}
 
 	void
@@ -608,8 +635,8 @@ public:
 	on(squeal_event, std::string const& s, char c)
 	{
 		str = s;
-		ch = c;
-	} 
+		ch  = c;
+	}
 
 	void
 	send_honk()
@@ -622,21 +649,19 @@ public:
 	{
 		intp = ip;
 	}
-
 };
 
 class bottom : public stackable<bottom_surface, bottom>
 {
 public:
-
 	using foo_base = connectable<foo_con, top>;
 	using oof_base = connectable<oof_con, top>;
 
-	using source_base<squeal_event>::send;
-	using source_base<honk_event>::send;
+	using emitter<squeal_event>::send;
+	using emitter<honk_event>::send;
 
-	using source_base<beep_event>::send;
-	using source_base<ring_event>::send;
+	using emitter<beep_event>::send;
+	using emitter<ring_event>::send;
 
 	// using foo_base::get_connector;
 	// using oof_base::get_connector;
@@ -659,17 +684,16 @@ public:
 	on(squeal_event, std::string const& s, char c)
 	{
 		send<squeal_event>(s, c);
-	} 
+	}
 
 	void
 	on(honk_event, std::shared_ptr<int> ip)
 	{
 		send<honk_event>(ip);
 	}
-
 };
 
-}
+}    // namespace event_test
 
 TEST_CASE("logicmill::async::event::connectable [ smoke ] { double wrap }")
 {
@@ -692,13 +716,12 @@ TEST_CASE("logicmill::async::event::connectable [ smoke ] { double wrap }")
 
 	b.send<beep_event>(true, 27);
 	CHECK(a.beep_flag == true);
-	CHECK(a.beep_i == 27);  
-
+	CHECK(a.beep_i == 27);
 }
 
 TEST_CASE("logicmill::async::event::surface [ smoke ] { basic }")
 {
-	top t;
+	top    t;
 	bottom b;
 
 	// t.get_surface<top_surface>().stack(b.get_surface<bottom_surface>());
@@ -719,292 +742,5 @@ TEST_CASE("logicmill::async::event::surface [ smoke ] { basic }")
 	CHECK(t.ch == 'Z');
 	CHECK(*t.intp == 3);
 }
-
-#if 0
-	class killer : public kill_event::handler< killer >
-	{
-	public:
-		using base = kill_event::handler< killer >;
-
-		killer()
-		: 
-		base{  &killer::murder }
-		{}
-
-		void murder( std::string const& message )
-		{
-			std::cout << "redrum: " << message << std::endl;
-			kill_received = true;
-		}
-
-		bool kill_received = false;
-	};
-
-	class killer : public kill_event::emitter
-	{
-	};
-
-	class action_handler : 
-		public kill_event::handler< action_handler >,
-		public start_event::handler< action_handler >,
-		public stop_event::handler< action_handler >
-	{
-	public:
-		action_handler() 
-		: 
-		kill_event::handler< action_handler >{ &action_handler::kill },
-		start_event::handler< action_handler >{ &action_handler::start },
-		stop_event::handler< action_handler >{ &action_handler::stop }
-		{}
-
-		void kill( std::string const& message )
-		{
-			kill_received = true;
-			std::cout << "action_handler::kill: " << message << std::endl;
-		}
-
-		void start( int i )
-		{
-			start_received = true;
-			std::cout << "action_handler::start: " << i << std::endl;
-		}
-
-		void stop( bool b )
-		{
-			stop_received = true;
-			std::cout << "action_handler::stop: " << std::boolalpha << b << std::endl;
-		}
-
-		bool kill_received = false;
-		bool start_received = false;
-		bool stop_received = false;
-
-		bool all_events_received() const
-		{
-			return kill_received && start_received && stop_received;
-		}
-
-		bool no_events_received() const
-		{
-			return ! ( kill_received || start_received || stop_received );
-		}
-
-	};
-
-#define USE_EMITTER_BASE(_event_name_)                                                                                 \
-	using _event_name_::emitter::add_handler;                                                                          \
-	using _event_name_::emitter::add_listener;                                                                         \
-	using _event_name_::emitter::emit;                                                                                 \
-	/**/
-
-	class action_emitter : public async::multi_emitter< event_test::kill_event, event_test::start_event, event_test::stop_event >
-	{
-	public:
-
-		void emit_stuff()
-		{
-			emit( event_test::kill_event{}, "make a jazz noise here" );
-			emit( event_test::start_event{}, 42);
-			emit( event_test::stop_event{}, false );
-		}
-
-	};
-
-
-
-}
-
-TEST_CASE( "logicmill/async/event/smoke/handler" )
-{
-	event_test::killer k;
-
-	CHECK( ! k.kill_received );
-
-	k.handle( event_test::kill_event{}, std::string{ "zoot allures" } );
-
-	CHECK( k.kill_received );
-}
-
-TEST_CASE( "logicmill/async/event/smoke/listener" )
-{
-	bool kill_received = false;
-
-	event_test::kill_event::listener kill_listener = [&] ( std::string const& message )
-	{
-		std::cout << "kill_listener: " << message << std::endl;
-		kill_received = true;
-	};
-
-	kill_listener( std::string{ "weasels ripped my flesh" } );
-
-	CHECK( kill_received );
-}
-
-TEST_CASE( "logicmill/async/event/smoke/emitter" )
-{
-	bool listener_received_kill = false;
-
-	event_test::kill_event::listener kill_listener = [&] ( std::string const& message )
-	{
-		listener_received_kill = true;
-		std::cout << "kill_listener: " << message << std::endl;
-	};
-
-	event_test::killer provoker;
-
-	auto kp = std::make_shared< event_test::killer >();
-
-	CHECK( provoker.receiver_count( event_test::kill_event{} ) == 0 );
-	CHECK( provoker.handler_count( event_test::kill_event{} ) == 0 );
-	CHECK( provoker.listener_count( event_test::kill_event{} ) == 0 );
-
-	auto id = provoker.add_listener( event_test::kill_event{}, kill_listener );
-
-	CHECK( provoker.receiver_count( event_test::kill_event{} ) == 1 );
-	CHECK( provoker.handler_count( event_test::kill_event{} ) == 0 );
-	CHECK( provoker.listener_count( event_test::kill_event{} ) == 1 );
-
-	provoker.add_handler( event_test::kill_event{}, kp );
-
-	CHECK( provoker.receiver_count( event_test::kill_event{} ) == 2 );
-	CHECK( provoker.handler_count( event_test::kill_event{} ) == 1 );
-	CHECK( provoker.listener_count( event_test::kill_event{} ) == 1 );
-
-	CHECK( ! kp->kill_received );
-	CHECK( ! listener_received_kill );
-
-	provoker.emit( event_test::kill_event{}, "shut up and play yer guitar" );
-
-	CHECK( listener_received_kill );
-	CHECK( kp->kill_received );
-
-	CHECK( provoker.remove_handler( event_test::kill_event{}, kp ) );
-
-	CHECK( provoker.receiver_count( event_test::kill_event{} ) == 1 );
-	CHECK( provoker.handler_count( event_test::kill_event{} ) == 0 );
-	CHECK( provoker.listener_count( event_test::kill_event{} ) == 1 );
-
-	CHECK( provoker.remove_listener( event_test::kill_event{}, id ) );
-
-	CHECK( provoker.receiver_count( event_test::kill_event{} ) == 0 );
-	CHECK( provoker.handler_count( event_test::kill_event{} ) == 0 );
-	CHECK( provoker.listener_count( event_test::kill_event{} ) == 0 );
-
-}
-
-/*
-TEST_CASE( "logicmill/async/event/smoke/multi_event_emitter_handler" )
-{
-	event_test::action_emitter actor;
-
-	auto ahp = std::make_shared< event_test::action_handler >();
-
-	actor.add_handler( event_test::kill_event{}, ahp );
-	actor.add_handler( event_test::start_event{}, ahp );
-	actor.add_handler( event_test::stop_event{}, ahp );
-
-	actor.emit( event_test::kill_event{}, "make a jazz noise here" );
-	actor.emit( event_test::start_event{}, 42);
-	actor.emit( event_test::stop_event{}, false );
-
-	CHECK( true );
-}
-*/
-
-TEST_CASE( "logicmill/async/event/smoke/multi_event_emitter_handler" )
-{
-	async::multi_emitter< event_test::kill_event, event_test::start_event, event_test::stop_event > actor;
-
-	auto ahp = std::make_shared< event_test::action_handler >();
-
-	actor.add_handler( event_test::kill_event{}, ahp );
-	actor.add_handler( event_test::start_event{}, ahp );
-	actor.add_handler( event_test::stop_event{}, ahp );
-
-	CHECK( ahp->no_events_received() );
-
-	actor.emit( event_test::kill_event{}, "Why does it hurt when I pee?" );
-	actor.emit( event_test::start_event{}, 127);
-	actor.emit( event_test::stop_event{}, true );
-
-	CHECK( ahp->all_events_received() );
-
-	actor.disconnect();
-}
-
-TEST_CASE( "logicmill/async/event/smoke/multi_event_emitter_handler" )
-{
-	async::multi_emitter< event_test::kill_event, event_test::start_event, event_test::stop_event > actor;
-
-	auto ahp = std::make_shared< event_test::action_handler >();
-
-	actor.add_all_handlers( ahp );
-
-	CHECK( ahp->no_events_received() );
-
-	actor.emit( event_test::kill_event{}, "A pound for a brown" );
-	actor.emit( event_test::start_event{}, 350);
-	actor.emit( event_test::stop_event{}, true );
-
-	CHECK( ahp->all_events_received() );
-
-	actor.disconnect();
-}
-
-
-TEST_CASE( "logicmill/async/event/smoke/derived_multi_event_emitter_handler" )
-{
-	event_test::action_emitter actor;
-
-	auto ahp = std::make_shared< event_test::action_handler >();
-
-	CHECK( actor.handler_count( event_test::kill_event{} ) == 0 );
-	CHECK( actor.handler_count( event_test::start_event{} ) == 0 );
-	CHECK( actor.handler_count( event_test::stop_event{} ) == 0 );
-
-	actor.add_all_handlers( ahp );
-
-	CHECK( actor.handler_count( event_test::kill_event{} ) == 1 );
-	CHECK( actor.handler_count( event_test::start_event{} ) == 1 );
-	CHECK( actor.handler_count( event_test::stop_event{} ) == 1 );
-	
-	CHECK( actor.total_handler_count() == 3 );
-
-	CHECK( ahp->no_events_received() );
-
-	actor.emit_stuff();
-
-	CHECK( ahp->all_events_received() );
-
-	actor.remove_all_handlers( ahp );
-
-	CHECK( actor.handler_count( event_test::kill_event{} ) == 0 );
-	CHECK( actor.handler_count( event_test::start_event{} ) == 0 );
-	CHECK( actor.handler_count( event_test::stop_event{} ) == 0 );
-
-	CHECK( actor.total_handler_count() == 0 );
-
-	actor.disconnect();
-
-}
-
-TEST_CASE( "logicmill/async/event/smoke/derived_multi_event_emitter_handler" )
-{
-	event_test::action_emitter actor;
-
-	auto ahp = std::make_shared< event_test::action_handler >();
-
-	actor.add_handlers( ahp, event_test::kill_event{}, event_test::start_event{}, event_test::stop_event{} );
-	
-	CHECK( ahp->no_events_received() );
-
-	actor.emit_stuff();
-
-	CHECK( ahp->all_events_received() );
-
-	actor.disconnect();
-}
-
-#endif
 
 #endif

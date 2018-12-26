@@ -85,10 +85,10 @@ public:
 	}
 
 	template<class Handler>
-	typename std::enable_if_t<std::is_convertible<Handler, listener::connection_handler>::value, listener::ptr>
-	create_listener(options const& opts, std::error_code& err, Handler&& handler)
+	typename std::enable_if_t<std::is_convertible<Handler, acceptor::connection_handler>::value, acceptor::ptr>
+	create_acceptor(options const& opts, std::error_code& err, Handler&& handler)
 	{
-		return really_create_listener(opts, err, std::forward<Handler>(handler));
+		return really_create_acceptor(opts, err, std::forward<Handler>(handler));
 	}
 
 	template<class Handler>
@@ -135,11 +135,11 @@ protected:
 	virtual void
 	really_dispatch(std::error_code& err, dispatch_handler const& handler) = 0;
 
-	virtual listener::ptr
-	really_create_listener(options const& opt, std::error_code& err, listener::connection_handler&& handler) = 0;
+	virtual acceptor::ptr
+	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler) = 0;
 
-	virtual listener::ptr
-	really_create_listener(options const& opt, std::error_code& err, listener::connection_handler const& handler) = 0;
+	virtual acceptor::ptr
+	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler const& handler) = 0;
 
 	virtual channel::ptr
 	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler) = 0;

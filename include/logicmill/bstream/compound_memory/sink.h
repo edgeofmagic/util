@@ -25,98 +25,99 @@
 #ifndef LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
 #define LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
 
-#include <logicmill/bstream/sink.h>
-#include <logicmill/bstream/buffer.h>
 #include <deque>
+#include <logicmill/bstream/buffer.h>
+#include <logicmill/bstream/sink.h>
 
 #ifndef LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE
-#define LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE  16384UL
+#define LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE 16384UL
 #endif
 
-namespace logicmill 
+namespace logicmill
 {
-namespace bstream 
+namespace bstream
 {
 namespace compound_memory
 {
 
 namespace detail
 {
-	class sink_test_probe;
+class sink_test_probe;
 }
 
 class sink : public bstream::sink
 {
 public:
-
 	using base = bstream::sink;
 
-	using buffers = std::deque< mutable_buffer >;
+	using buffers = std::deque<mutable_buffer>;
 
 	friend class detail::sink_test_probe;
 
-    sink( 	size_type size = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE, 
-			buffer::memory_broker::ptr broker = buffer::default_broker::get() )
-    :
-    base{},
-	m_segment_capacity{ size },
-	m_current{ 0 },
-    m_bufs{}
-    {
-		m_bufs.emplace_back( mutable_buffer{ size, broker } );
-        reset_ptrs();
-    }
+	sink(size_type                  size   = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE,
+		 buffer::memory_broker::ptr broker = buffer::default_broker::get())
+		: base{}, m_segment_capacity{size}, m_current{0}, m_bufs{}, m_broker{broker}
+	{
+		m_bufs.emplace_back(mutable_buffer{m_segment_capacity, m_broker});
+		reset_ptrs();
+	}
 
-    sink( sink&& ) = delete;
-    sink( sink const& ) = delete;
-    sink& operator=( sink&& ) = delete;
-    sink& operator=( sink const& ) = delete;
+	sink(sink&&)      = delete;
+	sink(sink const&) = delete;
+	sink&
+	operator=(sink&&)
+			= delete;
+	sink&
+	operator=(sink const&)
+			= delete;
 
-	sink& 
+	sink&
 	clear() noexcept;
 
-	buffers& 
+	buffers&
 	get_buffers();
 
 	buffers
 	release_buffers();
 
 protected:
-
+	/** Sets size of tail buffer based on current high watermark.
+	*
+	*/
 	void
 	set_size();
 
 	void
-	locate( position_type pos, std::error_code& err );
+	locate(position_type pos, std::error_code& err);
 
-
-    virtual void
-    really_flush( std::error_code& err ) override;
+	// virtual void
+	// really_flush( std::error_code& err ) override;
 
 	virtual bool
-	is_valid_position( position_type pos ) const override;
+	is_valid_position(position_type pos) const override;
 
 	virtual void
-	really_jump( std::error_code& err ) override;
+	really_jump(std::error_code& err) override;
 
-    virtual void
-    really_overflow( size_type, std::error_code& err ) override;
+	virtual void
+	really_overflow(size_type, std::error_code& err) override;
 
-    void
-    reset_ptrs()
-    {
-		m_base_offset = m_current * m_segment_capacity;
-        byte_type* base = m_bufs[ m_current ].data();
-        set_ptrs( base, base, base + m_segment_capacity );
-    }
+	void
+	reset_ptrs()
+	{
+		m_base_offset   = m_current * m_segment_capacity;
+		byte_type* base = m_bufs[m_current].data();
+		set_ptrs(base, base, base + m_segment_capacity);
+	}
 
-	size_type		m_segment_capacity;
-	std::size_t		m_current;
-    buffers			m_bufs;
+	size_type                  m_segment_capacity;    // capacity of individual buffers
+	size_type                  m_current;             // index of current buffer
+	buffers                    m_bufs;
+	buffer::memory_broker::ptr m_broker;
 };
 
-} // namespace compound_memory
-} // namespace bstream
-} // namespace logicmill
+}    // namespace compound_memory
+}    // namespace bstream
+}    // namespace logicmill
 
-#endif // LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
+#endif    // LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H

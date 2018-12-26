@@ -25,12 +25,14 @@
 #ifndef LOGICMILL_TEST_BSTREAM_COMMON_H
 #define LOGICMILL_TEST_BSTREAM_COMMON_H
 
-#include <logicmill/bstream/source.h>
-#include <logicmill/bstream/sink.h>
-#include <logicmill/bstream/file/source.h>
-#include <logicmill/bstream/file/sink.h>
-#include <logicmill/bstream/memory/source.h>
-#include <logicmill/bstream/memory/sink.h>
+// #include <logicmill/bstream/source.h>
+// #include <logicmill/bstream/sink.h>
+// #include <logicmill/bstream/file/source.h>
+// #include <logicmill/bstream/file/sink.h>
+// #include <logicmill/bstream/memory/source.h>
+// #include <logicmill/bstream/memory/sink.h>
+// #include <logicmill/bstream/compound_memory/source.h>
+// #include <logicmill/bstream/compound_memory/sink.h>
 
 #define MATCH_MEMORY( _actual_, _expected_ )										\
 	( ::memcmp( ( _actual_ ), ( _expected_ ), sizeof( _actual_ ) ) == 0 )			\
@@ -44,6 +46,7 @@
 	( ::memcmp( ( _actual_ ).data(), ( _expected_ ), ( _actual_ ).size() ) == 0	)	\
 /**/
 
+#if 0
 namespace logicmill { 
 namespace bstream { 
 
@@ -271,7 +274,61 @@ private:
 
 } /* namespace detail */
 } /* namespace memory */
+
+namespace compound_memory {
+namespace detail {
+
+template< class Buffer >
+class source_test_probe : public bstream::detail::source_test_probe
+{
+public:
+	source_test_probe( bstream::compound_memory::source< Buffer >& target )
+	:
+	bstream::detail::source_test_probe{ target },
+	m_target{ target }
+	{}
+
+	bstream::size_type current_segment() const
+	{
+		return m_target.m_current;
+	}
+
+	std::vector<bstream::size_type> const& offsets() const
+	{
+		return m_target.m_offsets;
+	}
+
+private:
+	bstream::memory::source< Buffer >& m_target;
+
+};
+
+class sink_test_probe : public bstream::detail::sink_test_probe
+{
+public:
+	sink_test_probe( memory::sink& target )
+	:
+	bstream::detail::sink_test_probe{ target },
+	m_target{ target }
+	{}
+
+	mutable_buffer& buffer()
+	{
+		return m_target.m_buf;
+	}
+
+private:
+	memory::sink& m_target;
+};
+
+} /* namespace detail */
+} /* namespace compound_memory */
+
+
+
 } /* namespace bstream */ 
 } /* namespace logicmill */
+
+#endif
 
 #endif // LOGICMILL_TEST_BSTREAM_COMMON_H

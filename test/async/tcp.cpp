@@ -33,9 +33,9 @@ using namespace logicmill;
 using namespace async;
 
 
-TEST_CASE("logicmill::async::tcp_listener [ smoke ] { basic functionality }")
+TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
 {
-	bool listener_handler_did_execute{false};
+	bool acceptor_handler_did_execute{false};
 	bool channel_connect_handler_did_execute{false};
 
 	async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
@@ -53,12 +53,12 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { basic functionality }")
 	CHECK(!err);
 
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
-	auto                lstnr = lp->create_listener(async::options{listen_ep}, err,
-            [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+	auto                lstnr = lp->create_acceptor(async::options{listen_ep}, err,
+            [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
                 chan->close();
                 ls->close();
-                listener_handler_did_execute = true;
+                acceptor_handler_did_execute = true;
             });
 	CHECK(!err);
 
@@ -87,7 +87,7 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { basic functionality }")
 	connect_timer.reset();
 
 	lp->run(err);
-	CHECK(listener_handler_did_execute);
+	CHECK(acceptor_handler_did_execute);
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(!err);
 
@@ -95,9 +95,9 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { basic functionality }")
 	CHECK(!err);
 }
 
-TEST_CASE("logicmill::async::tcp_listener [ smoke ] { error on bad address }")
+TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { error on bad address }")
 {
-	bool listener_handler_did_execute{false};
+	bool acceptor_handler_did_execute{false};
 	bool channel_connect_handler_did_execute{false};
 	bool channel_close_handler_did_execute{false};
 
@@ -115,13 +115,13 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { error on bad address }")
 	CHECK(!err);
 
 	async::ip::endpoint listen_ep{async::ip::address{"11.42.53.5"}, 7001};
-    	auto                lstnr = lp->create_listener(async::options{listen_ep},
-        err, [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) 
+    	auto                lstnr = lp->create_acceptor(async::options{listen_ep},
+        err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) 
 			{
                 CHECK(!err);
                 chan->close();
                 ls->close();
-                listener_handler_did_execute = true;
+                acceptor_handler_did_execute = true;
             });
 
 	REQUIRE(err);
@@ -154,7 +154,7 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { error on bad address }")
 	connect_timer.reset();
 
 	lp->run(err);
-	CHECK(!listener_handler_did_execute);
+	CHECK(!acceptor_handler_did_execute);
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(channel_close_handler_did_execute);
 	CHECK(!err);
@@ -163,11 +163,11 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { error on bad address }")
 	CHECK(!err);
 }
 
-TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write }")
+TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 {
-	bool listener_connection_handler_did_execute{false};
-	bool listener_read_handler_did_execute{false};
-	bool listener_write_handler_did_execute{false};
+	bool acceptor_connection_handler_did_execute{false};
+	bool acceptor_read_handler_did_execute{false};
+	bool acceptor_write_handler_did_execute{false};
 	bool channel_connect_handler_did_execute{false};
 	bool channel_read_handler_did_execute{false};
 	bool channel_write_handler_did_execute{false};
@@ -175,8 +175,8 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write }")
 	std::error_code     err;
 	auto                lp = loop::create();
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
-	auto                lstnr = lp->create_listener(async::options{listen_ep},
-            err, [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+	auto                lstnr = lp->create_acceptor(async::options{listen_ep},
+            err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
 
                 std::error_code read_err;
@@ -194,13 +194,13 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write }")
                                         std::error_code err) {
                                         CHECK(!err);
                                         CHECK(buf.as_string() == "reply to first payload");
-                                        listener_write_handler_did_execute = true;
+                                        acceptor_write_handler_did_execute = true;
                                     });
                             CHECK(!write_err);
-                            listener_read_handler_did_execute = true;
+                            acceptor_read_handler_did_execute = true;
                         });
                 CHECK(!read_err);
-                listener_connection_handler_did_execute = true;
+                acceptor_connection_handler_did_execute = true;
             });
 
 	CHECK(!err);
@@ -258,20 +258,20 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write }")
 	CHECK(!err);
 
 	lp->close(err);
-	CHECK(listener_connection_handler_did_execute);
-	CHECK(listener_read_handler_did_execute);
-	CHECK(listener_write_handler_did_execute);
+	CHECK(acceptor_connection_handler_did_execute);
+	CHECK(acceptor_read_handler_did_execute);
+	CHECK(acceptor_write_handler_did_execute);
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(channel_read_handler_did_execute);
 	CHECK(channel_write_handler_did_execute);
 	CHECK(!err);
 }
 
-TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write multi-buffer }")
+TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write multi-buffer }")
 {
-	bool listener_connection_handler_did_execute{false};
-	bool listener_read_handler_did_execute{false};
-	bool listener_write_handler_did_execute{false};
+	bool acceptor_connection_handler_did_execute{false};
+	bool acceptor_read_handler_did_execute{false};
+	bool acceptor_write_handler_did_execute{false};
 	bool channel_connect_handler_did_execute{false};
 	bool channel_read_handler_did_execute{false};
 	bool channel_write_handler_did_execute{false};
@@ -279,8 +279,8 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write multi-b
 	std::error_code     err;
 	auto                lp = loop::create();
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
-	auto                lstnr = lp->create_listener(async::options{listen_ep},
-            err, [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+	auto                lstnr = lp->create_acceptor(async::options{listen_ep},
+            err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
                 std::error_code read_err;
                 chan->start_read(
@@ -302,13 +302,13 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write multi-b
                                         CHECK(!err);
                                         CHECK(bufs[0].as_string() == "reply part 1, ");
                                         CHECK(bufs[1].as_string() == "reply part 2");
-                                        listener_write_handler_did_execute = true;
+                                        acceptor_write_handler_did_execute = true;
                                     });
                             CHECK(!write_err);
-                            listener_read_handler_did_execute = true;
+                            acceptor_read_handler_did_execute = true;
                         });
                 CHECK(!read_err);
-                listener_connection_handler_did_execute = true;
+                acceptor_connection_handler_did_execute = true;
             });
 
 	CHECK(!err);
@@ -372,9 +372,9 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write multi-b
 	lp->close(err);
 	CHECK(!err);
 
-	CHECK(listener_connection_handler_did_execute);
-	CHECK(listener_read_handler_did_execute);
-	CHECK(listener_write_handler_did_execute);
+	CHECK(acceptor_connection_handler_did_execute);
+	CHECK(acceptor_read_handler_did_execute);
+	CHECK(acceptor_write_handler_did_execute);
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(channel_read_handler_did_execute);
 	CHECK(channel_write_handler_did_execute);
@@ -382,11 +382,11 @@ TEST_CASE("logicmill::async::tcp_listener [ smoke ] { connect read write multi-b
 
 
 
-TEST_CASE("logicmill::async::tcp_frameing_listener [ smoke ] { framing connect read write }")
+TEST_CASE("logicmill::async::tcp_frameing_acceptor [ smoke ] { framing connect read write }")
 {
-	bool listener_connection_handler_did_execute{false};
-	bool listener_read_handler_did_execute{false};
-	bool listener_write_handler_did_execute{false};
+	bool acceptor_connection_handler_did_execute{false};
+	bool acceptor_read_handler_did_execute{false};
+	bool acceptor_write_handler_did_execute{false};
 	bool channel_connect_handler_did_execute{false};
 	bool channel_read_handler_did_execute{false};
 	bool channel_write_handler_did_execute{false};
@@ -395,8 +395,8 @@ TEST_CASE("logicmill::async::tcp_frameing_listener [ smoke ] { framing connect r
 	auto                lp = loop::create();
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
 	// async::options listen_opt{listen_ep}.framing(true);
-	auto                lstnr = lp->create_listener(async::options::create(listen_ep).framing(true),
-            err, [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+	auto                lstnr = lp->create_acceptor(async::options::create(listen_ep).framing(true),
+            err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
 
                 std::error_code read_err;
@@ -414,13 +414,13 @@ TEST_CASE("logicmill::async::tcp_frameing_listener [ smoke ] { framing connect r
                                         std::error_code   err) {
                                         CHECK(!err);
                                         CHECK(buf.as_string() == "reply to first payload, also padded to contain more than 32 characters");
-                                        listener_write_handler_did_execute = true;
+                                        acceptor_write_handler_did_execute = true;
                                     });
                             CHECK(!write_err);
-                            listener_read_handler_did_execute = true;
+                            acceptor_read_handler_did_execute = true;
                         });
                 CHECK(!read_err);
-                listener_connection_handler_did_execute = true;
+                acceptor_connection_handler_did_execute = true;
             });
 
 	CHECK(!err);
@@ -480,9 +480,9 @@ TEST_CASE("logicmill::async::tcp_frameing_listener [ smoke ] { framing connect r
 	CHECK(!err);
 
 	lp->close(err);
-	CHECK(listener_connection_handler_did_execute);
-	CHECK(listener_read_handler_did_execute);
-	CHECK(listener_write_handler_did_execute);
+	CHECK(acceptor_connection_handler_did_execute);
+	CHECK(acceptor_read_handler_did_execute);
+	CHECK(acceptor_write_handler_did_execute);
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(channel_read_handler_did_execute);
 	CHECK(channel_write_handler_did_execute);
@@ -491,9 +491,9 @@ TEST_CASE("logicmill::async::tcp_frameing_listener [ smoke ] { framing connect r
 
 TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
 {
-	bool listener_connection_handler_did_execute{false};
-	bool listener_read_handler_did_execute{false};
-	bool listener_write_handler_did_execute{false};
+	bool acceptor_connection_handler_did_execute{false};
+	bool acceptor_read_handler_did_execute{false};
+	bool acceptor_write_handler_did_execute{false};
 	bool channel_connect_handler_did_execute{false};
 	bool driver_read_handler{false};
 	bool channel_write_handler_did_execute{false};
@@ -503,8 +503,8 @@ TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
 	std::error_code     err;
 	auto                lp = loop::create();
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
-	auto                lstnr = lp->create_listener(async::options{listen_ep},
-            err, [&](listener::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+	auto                lstnr = lp->create_acceptor(async::options{listen_ep},
+            err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
 
                 std::error_code read_err;
@@ -522,13 +522,13 @@ TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
                                         std::error_code err) {
                                         CHECK(!err);
                                         CHECK(buf.as_string() == "reply to first payload");
-                                        listener_write_handler_did_execute = true;
+                                        acceptor_write_handler_did_execute = true;
                                     });
                             CHECK(!write_err);
-                            listener_read_handler_did_execute = true;
+                            acceptor_read_handler_did_execute = true;
                         });
                 CHECK(!read_err);
-                listener_connection_handler_did_execute = true;
+                acceptor_connection_handler_did_execute = true;
             });
 
 	CHECK(!err);
@@ -583,9 +583,9 @@ TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
 	CHECK(!err);
 
 	lp->close(err);
-	CHECK(listener_connection_handler_did_execute);
-	CHECK(listener_read_handler_did_execute);
-	CHECK(listener_write_handler_did_execute);
+	CHECK(acceptor_connection_handler_did_execute);
+	CHECK(acceptor_read_handler_did_execute);
+	CHECK(acceptor_write_handler_did_execute);
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(driver_read_handler);
 	// CHECK(channel_write_handler_did_execute);

@@ -28,6 +28,7 @@
 #include <logicmill/bstream/error.h>
 #include <doctest.h>
 #include "common.h"
+#include "test_probes/base.h"
 
 using namespace logicmill;
 using namespace bstream;

@@ -31,18 +31,20 @@
 #include <logicmill/traits.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <logicmill/traits.h>
 
 #if 1
-#define LOGICMILL_ASYNC_USE_SOURCE_BASE(_source_base_)                                                                 \
-	using _source_base_::fit;                                                                                          \
-	using _source_base_::get_source;                                                                                   \
-	using _source_base_::send;                                                                                         \
-	using _source_base_::is_paired;                                                                                    \
+#define LOGICMILL_ASYNC_USE_EMITTER_BASE(_emitter_)                                                                    \
+	using _emitter_::fit;                                                                                              \
+	using _emitter_::get_source;                                                                                       \
+	using _emitter_::send;                                                                                             \
 /**/
 
-#define LOGICMILL_ASYNC_USE_SINK_BASE(_sink_base_)                                                                     \
-	using _sink_base_::get_fitting;                                                                                    \
+#define LOGICMILL_ASYNC_USE_LISTENER_BASE(_listener_)                                                                  \
+	using _listener_::get_sink;                                                                                        \
+	using _listener_::fit;                                                                                             \
 /**/
+
 #endif
 
 namespace logicmill
@@ -60,7 +62,30 @@ That is not the case here (yet). The initial intended use is to implement flexib
 protocol stacks, where each element is connected to at most one corresponding element
 above and below it in the stack.
 
-A set of related event types shared a discriminant type,
+Events
+
+An event type comprises a discriminant type (typically an enum),
+a discriminant value, and a signature (a list of parameter types).
+
+An example:
+
+	enum class actions
+	{
+		start,
+		stop,
+		kill
+	};
+
+	using kill_action = event<actions, actions::kill, std::string const& message>;
+	using start_action = event<actions, actions::start, bool flag>;
+	using stop_action = event<actions, actions::stop, int number>;
+
+Sources and Sinks
+
+Types that emit and receive events are called sources and sinks, respectively.
+
+
+A set of related event types share a discriminant type,
 and the specific event types in that set correspond to 
 values of that discriminant type.
 
@@ -90,6 +115,30 @@ Example:
 	using start_action = event<actions, actions::start, int n>;
 	using stop_action  = event<actions, actions::stop, bool flag>;
 
+	class killer : public emitter<kill_action>
+	{};
+
+	class victim : public listener<kill_action, victim> // a bit of CRTP going on here
+	{
+	public:
+
+		void
+		on(kill_action, std::string const& msg)
+		{
+			std::cout << "got killed: " << msg << std::endl;
+		}
+	};
+
+	// to send the event:
+
+	killer oswald;
+	victim jfk;
+
+	oswald.fit(jfk);
+	oswald.send<kill_action>("magic bullet");
+
+	// generates output "got killed: magic bullet"
+
 Types that emit and receive events are called sources and sinks, respectively.
 Either may be referred to as a fitting (i.e., a thing that connects, as in plumbing fittings).
 
@@ -101,10 +150,10 @@ is invoked, passing the sink's callable object (sink_f) as the argument.
 For simple, singular source-sink relationships, this operation is encapsulated 
 in the fit() member function on a source:
 
-	class killer : public source_base<kill_action>
+	class killer : public emitter<kill_action>
 	{};
 
-	class victim : public sink_base<kill_action, victim>
+	class victim : public listener<kill_action, victim>
 	{
 	public:
 		// blah blah
@@ -198,9 +247,9 @@ complementary connectables.
 
 Implementing sinks, sources, and connectables
 
-Implementing a source is trivial; one simply derives from the source_base of the associated event type:
+Implementing a source is trivial; one simply derives from the emitter of the associated event type:
 
-	class beeper : public source_base<beep_event>
+	class beeper : public emitter<beep_event>
 	{};
 
 	beeper my_pager;
@@ -209,7 +258,7 @@ Implementing a source is trivial; one simply derives from the source_base of the
 A sink implementation class must support an event handler of the form
 void on( <event_type>, <event_type_args>...) :
 
-	class beeped : public sink_base<beep_event>
+	class beeped : public listener<beep_event>
 	{
 	public:
 
@@ -237,8 +286,8 @@ avoid ambiguous references:
 	class phone : public connectable<annoyance, phone>
 	{
 	public:
-		using source_base<beep_event>::send;
-		using source_base<ring_event>::send;
+		using emitter<beep_event>::send;
+		using emitter<ring_event>::send;
 		...
 	};
 
@@ -398,6 +447,36 @@ template<class E>
 struct is_source<source<E>> : std::true_type
 {};
 
+namespace detail
+{
+template<class T, class Source>
+static auto
+test_get_source_method(int)
+		-> traits::sfinae_true_if<decltype(std::declval<T>().template get_source<Source>())>;
+template<class>
+static auto
+test_get_source_method(long) -> std::false_type;
+}    // namespace detail
+
+template<class T, class Source>
+struct has_get_source_method : decltype(detail::test_get_source_method<T, Source>(0))
+{};
+
+namespace detail
+{
+template<class T, class Sink>
+static auto
+test_get_sink_method(int)
+		-> traits::sfinae_true_if<decltype(std::declval<T>().template get_sink<Sink>())>;
+template<class>
+static auto
+test_get_sink_method(long) -> std::false_type;
+}    // namespace detail
+
+template<class T, class Sink>
+struct has_get_sink_method : decltype(detail::test_get_sink_method<T, Sink>(0))
+{};
+
 namespace _static_test
 {
 /* static testing of type relationships */
@@ -411,10 +490,10 @@ static_assert(std::is_same<test_event_0::sink_f, sink<test_event_0>::type>::valu
 }
 
 template<class E>
-class source_base;
+class emitter;
 
 template<class T, T Value, class... Args>
-class source_base<event<T, Value, Args...>>
+class emitter<event<T, Value, Args...>>
 {
 public:
 	using event_type  = event<T, Value, Args...>;
@@ -438,15 +517,22 @@ public:
 		}
 	}
 
+	template<class Evt, class Listener>
+	typename std::enable_if_t<std::is_same<Evt, event_type>::value && has_get_sink_method<Listener, Evt>::value>
+	fit(Listener& l)
+	{
+		get_source<Evt>().fit(l.template get_sink<Evt>());
+	}
+
 private:
 	typename event_type::sink_f m_sink = nullptr;
 };
 
 template<class E, class Derived>
-class sink_base;
+class listener;
 
 template<class Derived, class T, T Value, class... Args>
-class sink_base<event<T, Value, Args...>, Derived>
+class listener<event<T, Value, Args...>, Derived>
 {
 public:
 	using event_type = event<T, Value, Args...>;
@@ -458,6 +544,13 @@ public:
 		return sink<event_type>{[=](auto&&... params) mutable {
 			static_cast<Derived*>(this)->on(event_type{}, std::forward<decltype(params)>(params)...);
 		}};
+	}
+
+	template<class Evt, class Emitter>
+	typename std::enable_if_t<std::is_same<Evt, event_type>::value && has_get_source_method<Emitter, Evt>::value>
+	fit(Emitter& e)
+	{
+		e.template get_source<Evt>().fit(get_sink<Evt>());
 	}
 };
 
@@ -498,6 +591,27 @@ struct fits_with<T, std::enable_if_t<is_sink<T>::value>>
 {
 	using type = source<typename T::event_type>;
 };
+
+// template<class T, class Emitter, class Listener>
+// inline typename std::enable_if_t<has_get_source_method<Emitter, T>::value && has_get_sink_method<Listener, T>::value>
+// fit(Emitter& e, Listener& l)
+// {
+// 	e.template get_source<T>().fit(l.template get_sink<T>());
+// }
+
+// template<class T, class Listener, class Emitter>
+// inline typename std::enable_if_t<has_get_sink_method<Listener, T>::value && has_get_source_method<Emitter, T>::value>
+// fit(Listener& l, Emitter& e)
+// {
+// 	e.template get_source<T>().fit(l.template get_sink<T>());
+// }
+
+template<class T, class Emitter, class Listener>
+inline typename std::enable_if_t<has_get_source_method<Emitter, T>::value>
+fit(Emitter& e, Listener& l)
+{
+	e.template get_source<T>().fit(l.template get_sink<T>());
+}
 
 template<class Source, class Sink>
 inline typename std::enable_if_t<
@@ -586,13 +700,13 @@ struct fitting_base;
 template<class T, class Derived>
 struct fitting_base<T, Derived, std::enable_if_t<is_source<T>::value>>
 {
-	using type = source_base<typename T::event_type>;
+	using type = emitter<typename T::event_type>;
 };
 
 template<class T, class Derived>
 struct fitting_base<T, Derived, std::enable_if_t<is_sink<T>::value>>
 {
-	using type = sink_base<typename T::event_type, Derived>;
+	using type = listener<typename T::event_type, Derived>;
 };
 
 template<class T, class Derived, class Enable = void>
@@ -602,7 +716,7 @@ template<class T, class Derived>
 struct fitting_initializer<T, Derived, std::enable_if_t<is_source<T>::value>>
 {
 	source<typename T::event_type>
-	operator()(source_base<typename T::event_type>& s) const
+	operator()(emitter<typename T::event_type>& s) const
 	{
 		return s.template get_source<typename T::event_type>();
 	}
@@ -612,7 +726,7 @@ template<class T, class Derived>
 struct fitting_initializer<T, Derived, std::enable_if_t<is_sink<T>::value>>
 {
 	sink<typename T::event_type>
-	operator()(sink_base<typename T::event_type, Derived>& s) const
+	operator()(listener<typename T::event_type, Derived>& s) const
 	{
 		return s.template get_sink<typename T::event_type>();
 	}
@@ -708,7 +822,6 @@ struct complement<surface<Args...>>
 {
 	using type = surface<typename complement<Args>::type...>;
 };
-
 
 template<class Surface, class Derived>
 class stackable;

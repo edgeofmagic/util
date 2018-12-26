@@ -44,7 +44,7 @@ server_context_base::~server_context_base()
 void
 server_context_base::really_bind(async::options const& opts, std::error_code& err)
 {
-	m_listener = m_loop->create_listener(opts, err, [=](async::listener::ptr const& sp, async::channel::ptr const& chan, std::error_code err)
+	m_acceptor = m_loop->create_acceptor(opts, err, [=](async::acceptor::ptr const& sp, async::channel::ptr const& chan, std::error_code err)
 	{
 		if (err)
 		{
@@ -54,7 +54,7 @@ server_context_base::really_bind(async::options const& opts, std::error_code& er
 			}
 			else
 			{
-				on_listener_error_default();
+				on_acceptor_error_default();
 			}
 		}
 		else
@@ -139,22 +139,22 @@ bool
 server_context_base::really_close()
 {
 	bool result{false};
-	if (m_listener)
+	if (m_acceptor)
 	{
-		bool listener_did_close = m_listener->close([=](async::listener::ptr const& lp) {
-			m_listener.reset();
+		bool acceptor_did_close = m_acceptor->close([=](async::acceptor::ptr const& lp) {
+			m_acceptor.reset();
 			if (m_open_channels.empty())
 			{
 				cleanup();
 			}
 		});
-		if (listener_did_close)
+		if (acceptor_did_close)
 		{
 			result = true;
 		}
 		else
 		{
-			m_listener.reset();
+			m_acceptor.reset();
 		}
 	}
 	auto it = m_open_channels.begin();
@@ -163,7 +163,7 @@ server_context_base::really_close()
 		bool channel_did_close =
 		(*it)->close([=](async::channel::ptr const& c) {
 			m_open_channels.erase(c);
-			if (m_open_channels.empty() && !m_listener)
+			if (m_open_channels.empty() && !m_acceptor)
 			{
 				cleanup();
 			}
@@ -180,7 +180,7 @@ server_context_base::really_close()
 	}
 	if (!result) // there was no deferred closing action; wipe everything
 	{
-		m_listener.reset(); // probably unnecessary, but whatever
+		m_acceptor.reset(); // probably unnecessary, but whatever
 		m_open_channels.clear(); // ditto
 		m_on_close = nullptr;
 	}

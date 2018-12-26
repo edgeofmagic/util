@@ -127,6 +127,7 @@ set(LOGICMILL_TEST_SRCS
 	test/bstream/abstract_source.cpp
 	test/bstream/file.cpp
 	test/bstream/memory.cpp
+	test/bstream/compound_memory.cpp
 	test/bstream/fbstream.cpp
 	test/bstream/test0.cpp
 	test/bstream/test1.cpp

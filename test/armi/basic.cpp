@@ -173,10 +173,10 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
 			[](rfoo::remote::server_context_type& server, std::error_code err) {
-				std::cout << "listener error handler: " << err.message() << std::endl;
+				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				CHECK(!err);
 				server.close(
-						[=]() { std::cout << "server close handler called on listener error" << std::endl; });
+						[=]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
 			[](async::channel::ptr const& chan, std::error_code err) {
 				std::cout << "channel error handler: " << err.message() << std::endl;
@@ -238,10 +238,10 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
 			[&](rfoo::remote::server_context_type& server, std::error_code err) {
-				std::cout << "listener error handler: " << err.message() << std::endl;
+				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				CHECK(!err);
 				server.close(
-						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+						[]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
 			[](async::channel::ptr const& chan, std::error_code err) {
 				std::cout << "channel error handler: " << err.message() << std::endl;
@@ -300,10 +300,10 @@ TEST_CASE("logicmill::armi [ smoke ] { bad error category }")
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
 			[&](rfoo::remote::server_context_type& server, std::error_code err) {
-				std::cout << "listener error handler: " << err.message() << std::endl;
+				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				CHECK(!err);
 				server.close(
-						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+						[]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
 			[](async::channel::ptr const& chan, std::error_code err) {
 				std::cout << "channel error handler: " << err.message() << std::endl;
@@ -362,9 +362,9 @@ TEST_CASE("logicmill::armi [ smoke ] { close re-open client }")
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
 			[&](rfoo::remote::server_context_type& server, std::error_code err) {
-				std::cout << "listener error handler: " << err.message() << std::endl;
+				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close(
-						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+						[]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
 			[](async::channel::ptr const& chan, std::error_code err) {
 				CHECK(err == async::errc::end_of_file);
@@ -451,9 +451,9 @@ TEST_CASE("logicmill::armi [ smoke ] { close server before client request }")
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
 			[&](rfoo::remote::server_context_type& server, std::error_code err) {
-				std::cout << "listener error handler: " << err.message() << std::endl;
+				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close(
-						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+						[]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
 			[](async::channel::ptr const& chan, std::error_code err) {
 				CHECK(err == async::errc::end_of_file);
@@ -528,9 +528,9 @@ TEST_CASE("logicmill::armi [ smoke ] { client closes before server sends reply }
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
 			[](rfoo::remote::server_context_type& server, std::error_code err) {
-				std::cout << "listener error handler: " << err.message() << std::endl;
+				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close(
-						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+						[]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
 			[&](async::channel::ptr const& chan, std::error_code err) {
 
@@ -608,9 +608,9 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
 			[](rfoo::remote::server_context_type& server, std::error_code err) {
-				std::cout << "listener error handler: " << err.message() << std::endl;
+				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close(
-						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+						[]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
 			[&](async::channel::ptr const& chan, std::error_code err) {
 					std::cout << "channel error handler, err: " << err.message() << std::endl;
@@ -670,9 +670,9 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
 			[](rfoo::remote::server_context_type& server, std::error_code err) {
-				std::cout << "listener error handler: " << err.message() << std::endl;
+				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close(
-						[]() { std::cout << "server close handler called on listener error" << std::endl; });
+						[]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
 			[&](async::channel::ptr const& chan, std::error_code err) {
 					std::cout << "channel error handler, err: " << err.message() << std::endl;

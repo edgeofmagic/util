@@ -547,4 +547,4 @@ private:
 	logicmill::async::acceptor::close_handler      m_close_handler;
 };
 
-#endif /* LOGICMILL_ASYNC_TCP_UV_H */
+#endif    // LOGICMILL_ASYNC_TCP_UV_H

@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   client_context.h
- * Author: David Curtis
- *
- * Created on October 15, 2017, 4:09 PM
- */
-
 #ifndef LOGICMILL_ARMI_CLIENT_CONTEXT_H
 #define LOGICMILL_ARMI_CLIENT_CONTEXT_H
 
@@ -50,10 +43,11 @@ public:
 	using proxy_list_carrier  = Template<Args...>;
 	using target_list_carrier = traits::_arg_list<typename Args::target_type...>;
 
-	using connect_handler         = std::function<void(client_context&, std::error_code)>;
+	using connect_handler = std::function<void(client_context&, std::error_code)>;
 
 	template<class T>
-	using proxy_of = typename traits::nth_element_from<traits::index_from<T, target_list_carrier>::value, proxy_list_carrier>::type;
+	using proxy_of = typename traits::
+			nth_element_from<traits::index_from<T, target_list_carrier>::value, proxy_list_carrier>::type;
 
 	template<class T>
 	using proxy_ptr = std::shared_ptr<proxy_of<T>>;
@@ -61,9 +55,7 @@ public:
 	template<class T>
 	using proxy_ref = proxy_of<T>&;
 
-	client_context(async::loop::ptr const& lp, bstream::context_base const& cntxt)
-		: base{lp, cntxt}
-	{}
+	client_context(async::loop::ptr const& lp, bstream::context_base const& cntxt) : base{lp, cntxt} {}
 
 	template<class T>
 	inline proxy_ref<T>
@@ -73,15 +65,12 @@ public:
 	}
 
 private:
-
-	class connect_channel_handler 
+	class connect_channel_handler
 	{
 	public:
-
 		template<
 				class Handler,
-				class = typename std::enable_if_t<
-						std::is_convertible<Handler, client_context::connect_handler>::value>>
+				class = typename std::enable_if_t<std::is_convertible<Handler, client_context::connect_handler>::value>>
 		connect_channel_handler(client_context& cntxt, Handler&& handler)
 			: m_client_context{cntxt}, m_handler{std::forward<Handler>(handler)}
 		{}
@@ -117,18 +106,18 @@ private:
 	};
 
 public:
-
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, connect_handler>::value>
 	connect(async::options const& opts, std::error_code& err, Handler&& handler)
 	{
 		logicmill::async::options opts_override{opts};
 		opts_override.framing(true);
-		client_context_base::loop()->connect_channel(opts_override, err, connect_channel_handler{*this, std::forward<Handler>(handler)});
+		client_context_base::loop()->connect_channel(
+				opts_override, err, connect_channel_handler{*this, std::forward<Handler>(handler)});
 	}
 };
 
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_CLIENT_CONTEXT_H */
+#endif    // LOGICMILL_ARMI_CLIENT_CONTEXT_H

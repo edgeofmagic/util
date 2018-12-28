@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   ibstream.h
- * Author: David Curtis
- *
- * Created on June 29, 2017, 1:40 PM
- */
-
 #ifndef LOGICMILL_BSTREAM_IBSTREAM_H
 #define LOGICMILL_BSTREAM_IBSTREAM_H
 
@@ -357,9 +350,9 @@ public:
 	}
 
 	template<class T>
-	typename std::enable_if_t<!has_ref_deserializer<T>::value && is_ibstream_constructible<T>::value
-									  && std::is_assignable<T&, T>::value,
-							  ibstream&>
+	typename std::enable_if_t<
+			!has_ref_deserializer<T>::value && is_ibstream_constructible<T>::value && std::is_assignable<T&, T>::value,
+			ibstream&>
 	read_as(T& obj)
 	{
 		obj = T(*this);
@@ -367,9 +360,9 @@ public:
 	}
 
 	template<class T>
-	typename std::enable_if_t<!has_ref_deserializer<T>::value && is_ibstream_constructible<T>::value
-									  && std::is_assignable<T&, T>::value,
-							  ibstream&>
+	typename std::enable_if_t<
+			!has_ref_deserializer<T>::value && is_ibstream_constructible<T>::value && std::is_assignable<T&, T>::value,
+			ibstream&>
 	read_as(T& obj, std::error_code& ec)
 	{
 		ec.clear();
@@ -385,9 +378,10 @@ public:
 	}
 
 	template<class T>
-	typename std::enable_if_t<!has_ref_deserializer<T>::value && !is_ibstream_constructible<T>::value
-									  && has_value_deserializer<T>::value && std::is_assignable<T&, T>::value,
-							  ibstream&>
+	typename std::enable_if_t<
+			!has_ref_deserializer<T>::value && !is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
+					&& std::is_assignable<T&, T>::value,
+			ibstream&>
 	read_as(T& obj)
 	{
 		obj = value_deserializer<T>::get(*this);
@@ -395,9 +389,10 @@ public:
 	}
 
 	template<class T>
-	typename std::enable_if_t<!has_ref_deserializer<T>::value && !is_ibstream_constructible<T>::value
-									  && has_value_deserializer<T>::value && std::is_assignable<T&, T>::value,
-							  ibstream&>
+	typename std::enable_if_t<
+			!has_ref_deserializer<T>::value && !is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
+					&& std::is_assignable<T&, T>::value,
+			ibstream&>
 	read_as(T& obj, std::error_code& ec)
 	{
 		ec.clear();
@@ -725,9 +720,9 @@ operator>>(ibstream& is, T& obj)
 }
 
 template<class T>
-inline typename std::enable_if_t<!has_ref_deserializer<T>::value && is_ibstream_constructible<T>::value
-										 && std::is_assignable<T&, T>::value,
-								 ibstream&>
+inline typename std::enable_if_t<
+		!has_ref_deserializer<T>::value && is_ibstream_constructible<T>::value && std::is_assignable<T&, T>::value,
+		ibstream&>
 operator>>(ibstream& is, T& obj)
 {
 	obj = T(is);
@@ -735,9 +730,10 @@ operator>>(ibstream& is, T& obj)
 }
 
 template<class T>
-inline typename std::enable_if_t<!has_ref_deserializer<T>::value && !is_ibstream_constructible<T>::value
-										 && has_value_deserializer<T>::value && std::is_assignable<T&, T>::value,
-								 ibstream&>
+inline typename std::enable_if_t<
+		!has_ref_deserializer<T>::value && !is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
+				&& std::is_assignable<T&, T>::value,
+		ibstream&>
 operator>>(ibstream& is, T& obj)
 {
 	obj = value_deserializer<T>::get(is);
@@ -773,14 +769,14 @@ struct value_deserializer<
 		{
 			switch (tcode)
 			{
-			case typecode::bool_true:
-				return static_cast<T>(1);
-			case typecode::bool_false:
-				return static_cast<T>(0);
-			case typecode::int_8:
-				return static_cast<T>(static_cast<std::int8_t>(is.get()));
-			default:
-				throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_int8)};
+				case typecode::bool_true:
+					return static_cast<T>(1);
+				case typecode::bool_false:
+					return static_cast<T>(0);
+				case typecode::int_8:
+					return static_cast<T>(static_cast<std::int8_t>(is.get()));
+				default:
+					throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_int8)};
 			}
 		}
 	}
@@ -809,14 +805,14 @@ struct value_deserializer<
 		{
 			switch (tcode)
 			{
-			case typecode::bool_true:
-				return static_cast<T>(1);
-			case typecode::bool_false:
-				return static_cast<T>(0);
-			case typecode::uint_8:
-				return static_cast<T>(is.get());
-			default:
-				throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_uint8)};
+				case typecode::bool_true:
+					return static_cast<T>(1);
+				case typecode::bool_false:
+					return static_cast<T>(0);
+				case typecode::uint_8:
+					return static_cast<T>(is.get());
+				default:
+					throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_uint8)};
 			}
 		}
 	}
@@ -849,30 +845,30 @@ struct value_deserializer<
 		{
 			switch (tcode)
 			{
-			case typecode::bool_true:
-				return static_cast<T>(1);
-			case typecode::bool_false:
-				return static_cast<T>(0);
-			case typecode::int_8:
-				return static_cast<T>(is.get_num<int8_t>());
-			case typecode::uint_8:
-				return static_cast<T>(is.get_num<uint8_t>());
-			case typecode::int_16:
-				return static_cast<T>(is.get_num<int16_t>());
-			case typecode::uint_16:
-			{
-				std::uint16_t n = is.get_num<uint16_t>();
-				if (n <= std::numeric_limits<T>::max())
+				case typecode::bool_true:
+					return static_cast<T>(1);
+				case typecode::bool_false:
+					return static_cast<T>(0);
+				case typecode::int_8:
+					return static_cast<T>(is.get_num<int8_t>());
+				case typecode::uint_8:
+					return static_cast<T>(is.get_num<uint8_t>());
+				case typecode::int_16:
+					return static_cast<T>(is.get_num<int16_t>());
+				case typecode::uint_16:
 				{
-					return static_cast<T>(n);
+					std::uint16_t n = is.get_num<uint16_t>();
+					if (n <= std::numeric_limits<T>::max())
+					{
+						return static_cast<T>(n);
+					}
+					else
+					{
+						throw std::system_error{make_error_code(bstream::errc::num_deser_range_error_int16)};
+					}
 				}
-				else
-				{
-					throw std::system_error{make_error_code(bstream::errc::num_deser_range_error_int16)};
-				}
-			}
-			default:
-				throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_int16)};
+				default:
+					throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_int16)};
 			}
 		}
 	}
@@ -901,16 +897,16 @@ struct value_deserializer<
 		{
 			switch (tcode)
 			{
-			case typecode::bool_true:
-				return static_cast<T>(1);
-			case typecode::bool_false:
-				return static_cast<T>(0);
-			case typecode::uint_8:
-				return static_cast<T>(is.get_num<uint8_t>());
-			case typecode::uint_16:
-				return static_cast<T>(is.get_num<uint16_t>());
-			default:
-				throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_uint16)};
+				case typecode::bool_true:
+					return static_cast<T>(1);
+				case typecode::bool_false:
+					return static_cast<T>(0);
+				case typecode::uint_8:
+					return static_cast<T>(is.get_num<uint8_t>());
+				case typecode::uint_16:
+					return static_cast<T>(is.get_num<uint16_t>());
+				default:
+					throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_uint16)};
 			}
 		}
 	}
@@ -943,34 +939,34 @@ struct value_deserializer<
 		{
 			switch (tcode)
 			{
-			case typecode::bool_true:
-				return static_cast<T>(1);
-			case typecode::bool_false:
-				return static_cast<T>(0);
-			case typecode::int_8:
-				return static_cast<T>(is.get_num<int8_t>());
-			case typecode::uint_8:
-				return static_cast<T>(is.get_num<uint8_t>());
-			case typecode::int_16:
-				return static_cast<T>(is.get_num<int16_t>());
-			case typecode::uint_16:
-				return static_cast<T>(is.get_num<uint16_t>());
-			case typecode::int_32:
-				return static_cast<T>(is.get_num<int32_t>());
-			case typecode::uint_32:
-			{
-				std::uint32_t n = is.get_num<uint32_t>();
-				if (n <= std::numeric_limits<T>::max())
+				case typecode::bool_true:
+					return static_cast<T>(1);
+				case typecode::bool_false:
+					return static_cast<T>(0);
+				case typecode::int_8:
+					return static_cast<T>(is.get_num<int8_t>());
+				case typecode::uint_8:
+					return static_cast<T>(is.get_num<uint8_t>());
+				case typecode::int_16:
+					return static_cast<T>(is.get_num<int16_t>());
+				case typecode::uint_16:
+					return static_cast<T>(is.get_num<uint16_t>());
+				case typecode::int_32:
+					return static_cast<T>(is.get_num<int32_t>());
+				case typecode::uint_32:
 				{
-					return static_cast<T>(n);
+					std::uint32_t n = is.get_num<uint32_t>();
+					if (n <= std::numeric_limits<T>::max())
+					{
+						return static_cast<T>(n);
+					}
+					else
+					{
+						throw std::system_error{make_error_code(bstream::errc::num_deser_range_error_int32)};
+					}
 				}
-				else
-				{
-					throw std::system_error{make_error_code(bstream::errc::num_deser_range_error_int32)};
-				}
-			}
-			default:
-				throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_int32)};
+				default:
+					throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_int32)};
 			}
 		}
 	}
@@ -999,18 +995,18 @@ struct value_deserializer<
 		{
 			switch (tcode)
 			{
-			case typecode::bool_true:
-				return static_cast<T>(1);
-			case typecode::bool_false:
-				return static_cast<T>(0);
-			case typecode::uint_8:
-				return static_cast<T>(is.get_num<uint8_t>());
-			case typecode::uint_16:
-				return static_cast<T>(is.get_num<uint16_t>());
-			case typecode::uint_32:
-				return static_cast<T>(is.get_num<uint32_t>());
-			default:
-				throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_uint32)};
+				case typecode::bool_true:
+					return static_cast<T>(1);
+				case typecode::bool_false:
+					return static_cast<T>(0);
+				case typecode::uint_8:
+					return static_cast<T>(is.get_num<uint8_t>());
+				case typecode::uint_16:
+					return static_cast<T>(is.get_num<uint16_t>());
+				case typecode::uint_32:
+					return static_cast<T>(is.get_num<uint32_t>());
+				default:
+					throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_uint32)};
 			}
 		}
 	}
@@ -1043,38 +1039,38 @@ struct value_deserializer<
 		{
 			switch (tcode)
 			{
-			case typecode::bool_true:
-				return static_cast<T>(1);
-			case typecode::bool_false:
-				return static_cast<T>(0);
-			case typecode::int_8:
-				return static_cast<T>(is.get_num<int8_t>());
-			case typecode::uint_8:
-				return static_cast<T>(is.get_num<uint8_t>());
-			case typecode::int_16:
-				return static_cast<T>(is.get_num<int16_t>());
-			case typecode::uint_16:
-				return static_cast<T>(is.get_num<uint16_t>());
-			case typecode::int_32:
-				return static_cast<T>(is.get_num<int32_t>());
-			case typecode::uint_32:
-				return static_cast<T>(is.get_num<uint32_t>());
-			case typecode::int_64:
-				return static_cast<T>(is.get_num<int64_t>());
-			case typecode::uint_64:
-			{
-				std::uint64_t n = is.get_num<uint64_t>();
-				if (n <= std::numeric_limits<T>::max())
+				case typecode::bool_true:
+					return static_cast<T>(1);
+				case typecode::bool_false:
+					return static_cast<T>(0);
+				case typecode::int_8:
+					return static_cast<T>(is.get_num<int8_t>());
+				case typecode::uint_8:
+					return static_cast<T>(is.get_num<uint8_t>());
+				case typecode::int_16:
+					return static_cast<T>(is.get_num<int16_t>());
+				case typecode::uint_16:
+					return static_cast<T>(is.get_num<uint16_t>());
+				case typecode::int_32:
+					return static_cast<T>(is.get_num<int32_t>());
+				case typecode::uint_32:
+					return static_cast<T>(is.get_num<uint32_t>());
+				case typecode::int_64:
+					return static_cast<T>(is.get_num<int64_t>());
+				case typecode::uint_64:
 				{
-					return static_cast<T>(n);
+					std::uint64_t n = is.get_num<uint64_t>();
+					if (n <= std::numeric_limits<T>::max())
+					{
+						return static_cast<T>(n);
+					}
+					else
+					{
+						throw std::system_error{make_error_code(bstream::errc::num_deser_range_error_int64)};
+					}
 				}
-				else
-				{
-					throw std::system_error{make_error_code(bstream::errc::num_deser_range_error_int64)};
-				}
-			}
-			default:
-				throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_int64)};
+				default:
+					throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_int64)};
 			}
 		}
 	}
@@ -1103,20 +1099,20 @@ struct value_deserializer<
 		{
 			switch (tcode)
 			{
-			case typecode::bool_true:
-				return static_cast<T>(1);
-			case typecode::bool_false:
-				return static_cast<T>(0);
-			case typecode::uint_8:
-				return static_cast<T>(is.get_num<uint8_t>());
-			case typecode::uint_16:
-				return static_cast<T>(is.get_num<uint16_t>());
-			case typecode::uint_32:
-				return static_cast<T>(is.get_num<uint32_t>());
-			case typecode::uint_64:
-				return static_cast<T>(is.get_num<uint64_t>());
-			default:
-				throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_uint64)};
+				case typecode::bool_true:
+					return static_cast<T>(1);
+				case typecode::bool_false:
+					return static_cast<T>(0);
+				case typecode::uint_8:
+					return static_cast<T>(is.get_num<uint8_t>());
+				case typecode::uint_16:
+					return static_cast<T>(is.get_num<uint16_t>());
+				case typecode::uint_32:
+					return static_cast<T>(is.get_num<uint32_t>());
+				case typecode::uint_64:
+					return static_cast<T>(is.get_num<uint64_t>());
+				default:
+					throw std::system_error{make_error_code(bstream::errc::num_deser_type_error_uint64)};
 			}
 		}
 	}
@@ -1145,20 +1141,20 @@ struct value_deserializer<std::string>
 		{
 			switch (tcode)
 			{
-			case typecode::str_8:
-			{
-				length = is.get_num<std::uint8_t>();
-			}
-			case typecode::str_16:
-			{
-				length = is.get_num<std::uint16_t>();
-			}
-			case typecode::str_32:
-			{
-				length = is.get_num<std::uint32_t>();
-			}
-			default:
-				throw std::system_error{make_error_code(bstream::errc::val_deser_type_error_string)};
+				case typecode::str_8:
+				{
+					length = is.get_num<std::uint8_t>();
+				}
+				case typecode::str_16:
+				{
+					length = is.get_num<std::uint16_t>();
+				}
+				case typecode::str_32:
+				{
+					length = is.get_num<std::uint32_t>();
+				}
+				default:
+					throw std::system_error{make_error_code(bstream::errc::val_deser_type_error_string)};
 			}
 		}
 		byte_type strchars[length];
@@ -1196,23 +1192,23 @@ struct value_deserializer<logicmill::bstream::string_alias>
 		{
 			switch (tcode)
 			{
-			case typecode::str_8:
-			{
-				std::size_t length = is.get_num<std::uint8_t>();
-				return get(is, length);
-			}
-			case typecode::str_16:
-			{
-				std::size_t length = is.get_num<std::uint16_t>();
-				return get(is, length);
-			}
-			case typecode::str_32:
-			{
-				std::size_t length = is.get_num<std::uint32_t>();
-				return get(is, length);
-			}
-			default:
-				throw std::system_error{make_error_code(bstream::errc::val_deser_type_error_string_view)};
+				case typecode::str_8:
+				{
+					std::size_t length = is.get_num<std::uint8_t>();
+					return get(is, length);
+				}
+				case typecode::str_16:
+				{
+					std::size_t length = is.get_num<std::uint16_t>();
+					return get(is, length);
+				}
+				case typecode::str_32:
+				{
+					std::size_t length = is.get_num<std::uint32_t>();
+					return get(is, length);
+				}
+				default:
+					throw std::system_error{make_error_code(bstream::errc::val_deser_type_error_string_view)};
 			}
 		}
 	}
@@ -1285,12 +1281,12 @@ struct value_deserializer<bool>
 		auto tcode = is.get();
 		switch (tcode)
 		{
-		case typecode::bool_true:
-			return true;
-		case typecode::bool_false:
-			return false;
-		default:
-			throw std::system_error{make_error_code(bstream::errc::expected_bool)};
+			case typecode::bool_true:
+				return true;
+			case typecode::bool_false:
+				return false;
+			default:
+				throw std::system_error{make_error_code(bstream::errc::expected_bool)};
 		}
 	}
 };
@@ -1433,8 +1429,9 @@ struct unique_ptr_deserializer<T, typename std::enable_if_t<is_ibstream_construc
 template<class T>
 struct ptr_deserializer<
 		T,
-		typename std::enable_if_t<!is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
-								  && std::is_move_constructible<T>::value>>
+		typename std::enable_if_t<
+				!is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
+				&& std::is_move_constructible<T>::value>>
 {
 	T*
 	operator()(ibstream& is) const
@@ -1452,8 +1449,9 @@ struct ptr_deserializer<
 template<class T>
 struct shared_ptr_deserializer<
 		T,
-		typename std::enable_if_t<!is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
-								  && std::is_move_constructible<T>::value>>
+		typename std::enable_if_t<
+				!is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
+				&& std::is_move_constructible<T>::value>>
 {
 	std::shared_ptr<T>
 	operator()(ibstream& is) const
@@ -1471,8 +1469,9 @@ struct shared_ptr_deserializer<
 template<class T>
 struct unique_ptr_deserializer<
 		T,
-		typename std::enable_if_t<!is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
-								  && std::is_move_constructible<T>::value>>
+		typename std::enable_if_t<
+				!is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
+				&& std::is_move_constructible<T>::value>>
 {
 	std::unique_ptr<T>
 	operator()(ibstream& is) const
@@ -1496,8 +1495,9 @@ struct unique_ptr_deserializer<
 template<class T>
 struct ptr_deserializer<
 		T,
-		typename std::enable_if_t<!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
-								  && has_ref_deserializer<T>::value && std::is_default_constructible<T>::value>>
+		typename std::enable_if_t<
+				!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
+				&& has_ref_deserializer<T>::value && std::is_default_constructible<T>::value>>
 {
 	T*
 	operator()(ibstream& is) const
@@ -1517,8 +1517,9 @@ struct ptr_deserializer<
 template<class T>
 struct shared_ptr_deserializer<
 		T,
-		typename std::enable_if_t<!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
-								  && has_ref_deserializer<T>::value && std::is_default_constructible<T>::value>>
+		typename std::enable_if_t<
+				!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
+				&& has_ref_deserializer<T>::value && std::is_default_constructible<T>::value>>
 {
 	std::shared_ptr<T>
 	operator()(ibstream& is) const
@@ -1538,8 +1539,9 @@ struct shared_ptr_deserializer<
 template<class T>
 struct unique_ptr_deserializer<
 		T,
-		typename std::enable_if_t<!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
-								  && has_ref_deserializer<T>::value && std::is_default_constructible<T>::value>>
+		typename std::enable_if_t<
+				!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
+				&& has_ref_deserializer<T>::value && std::is_default_constructible<T>::value>>
 {
 	std::unique_ptr<T>
 	operator()(ibstream& is) const
@@ -1653,10 +1655,11 @@ struct ibstream_initializer<
 template<class T>
 struct ibstream_initializer<
 		T,
-		typename std::enable_if_t<!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
-								  && std::is_default_constructible<T>::value
-								  && (std::is_copy_constructible<T>::value || std::is_move_constructible<T>::value)
-								  && has_ref_deserializer<T>::value>>
+		typename std::enable_if_t<
+				!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
+				&& std::is_default_constructible<T>::value
+				&& (std::is_copy_constructible<T>::value || std::is_move_constructible<T>::value)
+				&& has_ref_deserializer<T>::value>>
 {
 	using param_type  = ibstream&;
 	using return_type = T;

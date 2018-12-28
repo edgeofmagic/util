@@ -22,8 +22,6 @@
  * THE SOFTWARE.
  */
 
-// #include <logicmill/bstream/compound_memory/sink.h>
-// #include <logicmill/bstream/compound_memory/source.h>
 #include "test_probes/compound_memory.h"
 #include "common.h"
 #include <doctest.h>
@@ -172,7 +170,7 @@ TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffe
 	// std::cout << "capacity is " << probe.buffer().capacity() << std::endl;
 }
 
-TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic }")
+TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic const_buffer }")
 {
 	byte_type data_0[] = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -243,6 +241,7 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic }")
 	};
 
 	std::deque<bstream::const_buffer> bufs;
+
 	bufs.emplace_back(const_buffer{&data_0[0], sizeof(data_0)});
 	bufs.emplace_back(const_buffer{&data_1[0], sizeof(data_1)});
 	bufs.emplace_back(const_buffer{&data_2[0], sizeof(data_2)});
@@ -252,12 +251,146 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic }")
 	bufs.emplace_back(const_buffer{&data_6[0], sizeof(data_6)});
 
 	compound_memory::source<bstream::const_buffer> src{bufs};
+	compound_memory::detail::source_test_probe<bstream::const_buffer> probe{src};
 
 	std::error_code err;
 	CHECK(src.size() == 64);
 
 	const_buffer got = src.get_slice(64, err);
 	CHECK(!err);
-
+	CHECK(src.position() == 64);
+	CHECK(probe.current_segment() == 6);
+	src.rewind();
+	CHECK(src.position() == 0);
+	CHECK(probe.current_segment() == 0);
 	CHECK(MATCH_BUFFER(got, &expected[0]));
+
+	src.position(31);
+	CHECK(src.position() == 31);
+	CHECK(probe.current_segment() == 0);
+
+	auto s = src.get_num<short>(false, err);
+	CHECK(s == 0x0100);
+	CHECK(src.position() == 33);
+	CHECK(probe.current_segment() == 1);
+}
+
+TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic shared_buffer }")
+{
+	byte_type data_0[] = {
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	};
+
+	byte_type data_1[] = {
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+			0x01,
+	};
+
+	byte_type data_2[] = {
+			0x02,
+			0x02,
+			0x02,
+			0x02,
+			0x02,
+			0x02,
+			0x02,
+			0x02,
+	};
+
+	byte_type data_3[] = {
+			0x03,
+			0x03,
+			0x03,
+			0x03,
+	};
+
+	byte_type data_4[] = {
+			0x04,
+			0x04,
+	};
+
+	byte_type data_5[] = {
+			0x05,
+	};
+
+	byte_type data_6[] = {
+			0x06,
+	};
+
+	byte_type expected[] = {
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x05, 0x06,
+	};
+
+	std::deque<bstream::shared_buffer> bufs;
+
+	bufs.emplace_back(shared_buffer{&data_0[0], sizeof(data_0)});
+	bufs.emplace_back(shared_buffer{&data_1[0], sizeof(data_1)});
+	bufs.emplace_back(shared_buffer{&data_2[0], sizeof(data_2)});
+	bufs.emplace_back(shared_buffer{&data_3[0], sizeof(data_3)});
+	bufs.emplace_back(shared_buffer{&data_4[0], sizeof(data_4)});
+	bufs.emplace_back(shared_buffer{&data_5[0], sizeof(data_5)});
+	bufs.emplace_back(shared_buffer{&data_6[0], sizeof(data_6)});
+
+	compound_memory::source<bstream::shared_buffer> src{bufs};
+	compound_memory::detail::source_test_probe<bstream::shared_buffer> probe{src};
+
+	std::error_code err;
+	CHECK(src.size() == 64);
+
+	const_buffer got = src.get_slice(64, err);
+	CHECK(!err);
+	CHECK(src.position() == 64);
+	CHECK(probe.current_segment() == 6);
+	src.rewind();
+	CHECK(src.position() == 0);
+	CHECK(probe.current_segment() == 0);
+	CHECK(MATCH_BUFFER(got, &expected[0]));
+
+	src.position(31);
+	CHECK(src.position() == 31);
+	CHECK(probe.current_segment() == 0);
+
+	auto s = src.get_num<short>(false, err);
+	CHECK(s == 0x0100);
+	CHECK(src.position() == 33);
+	CHECK(probe.current_segment() == 1);
+
+	src.rewind();
+	auto sb0 = src.get_shared_slice(32, err);
+	CHECK(!err);
+	CHECK(sb0.data() == src.get_buffers_ref()[0].data());
+	CHECK(MATCH_BUFFER(sb0, &expected[0]));
+	CHECK(src.position() == 32);
+
+	auto sb1 = src.get_shared_slice(32, err);
+	CHECK(!err);
+	CHECK(sb1.data() != src.get_buffers_ref()[0].data());
+	CHECK(sb1.size() == 32);
+	// sb1.dump(std::cout);
+	CHECK(MATCH_BUFFER(sb1, &expected[32]));
+
+	src.position(63);
+	auto sb2 = src.get_shared_slice(1);
+	CHECK(sb2.data() == src.get_buffers_ref()[6].data());
+	CHECK(sb2.size() == 1);
+	CHECK(sb2.data()[0] == expected[63]);
+
 }

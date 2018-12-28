@@ -60,7 +60,12 @@ exit:
 }
 
 void
-udp_transceiver_uv::on_receive(uv_udp_t* udp_handle, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
+udp_transceiver_uv::on_receive(
+		uv_udp_t*              udp_handle,
+		ssize_t                nread,
+		const uv_buf_t*        buf,
+		const struct sockaddr* addr,
+		unsigned               flags)
 {
 	ptr transceiver_ptr = std::dynamic_pointer_cast<udp_transceiver_uv>(get_shared_ptr(udp_handle));
 	assert(transceiver_ptr);
@@ -68,8 +73,7 @@ udp_transceiver_uv::on_receive(uv_udp_t* udp_handle, ssize_t nread, const uv_buf
 	{
 		if (buf->base)
 		{
-			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base)
-			);
+			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base));
 		}
 		transceiver_ptr->m_receive_handler(
 				transceiver_ptr,
@@ -81,8 +85,7 @@ udp_transceiver_uv::on_receive(uv_udp_t* udp_handle, ssize_t nread, const uv_buf
 	{
 		if (buf->base)
 		{
-			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base)
-			);
+			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base));
 		}
 		if (addr)
 		{
@@ -155,7 +158,7 @@ void
 udp_transceiver_uv::really_start_receive(std::error_code& err, transceiver::receive_handler&& handler)
 {
 	err.clear();
-	auto stat      = uv_udp_recv_start(get_udp_handle(), on_allocate, on_receive);
+	auto stat = uv_udp_recv_start(get_udp_handle(), on_allocate, on_receive);
 	if (stat < 0)
 	{
 		err = map_uv_error(stat);
@@ -170,7 +173,7 @@ void
 udp_transceiver_uv::really_start_receive(std::error_code& err, transceiver::receive_handler const& handler)
 {
 	err.clear();
-	auto stat      = uv_udp_recv_start(get_udp_handle(), on_allocate, on_receive);
+	auto stat = uv_udp_recv_start(get_udp_handle(), on_allocate, on_receive);
 	if (stat < 0)
 	{
 		err = map_uv_error(stat);
@@ -189,9 +192,9 @@ udp_transceiver_uv::stop_receive()
 
 void
 udp_transceiver_uv::really_send(
-		bstream::mutable_buffer&&              buf,
-		endpoint const& dest,
-		std::error_code&                       err,
+		bstream::mutable_buffer&&          buf,
+		endpoint const&                    dest,
+		std::error_code&                   err,
 		transceiver::send_buffer_handler&& handler)
 {
 	err.clear();
@@ -205,9 +208,9 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		bstream::mutable_buffer&&              buf,
-		endpoint const& dest,
-		std::error_code&                       err,
+		bstream::mutable_buffer&&               buf,
+		endpoint const&                         dest,
+		std::error_code&                        err,
 		transceiver::send_buffer_handler const& handler)
 {
 	err.clear();
@@ -221,10 +224,10 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		std::deque<bstream::mutable_buffer>&&   bufs,
-		endpoint const& dest,
-		std::error_code&                       err,
-		transceiver::send_buffers_handler&& handler)
+		std::deque<bstream::mutable_buffer>&& bufs,
+		endpoint const&                       dest,
+		std::error_code&                      err,
+		transceiver::send_buffers_handler&&   handler)
 {
 	err.clear();
 	auto request = new udp_send_bufs_req_uv{std::move(bufs), dest, std::move(handler)};
@@ -237,9 +240,9 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		std::deque<bstream::mutable_buffer>&&   bufs,
-		endpoint const& dest,
-		std::error_code&                       err,
+		std::deque<bstream::mutable_buffer>&&    bufs,
+		endpoint const&                          dest,
+		std::error_code&                         err,
 		transceiver::send_buffers_handler const& handler)
 {
 	err.clear();

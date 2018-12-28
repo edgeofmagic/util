@@ -46,32 +46,32 @@ armi_category_impl::message(int ev) const noexcept
 {
 	switch (static_cast<armi::errc>(ev))
 	{
-	case armi::errc::ok:
-		return "success";
-	case armi::errc::transport_not_set:
-		return "transport not set for context";
-	case armi::errc::no_event_loop:
-		return "no event loop";
-	case armi::errc::channel_not_connected:
-		return "channel not connected";
-	case armi::errc::no_implementation_instance_registered:
-		return "no implementation instance registered for target type";
-	case armi::errc::uncaught_server_exception:
-		return "uncaught exception thrown by target implementation instance";
-	case armi::errc::exception_thrown_by_reply_handler:
-		return "exception thrown by reply handler";
-	case armi::errc::exception_thrown_by_method_stub:
-		return "exception thrown by method stub";
-	case armi::errc::invalid_method_id:
-		return "invalid method id in request";
-	case armi::errc::invalid_interface_id:
-		return "invalid interface id in request";
-	case armi::errc::invalid_argument_count:
-		return "invalid argument count in marshaled method or reply";
-	case armi::errc::invalid_error_category:
-		return "error category not found in context error category map";
-	default:
-		return "unknown armi error";
+		case armi::errc::ok:
+			return "success";
+		case armi::errc::transport_not_set:
+			return "transport not set for context";
+		case armi::errc::no_event_loop:
+			return "no event loop";
+		case armi::errc::channel_not_connected:
+			return "channel not connected";
+		case armi::errc::no_implementation_instance_registered:
+			return "no implementation instance registered for target type";
+		case armi::errc::uncaught_server_exception:
+			return "uncaught exception thrown by target implementation instance";
+		case armi::errc::exception_thrown_by_reply_handler:
+			return "exception thrown by reply handler";
+		case armi::errc::exception_thrown_by_method_stub:
+			return "exception thrown by method stub";
+		case armi::errc::invalid_method_id:
+			return "invalid method id in request";
+		case armi::errc::invalid_interface_id:
+			return "invalid interface id in request";
+		case armi::errc::invalid_argument_count:
+			return "invalid argument count in marshaled method or reply";
+		case armi::errc::invalid_error_category:
+			return "error category not found in context error category map";
+		default:
+			return "unknown armi error";
 	}
 }
 

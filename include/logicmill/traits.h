@@ -112,8 +112,8 @@ for_each(std::tuple<Tp...>&, FuncT)
 {}
 
 template<std::size_t I = 0, class FuncT, class... Tp>
-		inline typename std::enable_if_t < I<sizeof...(Tp)>
-										   for_each(std::tuple<Tp...>& t, FuncT f)
+inline typename std::enable_if_t<(I < sizeof...(Tp))>
+for_each(std::tuple<Tp...>& t, FuncT f)
 {
 	f(std::get<I>(t));
 	for_each<I + 1, FuncT, Tp...>(t, f);

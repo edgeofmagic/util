@@ -123,7 +123,6 @@ struct canonical_type<8>
 
 }    // namespace detail
 
-
 }    // namespace bstream
 }    // namespace logicmill
 

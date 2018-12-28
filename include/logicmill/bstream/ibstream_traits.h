@@ -27,7 +27,7 @@
 #define LOGICMILL_BSTREAM_IBSTREAM_TRAITS_H
 
 #include <logicmill/bstream/fwd_decls.h>
-#include <logicmill/bstream/utils/traits.h>
+#include <logicmill/traits.h>
 #include <type_traits>
 
 namespace logicmill
@@ -67,7 +67,7 @@ namespace detail
 template<class T>
 static auto
 test_ref_deserializer(int)
-		-> utils::sfinae_true_if<decltype(ref_deserializer<T>::get(std::declval<ibstream&>(), std::declval<T&>()))>;
+		-> traits::sfinae_true_if<decltype(ref_deserializer<T>::get(std::declval<ibstream&>(), std::declval<T&>()))>;
 template<class>
 static auto
 test_ref_deserializer(long) -> std::false_type;
@@ -81,7 +81,7 @@ namespace detail
 {
 template<class T>
 static auto
-test_value_deserializer(int) -> utils::sfinae_true_if<decltype(value_deserializer<T>::get(std::declval<ibstream&>()))>;
+test_value_deserializer(int) -> traits::sfinae_true_if<decltype(value_deserializer<T>::get(std::declval<ibstream&>()))>;
 template<class>
 static auto
 test_value_deserializer(long) -> std::false_type;
@@ -95,7 +95,7 @@ namespace detail
 {
 template<class T>
 static auto
-test_ptr_deserializer(int) -> utils::sfinae_true_if<decltype(ptr_deserializer<T>::get(std::declval<ibstream&>()))>;
+test_ptr_deserializer(int) -> traits::sfinae_true_if<decltype(ptr_deserializer<T>::get(std::declval<ibstream&>()))>;
 template<class>
 static auto
 test_ptr_deserializer(long) -> std::false_type;
@@ -110,7 +110,7 @@ namespace detail
 template<class T>
 static auto
 test_shared_ptr_deserializer(int)
-		-> utils::sfinae_true_if<decltype(shared_ptr_deserializer<T>::get(std::declval<ibstream&>()))>;
+		-> traits::sfinae_true_if<decltype(shared_ptr_deserializer<T>::get(std::declval<ibstream&>()))>;
 template<class>
 static auto
 test_shared_ptr_deserializer(long) -> std::false_type;
@@ -125,7 +125,7 @@ namespace detail
 template<class T>
 static auto
 test_deserialize_method(int)
-		-> utils::sfinae_true_if<decltype(std::declval<T>().deserialize(std::declval<ibstream&>()))>;
+		-> traits::sfinae_true_if<decltype(std::declval<T>().deserialize(std::declval<ibstream&>()))>;
 template<class>
 static auto
 test_deserialize_method(long) -> std::false_type;
@@ -140,7 +140,7 @@ namespace detail
 template<class T>
 static auto
 test_ibstream_extraction_operator(int)
-		-> utils::sfinae_true_if<decltype(std::declval<ibstream&>() >> std::declval<T&>())>;
+		-> traits::sfinae_true_if<decltype(std::declval<ibstream&>() >> std::declval<T&>())>;
 template<class>
 static auto
 test_ibstream_extraction_operator(long) -> std::false_type;
@@ -157,10 +157,9 @@ struct is_ref_deserializable : public std::false_type
 template<class T>
 struct is_ref_deserializable<
 		T,
-		std::enable_if_t<has_ref_deserializer<T>::value
-						 || (has_value_deserializer<T>::value && std::is_assignable<T&, T>::value)
-						 || (is_ibstream_constructible<T>::value && std::is_assignable<T&, T>::value)>>
-	: public std::true_type
+		std::enable_if_t<
+				has_ref_deserializer<T>::value || (has_value_deserializer<T>::value && std::is_assignable<T&, T>::value)
+				|| (is_ibstream_constructible<T>::value && std::is_assignable<T&, T>::value)>> : public std::true_type
 {};
 
 template<class T, class Enable = void>
@@ -170,9 +169,9 @@ struct is_value_deserializable : public std::false_type
 template<class T>
 struct is_value_deserializable<
 		T,
-		std::enable_if_t<is_ibstream_constructible<T>::value || has_value_deserializer<T>::value
-						 || (has_ref_deserializer<T>::value && std::is_default_constructible<T>::value)>>
-	: public std::true_type
+		std::enable_if_t<
+				is_ibstream_constructible<T>::value || has_value_deserializer<T>::value
+				|| (has_ref_deserializer<T>::value && std::is_default_constructible<T>::value)>> : public std::true_type
 {};
 
 template<class T, class Enable = void>
@@ -203,9 +202,9 @@ struct use_ref_deserializer : public std::false_type
 template<class T>
 struct use_ref_deserializer<
 		T,
-		std::enable_if_t<!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
-						 && std::is_default_constructible<T>::value && has_ref_deserializer<T>::value>>
-	: public std::true_type
+		std::enable_if_t<
+				!is_ibstream_constructible<T>::value && !has_value_deserializer<T>::value
+				&& std::is_default_constructible<T>::value && has_ref_deserializer<T>::value>> : public std::true_type
 {};
 
 }    // namespace bstream

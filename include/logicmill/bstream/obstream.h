@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   obstream.h
- * Author: David Curtis
- *
- * Created on June 29, 2017, 9:58 PM
- */
-
 #ifndef LOGICMILL_BSTREAM_OBSTREAM_H
 #define LOGICMILL_BSTREAM_OBSTREAM_H
 
@@ -892,4 +885,4 @@ obstream::write_as_unique_pointer(T* ptr)
 }    // namespace bstream
 }    // namespace logicmill
 
-#endif /* LOGICMILL_BSTREAM_OBSTREAM_H */
+#endif    // LOGICMILL_BSTREAM_OBSTREAM_H

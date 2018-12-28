@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   reply_handler_base.h
- * Author: David Curtis
- *
- * Created on October 15, 2017, 12:57 PM
- */
-
 #ifndef LOGICMILL_ARMI_REPLY_HANDLER_BASE_H
 #define LOGICMILL_ARMI_REPLY_HANDLER_BASE_H
 
@@ -57,5 +50,4 @@ public:
 }    // namespace armi
 }    // namespace logicmill
 
-
-#endif /* LOGICMILL_ARMI_REPLY_HANDLER_BASE_H */
+#endif    // LOGICMILL_ARMI_REPLY_HANDLER_BASE_H

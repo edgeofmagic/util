@@ -22,24 +22,18 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   traits.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 9:32 PM
- */
-
 #ifndef LOGICMILL_ARMI_TRAITS_H
 #define LOGICMILL_ARMI_TRAITS_H
 
 #include <functional>
+#include <logicmill/traits.h>
 #include <type_traits>
-// #include <logicmill/traits.h>
 
 namespace logicmill
 {
 namespace armi
 {
+
 template<class F, class Enable = void>
 struct is_error_safe_reply : public std::false_type
 {};
@@ -67,4 +61,4 @@ struct is_error_safe_reply<std::function<void(std::error_code)>> : public std::t
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_TRAITS_H */
+#endif    // LOGICMILL_ARMI_TRAITS_H

@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   method_proxy.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 9:57 PM
- */
-
 #ifndef LOGICMILL_ARMI_METHOD_PROXY_H
 #define LOGICMILL_ARMI_METHOD_PROXY_H
 
@@ -280,4 +273,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_METHOD_PROXY_H */
+#endif    // LOGICMILL_ARMI_METHOD_PROXY_H

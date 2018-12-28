@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   server_context_base.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 6:30 PM
- */
-
 #ifndef LOGICMILL_ARMI_SERVER_CONTEXT_BASE_H
 #define LOGICMILL_ARMI_SERVER_CONTEXT_BASE_H
 
@@ -155,5 +148,4 @@ protected:
 }    // namespace armi
 }    // namespace logicmill
 
-
-#endif /* LOGICMILL_ARMI_SERVER_CONTEXT_BASE_H */
+#endif    // LOGICMILL_ARMI_SERVER_CONTEXT_BASE_H

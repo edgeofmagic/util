@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   typecode.h
- * Author: David Curtis
- *
- * Created on June 23, 2017, 9:09 PM
- */
-
 #ifndef LOGICMILL_BSTREAM_TYPECODE_H
 #define LOGICMILL_BSTREAM_TYPECODE_H
 

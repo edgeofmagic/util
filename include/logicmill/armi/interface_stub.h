@@ -22,24 +22,16 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   interface_stub.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 9:12 PM
- */
-
 #ifndef LOGICMILL_ARMI_INTERFACE_STUB_H
 #define LOGICMILL_ARMI_INTERFACE_STUB_H
 
 #include <logicmill/armi/interface_stub_builder.h>
 
-
 namespace logicmill
 {
 namespace armi
 {
-	
+
 class interface_stub : public interface_stub_builder
 {
 public:
@@ -52,4 +44,4 @@ public:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_INTERFACE_STUB_H */
+#endif    // LOGICMILL_ARMI_INTERFACE_STUB_H

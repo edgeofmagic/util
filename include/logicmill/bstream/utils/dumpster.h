@@ -155,10 +155,11 @@ public:
 private:
 	template<class CharT, class Traits>
 	void
-	dump_line(std::basic_ostream<CharT, Traits>& os,
-			  std::size_t                        line_index,
-			  std::vector<uint8_t>&              linebuf,
-			  std::size_t                        line_size)
+	dump_line(
+			std::basic_ostream<CharT, Traits>& os,
+			std::size_t                        line_index,
+			std::vector<uint8_t>&              linebuf,
+			std::size_t                        line_size)
 	{
 
 		os << std::hex << std::setfill('0');

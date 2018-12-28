@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   interface_stub_base.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 10:51 PM
- */
-
 #ifndef LOGICMILL_ARMI_INTERFACE_STUB_BASE_H
 #define LOGICMILL_ARMI_INTERFACE_STUB_BASE_H
 
@@ -84,4 +77,4 @@ protected:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_INTERFACE_STUB_BASE_H */
+#endif    // LOGICMILL_ARMI_INTERFACE_STUB_BASE_H

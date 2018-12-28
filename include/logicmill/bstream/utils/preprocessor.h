@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   preprocessor.h
- * Author: David Curtis
- *
- * Created on July 5, 2017, 11:21 AM
- */
-
 #ifndef LOGICMILL_BSTREAM_UTILS_PREPROCESSOR_H
 #define LOGICMILL_BSTREAM_UTILS_PREPROCESSOR_H
 
@@ -62,5 +55,4 @@ UTILS_PP_ISEMPTY_(																			\
 
 #define UTILS_PP_DO_NOTHING( ... )
 
-#endif /* LOGICMILL_BSTREAM_UTILS_PREPROCESSOR_H */
-
+#endif    // LOGICMILL_BSTREAM_UTILS_PREPROCESSOR_H

@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   server_context_builder.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 8:26 PM
- */
-
 #ifndef SERVER_CONTEXT_BUILDER_H
 #define SERVER_CONTEXT_BUILDER_H
 
@@ -38,6 +31,7 @@ namespace logicmill
 {
 namespace armi
 {
+
 template<class... Args>
 class server_context_builder : public server_context_base
 {
@@ -77,5 +71,4 @@ public:
 }    // namespace armi
 }    // namespace logicmill
 
-
-#endif /* SERVER_CONTEXT_BUILDER_H */
+#endif    // SERVER_CONTEXT_BUILDER_H

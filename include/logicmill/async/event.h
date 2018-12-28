@@ -31,7 +31,6 @@
 #include <logicmill/traits.h>
 #include <unordered_map>
 #include <unordered_set>
-#include <logicmill/traits.h>
 
 #if 1
 #define LOGICMILL_ASYNC_USE_EMITTER_BASE(_emitter_)                                                                    \
@@ -743,6 +742,9 @@ public:
 
 	connectable() : m_connector{fitting_initializer<Args, Derived>{}(*this)...} {}
 
+	connectable(connectable&&) = delete;
+	connectable(connectable const&) = delete;
+
 	template<class Connector>
 	typename std::enable_if_t<std::is_same<Connector, connector_type>::value, connector_type&>
 	get_connector()
@@ -834,6 +836,9 @@ public:
 
 	// stackable() : m_surface{connector_initializer<Args, Derived>{}(*this)...} {}
 
+	stackable(stackable&&) = delete;
+	stackable(stackable const&) = delete;
+
 	stackable() : m_surface{connectable<Args, Derived>::template get_connector<Args>()...} {}
 
 	template<class T>
@@ -859,6 +864,44 @@ public:
 
 private:
 	surface_type m_surface;
+};
+
+template<std::size_t I = 0, class... Tp>
+inline typename std::enable_if_t<I == sizeof...(Tp) - 1>
+stack_layers(std::tuple<Tp...>&)
+{}
+
+template<std::size_t I = 0, class... Tp>
+inline typename std::enable_if_t<(I < (sizeof...(Tp) - 1))>
+stack_layers(std::tuple<Tp...>& t)
+{
+	std::get<I>(t).get_top().stack(std::get<I + 1>(t).get_bottom());
+	stack_layers<I + 1, Tp...>(t);
+}
+
+template<class... Args>
+class layer_stack
+{
+public:
+	template<class... _Args>
+	layer_stack(_Args&&... _args) : m_tuple{std::forward<_Args>(_args)...}
+	{
+		stack_layers(m_tuple);
+	}
+
+	layer_stack() : m_tuple{}
+	{
+		stack_layers(m_tuple);
+	}
+
+	typename traits::nth_element<sizeof...(Args) - 1, Args...>&
+	top()
+	{
+		return std::get<sizeof...(Args) - 1>(m_tuple);
+	}
+
+private:
+	std::tuple<Args...> m_tuple;
 };
 
 }    // namespace async

@@ -90,4 +90,4 @@
 /**/
 #endif
 
-#endif // LOGICMILL_UTIL_MACROS_H
+#endif    // LOGICMILL_UTIL_MACROS_H

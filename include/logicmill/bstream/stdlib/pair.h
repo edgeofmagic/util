@@ -58,8 +58,9 @@ struct value_deserializer<
 template<class T1, class T2>
 struct value_deserializer<
 		std::pair<T1, T2>,
-		typename std::enable_if_t<(!std::is_move_constructible<T1>::value && std::is_copy_constructible<T1>::value)
-								  && std::is_move_constructible<T2>::value>>
+		typename std::enable_if_t<
+				(!std::is_move_constructible<T1>::value && std::is_copy_constructible<T1>::value)
+				&& std::is_move_constructible<T2>::value>>
 {
 	std::pair<T1, T2>
 	operator()(ibstream& is) const
@@ -80,8 +81,9 @@ struct value_deserializer<
 template<class T1, class T2>
 struct value_deserializer<
 		std::pair<T1, T2>,
-		typename std::enable_if_t<std::is_move_constructible<T1>::value
-								  && (!std::is_move_constructible<T2>::value && std::is_copy_constructible<T2>::value)>>
+		typename std::enable_if_t<
+				std::is_move_constructible<T1>::value
+				&& (!std::is_move_constructible<T2>::value && std::is_copy_constructible<T2>::value)>>
 {
 	std::pair<T1, T2>
 	operator()(ibstream& is) const
@@ -102,8 +104,9 @@ struct value_deserializer<
 template<class T1, class T2>
 struct value_deserializer<
 		std::pair<T1, T2>,
-		typename std::enable_if_t<(!std::is_move_constructible<T1>::value && std::is_copy_constructible<T1>::value)
-								  && (!std::is_move_constructible<T2>::value && std::is_copy_constructible<T2>::value)>>
+		typename std::enable_if_t<
+				(!std::is_move_constructible<T1>::value && std::is_copy_constructible<T1>::value)
+				&& (!std::is_move_constructible<T2>::value && std::is_copy_constructible<T2>::value)>>
 {
 	std::pair<T1, T2>
 	operator()(ibstream& is) const

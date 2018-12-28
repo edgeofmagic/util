@@ -22,20 +22,12 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   armi.h
- * Author: David Curtis
- *
- * Created on August 15, 2017, 7:55 PM
- */
-
 #ifndef LOGICMILL_ARMI_ARMI_H
 #define LOGICMILL_ARMI_ARMI_H
 
-#include <logicmill/armi/remote_context.h>
-#include <logicmill/armi/method_proxy.h>
 #include <logicmill/armi/interface_stub.h>
 #include <logicmill/armi/macros.h>
+#include <logicmill/armi/method_proxy.h>
+#include <logicmill/armi/remote_context.h>
 
-#endif /* LOGICMILL_ARMI_ARMI_H */
-
+#endif    // LOGICMILL_ARMI_ARMI_H

@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   remote_context.h
- * Author: David Curtis
- *
- * Created on December 2, 2017, 8:14 AM
- */
-
 #ifndef LOGICMILL_ARMI_REMOTE_CONTEXT_H
 #define LOGICMILL_ARMI_REMOTE_CONTEXT_H
 
@@ -41,6 +34,7 @@ namespace logicmill
 {
 namespace armi
 {
+
 template<class Proxy, class Stub, class... Interfaces>
 class remote_context
 {
@@ -110,4 +104,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_REMOTE_CONTEXT_H */
+#endif    // LOGICMILL_ARMI_REMOTE_CONTEXT_H

@@ -22,9 +22,6 @@
  * THE SOFTWARE.
  */
 
-// #include <logicmill/bstream/file/random/sink.h>
-// #include <logicmill/bstream/file/source.h>
-// #include <logicmill/bstream/file/sink.h>
 #include "test_probes/file.h"
 #include "common.h"
 #include <doctest.h>
@@ -35,20 +32,6 @@ using namespace logicmill;
 using namespace bstream;
 
 namespace fs = std::experimental::filesystem;
-
-// TEST_CASE( "logicmill::bstream::file::sink [ smoke ] { sink seek write }" )
-// {
-// 	if ( ! fs::is_directory( "test_output" ) || ! fs::exists( "test_output" ) )
-// 	{
-//     	fs::create_directory( "test_output" );
-// 	}
-
-// 	std::error_code err;
-// 	file::sink snk{ "test_output/file_rand_0", open_mode::truncate, err, 16 };
-// 	CHECK( ! err );
-
-
-// }
 
 TEST_CASE("logicmill::bstream::file::source [ smoke ] { source seek read }")
 {

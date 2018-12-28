@@ -26,12 +26,10 @@
 #include <iostream>
 #include <logicmill/async/loop.h>
 #include <logicmill/bstream/buffer.h>
-
 #include <logicmill/async/tcp.h>
 
 using namespace logicmill;
 using namespace async;
-
 
 TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
 {
@@ -40,11 +38,10 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
 
 	async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
 
-	std::error_code     err;
-	auto                lp = loop::create();
+	std::error_code err;
+	auto            lp = loop::create();
 
-	auto loop_exit_timer = lp->create_timer(err, [&](async::timer::ptr tp)
-	{
+	auto loop_exit_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
 		tp->loop()->stop(err);
 		CHECK(!err);
 	});
@@ -53,7 +50,9 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
 	CHECK(!err);
 
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
-	auto                lstnr = lp->create_acceptor(async::options{listen_ep}, err,
+	auto                lstnr = lp->create_acceptor(
+            async::options{listen_ep},
+            err,
             [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
                 chan->close();
@@ -63,7 +62,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
 	CHECK(!err);
 
 	auto connect_timer = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {
-		std::error_code     err;
+		std::error_code err;
 		std::cout << "connect_ep: " << connect_ep.to_string() << std::endl;
 		lp->connect_channel(async::options{connect_ep}, err, [&](channel::ptr const& chan, std::error_code err) {
 			CHECK(!err);
@@ -101,12 +100,11 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { error on bad address }")
 	bool channel_connect_handler_did_execute{false};
 	bool channel_close_handler_did_execute{false};
 
-	std::error_code     err;
-	auto                lp = loop::create();
+	std::error_code err;
+	auto            lp = loop::create();
 
 
-	auto loop_exit_timer = lp->create_timer(err, [&](async::timer::ptr tp)
-	{
+	auto loop_exit_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
 		tp->loop()->stop(err);
 		CHECK(!err);
 	});
@@ -115,9 +113,10 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { error on bad address }")
 	CHECK(!err);
 
 	async::ip::endpoint listen_ep{async::ip::address{"11.42.53.5"}, 7001};
-    	auto                lstnr = lp->create_acceptor(async::options{listen_ep},
-        err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) 
-			{
+	auto                lstnr = lp->create_acceptor(
+            async::options{listen_ep},
+            err,
+            [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
                 chan->close();
                 ls->close();
@@ -175,8 +174,10 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 	std::error_code     err;
 	auto                lp = loop::create();
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
-	auto                lstnr = lp->create_acceptor(async::options{listen_ep},
-            err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+	auto                lstnr = lp->create_acceptor(
+            async::options{listen_ep},
+            err,
+            [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
 
                 std::error_code read_err;
@@ -189,9 +190,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
                             cp->write(
                                     bstream::mutable_buffer{"reply to first payload"},
                                     write_err,
-                                    [&](channel::ptr const&       chan,
-                                        bstream::mutable_buffer&& buf,
-                                        std::error_code err) {
+                                    [&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
                                         CHECK(!err);
                                         CHECK(buf.as_string() == "reply to first payload");
                                         acceptor_write_handler_did_execute = true;
@@ -212,12 +211,11 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 		lp->connect_channel(async::options{connect_ep}, err, [&](channel::ptr const& chan, std::error_code err) {
 			CHECK(!err);
 
-			chan->start_read(
-					err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
-						CHECK(!err);
-						CHECK(buf.as_string() == "reply to first payload");
-						channel_read_handler_did_execute = true;
-					});
+			chan->start_read(err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+				CHECK(!err);
+				CHECK(buf.as_string() == "reply to first payload");
+				channel_read_handler_did_execute = true;
+			});
 
 			CHECK(!err);
 
@@ -279,8 +277,10 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write multi-b
 	std::error_code     err;
 	auto                lp = loop::create();
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
-	auto                lstnr = lp->create_acceptor(async::options{listen_ep},
-            err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+	auto                lstnr = lp->create_acceptor(
+            async::options{listen_ep},
+            err,
+            [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
                 std::error_code read_err;
                 chan->start_read(
@@ -298,7 +298,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write multi-b
                                     write_err,
                                     [&](channel::ptr const&                   chan,
                                         std::deque<bstream::mutable_buffer>&& bufs,
-                                        std::error_code                err) {
+                                        std::error_code                       err) {
                                         CHECK(!err);
                                         CHECK(bufs[0].as_string() == "reply part 1, ");
                                         CHECK(bufs[1].as_string() == "reply part 2");
@@ -320,12 +320,11 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write multi-b
 			CHECK(!err);
 
 			std::error_code rwerr;
-			chan->start_read(
-					rwerr, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
-						CHECK(!err);
-						CHECK(buf.as_string() == "reply part 1, reply part 2");
-						channel_read_handler_did_execute = true;
-					});
+			chan->start_read(rwerr, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+				CHECK(!err);
+				CHECK(buf.as_string() == "reply part 1, reply part 2");
+				channel_read_handler_did_execute = true;
+			});
 			CHECK(!rwerr);
 
 			std::deque<bstream::mutable_buffer> mbufs;
@@ -334,9 +333,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write multi-b
 			chan->write(
 					std::move(mbufs),
 					rwerr,
-					[&](channel::ptr const&                   chan,
-						std::deque<bstream::mutable_buffer>&& bufs,
-						std::error_code                err) {
+					[&](channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code err) {
 						CHECK(!err);
 						CHECK(bufs[0].as_string() == "payload part 1, ");
 						CHECK(bufs[1].as_string() == "payload part 2");
@@ -381,8 +378,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write multi-b
 }
 
 
-
-TEST_CASE("logicmill::async::tcp_frameing_acceptor [ smoke ] { framing connect read write }")
+TEST_CASE("logicmill::async::tcp_framing_acceptor [ smoke ] { framing connect read write }")
 {
 	bool acceptor_connection_handler_did_execute{false};
 	bool acceptor_read_handler_did_execute{false};
@@ -395,51 +391,53 @@ TEST_CASE("logicmill::async::tcp_frameing_acceptor [ smoke ] { framing connect r
 	auto                lp = loop::create();
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
 	// async::options listen_opt{listen_ep}.framing(true);
-	auto                lstnr = lp->create_acceptor(async::options::create(listen_ep).framing(true),
-            err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
-                CHECK(!err);
+	auto lstnr = lp->create_acceptor(
+			async::options::create(listen_ep).framing(true),
+			err,
+			[&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+				CHECK(!err);
 
-                std::error_code read_err;
-                chan->start_read(
-                        read_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
-                            CHECK(!err);
-                            CHECK(buf.as_string() == "first test payload, padded to contain more than 32 characters");
+				std::error_code read_err;
+				chan->start_read(
+						read_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+							CHECK(!err);
+							CHECK(buf.as_string() == "first test payload, padded to contain more than 32 characters");
 
-                            std::error_code write_err;
-                            cp->write(
-                                    bstream::mutable_buffer{"reply to first payload, also padded to contain more than 32 characters"},
-                                    write_err,
-                                    [&](channel::ptr const&       chan,
-                                        bstream::mutable_buffer&& buf,
-                                        std::error_code   err) {
-                                        CHECK(!err);
-                                        CHECK(buf.as_string() == "reply to first payload, also padded to contain more than 32 characters");
-                                        acceptor_write_handler_did_execute = true;
-                                    });
-                            CHECK(!write_err);
-                            acceptor_read_handler_did_execute = true;
-                        });
-                CHECK(!read_err);
-                acceptor_connection_handler_did_execute = true;
-            });
+							std::error_code write_err;
+							cp->write(
+									bstream::mutable_buffer{
+											"reply to first payload, also padded to contain more than 32 characters"},
+									write_err,
+									[&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
+										CHECK(!err);
+										CHECK(buf.as_string()
+											  == "reply to first payload, also padded to contain more than 32 "
+												 "characters");
+										acceptor_write_handler_did_execute = true;
+									});
+							CHECK(!write_err);
+							acceptor_read_handler_did_execute = true;
+						});
+				CHECK(!read_err);
+				acceptor_connection_handler_did_execute = true;
+			});
 
 	CHECK(!err);
 
 	auto connect_timer = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {
 		std::error_code     err;
 		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
-		async::options connect_options{connect_ep};
+		async::options      connect_options{connect_ep};
 
 		lp->connect_channel(connect_options.framing(true), err, [&](channel::ptr const& chan, std::error_code err) {
 			CHECK(!err);
 
 			std::error_code rw_err;
-			chan->start_read(
-					rw_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
-						CHECK(!err);
-						CHECK(buf.as_string() == "reply to first payload, also padded to contain more than 32 characters");
-						channel_read_handler_did_execute = true;
-					});
+			chan->start_read(rw_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+				CHECK(!err);
+				CHECK(buf.as_string() == "reply to first payload, also padded to contain more than 32 characters");
+				channel_read_handler_did_execute = true;
+			});
 
 			CHECK(!rw_err);
 
@@ -488,7 +486,7 @@ TEST_CASE("logicmill::async::tcp_frameing_acceptor [ smoke ] { framing connect r
 	CHECK(channel_write_handler_did_execute);
 	CHECK(!err);
 }
-
+#if 0
 TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
 {
 	bool acceptor_connection_handler_did_execute{false};
@@ -503,8 +501,10 @@ TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
 	std::error_code     err;
 	auto                lp = loop::create();
 	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
-	auto                lstnr = lp->create_acceptor(async::options{listen_ep},
-            err, [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+	auto                lstnr = lp->create_acceptor(
+            async::options{listen_ep},
+            err,
+            [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
 
                 std::error_code read_err;
@@ -517,9 +517,7 @@ TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
                             cp->write(
                                     bstream::mutable_buffer{"reply to first payload"},
                                     write_err,
-                                    [&](channel::ptr const&       chan,
-                                        bstream::mutable_buffer&& buf,
-                                        std::error_code err) {
+                                    [&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
                                         CHECK(!err);
                                         CHECK(buf.as_string() == "reply to first payload");
                                         acceptor_write_handler_did_execute = true;
@@ -542,15 +540,15 @@ TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
 
 			drvrp = std::make_shared<tcp_stream_driver>(chan);
 
-			drvrp->on_control([=](async::control_state cstate, std::error_code err)
-			{
-				std::cout << "control event in driver: " << static_cast<int>(cstate) << ", " << err.message() << std::endl;
+			drvrp->on_control([=](async::control_state cstate, std::error_code err) {
+				std::cout << "control event in driver: " << static_cast<int>(cstate) << ", " << err.message()
+						  << std::endl;
 			});
 
 			drvrp->start_read([&](std::deque<bstream::mutable_buffer>&& bufs) {
-						CHECK(bufs.front().as_string() == "reply to first payload");
-						driver_read_handler = true;
-					});
+				CHECK(bufs.front().as_string() == "reply to first payload");
+				driver_read_handler = true;
+			});
 
 			std::deque<bstream::mutable_buffer> bufs;
 			bufs.emplace_back(bstream::mutable_buffer{"first test payload"});
@@ -588,6 +586,112 @@ TEST_CASE("logicmill::async::tcp_stream [ smoke ] { connect read write }")
 	CHECK(acceptor_write_handler_did_execute);
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(driver_read_handler);
-	// CHECK(channel_write_handler_did_execute);
+	CHECK(!err);
+}
+#endif
+
+TEST_CASE("logicmill::async::tcp_stream [ smoke ] { stackable connect read write }")
+{
+	bool acceptor_connection_handler_did_execute{false};
+	bool acceptor_read_handler_did_execute{false};
+	bool acceptor_write_handler_did_execute{false};
+	bool channel_connect_handler_did_execute{false};
+	bool driver_read_handler{false};
+	bool channel_write_handler_did_execute{false};
+
+	using stack_type = layer_stack<tcp_anchor, stream_driver>;
+	std::shared_ptr<stack_type> stackp;
+
+	std::error_code     err;
+	auto                lp = loop::create();
+	async::ip::endpoint listen_ep{async::ip::address::v4_any(), 7001};
+	auto                lstnr = lp->create_acceptor(
+            async::options{listen_ep},
+            err,
+            [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
+                CHECK(!err);
+
+                std::error_code read_err;
+                chan->start_read(
+                        read_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+                            CHECK(!err);
+                            CHECK(buf.as_string() == "first test payload");
+
+                            std::error_code write_err;
+                            cp->write(
+                                    bstream::mutable_buffer{"reply to first payload"},
+                                    write_err,
+                                    [&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
+                                        CHECK(!err);
+                                        CHECK(buf.as_string() == "reply to first payload");
+                                        acceptor_write_handler_did_execute = true;
+                                    });
+                            CHECK(!write_err);
+                            acceptor_read_handler_did_execute = true;
+                        });
+                CHECK(!read_err);
+                acceptor_connection_handler_did_execute = true;
+            });
+
+	CHECK(!err);
+
+	auto connect_timer = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {
+		std::error_code     err;
+		async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
+
+		lp->connect_channel(async::options{connect_ep}, err, [&](channel::ptr const& chan, std::error_code err) {
+			CHECK(!err);
+
+			stackp = std::make_shared<stack_type>(tcp_anchor{chan}, stream_driver{});
+
+			stackp->top().on_control([=](async::control_state cstate) {
+				std::cout << "control event in driver: " << ((cstate == control_state::start) ? "start" : "stop")
+						  << std::endl;
+			});
+
+			stackp->top().on_error(
+					[=](std::error_code err) { std::cout << "error event in driver: " << err.message() << std::endl; });
+
+			stackp->top().start_read([&](std::deque<bstream::const_buffer>&& bufs) {
+				CHECK(bufs.front().as_string() == "reply to first payload");
+				driver_read_handler = true;
+			});
+
+			std::deque<bstream::mutable_buffer> bufs;
+			bufs.emplace_back(bstream::mutable_buffer{"first test payload"});
+			stackp->top().write(std::move(bufs));
+
+			CHECK(!err);
+			channel_connect_handler_did_execute = true;
+		});
+		CHECK(!err);
+	});
+	CHECK(!err);
+
+	auto shutdown_timer = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {
+		std::error_code err;
+		lp->stop(err);
+		CHECK(!err);
+	});
+	CHECK(!err);
+
+	connect_timer->start(std::chrono::milliseconds{1000}, err);
+	CHECK(!err);
+
+	shutdown_timer->start(std::chrono::milliseconds{3000}, err);
+	CHECK(!err);
+	CHECK(connect_timer->is_pending());
+
+	connect_timer.reset();
+
+	lp->run(err);
+	CHECK(!err);
+
+	lp->close(err);
+	CHECK(acceptor_connection_handler_did_execute);
+	CHECK(acceptor_read_handler_did_execute);
+	CHECK(acceptor_write_handler_did_execute);
+	CHECK(channel_connect_handler_did_execute);
+	CHECK(driver_read_handler);
 	CHECK(!err);
 }

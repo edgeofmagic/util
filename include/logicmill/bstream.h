@@ -29,4 +29,4 @@
 #include <logicmill/bstream/obstream.h>
 #include <logicmill/bstream/macros.h>
 
-#endif // LOGICMILL_BSTREAM_H
+#endif    // LOGICMILL_BSTREAM_H

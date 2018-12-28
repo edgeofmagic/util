@@ -22,15 +22,15 @@
  * THE SOFTWARE.
  */
 
+#include <logicmill/armi/error.h>
+#include <logicmill/armi/fail_proxy.h>
 #include <logicmill/armi/interface_stub_base.h>
 #include <logicmill/armi/method_stub_base.h>
-#include <logicmill/armi/fail_proxy.h>
-#include <logicmill/armi/error.h>
 
 using namespace logicmill;
 using namespace armi;
 
-void 
+void
 interface_stub_base::process(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is)
 {
 	auto method_id = is.read_as<std::size_t>();

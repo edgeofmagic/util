@@ -83,4 +83,4 @@ private:
 	logicmill::async::timer::handler m_handler;
 };
 
-#endif /* LOGICMILL_ASYNC_TIMER_UV_H */
+#endif    // LOGICMILL_ASYNC_TIMER_UV_H

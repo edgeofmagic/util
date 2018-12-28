@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   base_classes.h
- * Author: David Curtis
- *
- * Created on June 30, 2017, 7:58 PM
- */
-
 #ifndef LOGICMILL_BSTREAM_BASE_CLASSES_H
 #define LOGICMILL_BSTREAM_BASE_CLASSES_H
 

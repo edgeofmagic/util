@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   interface_stub_builder.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 11:05 PM
- */
-
 #ifndef LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H
 #define LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H
 
@@ -40,6 +33,7 @@ namespace logicmill
 {
 namespace armi
 {
+	
 template<std::size_t... Ns>
 struct indices
 {
@@ -96,8 +90,8 @@ protected:
 protected:
 	std::vector<std::unique_ptr<method_stub_base>> m_stubs;
 };
+
 }    // namespace armi
 }    // namespace logicmill
 
-
-#endif /* LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H */
+#endif    // LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H

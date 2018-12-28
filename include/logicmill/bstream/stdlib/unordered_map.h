@@ -35,8 +35,9 @@ namespace bstream
 {
 
 template<class K, class V, class Hash, class Equal, class Alloc>
-struct value_deserializer<std::unordered_map<K, V, Hash, Equal, Alloc>,
-						  typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
+struct value_deserializer<
+		std::unordered_map<K, V, Hash, Equal, Alloc>,
+		typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
 {
 	std::unordered_map<K, V, Hash, Equal, Alloc>
 	operator()(ibstream& is) const
@@ -62,8 +63,9 @@ struct value_deserializer<std::unordered_map<K, V, Hash, Equal, Alloc>,
 };
 
 template<class K, class V, class Hash, class Equal, class Alloc>
-struct value_deserializer<std::unordered_multimap<K, V, Hash, Equal, Alloc>,
-						  typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
+struct value_deserializer<
+		std::unordered_multimap<K, V, Hash, Equal, Alloc>,
+		typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
 {
 	std::unordered_multimap<K, V, Hash, Equal, Alloc>
 	operator()(ibstream& is) const

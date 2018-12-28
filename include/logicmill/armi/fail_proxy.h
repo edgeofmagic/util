@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   fail_proxy.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 7:59 PM
- */
-
 #ifndef LOGICMILL_ARMI_FAIL_PROXY_H
 #define LOGICMILL_ARMI_FAIL_PROXY_H
 
@@ -49,7 +42,9 @@ public:
 		: m_context{context}, m_req_ord{req_ord}, m_channel{chan}
 	{}
 
-	inline fail_proxy(fail_proxy const& other) : m_context{other.m_context}, m_req_ord{other.m_req_ord}, m_channel{other.m_channel} {}
+	inline fail_proxy(fail_proxy const& other)
+		: m_context{other.m_context}, m_req_ord{other.m_req_ord}, m_channel{other.m_channel}
+	{}
 
 	void
 	operator()(std::error_code ec);
@@ -63,4 +58,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_FAIL_PROXY_H */
+#endif    // LOGICMILL_ARMI_FAIL_PROXY_H

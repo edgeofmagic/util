@@ -142,6 +142,11 @@ shared_buffer
 source::get_shared_slice(size_type n, std::error_code& err)
 {
 	err.clear();
+	if (n < 1)
+	{
+		return shared_buffer{};
+	}
+
 	mutable_buffer buf{n};
 	auto           got = getn(buf.data(), n, err);
 	if (err)
@@ -159,6 +164,11 @@ source::get_shared_slice(size_type n, std::error_code& err)
 shared_buffer
 source::get_shared_slice(size_type n)
 {
+	if (n < 1)
+	{
+		return shared_buffer{};
+	}
+
 	mutable_buffer buf{n};
 	auto           got = getn(buf.data(), n);
 	buf.size(got);
@@ -169,6 +179,11 @@ const_buffer
 source::get_slice(size_type n, std::error_code& err)
 {
 	err.clear();
+	if (n < 1)
+	{
+		return const_buffer{};
+	}
+
 	mutable_buffer buf{n};
 	auto           got = getn(buf.data(), n, err);
 	if (err)
@@ -186,6 +201,11 @@ source::get_slice(size_type n, std::error_code& err)
 const_buffer
 source::get_slice(size_type n)
 {
+	if (n < 1)
+	{
+		return const_buffer{};
+	}
+
 	mutable_buffer buf{n};
 	auto           got = getn(buf.data(), n);
 	buf.size(got);
@@ -197,6 +217,11 @@ source::getn(byte_type* dst, size_type n, std::error_code& err)
 {
 	err.clear();
 	size_type result = 0;
+	if (n < 1)
+	{
+		goto exit;
+	}
+
 	// optimize for the available case
 	if (n < m_end - m_next)
 	{
@@ -239,6 +264,10 @@ size_type
 source::getn(byte_type* dst, size_type n)
 {
 	size_type result = 0;
+	if (n < 1)
+	{
+		goto exit;
+	}
 	// optimize for the available case
 	if (n < m_end - m_next)
 	{
@@ -269,6 +298,7 @@ source::getn(byte_type* dst, size_type n)
 		}
 		result = static_cast<size_type>(p - dst);
 	}
+exit:
 	return result;
 }
 

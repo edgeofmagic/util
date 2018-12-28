@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   macros.h
- * Author: David Curtis
- *
- * Created on August 15, 2017, 7:57 PM
- */
-
 #ifndef LOGICMILL_ARMI_MACROS_H
 #define LOGICMILL_ARMI_MACROS_H
 
@@ -135,7 +128,7 @@
 					  BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_LIST_, iface, methods_seq))                               \
 		{}                                                                                                             \
 	};                                                                                                                 \
-	/**/
+/**/
 
 #define ARMI_DO_METHOD_LIST_(r, iface, n, method) BOOST_PP_COMMA_IF(n) & iface ::method 
 /**/
@@ -144,5 +137,4 @@
 	logicmill::armi::method_proxy<decltype(&iface ::method)> method{context(), index(), n}; 
 /**/
 
-#endif /* LOGICMILL_ARMI_MACROS_H */
-
+#endif    // LOGICMILL_ARMI_MACROS_H

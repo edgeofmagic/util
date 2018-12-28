@@ -43,9 +43,7 @@ using logicmill::async::loop;
 class resolve_req_uv
 {
 public:
-	template<
-			class Handler,
-			class = std::enable_if_t<std::is_convertible<Handler, loop::resolve_handler>::value>>
+	template<class Handler, class = std::enable_if_t<std::is_convertible<Handler, loop::resolve_handler>::value>>
 	resolve_req_uv(std::string const& hostname, Handler&& handler)
 		: m_hostname{hostname}, m_handler{std::forward<Handler>(handler)}
 	{
@@ -56,8 +54,8 @@ public:
 	start(uv_loop_t* lp, std::error_code& err);
 
 private:
-	uv_getaddrinfo_t                        m_uv_req;
-	std::string                             m_hostname;
+	uv_getaddrinfo_t      m_uv_req;
+	std::string           m_hostname;
 	loop::resolve_handler m_handler;
 
 	static void
@@ -134,34 +132,25 @@ private:
 	close(std::error_code& err) override;    // probably should NOT be called from any handler
 
 	virtual acceptor::ptr
-	really_create_acceptor(
-			options const&                 opt,
-			std::error_code&                                 err,
-			acceptor::connection_handler&& handler) override;
+	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler) override;
 
 	virtual acceptor::ptr
-	really_create_acceptor(
-			options const&                      opt,
-			std::error_code&                                      err,
-			acceptor::connection_handler const& handler) override;
+	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler const& handler)
+			override;
 
 	virtual channel::ptr
-	really_connect_channel(
-			options const&             opt,
-			std::error_code&                             err,
-			channel::connect_handler&& handler) override;
+	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler) override;
 
 	virtual channel::ptr
-	really_connect_channel(
-			options const&                  opt,
-			std::error_code&                                  err,
-			channel::connect_handler const& handler) override;
+	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler) override;
 
 	virtual transceiver::ptr
-	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler&& handler) override;
+	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler&& handler)
+			override;
 
 	virtual transceiver::ptr
-	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler const& handler) override;
+	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler const& handler)
+			override;
 
 	virtual transceiver::ptr
 	really_create_transceiver(options const& opt, std::error_code& err) override;
@@ -202,4 +191,4 @@ private:
 	bool                               m_is_default_loop;
 };
 
-#endif /* LOGICMILL_ASYNC_LOOP_UV_H */
+#endif    // LOGICMILL_ASYNC_LOOP_UV_H

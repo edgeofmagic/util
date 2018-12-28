@@ -22,19 +22,12 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   reply_proxy.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 9:49 PM
- */
-
 #ifndef LOGICMILL_ARMI_REPLY_PROXY_H
 #define LOGICMILL_ARMI_REPLY_PROXY_H
 
 #include <logicmill/armi/server_context_base.h>
-#include <system_error>
 #include <logicmill/armi/types.h>
+#include <system_error>
 
 namespace logicmill
 {
@@ -130,4 +123,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_REPLY_PROXY_H */
+#endif    // LOGICMILL_ARMI_REPLY_PROXY_H

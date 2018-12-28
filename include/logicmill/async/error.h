@@ -94,16 +94,15 @@ make_error_code(errc e);
 
 namespace std
 {
+	
 template<>
 struct is_error_condition_enum<logicmill::async::errc> : public true_type
 {};
-}    // namespace std
 
-namespace std
-{
 template<>
 struct is_error_condition_enum<logicmill::address_info::errc> : public true_type
 {};
+
 }    // namespace std
 
-#endif /* LOGICMILL_ASYNC_ERROR_H */
+#endif    // LOGICMILL_ASYNC_ERROR_H

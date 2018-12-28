@@ -58,7 +58,6 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/stdlib/vector.h
 	include/logicmill/bstream/utils/memory.h
 	include/logicmill/bstream/utils/preprocessor.h
-	include/logicmill/bstream/utils/traits.h
 	include/logicmill/async/loop.h
 	include/logicmill/async/timer.h
 	include/logicmill/async/address.h

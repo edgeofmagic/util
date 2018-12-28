@@ -102,4 +102,4 @@ struct is_error_condition_enum<logicmill::bstream::errc> : public true_type
 {};
 }    // namespace std
 
-#endif /* LOGICMILL_BSTREAM_ERROR_H */
+#endif    // LOGICMILL_BSTREAM_ERROR_H

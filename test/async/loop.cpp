@@ -51,6 +51,7 @@ public:
 private:
 	std::chrono::time_point<std::chrono::system_clock> m_start;
 };
+
 #if 1
 
 TEST_CASE("logicmill::async::loop [ smoke ] { dispatch }")
@@ -81,10 +82,8 @@ TEST_CASE("logicmill::async::loop [ smoke ] { dispatch }")
 	});
 
 	lp->run(err);
-
 	CHECK(first_dispatch_called);
 	CHECK(second_dispatch_called);
-
 	CHECK(!err);
 }
 
@@ -92,9 +91,7 @@ TEST_CASE("logicmill::async::loop [ smoke ] { nullptr handler }")
 {
 	async::loop::ptr lp = async::loop::create();
 	std::error_code  err;
-
 	lp->dispatch(err, nullptr);
-
 	CHECK(err);
 	CHECK(err == std::errc::invalid_argument);
 
@@ -114,11 +111,8 @@ TEST_CASE("logicmill::async::loop [ smoke ] { basic }")
 	});
 
 	lp->run(err);
-
 	CHECK(!err);
-
 	lp->close(err);
-
 	CHECK(!err);
 }
 
@@ -159,7 +153,6 @@ TEST_CASE("logicmill::async::loop [ smoke ] { default loop }")
 TEST_CASE("logicmill::async::loop::timer [ smoke ] { basic }")
 {
 	async::loop::ptr lp = async::loop::create();
-
 	std::error_code err;
 
 	{
@@ -170,31 +163,22 @@ TEST_CASE("logicmill::async::loop::timer [ smoke ] { basic }")
 		});
 
 		CHECK(!err);
-
 		tp->start(std::chrono::milliseconds{1000}, err);
-
 		CHECK(!err);
-
 		CHECK(tp->is_pending());
 	}
 
 	lp->run(err);
-
 	CHECK(!err);
-
 	lp->close(err);
-
 	CHECK(!err);
 }
 
 TEST_CASE("logicmill::async::loop::timer [ smoke ] { close before expire }")
 {
 	async::loop::ptr lp = async::loop::create();
-
 	std::error_code err;
-
 	auto tp0 = lp->create_timer(err, [](async::timer::ptr timer_ptr) { std::cout << "timer 0 expired" << std::endl; });
-
 	CHECK(!err);
 
 	auto tp1 = lp->create_timer(err, [](async::timer::ptr timer_ptr) {
@@ -206,32 +190,20 @@ TEST_CASE("logicmill::async::loop::timer [ smoke ] { close before expire }")
 	});
 
 	CHECK(!err);
-
 	tp0->start(std::chrono::milliseconds{2000}, err);
-
 	CHECK(!err);
-
 	tp1->start(std::chrono::milliseconds{1000}, err);
-
 	CHECK(!err);
-
 	lp->run(err);
-
 	CHECK(!err);
-
 	std::cout << "loop run completed" << std::endl;
-
-	// lp->close();
 }
 
 TEST_CASE("logicmill::async::loop::timer [ smoke ] { stop before expire }")
 {
 	async::loop::ptr lp = async::loop::create();
-
 	std::error_code err;
-
 	auto tp0 = lp->create_timer(err, [](async::timer::ptr timer_ptr) { std::cout << "timer 0 expired" << std::endl; });
-
 	CHECK(!err);
 
 	auto tp1 = lp->create_timer(err, [=](async::timer::ptr timer_ptr) {
@@ -242,34 +214,18 @@ TEST_CASE("logicmill::async::loop::timer [ smoke ] { stop before expire }")
 	});
 
 	auto loop_exit = lp->create_timer(err, [&](async::timer::ptr timer_ptr) { timer_ptr->loop()->stop(err); });
-
-
 	CHECK(!err);
-
 	tp0->start(std::chrono::milliseconds{2000}, err);
-
 	CHECK(!err);
-
 	tp1->start(std::chrono::milliseconds{1000}, err);
-
 	CHECK(!err);
-
 	loop_exit->start(std::chrono::milliseconds{2500}, err);
-
 	CHECK(!err);
-
 	stopwatch sw;
-
 	lp->run(err);
-
 	CHECK(!err);
-
 	auto ms = sw.elapsed<std::chrono::milliseconds>();
-
 	std::cout << "loop run completed: " << ms.count() << " ms" << std::endl;
-
-	// lp->close();
-
 	CHECK(true);
 }
 #endif
@@ -396,20 +352,13 @@ TEST_CASE("logicmill::async::resolver [ smoke ] { cancellation loop close }")
 									   CHECK(!ec);
 								   });
 		REQUIRE(!err);
-
 		tp->start(std::chrono::milliseconds{1}, err);
-
 		REQUIRE(!err);
-
 		lp->run(err);
-
 		CHECK(!err);
-
 		lp->close(err);
-
 		CHECK(!err);
 		std::cout << "loop run completed" << std::endl;
-
 		std::cout << "outstanding loop refcount after run: " << lp.use_count() << std::endl;
 	}
 }

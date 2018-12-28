@@ -62,19 +62,17 @@ tcp_write_bufs_req_uv::on_write(uv_write_t* req, int status)
 
 /* tcp_base_uv */
 
-
 endpoint
 tcp_base_uv::really_get_endpoint(std::error_code& err)
 {
-	endpoint result;
+	endpoint         result;
 	sockaddr_storage saddr;
-	int sockaddr_size{sizeof(sockaddr_storage)};
+	int              sockaddr_size{sizeof(sockaddr_storage)};
 	err.clear();
 	auto stat = uv_tcp_getsockname(&m_tcp_handle, reinterpret_cast<sockaddr*>(&saddr), &sockaddr_size);
 	if (stat < 0)
 	{
 		err = map_uv_error(stat);
-
 	}
 	else
 	{
@@ -88,7 +86,6 @@ tcp_base_uv::get_loop()
 {
 	return reinterpret_cast<loop_data*>(reinterpret_cast<uv_handle_t*>(&m_tcp_handle)->loop->data)->get_loop_ptr();
 }
-
 
 /* tcp_channel_uv */
 
@@ -124,8 +121,7 @@ tcp_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_
 	{
 		if (buf->base)
 		{
-			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base)
-			);
+			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base));
 		}
 		err = map_uv_error(nread);
 		channel_ptr->m_read_handler(channel_ptr, bstream::const_buffer{}, err);
@@ -144,7 +140,6 @@ tcp_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_
 void
 tcp_channel_uv::on_allocate(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
-	// std::cout << "on_allocate called, suggested size is " << suggested_size << std::endl;
 	static bstream::buffer::memory_broker::ptr broker = bstream::buffer::default_broker::get();
 	buf->base                                         = reinterpret_cast<char*>(broker->allocate(suggested_size));
 	buf->len                                          = suggested_size;
@@ -281,15 +276,14 @@ tcp_channel_uv::really_write(
 endpoint
 tcp_channel_uv::get_peer_endpoint(std::error_code& err)
 {
-	endpoint result;
+	endpoint         result;
 	sockaddr_storage saddr;
-	int sockaddr_size{sizeof(sockaddr_storage)};
+	int              sockaddr_size{sizeof(sockaddr_storage)};
 	err.clear();
 	auto stat = uv_tcp_getpeername(&m_tcp_handle, reinterpret_cast<sockaddr*>(&saddr), &sockaddr_size);
 	if (stat < 0)
 	{
 		err = map_uv_error(stat);
-
 	}
 	else
 	{
@@ -311,8 +305,7 @@ tcp_framed_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const 
 	{
 		if (buf->base)
 		{
-			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base)
-			);
+			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base));
 		}
 		err = map_uv_error(nread);
 		channel_ptr->m_read_handler(channel_ptr, bstream::const_buffer{}, err);
@@ -425,9 +418,11 @@ class on_write_buffers
 {
 public:
 	template<class T, class = std::enable_if_t<std::is_convertible<T, async::channel::write_buffer_handler>::value>>
-	on_write_buffers(T&& handler) : m_handler{std::forward<T>(handler)} {}
+	on_write_buffers(T&& handler) : m_handler{std::forward<T>(handler)}
+	{}
 
-	void operator()(async::channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code err)
+	void
+	operator()(async::channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code err)
 	{
 		if (m_handler)
 		{

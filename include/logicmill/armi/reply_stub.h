@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   reply_stub.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 9:37 PM
- */
-
 #ifndef LOGICMILL_ARMI_REPLY_STUB_H
 #define LOGICMILL_ARMI_REPLY_STUB_H
 
@@ -37,7 +30,6 @@
 #include <logicmill/armi/error.h>
 #include <system_error>
 #include <type_traits>
-// #include <logicmill/armi/error_code_adaptor.h>
 #include <logicmill/bstream/ibstream.h>
 
 
@@ -198,5 +190,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-
-#endif /* LOGICMILL_ARMI_REPLY_STUB_H */
+#endif    // LOGICMILL_ARMI_REPLY_STUB_H

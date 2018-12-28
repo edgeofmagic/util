@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   client_context_base.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 5:52 PM
- */
-
 #ifndef LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H
 #define LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H
 
@@ -85,7 +78,6 @@ public:
 	virtual ~client_context_base();
 
 protected:
-
 	bool
 	really_close();
 
@@ -93,7 +85,7 @@ protected:
 	really_close(std::error_code err);
 
 	async::loop::ptr
-	
+
 	loop() const
 	{
 		return m_loop;
@@ -119,7 +111,6 @@ protected:
 	}
 
 private:
-
 	friend class logicmill::armi::interface_proxy;
 
 	template<class T>
@@ -227,4 +218,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H */
+#endif    // LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H

@@ -36,8 +36,6 @@
 #include <system_error>
 
 
-#define BUILD_UDP 1
-
 namespace logicmill
 {
 namespace async
@@ -98,7 +96,6 @@ public:
 		return really_connect_channel(opts, err, std::forward<Handler>(handler));
 	}
 
-#if (BUILD_UDP)
 	transceiver::ptr
 	create_transceiver(options const& opts, std::error_code& err)
 	{
@@ -111,7 +108,6 @@ public:
 	{
 		return really_create_transceiver(opts, err, std::forward<Handler>(handler));
 	}
-#endif
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, resolve_handler>::value>
@@ -119,8 +115,6 @@ public:
 	{
 		really_resolve(hostname, err, std::forward<Handler>(handler));
 	}
-
-
 
 protected:
 	virtual timer::ptr
@@ -147,7 +141,6 @@ protected:
 	virtual channel::ptr
 	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler) = 0;
 
-#if (BUILD_UDP)
 	virtual transceiver::ptr
 	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler&& handler) = 0;
 
@@ -156,7 +149,6 @@ protected:
 
 	virtual transceiver::ptr
 	really_create_transceiver(options const& opt, std::error_code& err) = 0;
-#endif
 
 	virtual void
 	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler) = 0;

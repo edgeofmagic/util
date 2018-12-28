@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   method_stub_base.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 10:46 PM
- */
-
 #ifndef LOGICMILL_ARMI_METHOD_STUB_BASE_H
 #define LOGICMILL_ARMI_METHOD_STUB_BASE_H
 
@@ -40,7 +33,7 @@ namespace logicmill
 {
 namespace armi
 {
-	
+
 class method_stub_base
 {
 public:
@@ -52,4 +45,4 @@ public:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_METHOD_STUB_BASE_H */
+#endif    // LOGICMILL_ARMI_METHOD_STUB_BASE_H

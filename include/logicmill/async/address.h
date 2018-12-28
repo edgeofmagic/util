@@ -405,23 +405,23 @@ operator<<(std::ostream& os, const enum ip::address::family fam)
 {
 	switch (fam)
 	{
-	case ip::address::family::v4:
-	{
-		os << "ipv4";
-	}
-	break;
+		case ip::address::family::v4:
+		{
+			os << "ipv4";
+		}
+		break;
 
-	case ip::address::family::v6:
-	{
-		os << "ipv6";
-	}
-	break;
+		case ip::address::family::v6:
+		{
+			os << "ipv6";
+		}
+		break;
 
-	default:
-	{
-		os << "unknown";
-	}
-	break;
+		default:
+		{
+			os << "unknown";
+		}
+		break;
 	}
 
 	return os;

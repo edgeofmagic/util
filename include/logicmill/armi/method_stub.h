@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   method_stub.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 9:58 PM
- */
-
 #ifndef LOGICMILL_ARMI_METHOD_STUB_H
 #define LOGICMILL_ARMI_METHOD_STUB_H
 
@@ -506,4 +499,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_METHOD_STUB_H */
+#endif    // LOGICMILL_ARMI_METHOD_STUB_H

@@ -743,4 +743,171 @@ TEST_CASE("logicmill::async::event::surface [ smoke ] { basic }")
 	CHECK(*t.intp == 3);
 }
 
+namespace stack_test
+{
+using string_event = event<std::size_t, 0, std::string const&>;
+
+using str_in = connector<sink<string_event>>;
+using str_out = connector<source<string_event>>;
+using str_top = surface<str_in, str_out>;
+using str_bottom = complement<str_top>::type;
+
+class repeater
+{
+private:
+
+	class bottom;
+
+	class top : public stackable<str_top, top>
+	{
+	public:
+		top(bottom* b) : m_bottom{b} {}
+		void on(string_event, std::string const& s);
+	private:
+		bottom* m_bottom;
+	};
+
+	class bottom : public stackable<str_bottom, bottom>
+	{
+	public:
+		bottom(top* t) : m_top{t} {}
+		void on(string_event, std::string const& s)
+		{
+			m_top->send<string_event>(s);
+		}
+	private:
+		top* m_top;
+	};
+
+	top m_top;
+	bottom m_bottom;
+public:
+	repeater() : m_top{&m_bottom}, m_bottom{&m_top} {}
+	repeater(repeater&& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
+	repeater(repeater const& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
+
+	str_top&
+	get_top()
+	{
+		return m_top.get_surface<str_top>();
+	}
+
+	str_bottom&
+	get_bottom()
+	{
+		return m_bottom.get_surface<str_bottom>();
+	}
+};
+
+void
+repeater::top::on(string_event, std::string const& s)
+{
+	m_bottom->send<string_event>(s);
+}
+
+class anchor : public stackable<str_top, anchor>
+{
+public:
+
+	anchor() : stackable<str_top, anchor>{} {}
+	anchor(anchor&& rhs) : stackable<str_top, anchor>{} {}
+	anchor(anchor const& rhs) : stackable<str_top, anchor>{} {}
+
+	void on(string_event, std::string const& s)
+	{
+		std::cout << "anchor received " << s << std::endl;
+		send<string_event>(s);
+	}
+
+	str_top&
+	get_top()
+	{
+		return get_surface<str_top>();
+	}
+};
+
+class driver : public stackable<str_bottom, driver>
+{
+public:
+
+	driver() : stackable<str_bottom, driver>{} {}
+	driver(driver&& rhs) : stackable<str_bottom, driver>{}, m_handler{std::move(rhs.m_handler)} {}
+	driver(driver const& rhs) : stackable<str_bottom, driver>{}, m_handler{rhs.m_handler} {}
+
+	using handler = std::function<void(std::string const&)>;
+
+	void on_string(handler h)
+	{
+		m_handler = h;
+	}
+
+	str_bottom&
+	get_bottom()
+	{
+		return get_surface<str_bottom>();
+	}
+
+	void on(string_event, std::string const& s)
+	{
+		m_handler(s);		
+	}
+
+private:
+
+	handler m_handler;
+};
+
+}
+
+TEST_CASE("logicmill::async::event::surface [ smoke ] { layer stacking null constructed tuple }")
+{
+	layer_stack<stack_test::anchor, stack_test::repeater, stack_test::driver> stck;
+
+	bool handler_called{false};
+
+	stck.top().on_string([&](std::string const& s)
+	{
+		std::cout << "got " << s << " from top of stack" << std::endl;
+		CHECK(s == "zoot");
+		handler_called = true;
+	});
+
+	stck.top().send<stack_test::string_event>("zoot");
+	CHECK(handler_called);
+}
+
+
+TEST_CASE("logicmill::async::event::surface [ smoke ] { layer stacking move constructed tuple }")
+{
+	layer_stack<stack_test::anchor, stack_test::repeater, stack_test::driver>
+		stck{stack_test::anchor{}, stack_test::repeater{}, stack_test::driver{}};
+
+	bool handler_called{false};
+
+	stck.top().on_string([&](std::string const& s)
+	{
+		std::cout << "got " << s << " from top of stack" << std::endl;
+		CHECK(s == "zoot");
+		handler_called = true;
+	});
+
+	stck.top().send<stack_test::string_event>("zoot");
+	CHECK(handler_called);
+}
+
+TEST_CASE("logicmill::async::event::surface [ smoke ] { layer stacking manual }")
+{
+	std::tuple<stack_test::anchor, stack_test::repeater, stack_test::driver> stck;
+	std::get<0>(stck).get_top().stack(std::get<1>(stck).get_bottom());
+	std::get<1>(stck).get_top().stack(std::get<2>(stck).get_bottom());
+
+	std::get<2>(stck).on_string([=](std::string const& s)
+	{
+		std::cout << "got " << s << " from top of stack" << std::endl;
+		CHECK(s == "zoot");
+	});
+
+	std::get<2>(stck).send<stack_test::string_event>("zoot");
+}
+
 #endif

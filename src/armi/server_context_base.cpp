@@ -22,68 +22,67 @@
  * THE SOFTWARE.
  */
 
+#include <logicmill/armi/error.h>
 #include <logicmill/armi/fail_proxy.h>
 #include <logicmill/armi/server_context_base.h>
-#include <logicmill/armi/error.h>
 #include <logicmill/bstream/imbstream.h>
 
 using namespace logicmill;
 using namespace armi;
 
-server_context_base::server_context_base(std::size_t interface_count, async::loop::ptr lp, bstream::context_base const& stream_context)
-:
-m_loop{lp},
-m_stream_context{stream_context},
-m_impl_ptrs{interface_count, nullptr}
+server_context_base::server_context_base(
+		std::size_t                  interface_count,
+		async::loop::ptr             lp,
+		bstream::context_base const& stream_context)
+	: m_loop{lp}, m_stream_context{stream_context}, m_impl_ptrs{interface_count, nullptr}
 {}
 
-server_context_base::~server_context_base()
-{
-}
+server_context_base::~server_context_base() {}
 
 void
 server_context_base::really_bind(async::options const& opts, std::error_code& err)
 {
-	m_acceptor = m_loop->create_acceptor(opts, err, [=](async::acceptor::ptr const& sp, async::channel::ptr const& chan, std::error_code err)
-	{
-		if (err)
-		{
-			if (m_on_server_error)
-			{
-				m_on_server_error->invoke(err);
-			}
-			else
-			{
-				on_acceptor_error_default();
-			}
-		}
-		else
-		{
-			m_open_channels.insert(chan);
-			chan->start_read(err, [=](async::channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err)
-			{
+	m_acceptor = m_loop->create_acceptor(
+			opts, err, [=](async::acceptor::ptr const& sp, async::channel::ptr const& chan, std::error_code err) {
 				if (err)
 				{
-					if (m_on_channel_error)
+					if (m_on_server_error)
 					{
-						m_on_channel_error(chan, err);
+						m_on_server_error->invoke(err);
 					}
 					else
 					{
-						on_channel_error_default(chan);
+						on_acceptor_error_default();
 					}
 				}
 				else
 				{
-					bstream::imbstream is{std::move(buf), m_stream_context};
-					handle_request(is, chan);
+					m_open_channels.insert(chan);
+					chan->start_read(
+							err,
+							[=](async::channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err) {
+								if (err)
+								{
+									if (m_on_channel_error)
+									{
+										m_on_channel_error(chan, err);
+									}
+									else
+									{
+										on_channel_error_default(chan);
+									}
+								}
+								else
+								{
+									bstream::imbstream is{std::move(buf), m_stream_context};
+									handle_request(is, chan);
+								}
+							});
 				}
 			});
-		}
-	});
 }
 
-void 
+void
 server_context_base::send_reply(async::channel::ptr const& chan, bstream::mutable_buffer&& buf)
 {
 	std::error_code err;
@@ -93,14 +92,16 @@ server_context_base::send_reply(async::channel::ptr const& chan, bstream::mutabl
 		m_on_channel_error(chan, make_error_code(armi::errc::channel_not_connected));
 	}
 	else
-	{	
-		chan->write(std::move(buf), err, [=](async::channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err)
-		{
-			if (err && m_on_channel_error)
-			{
-				m_on_channel_error(chan, err);
-			}
-		});
+	{
+		chan->write(
+				std::move(buf),
+				err,
+				[=](async::channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
+					if (err && m_on_channel_error)
+					{
+						m_on_channel_error(chan, err);
+					}
+				});
 
 		if (err && m_on_channel_error)
 		{
@@ -112,8 +113,8 @@ server_context_base::send_reply(async::channel::ptr const& chan, bstream::mutabl
 void
 server_context_base::handle_request(bstream::ibstream& is, async::channel::ptr const& chan)
 {
-	auto req_ord = is.read_as<std::uint64_t>();
-    std::size_t if_index = is.read_as<std::size_t>();
+	auto        req_ord  = is.read_as<std::uint64_t>();
+	std::size_t if_index = is.read_as<std::size_t>();
 	if (if_index >= m_stubs.size())
 	{
 		fail_proxy{*this, req_ord, chan}(make_error_code(armi::errc::invalid_interface_id));
@@ -160,8 +161,7 @@ server_context_base::really_close()
 	auto it = m_open_channels.begin();
 	while (it != m_open_channels.end())
 	{
-		bool channel_did_close =
-		(*it)->close([=](async::channel::ptr const& c) {
+		bool channel_did_close = (*it)->close([=](async::channel::ptr const& c) {
 			m_open_channels.erase(c);
 			if (m_open_channels.empty() && !m_acceptor)
 			{
@@ -178,12 +178,11 @@ server_context_base::really_close()
 			it = m_open_channels.erase(it);
 		}
 	}
-	if (!result) // there was no deferred closing action; wipe everything
+	if (!result)    // there was no deferred closing action; wipe everything
 	{
-		m_acceptor.reset(); // probably unnecessary, but whatever
-		m_open_channels.clear(); // ditto
+		m_acceptor.reset();         // probably unnecessary, but whatever
+		m_open_channels.clear();    // ditto
 		m_on_close = nullptr;
 	}
 	return result;
 }
-

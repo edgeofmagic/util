@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   preprocessor.h
- * Author: David Curtis
- *
- * Created on July 5, 2017, 11:21 AM
- */
-
 #ifndef LOGICMILL_UTILS_PREPROCESSOR_H
 #define LOGICMILL_UTILS_PREPROCESSOR_H
 
@@ -71,6 +64,4 @@ LGCML_PP_ISEMPTY_(                                                              
 	#define IS_EMPTY LGCML_PP_ISEMPTY
 #endif
 
-
-#endif /* LOGICMILL_UTILS_PREPROCESSOR_H */
-
+#endif    // LOGICMILL_UTILS_PREPROCESSOR_H

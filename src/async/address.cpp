@@ -382,168 +382,168 @@ public:
 
 			switch (state)
 			{
-			case parse_state::initial:
-			{
-				// expect first colon of initial zero compression or first digit of value
-				if (nextch == ':')
+				case parse_state::initial:
 				{
-					token.clear();
-					token += nextch;
-					state = parse_state::found_initial_colon;
-				}
-				else if (is_hex_digit(nextch))
-				{
-					token.clear();
-					token += static_cast<char>(::tolower(nextch));
-					state = parse_state::found_hex_digit;
-				}
-				else
-				{
-					parse_error = true;
-				}
-			}
-			break;
-
-			case parse_state::found_initial_colon:
-			{
-				// expect second colon of initial zero compression
-				if (nextch == ':')
-				{
-					token += nextch;
-					elements.emplace_back(addr_elem_type::zero_compression, 0);
-					state = parse_state::found_0_compr;
-				}
-				else
-				{
-					parse_error = true;
-				}
-			}
-			break;
-
-			case parse_state::found_0_compr:
-			{
-				// expect initial digit of value or empty
-				if (is_hex_digit(nextch))
-				{
-					token.clear();
-					token += nextch;
-					state = parse_state::found_hex_digit;
-				}
-				else if (nextch == 0)
-				{
-					finished = true;
-				}
-				else
-				{
-					parse_error = true;
-				}
-			}
-			break;
-
-			case parse_state::found_hex_digit:    // in number
-			{
-				// expect next digit of value or separator or empty
-				if (is_hex_digit(nextch))
-				{
-					token += nextch;
-				}
-				else if (nextch == ':')
-				{
-					std::uint16_t value = convert_hex_word(token, err);
-					if (err)
+					// expect first colon of initial zero compression or first digit of value
+					if (nextch == ':')
+					{
+						token.clear();
+						token += nextch;
+						state = parse_state::found_initial_colon;
+					}
+					else if (is_hex_digit(nextch))
+					{
+						token.clear();
+						token += static_cast<char>(::tolower(nextch));
+						state = parse_state::found_hex_digit;
+					}
+					else
+					{
 						parse_error = true;
-					elements.emplace_back(addr_elem_type::unsigned_16_bits, value);
-					state = parse_state::found_trailing_colon;
+					}
 				}
-				else if (nextch == '.')
-				{
-					std::uint16_t value = convert_dec_byte(token, err);
-					if (err)
-						parse_error = true;
-					v4_bytes.push_back(value);
-					state = parse_state::found_dot;
-				}
-				else if (nextch == 0)
-				{
-					std::uint16_t value = convert_hex_word(token, err);
-					if (err)
-						parse_error = true;
-					elements.emplace_back(addr_elem_type::unsigned_16_bits, value);
-					finished = true;
-				}
-				else
-				{
-					parse_error = true;
-				}
-			}
-			break;
+				break;
 
-			case parse_state::found_trailing_colon:
-			{
-				// expect second colon of zero compression or initial digit of value
-				if (nextch == ':')
+				case parse_state::found_initial_colon:
 				{
-					elements.emplace_back(addr_elem_type::zero_compression, 0);
-					state = parse_state::found_0_compr;
-				}
-				else if (is_hex_digit(nextch))
-				{
-					token.clear();
-					token += nextch;
-					state = parse_state::found_hex_digit;
-				}
-				else
-				{
-					parse_error = true;
-				}
-			}
-			break;
-
-			case parse_state::found_dot:
-			{
-				// expect deximal digit
-				if (is_dec_digit(nextch))
-				{
-					token.clear();
-					token += nextch;
-					state = parse_state::found_dec_digit;
-				}
-				else
-				{
-					parse_error = true;
-				}
-			}
-			break;
-
-			case parse_state::found_dec_digit:
-			{
-				// expect next digit of decimal number in ipv4 address or dot or empty
-				if (is_dec_digit(nextch))
-				{
-					token += nextch;
-				}
-				else if (nextch == '.')
-				{
-					std::uint16_t value = convert_dec_byte(token, err);
-					if (err)
+					// expect second colon of initial zero compression
+					if (nextch == ':')
+					{
+						token += nextch;
+						elements.emplace_back(addr_elem_type::zero_compression, 0);
+						state = parse_state::found_0_compr;
+					}
+					else
+					{
 						parse_error = true;
-					v4_bytes.push_back(value);
-					state = parse_state::found_dot;
+					}
 				}
-				else if (nextch == 0)
+				break;
+
+				case parse_state::found_0_compr:
 				{
-					std::uint16_t value = convert_dec_byte(token, err);
-					if (err)
+					// expect initial digit of value or empty
+					if (is_hex_digit(nextch))
+					{
+						token.clear();
+						token += nextch;
+						state = parse_state::found_hex_digit;
+					}
+					else if (nextch == 0)
+					{
+						finished = true;
+					}
+					else
+					{
 						parse_error = true;
-					v4_bytes.push_back(value);
-					finished = true;
+					}
 				}
-				else
+				break;
+
+				case parse_state::found_hex_digit:    // in number
 				{
-					parse_error = true;
+					// expect next digit of value or separator or empty
+					if (is_hex_digit(nextch))
+					{
+						token += nextch;
+					}
+					else if (nextch == ':')
+					{
+						std::uint16_t value = convert_hex_word(token, err);
+						if (err)
+							parse_error = true;
+						elements.emplace_back(addr_elem_type::unsigned_16_bits, value);
+						state = parse_state::found_trailing_colon;
+					}
+					else if (nextch == '.')
+					{
+						std::uint16_t value = convert_dec_byte(token, err);
+						if (err)
+							parse_error = true;
+						v4_bytes.push_back(value);
+						state = parse_state::found_dot;
+					}
+					else if (nextch == 0)
+					{
+						std::uint16_t value = convert_hex_word(token, err);
+						if (err)
+							parse_error = true;
+						elements.emplace_back(addr_elem_type::unsigned_16_bits, value);
+						finished = true;
+					}
+					else
+					{
+						parse_error = true;
+					}
 				}
-			}
-			break;
+				break;
+
+				case parse_state::found_trailing_colon:
+				{
+					// expect second colon of zero compression or initial digit of value
+					if (nextch == ':')
+					{
+						elements.emplace_back(addr_elem_type::zero_compression, 0);
+						state = parse_state::found_0_compr;
+					}
+					else if (is_hex_digit(nextch))
+					{
+						token.clear();
+						token += nextch;
+						state = parse_state::found_hex_digit;
+					}
+					else
+					{
+						parse_error = true;
+					}
+				}
+				break;
+
+				case parse_state::found_dot:
+				{
+					// expect deximal digit
+					if (is_dec_digit(nextch))
+					{
+						token.clear();
+						token += nextch;
+						state = parse_state::found_dec_digit;
+					}
+					else
+					{
+						parse_error = true;
+					}
+				}
+				break;
+
+				case parse_state::found_dec_digit:
+				{
+					// expect next digit of decimal number in ipv4 address or dot or empty
+					if (is_dec_digit(nextch))
+					{
+						token += nextch;
+					}
+					else if (nextch == '.')
+					{
+						std::uint16_t value = convert_dec_byte(token, err);
+						if (err)
+							parse_error = true;
+						v4_bytes.push_back(value);
+						state = parse_state::found_dot;
+					}
+					else if (nextch == 0)
+					{
+						std::uint16_t value = convert_dec_byte(token, err);
+						if (err)
+							parse_error = true;
+						v4_bytes.push_back(value);
+						finished = true;
+					}
+					else
+					{
+						parse_error = true;
+					}
+				}
+				break;
 			}
 		}
 

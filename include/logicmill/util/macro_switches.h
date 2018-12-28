@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   macro_switches.h
- * Author: David Curtis
- *
- * Created on April 9, 2017, 10:30 AM
- */
-
 #ifndef LOGICMILL_UTILS_MACRO_SWITCHES_H
 #define LOGICMILL_UTILS_MACRO_SWITCHES_H
 
@@ -36,5 +29,4 @@
 	#define LGCML_USE_SHORT_MACRO_NAMES 1
 #endif
 
-#endif /* LOGICMILL_UTILS_MACRO_SWITCHES_H */
-
+#endif    // LOGICMILL_UTILS_MACRO_SWITCHES_H

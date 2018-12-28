@@ -35,8 +35,9 @@ namespace bstream
 {
 
 template<class K, class V, class Compare, class Alloc>
-struct value_deserializer<std::map<K, V, Compare, Alloc>,
-						  typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
+struct value_deserializer<
+		std::map<K, V, Compare, Alloc>,
+		typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
 {
 	std::map<K, V, Compare, Alloc>
 	operator()(ibstream& is) const
@@ -60,8 +61,9 @@ struct value_deserializer<std::map<K, V, Compare, Alloc>,
 };
 
 template<class K, class V, class Compare, class Alloc>
-struct value_deserializer<std::multimap<K, V, Compare, Alloc>,
-						  typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
+struct value_deserializer<
+		std::multimap<K, V, Compare, Alloc>,
+		typename std::enable_if_t<is_ibstream_readable<K>::value && is_ibstream_readable<V>::value>>
 {
 	std::multimap<K, V, Compare, Alloc>
 	operator()(ibstream& is) const

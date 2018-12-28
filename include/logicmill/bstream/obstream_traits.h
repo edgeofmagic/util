@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_OBSTREAM_TRAITS_H
 
 #include <logicmill/bstream/fwd_decls.h>
-#include <logicmill/bstream/utils/traits.h>
+#include <logicmill/traits.h>
 #include <type_traits>
 
 namespace logicmill
@@ -39,7 +39,7 @@ namespace detail
 template<class T>
 static auto
 test_serialize_impl_method(int)
-		-> utils::sfinae_true_if<decltype(std::declval<T>().serialize_impl(std::declval<obstream&>()))>;
+		-> traits::sfinae_true_if<decltype(std::declval<T>().serialize_impl(std::declval<obstream&>()))>;
 template<class>
 static auto
 test_serialize_impl_method(long) -> std::false_type;
@@ -53,7 +53,7 @@ namespace detail
 {
 template<class T>
 static auto
-test_serialize_method(int) -> utils::sfinae_true_if<decltype(std::declval<T>().serialize(std::declval<obstream&>()))>;
+test_serialize_method(int) -> traits::sfinae_true_if<decltype(std::declval<T>().serialize(std::declval<obstream&>()))>;
 template<class>
 static auto
 test_serialize_method(long) -> std::false_type;
@@ -68,7 +68,7 @@ namespace detail
 template<class T>
 static auto
 test_serializer(int)
-		-> utils::sfinae_true_if<decltype(serializer<T>::put(std::declval<obstream&>(), std::declval<T>()))>;
+		-> traits::sfinae_true_if<decltype(serializer<T>::put(std::declval<obstream&>(), std::declval<T>()))>;
 template<class>
 static auto
 test_serializer(long) -> std::false_type;
@@ -83,7 +83,7 @@ namespace detail
 template<class T>
 static auto
 test_obstream_insertion_operator(int)
-		-> utils::sfinae_true_if<decltype(std::declval<obstream&>() << std::declval<T>())>;
+		-> traits::sfinae_true_if<decltype(std::declval<obstream&>() << std::declval<T>())>;
 template<class>
 static auto
 test_obstream_insertion_operator(long) -> std::false_type;

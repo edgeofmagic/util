@@ -44,8 +44,7 @@ class udp_send_buf_req_uv
 public:
 	template<
 			class Handler,
-			class = std::enable_if_t<
-					std::is_convertible<Handler, transceiver::send_buffer_handler>::value>>
+			class = std::enable_if_t<std::is_convertible<Handler, transceiver::send_buffer_handler>::value>>
 	udp_send_buf_req_uv(mutable_buffer&& buf, endpoint const& ep, Handler&& handler)
 		: m_send_handler{std::forward<Handler>(handler)},
 		  m_buffer{std::move(buf)},
@@ -70,10 +69,10 @@ private:
 	static void
 	on_send(uv_udp_send_t* req, int status);
 
-	uv_udp_send_t       m_uv_send_request;
-	mutable_buffer      m_buffer;
-	uv_buf_t            m_uv_buffer;
-	endpoint            m_endpoint;
+	uv_udp_send_t                    m_uv_send_request;
+	mutable_buffer                   m_buffer;
+	uv_buf_t                         m_uv_buffer;
+	endpoint                         m_endpoint;
 	transceiver::send_buffer_handler m_send_handler;
 };
 
@@ -104,7 +103,8 @@ public:
 	int
 	start(uv_udp_t* trans)
 	{
-		return uv_udp_send(&m_uv_send_request, trans, m_uv_buffers, m_buffers.size(), m_endpoint.get_sockaddr_ptr(), on_send);
+		return uv_udp_send(
+				&m_uv_send_request, trans, m_uv_buffers, m_buffers.size(), m_endpoint.get_sockaddr_ptr(), on_send);
 	}
 
 private:
@@ -122,10 +122,10 @@ private:
 	static void
 	on_send(uv_udp_send_t* req, int status);
 
-	uv_udp_send_t                                       m_uv_send_request;
-	std::deque<mutable_buffer>   m_buffers;
-	uv_buf_t*                                        m_uv_buffers;
-	endpoint            m_endpoint;
+	uv_udp_send_t                     m_uv_send_request;
+	std::deque<mutable_buffer>        m_buffers;
+	uv_buf_t*                         m_uv_buffers;
+	endpoint                          m_endpoint;
 	transceiver::send_buffers_handler m_send_handler;
 };
 
@@ -169,7 +169,7 @@ public:
 		if (stat < 0)
 		{
 			err = map_uv_error(stat);
-		} 
+		}
 	}
 
 	virtual ~udp_transceiver_uv() {}
@@ -184,7 +184,6 @@ public:
 	}
 
 protected:
-
 	void
 	clear_handler()
 	{
@@ -221,16 +220,26 @@ protected:
 	is_closing() override;
 
 	virtual void
-	really_send(mutable_buffer&& buf, endpoint const& dest, std::error_code& err, send_buffer_handler&& handler) override;
+	really_send(mutable_buffer&& buf, endpoint const& dest, std::error_code& err, send_buffer_handler&& handler)
+			override;
 
 	virtual void
-	really_send(mutable_buffer&& buf, endpoint const& dest, std::error_code& err, send_buffer_handler const& handler) override;
+	really_send(mutable_buffer&& buf, endpoint const& dest, std::error_code& err, send_buffer_handler const& handler)
+			override;
 
 	virtual void
-	really_send(std::deque<mutable_buffer>&& bufs, endpoint const& dest, std::error_code& err, send_buffers_handler&& handler) override;
+	really_send(
+			std::deque<mutable_buffer>&& bufs,
+			endpoint const&              dest,
+			std::error_code&             err,
+			send_buffers_handler&&       handler) override;
 
 	virtual void
-	really_send(std::deque<mutable_buffer>&& bufs, endpoint const& dest, std::error_code& err, send_buffers_handler const& handler) override;
+	really_send(
+			std::deque<mutable_buffer>&& bufs,
+			endpoint const&              dest,
+			std::error_code&             err,
+			send_buffers_handler const&  handler) override;
 
 	virtual bool
 	really_close(close_handler&& handler) override;
@@ -298,4 +307,4 @@ protected:
 	uv_udp_t                     m_udp_handle;
 };
 
-#endif // LOGICMILL_ASYNC_UDP_UV_H
+#endif    // LOGICMILL_ASYNC_UDP_UV_H

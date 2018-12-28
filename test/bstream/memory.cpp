@@ -22,8 +22,6 @@
  * THE SOFTWARE.
  */
 
-// #include <logicmill/bstream/memory/source.h>
-// #include <logicmill/bstream/memory/sink.h>
 #include "test_probes/memory.h"
 #include "common.h"
 #include <doctest.h>

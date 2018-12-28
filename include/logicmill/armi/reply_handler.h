@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   reply_handler.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 9:43 PM
- */
-
 #ifndef LOGICMILL_ARMI_REPLY_HANDLER_H
 #define LOGICMILL_ARMI_REPLY_HANDLER_H
 
@@ -47,9 +40,7 @@ template<class Reply, class Fail>
 class reply_handler<Reply, Fail, typename std::enable_if_t<std::is_void<Fail>::value>> : public reply_handler_base
 {
 public:
-	inline reply_handler(Reply reply)
-		: m_reply_stub{reply_stub<Reply>(reply)}
-	{}
+	inline reply_handler(Reply reply) : m_reply_stub{reply_stub<Reply>(reply)} {}
 
 	virtual void
 	handle_reply(bstream::ibstream& is) override
@@ -80,16 +71,14 @@ public:
 	}
 
 private:
-	reply_stub<Reply>    m_reply_stub;
+	reply_stub<Reply> m_reply_stub;
 };
 
 template<class Reply, class Fail>
 class reply_handler<Reply, Fail, typename std::enable_if_t<!std::is_void<Fail>::value>> : public reply_handler_base
 {
 public:
-	reply_handler(Reply reply, Fail fail)
-		: m_reply{reply_stub<Reply>(reply)}, m_fail{fail}
-	{}
+	reply_handler(Reply reply, Fail fail) : m_reply{reply_stub<Reply>(reply)}, m_fail{fail} {}
 
 	virtual void
 	handle_reply(bstream::ibstream& is) override
@@ -132,4 +121,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_REPLY_HANDLER_H */
+#endif    // LOGICMILL_ARMI_REPLY_HANDLER_H

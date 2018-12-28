@@ -47,19 +47,19 @@ class loop;
 class transceiver
 {
 public:
-	using ptr                  = std::shared_ptr<transceiver>;
+	using ptr = std::shared_ptr<transceiver>;
 
-	using receive_handler      = std::function<void(
-            transceiver::ptr const& chan,
-            bstream::const_buffer&& buf,
-            ip::endpoint const&     ep,
-            std::error_code         err)>;
+	using receive_handler = std::function<void(
+			transceiver::ptr const& chan,
+			bstream::const_buffer&& buf,
+			ip::endpoint const&     ep,
+			std::error_code         err)>;
 
-	using send_buffer_handler  = std::function<void(
-            transceiver::ptr const&   trans,
-            bstream::mutable_buffer&& buf,
-            ip::endpoint const&       ep,
-            std::error_code           err)>;
+	using send_buffer_handler = std::function<void(
+			transceiver::ptr const&   trans,
+			bstream::mutable_buffer&& buf,
+			ip::endpoint const&       ep,
+			std::error_code           err)>;
 
 	using send_buffers_handler = std::function<void(
 			transceiver::ptr const&               trans,
@@ -67,7 +67,7 @@ public:
 			ip::endpoint const&                   ep,
 			std::error_code                       err)>;
 
-	using close_handler        = std::function<void(transceiver::ptr const& chan)>;
+	using close_handler = std::function<void(transceiver::ptr const& chan)>;
 
 	static constexpr std::size_t payload_size_limit = LOGICMILL_ASYNC_TRANSCEIVER_MAX_MSG_SIZE;
 
@@ -176,12 +176,6 @@ protected:
 	virtual bool
 	really_close(close_handler const& handler)
 			= 0;
-
-	// virtual ip::endpoint
-	// get_endpoint(std::error_code& err) = 0;
-
-	// virtual ip::endpoint
-	// get_peer_endpoint(std::error_code& err) = 0;
 };
 
 }    // namespace async

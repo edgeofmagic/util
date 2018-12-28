@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   msgpack.h
- * Author: David Curtis
- *
- * Created on February 5, 2018, 9:14 AM
- */
-
 #ifndef LOGICMILL_BSTREAM_MSGPACK_H
 #define LOGICMILL_BSTREAM_MSGPACK_H
 
@@ -77,7 +70,7 @@ namespace detail
 template<class T>
 static auto
 test_unpack_method(int)
-		-> utils::sfinae_true_if<decltype(std::declval<T>().msgpack_unpack(std::declval<msgpack::object>()))>;
+		-> traits::sfinae_true_if<decltype(std::declval<T>().msgpack_unpack(std::declval<msgpack::object>()))>;
 template<class>
 static auto
 test_unpack_method(long) -> std::false_type;
@@ -113,7 +106,7 @@ namespace detail
 template<class T>
 static auto
 test_pack_method(int)
-		-> utils::sfinae_true_if<decltype(std::declval<T>().msgpack_pack(std::declval<msgpack::packer<obstream>&>()))>;
+		-> traits::sfinae_true_if<decltype(std::declval<T>().msgpack_pack(std::declval<msgpack::packer<obstream>&>()))>;
 template<class>
 static auto
 test_pack_method(long) -> std::false_type;

@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   server_context.h
- * Author: David Curtis
- *
- * Created on October 15, 2017, 4:25 PM
- */
-
 #ifndef LOGICMILL_ARMI_SERVER_CONTEXT_H
 #define LOGICMILL_ARMI_SERVER_CONTEXT_H
 
@@ -146,4 +139,4 @@ public:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif /* LOGICMILL_ARMI_SERVER_CONTEXT_H */
+#endif    // LOGICMILL_ARMI_SERVER_CONTEXT_H

@@ -23,9 +23,9 @@
  */
 
 #include <logicmill/armi/fail_proxy.h>
-#include <logicmill/bstream/ombstream.h>
 #include <logicmill/armi/server_context_base.h>
 #include <logicmill/armi/types.h>
+#include <logicmill/bstream/ombstream.h>
 
 using namespace logicmill;
 using namespace armi;

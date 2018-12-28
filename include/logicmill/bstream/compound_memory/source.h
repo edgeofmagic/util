@@ -22,15 +22,16 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_MEMORY_SOURCE_H
-#define LOGICMILL_BSTREAM_MEMORY_SOURCE_H
+#ifndef LOGICMILL_BSTREAM_COMPOUND_MEMORY_SOURCE_H
+#define LOGICMILL_BSTREAM_COMPOUND_MEMORY_SOURCE_H
 
+#include <algorithm>
+#include <deque>
 #include <logicmill/bstream/buffer.h>
+#include <logicmill/bstream/error.h>
 #include <logicmill/bstream/source.h>
 #include <logicmill/bstream/types.h>
-#include <deque>
 #include <vector>
-#include <algorithm>
 
 namespace logicmill
 {
@@ -91,7 +92,10 @@ public:
 			m_size += it->size();
 			m_bufs.emplace_back(*it);
 		}
-		set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
+		set_ptrs(
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data() + m_bufs[m_current].size());
 	}
 
 	source(std::deque<const_buffer>&& bufs) : base{}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
@@ -106,7 +110,10 @@ public:
 			m_bufs.emplace_back(*move_it);
 		}
 		bufs.clear();
-		set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
+		set_ptrs(
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data() + m_bufs[m_current].size());
 	}
 
 	source(std::deque<mutable_buffer>&& bufs) : base{}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
@@ -121,26 +128,11 @@ public:
 			m_bufs.emplace_back(*move_it);
 		}
 		bufs.clear();
-		set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
+		set_ptrs(
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data() + m_bufs[m_current].size());
 	}
-
-	// source(std::deque<buffer> const& bufs) : base{}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
-	// {
-	// 	std::copy(bufs.begin(); bufs.end(), m_bufs.begin());
-	// 	size_type index = 0;
-	// 	for (auto it = m_bufs.begin(); it != m_bufs.end(); ++it)
-	// 	{
-	// 		m_offsets[index++] = m_size;
-	// 		m_size += it->size();
-	// 	}
-	// 	set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
-	// }
-
-	// const_buffer
-	// get_buffer()
-	// {
-	// 	return m_buf;
-	// }
 
 	std::deque<Buffer>&
 	get_buffers_ref()
@@ -151,11 +143,11 @@ public:
 	std::deque<Buffer>
 	release_buffers()
 	{
-		m_size = 0;
+		m_size    = 0;
 		m_current = 0;
 		m_offsets.clear();
 		set_ptrs(nullptr, nullptr, nullptr);
-		return std::move( m_bufs );
+		return std::move(m_bufs);
 	}
 
 	virtual shared_buffer
@@ -182,7 +174,7 @@ public:
 		err.clear();
 		size_type left{0};
 		size_type right{m_bufs.size()};
-		bool found{false};
+		bool      found{false};
 		while (left <= right)
 		{
 			auto middle{(left + right) / 2};
@@ -197,14 +189,15 @@ public:
 			else
 			{
 				m_current = middle;
-				found = true;
+				found     = true;
+				break;
 			}
 		}
 		assert(found);
-		m_base = m_bufs[m_current].data();
-		m_end = m_base + m_bufs[m_current].size();
+		m_base        = m_bufs[m_current].data();
+		m_end         = m_base + m_bufs[m_current].size();
 		m_base_offset = m_offsets[m_current];
-		m_next = m_base + (pos - m_base_offset);
+		m_next        = m_base + (pos - m_base_offset);
 		return pos;
 	}
 
@@ -222,11 +215,11 @@ public:
 		if (m_current < m_bufs.size() - 1)
 		{
 			++m_current;
-			m_base = m_bufs[m_current].data();
-			m_end = m_base + m_bufs[m_current].size();
+			m_base        = m_bufs[m_current].data();
+			m_end         = m_base + m_bufs[m_current].size();
 			m_base_offset = m_offsets[m_current];
-			m_next = m_base;
-			result = m_bufs[m_current].size();
+			m_next        = m_base;
+			result        = m_bufs[m_current].size();
 		}
 		return result;
 	}
@@ -234,17 +227,17 @@ public:
 	virtual void
 	really_rewind() override
 	{
-		m_current = 0;
-		m_base = m_bufs[m_current].data();
-		m_end = m_base + m_bufs[m_current].size();
+		m_current     = 0;
+		m_base        = m_bufs[m_current].data();
+		m_end         = m_base + m_bufs[m_current].size();
 		m_base_offset = m_offsets[m_current];
-		m_next = m_base;
+		m_next        = m_base;
 	}
 
 protected:
-	std::deque<Buffer> m_bufs;
-	size_type m_size;
-	size_type m_current;
+	std::deque<Buffer>     m_bufs;
+	size_type              m_size;
+	size_type              m_current;
 	std::vector<size_type> m_offsets;
 };
 
@@ -266,7 +259,7 @@ inline source<const_buffer>::source(std::deque<shared_buffer> const& bufs)
 template<>
 inline source<const_buffer>::source(std::deque<shared_buffer>&& bufs)
 	: base{}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
-	// construct by copy (as base type buffer); can't move shared_buffer to const_buffer
+// construct by copy (as base type buffer); can't move shared_buffer to const_buffer
 {
 	size_type index = 0;
 	for (auto it = bufs.begin(); it != bufs.end(); ++it)
@@ -293,8 +286,8 @@ inline source<shared_buffer>::source(std::deque<shared_buffer> const& bufs)
 }
 
 template<>
-inline source<shared_buffer>::source(std::deque<shared_buffer>&& bufs) 
-: base{}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
+inline source<shared_buffer>::source(std::deque<shared_buffer>&& bufs)
+	: base{}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
 {
 	size_type index = 0;
 	using iter_type = std::deque<shared_buffer>::iterator;
@@ -311,28 +304,28 @@ inline source<shared_buffer>::source(std::deque<shared_buffer>&& bufs)
 
 template<>
 inline source<shared_buffer>::source(shared_buffer const& buf)
-: base{}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
+	: base{}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
 {
 	m_bufs.emplace_back(buf);
 }
 
 template<>
 inline source<shared_buffer>::source(shared_buffer&& buf)
-: base{}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
+	: base{}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
 {
 	m_bufs.emplace_back(std::move(buf));
 }
 
 template<>
 inline source<const_buffer>::source(shared_buffer const& buf)
-: base{}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
+	: base{}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
 {
 	m_bufs.emplace_back(const_buffer{buf});
 }
 
 template<>
 inline source<const_buffer>::source(shared_buffer&& buf)
-: base{}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
+	: base{}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
 {
 	m_bufs.emplace_back(const_buffer{buf});
 }
@@ -355,67 +348,109 @@ template<>
 inline shared_buffer
 source<shared_buffer>::get_shared_slice(size_type n, std::error_code& err)
 {
+	err.clear();
+	shared_buffer result;
+
+	if (n < 1)
+	{
+		goto exit;
+	}
+
+	// If at the end of the segment and more is available, underflow
+	if (m_next == m_end && m_current < m_bufs.size() - 1)
+	{
+		std::error_code err;
+		auto            available = really_underflow(err);
+		if (available < 1)
+		{
+			err = make_error_code(bstream::errc::read_past_end_of_stream);
+			goto exit;
+		}
+	}
+
 	if (n <= m_end - m_next)
 	{
-		shared_buffer result{m_bufs[m_current], static_cast<bstream::position_type>(m_next - m_base), n, err};
-		if (err)
+		result = shared_buffer{m_bufs[m_current], static_cast<bstream::position_type>(m_next - m_base), n, err};
+		if (!err)
 		{
 			gbump(n);
 		}
-		return result;
 	}
 	else
 	{
-		return base::get_shared_slice(n, err);
+		result = base::get_shared_slice(n, err);
 	}
+
+exit:
+	return result;
 }
 
 template<>
 inline shared_buffer
 source<shared_buffer>::get_shared_slice(size_type n)
 {
-	if (n <= m_end - m_next)
+	shared_buffer result;
+
+	if (n > 0)
 	{
-		shared_buffer result{m_bufs[m_current], static_cast<bstream::position_type>(m_next - m_base), n};
-		gbump(n);
-		return result;
+		// If at the end of the segment and more is available, underflow
+		if (m_next == m_end && n > 0 && m_current < m_bufs.size() - 1)
+		{
+			std::error_code err;
+			auto            available = really_underflow(err);
+			if (err)
+			{
+				throw std::system_error{err};
+			}
+			if (available < 1)
+			{
+				throw std::system_error{make_error_code(bstream::errc::read_past_end_of_stream)};
+			}
+		}
+
+		if (n <= m_end - m_next)
+		{
+			result = shared_buffer{m_bufs[m_current], static_cast<bstream::position_type>(m_next - m_base), n};
+			gbump(n);
+		}
+		else
+		{
+			result = base::get_shared_slice(n);
+		}
 	}
-	else
-	{
-		return base::get_shared_slice(n);
-	}
+	return result;
 }
 
 template<>
 inline const_buffer
 source<const_buffer>::get_slice(size_type n, std::error_code& err)
 {
-	return base::get_shared_slice(n);
+	return base::get_slice(n);
 }
 
 template<>
 inline const_buffer
 source<const_buffer>::get_slice(size_type n)
 {
-	return base::get_shared_slice(n);
+	return base::get_slice(n);
 }
 
 template<>
 inline const_buffer
 source<shared_buffer>::get_slice(size_type n, std::error_code& err)
 {
-	return base::get_shared_slice(n);
+	return base::get_slice(n);
 }
 
 template<>
 inline const_buffer
 source<shared_buffer>::get_slice(size_type n)
 {
-	return base::get_shared_slice(n);
+	return base::get_slice(n);
 }
 
-}    // namespace memory
+}    // namespace compound_memory
 }    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_MEMORY_SOURCE_H
+#endif    // LOGICMILL_BSTREAM_COMPOUND_MEMORY_SOURCE_H

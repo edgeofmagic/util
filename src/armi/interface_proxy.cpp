@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/armi/interface_proxy.h>
 #include <logicmill/armi/client_context_base.h>
+#include <logicmill/armi/interface_proxy.h>
 
 using namespace logicmill;
 using namespace armi;
@@ -34,5 +34,4 @@ interface_proxy::transient_timeout(millisecs timeout)
 	context_.transient_timeout(timeout);
 }
 
-interface_proxy::~interface_proxy() 
-{}
+interface_proxy::~interface_proxy() {}

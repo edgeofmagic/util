@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   types.h
- * Author: David Curtis
- *
- * Created on January 4, 2018, 8:20 PM
- */
-
 #ifndef LOGICMILL_ARMI_TYPES_H
 #define LOGICMILL_ARMI_TYPES_H
 
@@ -70,5 +63,4 @@ expected_count(std::size_t count)
 }    // namespace armi
 }    // namespace logicmill
 
-
-#endif /* LOGICMILL_ARMI_TYPES_H */
+#endif    // LOGICMILL_ARMI_TYPES_H

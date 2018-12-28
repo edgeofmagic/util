@@ -31,7 +31,6 @@
 #include <logicmill/bstream/error_category_context.h>
 #include <logicmill/bstream/ibstream_traits.h>
 #include <logicmill/bstream/types.h>
-#include <logicmill/bstream/utils/traits.h>
 #include <typeindex>
 
 namespace logicmill
@@ -243,7 +242,7 @@ protected:
 
 template<class... Args>
 const std::unordered_map<std::type_index, poly_tag_type> context_impl<Args...>::m_type_tag_map
-		= {{typeid(Args), utils::index<Args, Args...>::value}...};
+		= {{typeid(Args), traits::index<Args, Args...>::value}...};
 
 template<class... Args>
 const can_downcast_ptr_table<Args...> context_impl<Args...>::m_downcast_ptr_table;

@@ -278,41 +278,6 @@ bstream::sink::filln(const byte_type fill_byte, size_type n, std::error_code& er
 
 	really_fill(fill_byte, n);
 
-	// if (n <= static_cast<size_type>(m_end - m_next))    // optimize for common case ( no overflow )
-	// {
-	// 	if (!m_dirty)
-	// 	{
-	// 		m_dirty_start = m_next;
-	// 		m_dirty       = true;
-	// 	}
-	// 	::memset(m_next, fill_byte, n);
-	// 	m_next += n;
-	// }
-	// else
-	// {
-	// 	size_type remaining = n;
-	// 	while (remaining > 0)
-	// 	{
-	// 		if (m_base == nullptr || m_next >= m_end)
-	// 		{
-	// 			assert(m_next == m_end);    // just checking
-	// 			overflow(remaining, err);
-	// 			if (err)
-	// 				goto exit;
-	// 			assert(!m_dirty);
-	// 		}
-	// 		if (!m_dirty)
-	// 		{
-	// 			m_dirty_start = m_next;
-	// 			m_dirty       = true;
-	// 		}
-	// 		size_type chunk_size = std::min(static_cast<size_type>(m_end - m_next), remaining);
-	// 		::memset(m_next, fill_byte, chunk_size);
-	// 		remaining -= chunk_size;
-	// 		m_next += chunk_size;
-	// 	}
-	// }
-
 exit:
 	return;
 }

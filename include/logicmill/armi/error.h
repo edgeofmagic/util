@@ -22,13 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* 
- * File:   error.h
- * Author: David Curtis
- *
- * Created on January 1, 2018, 1:41 PM
- */
-
 #ifndef LOGICMILL_ARMI_ERROR_H
 #define LOGICMILL_ARMI_ERROR_H
 
@@ -39,37 +32,6 @@ namespace logicmill
 {
 namespace armi
 {
-// namespace exceptions
-// {
-// 	class invalid_argument_count : public std::runtime_error
-// 	{
-// 	public:
-// 		explicit invalid_argument_count(const std::string& what_arg)
-// 		: std::runtime_error{what_arg} {}
-
-// 		explicit invalid_argument_count(const char* what_arg)
-// 		: std::runtime_error{what_arg} {}
-
-// 		explicit invalid_argument_count()
-// 		: invalid_argument_count{"invalid argument count in marshaled request or reply"}
-// 		{}
-// 	};
-
-// 	class no_transport : public std::runtime_error
-// 	{
-// 	public:
-// 		explicit no_transport(const std::string& what_arg)
-// 		: std::runtime_error{what_arg} {}
-
-// 		explicit no_transport(const char* what_arg)
-// 		: std::runtime_error{what_arg} {}
-
-// 		explicit no_transport()
-// 		: no_transport{"no transport associated with context"}
-// 		{}
-// 	};
-
-// } // namespace exceptions
 
 enum class errc : int
 {
@@ -104,10 +66,11 @@ make_error_code(errc e);
 
 namespace std
 {
+
 template<>
 struct is_error_condition_enum<logicmill::armi::errc> : public true_type
 {};
+
 }    // namespace std
 
-
-#endif /* LOGICMILL_ARMI_ERROR_H */
+#endif    // LOGICMILL_ARMI_ERROR_H

@@ -1943,5 +1943,4 @@ private:
 } // namespace bstream
 } // namespace logicmill
 
-
 #endif    // LOGICMILL_BSTREAM_BUFFER_H

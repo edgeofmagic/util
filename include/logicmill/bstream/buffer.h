@@ -138,6 +138,7 @@ public:
 	 * \see memory_broker
 	 * \see default_allocator
 	 */
+	
 	using allocator = std::function< byte_type* ( size_type size ) >;
 
 	/** \brief The type of a <i>callable element</i> (a function or function object) that can be invoked to reallocate a region of memory.

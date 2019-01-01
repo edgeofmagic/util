@@ -57,13 +57,12 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/stdlib/unordered_set.h
 	include/logicmill/bstream/stdlib/vector.h
 	include/logicmill/bstream/utils/memory.h
-	include/logicmill/bstream/utils/preprocessor.h
+#	include/logicmill/bstream/utils/preprocessor.h
 	include/logicmill/async/loop.h
 	include/logicmill/async/timer.h
 	include/logicmill/async/address.h
 	include/logicmill/async/error.h
-	include/logicmill/async/event.h
-	include/logicmill/async/stream.h
+	include/logicmill/async/event_flow.h
 	include/logicmill/async/channel.h
 
 	include/logicmill/armi/client_context.h
@@ -90,6 +89,9 @@ set(LOGICMILL_SRCS
 	include/logicmill/armi/server_context_builder.h
 	include/logicmill/armi/traits.h
 	include/logicmill/armi/types.h
+	include/logicmill/laps/channel_anchor.h
+	include/logicmill/laps/driver.h
+	include/logicmill/laps/types.h
 
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
@@ -139,10 +141,12 @@ set(LOGICMILL_TEST_SRCS
 	test/async/endpoint.cpp
 	test/async/tcp.cpp
 	test/async/udp.cpp
-	test/async/event.cpp
-# 	test/async/stream.cpp
+ 	test/async/event_flow.cpp
 #	test/async/socket_behavior.cpp
 	test/armi/basic.cpp
+	test/laps/layers.cpp
+	test/shareable.cpp
+	test/allocators.cpp
 	test/test_main.cpp)
 
 add_library(logicmill ${LOGICMILL_SRCS})

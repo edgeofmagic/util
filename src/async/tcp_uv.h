@@ -37,29 +37,53 @@ class tcp_acceptor_uv;
 
 using logicmill::async::ip::endpoint;
 
+/** \brief Wraps a libuv connect request object (uv_connect_t).
+ * 
+ * This class wraps a libuv connect request object (uv_connect_t),
+ * holding a callable object of type logicmill::async::channel::connect_handler
+ * that will be invoked when the connect request completes.
+ * 
+ */
 class connect_request_uv
 {
 public:
+
+	/** \brief Constructor
+	 * 
+	 * Constructs an instance of connect_request_uv.
+	 * 
+	 * \param handler a callable object that is convertible to logicmill::async::channel::connect_handler, 
+	 * which will be invoked when the request completes.
+	 */
 	template<
 			class Handler,
 			class = std::enable_if_t<std::is_convertible<Handler, logicmill::async::channel::connect_handler>::value>>
 	connect_request_uv(Handler&& handler) : m_handler{std::forward<Handler>(handler)}
 	{
+		// make sure the compiler is doing the expected thing
 		assert(reinterpret_cast<uv_connect_t*>(this) == &m_uv_connect_request);
 	}
 
+	/** \brief Accessor for underlying uv_connect_t
+	 * 
+	 * \return a pointer to the underlying uv_connect_t object.
+	 */
 	uv_connect_t*
 	get_uv_connect_request()
 	{
 		return &m_uv_connect_request;
 	}
 
+	/** \brief Clears the completion handler
+	 */
 	void
 	clear_handler()
 	{
 		m_handler = nullptr;
 	}
 
+	/** \brief Callback function for libuv interface (type uv_connect_cb)
+	 */
 	static void
 	on_connect(uv_connect_t* req, int status);
 
@@ -442,7 +466,6 @@ private:
 			std::deque<logicmill::bstream::mutable_buffer>&&        bufs,
 			std::error_code&                                        err,
 			logicmill::async::channel::write_buffers_handler const& handler) override;
-
 
 	void
 	read_to_frame(ptr channel_ptr, logicmill::bstream::const_buffer&& buf);

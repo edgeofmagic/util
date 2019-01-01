@@ -35,7 +35,6 @@
 #include <memory>
 #include <system_error>
 
-
 namespace logicmill
 {
 namespace async

@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ASYNC_EVENT_H
-#define LOGICMILL_ASYNC_EVENT_H
+#ifndef LOGICMILL_ASYNC_EVENT_FLOW_H
+#define LOGICMILL_ASYNC_EVENT_FLOW_H
 
 #include <cstdint>
 #include <functional>
@@ -32,23 +32,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#if 1
-#define LOGICMILL_ASYNC_USE_EMITTER_BASE(_emitter_)                                                                    \
-	using _emitter_::fit;                                                                                              \
-	using _emitter_::get_source;                                                                                       \
-	using _emitter_::send;                                                                                             \
-/**/
-
-#define LOGICMILL_ASYNC_USE_LISTENER_BASE(_listener_)                                                                  \
-	using _listener_::get_sink;                                                                                        \
-	using _listener_::fit;                                                                                             \
-/**/
-
-#endif
-
 namespace logicmill
 {
 namespace async
+{
+namespace event_flow
 {
 
 /*
@@ -339,8 +327,6 @@ in a connector's parameter list:
 
 	using fum = connector<sink<A>, source<B>, sink<A>> // not allowed, would result in compile errors
 
-
-
 */
 
 template<class T, T Value, class... Args>
@@ -423,13 +409,13 @@ public:
 	}
 
 	void
-	fit(sink<event_type>&& snk)
+	bind(sink<event_type>&& snk)
 	{
 		m_src_f(std::move(snk.m_sink_f));
 	}
 
 	void
-	fit(sink<event_type> const& snk)
+	bind(sink<event_type> const& snk)
 	{
 		m_src_f(snk.m_sink_f);
 	}
@@ -518,9 +504,9 @@ public:
 
 	template<class Evt, class Listener>
 	typename std::enable_if_t<std::is_same<Evt, event_type>::value && has_get_sink_method<Listener, Evt>::value>
-	fit(Listener& l)
+	bind(Listener& l)
 	{
-		get_source<Evt>().fit(l.template get_sink<Evt>());
+		get_source<Evt>().bind(l.template get_sink<Evt>());
 	}
 
 private:
@@ -547,113 +533,113 @@ public:
 
 	template<class Evt, class Emitter>
 	typename std::enable_if_t<std::is_same<Evt, event_type>::value && has_get_source_method<Emitter, Evt>::value>
-	fit(Emitter& e)
+	bind(Emitter& e)
 	{
-		e.template get_source<Evt>().fit(get_sink<Evt>());
+		e.template get_source<Evt>().bind(get_sink<Evt>());
 	}
 };
 
 template<class T>
-struct is_fitting : std::integral_constant<bool, is_source<T>::value || is_sink<T>::value>
+struct is_binding : std::integral_constant<bool, is_source<T>::value || is_sink<T>::value>
 {};
 
 template<class... Args>
-struct args_are_fittings : std::false_type
+struct args_are_bindings : std::false_type
 {};
 
 template<class First, class... Rest>
-struct args_are_fittings<First, Rest...>
-	: std::integral_constant<bool, is_fitting<First>::value && args_are_fittings<Rest...>::value>
+struct args_are_bindings<First, Rest...>
+	: std::integral_constant<bool, is_binding<First>::value && args_are_bindings<Rest...>::value>
 {};
 
 template<class T>
-struct args_are_fittings<T> : is_fitting<T>
+struct args_are_bindings<T> : is_binding<T>
 {};
 
 namespace _static_test
 {
-static_assert(is_fitting<source<test_event_0>>::value);
-static_assert(args_are_fittings<source<test_event_0>, test_sink_0>::value);
+static_assert(is_binding<source<test_event_0>>::value);
+static_assert(args_are_bindings<source<test_event_0>, test_sink_0>::value);
 }
 
 template<class T, class Enable = void>
-struct fits_with;
+struct binds_with;
 
 template<class T>
-struct fits_with<T, std::enable_if_t<is_source<T>::value>>
+struct binds_with<T, std::enable_if_t<is_source<T>::value>>
 {
 	using type = sink<typename T::event_type>;
 };
 
 template<class T>
-struct fits_with<T, std::enable_if_t<is_sink<T>::value>>
+struct binds_with<T, std::enable_if_t<is_sink<T>::value>>
 {
 	using type = source<typename T::event_type>;
 };
 
 // template<class T, class Emitter, class Listener>
 // inline typename std::enable_if_t<has_get_source_method<Emitter, T>::value && has_get_sink_method<Listener, T>::value>
-// fit(Emitter& e, Listener& l)
+// bind(Emitter& e, Listener& l)
 // {
-// 	e.template get_source<T>().fit(l.template get_sink<T>());
+// 	e.template get_source<T>().bind(l.template get_sink<T>());
 // }
 
 // template<class T, class Listener, class Emitter>
 // inline typename std::enable_if_t<has_get_sink_method<Listener, T>::value && has_get_source_method<Emitter, T>::value>
-// fit(Listener& l, Emitter& e)
+// bind(Listener& l, Emitter& e)
 // {
-// 	e.template get_source<T>().fit(l.template get_sink<T>());
+// 	e.template get_source<T>().bind(l.template get_sink<T>());
 // }
 
 template<class T, class Emitter, class Listener>
 inline typename std::enable_if_t<has_get_source_method<Emitter, T>::value>
-fit(Emitter& e, Listener& l)
+bind(Emitter& e, Listener& l)
 {
-	e.template get_source<T>().fit(l.template get_sink<T>());
+	e.template get_source<T>().bind(l.template get_sink<T>());
 }
 
 template<class Source, class Sink>
 inline typename std::enable_if_t<
 		is_source<Source>::value && std::is_same<Sink, sink<typename Source::event_type>>::value>
-fit(Source& src, Sink& snk)
+bind(Source& src, Sink& snk)
 {
-	src.fit(snk);
+	src.bind(snk);
 }
 
 template<class Sink, class Source>
 inline typename std::enable_if_t<
 		is_source<Source>::value && std::is_same<Sink, sink<typename Source::event_type>>::value>
-fit(Sink& snk, Source& src)
+bind(Sink& snk, Source& src)
 {
-	src.fit(snk);
+	src.bind(snk);
 }
 
 template<std::size_t I = 0, class... Tp>
 inline typename std::enable_if_t<I == sizeof...(Tp)>
-fit_each(std::tuple<Tp...>& a, std::tuple<typename fits_with<Tp>::type...>& b)
+bind_each(std::tuple<Tp...>& a, std::tuple<typename binds_with<Tp>::type...>& b)
 {}
 
 template<std::size_t I = 0, class... Tp>
 		inline typename std::enable_if_t
 		< I<sizeof...(Tp)>
-		  fit_each(std::tuple<Tp...>& a, std::tuple<typename fits_with<Tp>::type...>& b)
+		  bind_each(std::tuple<Tp...>& a, std::tuple<typename binds_with<Tp>::type...>& b)
 {
-	fit(std::get<I>(a), std::get<I>(b));
-	fit_each<I + 1, Tp...>(a, b);
+	bind(std::get<I>(a), std::get<I>(b));
+	bind_each<I + 1, Tp...>(a, b);
 }
 
 template<class... Args>
 class connector
 {
 public:
-	friend class connector<typename fits_with<Args>::type...>;
-	static_assert(args_are_fittings<Args...>::value);
+	friend class connector<typename binds_with<Args>::type...>;
+	static_assert(args_are_bindings<Args...>::value);
 	connector(Args... args) : m_tuple{args...} {}
 
 	void
-	mate(connector<typename fits_with<Args>::type...>& that)
+	connect(connector<typename binds_with<Args>::type...>& that)
 	{
-		fit_each(m_tuple, that.m_tuple);
+		bind_each(m_tuple, that.m_tuple);
 	}
 
 private:
@@ -668,14 +654,13 @@ template<class... Args>
 struct is_connector<connector<Args...>> : std::true_type
 {};
 
-
 template<class T>
 struct complement;
 
 template<class... Args>
 struct complement<connector<Args...>>
 {
-	using type = connector<typename fits_with<Args>::type...>;
+	using type = connector<typename binds_with<Args>::type...>;
 };
 
 namespace _static_test
@@ -687,32 +672,32 @@ using tcon0 = connector<source<test_event_1>, sink<test_event_2>>;
 
 using tcon1 = complement<tcon0>::type;
 
-static_assert(std::is_same<fits_with<source<test_event_0>>::type, sink<test_event_0>>::value);
+static_assert(std::is_same<binds_with<source<test_event_0>>::type, sink<test_event_0>>::value);
 static_assert(is_connector<tcon0>::value);
 static_assert(is_connector<tcon1>::value);
 static_assert(!is_connector<test_event_1>::value);
 }    // namespace _static_test
 
 template<class T, class Derived, class Enable = void>
-struct fitting_base;
+struct bindable_base;
 
 template<class T, class Derived>
-struct fitting_base<T, Derived, std::enable_if_t<is_source<T>::value>>
+struct bindable_base<T, Derived, std::enable_if_t<is_source<T>::value>>
 {
 	using type = emitter<typename T::event_type>;
 };
 
 template<class T, class Derived>
-struct fitting_base<T, Derived, std::enable_if_t<is_sink<T>::value>>
+struct bindable_base<T, Derived, std::enable_if_t<is_sink<T>::value>>
 {
 	using type = listener<typename T::event_type, Derived>;
 };
 
 template<class T, class Derived, class Enable = void>
-struct fitting_initializer;
+struct binding_initializer;
 
 template<class T, class Derived>
-struct fitting_initializer<T, Derived, std::enable_if_t<is_source<T>::value>>
+struct binding_initializer<T, Derived, std::enable_if_t<is_source<T>::value>>
 {
 	source<typename T::event_type>
 	operator()(emitter<typename T::event_type>& s) const
@@ -722,7 +707,7 @@ struct fitting_initializer<T, Derived, std::enable_if_t<is_source<T>::value>>
 };
 
 template<class T, class Derived>
-struct fitting_initializer<T, Derived, std::enable_if_t<is_sink<T>::value>>
+struct binding_initializer<T, Derived, std::enable_if_t<is_sink<T>::value>>
 {
 	sink<typename T::event_type>
 	operator()(listener<typename T::event_type, Derived>& s) const
@@ -735,12 +720,12 @@ template<class Connector, class Derived>
 class connectable;
 
 template<class Derived, class... Args>
-class connectable<connector<Args...>, Derived> : public fitting_base<Args, Derived>::type...
+class connectable<connector<Args...>, Derived> : public bindable_base<Args, Derived>::type...
 {
 public:
 	using connector_type = connector<Args...>;
 
-	connectable() : m_connector{fitting_initializer<Args, Derived>{}(*this)...} {}
+	connectable() : m_connector{binding_initializer<Args, Derived>{}(*this)...} {}
 
 	connectable(connectable&&) = delete;
 	connectable(connectable const&) = delete;
@@ -754,9 +739,9 @@ public:
 
 	template<class T>
 	void
-	mate(T& other)
+	connect(T& other)
 	{
-		m_connector.mate(other.template get_connector<typename complement<connector_type>::type>());
+		m_connector.connect(other.template get_connector<typename complement<connector_type>::type>());
 	}
 
 private:
@@ -779,16 +764,16 @@ struct args_are_connectors<T> : is_connector<T>
 
 template<std::size_t I = 0, class... Tp>
 inline typename std::enable_if_t<I == sizeof...(Tp)>
-mate_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>& b)
+connect_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>& b)
 {}
 
 template<std::size_t I = 0, class... Tp>
 		inline typename std::enable_if_t
 		<(I < sizeof...(Tp))>
-		  mate_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>& b)
+		  connect_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>& b)
 {
-	std::get<I>(a).mate(std::get<I>(b));
-	mate_each<I + 1, Tp...>(a, b);
+	std::get<I>(a).connect(std::get<I>(b));
+	connect_each<I + 1, Tp...>(a, b);
 }
 
 
@@ -812,7 +797,7 @@ public:
 	void
 	stack(surface<typename complement<Args>::type...>& that)
 	{
-		mate_each(m_tuple, that.m_tuple);
+		connect_each(m_tuple, that.m_tuple);
 	}
 
 private:
@@ -868,30 +853,30 @@ private:
 
 template<std::size_t I = 0, class... Tp>
 inline typename std::enable_if_t<I == sizeof...(Tp) - 1>
-stack_layers(std::tuple<Tp...>&)
+assemble(std::tuple<Tp...>&)
 {}
 
 template<std::size_t I = 0, class... Tp>
 inline typename std::enable_if_t<(I < (sizeof...(Tp) - 1))>
-stack_layers(std::tuple<Tp...>& t)
+assemble(std::tuple<Tp...>& t)
 {
 	std::get<I>(t).get_top().stack(std::get<I + 1>(t).get_bottom());
-	stack_layers<I + 1, Tp...>(t);
+	assemble<I + 1, Tp...>(t);
 }
 
 template<class... Args>
-class layer_stack
+class assembly
 {
 public:
 	template<class... _Args>
-	layer_stack(_Args&&... _args) : m_tuple{std::forward<_Args>(_args)...}
+	assembly(_Args&&... _args) : m_tuple{std::forward<_Args>(_args)...}
 	{
-		stack_layers(m_tuple);
+		assemble(m_tuple);
 	}
 
-	layer_stack() : m_tuple{}
+	assembly() : m_tuple{}
 	{
-		stack_layers(m_tuple);
+		assemble(m_tuple);
 	}
 
 	typename traits::nth_element<sizeof...(Args) - 1, Args...>&
@@ -904,7 +889,8 @@ private:
 	std::tuple<Args...> m_tuple;
 };
 
+}    // namespace event_flow
 }    // namespace async
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ASYNC_EVENT_H
+#endif    // LOGICMILL_ASYNC_EVENT_FLOW_H

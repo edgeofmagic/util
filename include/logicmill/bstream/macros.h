@@ -55,7 +55,7 @@
 #include <boost/predef.h>
 
 #include <logicmill/bstream/base_classes.h>
-#include <logicmill/bstream/utils/preprocessor.h>
+#include <logicmill/util/preprocessor.h>
 
 // disable warning for missing overrides;
 // see definitions for BSTRM_POLY_SERIALIZE_METHOD_() and
@@ -88,7 +88,7 @@
 #endif
 
 #define BSTRM_BUILD_OPTIONAL_ARRAY_(...)                                                                               \
-	BOOST_PP_IIF(UTILS_PP_ISEMPTY(__VA_ARGS__), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_ARRAY_)(__VA_ARGS__) 
+	BOOST_PP_IIF(UTIL_PP_ISEMPTY(__VA_ARGS__), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_ARRAY_)(__VA_ARGS__) 
 /**/
 
 #define BSTRM_BUILD_ARRAY_(...)                                                                                        \
@@ -120,8 +120,8 @@ private                                                                         
 
 #define BSTRM_CTOR(name, bases, members)                                                                               \
 	BSTRM_CTOR_(name,                                                                                                  \
-				BOOST_PP_IIF(UTILS_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),            \
-				BOOST_PP_IIF(UTILS_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+				BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),             \
+				BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
 /**/
 
 #define BSTRM_CTOR_DECL(name) BSTRM_CTOR_DECL_SIG_(name); 
@@ -130,27 +130,27 @@ private                                                                         
 #define BSTRM_CTOR_DEF(scope, name, bases, members)                                                                    \
 	BSTRM_CTOR_DEF_(scope,                                                                                             \
 					name,                                                                                              \
-					BOOST_PP_IIF(UTILS_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),        \
-					BOOST_PP_IIF(UTILS_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+					BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),         \
+					BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
 /**/
 
 #define BSTRM_ITEM_COUNT(bases, members)                                                                               \
 	BSTRM_ITEM_COUNT_(                                                                                                 \
-			BOOST_PP_IIF(UTILS_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                \
-			BOOST_PP_IIF(UTILS_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
 /**/
 
 #define BSTRM_SERIALIZE(name, bases, members)                                                                          \
 	BSTRM_SERIALIZE_(name,                                                                                             \
-					 BOOST_PP_IIF(UTILS_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),       \
-					 BOOST_PP_IIF(UTILS_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+					 BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),        \
+					 BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
 /**/
 
 #define BSTRM_POLY_SERIALIZE(name, bases, members)                                                                     \
 	BSTRM_POLY_SERIALIZE_(                                                                                             \
 			name,                                                                                                      \
-			BOOST_PP_IIF(UTILS_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                \
-			BOOST_PP_IIF(UTILS_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
 /**/
 
 #define BSTRM_SERIALIZE_DECL()                                                                                         \
@@ -170,8 +170,8 @@ private                                                                         
 	BSTRM_SERIALIZE_DEF_(                                                                                              \
 			scope,                                                                                                     \
 			name,                                                                                                      \
-			BOOST_PP_IIF(UTILS_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                \
-			BOOST_PP_IIF(UTILS_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
 /**/
 
 #define BSTRM_ZERO_LENGTH_ARRAY_(...) (0, ()) 
@@ -273,7 +273,7 @@ private                                                                         
 /**/
 
 #define BSTRM_CTOR_DEF_SIG_(scope, name)                                                                               \
-	BOOST_PP_IIF(UTILS_PP_ISEMPTY(scope), BSTRM_CTOR_DEF_SIG_UNSCOPED_, BSTRM_CTOR_DEF_SIG_SCOPED_)(scope, name) 
+	BOOST_PP_IIF(UTIL_PP_ISEMPTY(scope), BSTRM_CTOR_DEF_SIG_UNSCOPED_, BSTRM_CTOR_DEF_SIG_SCOPED_)(scope, name) 
 /**/
 
 #define BSTRM_CTOR_DEF_SIG_UNSCOPED_(scope, name) name::name(logicmill::bstream::ibstream& is) 
@@ -390,7 +390,7 @@ public:                                                                         
 
 #define BSTRM_SERIALIZE_IMPL_DEF_SIG_(scope, name)                                                                     \
 	BOOST_PP_IIF(                                                                                                      \
-			UTILS_PP_ISEMPTY(scope), BSTRM_SERIALIZE_IMPL_DEF_SIG_UNSCOPED_, BSTRM_SERIALIZE_IMPL_DEF_SIG_SCOPED_)     \
+			UTIL_PP_ISEMPTY(scope), BSTRM_SERIALIZE_IMPL_DEF_SIG_UNSCOPED_, BSTRM_SERIALIZE_IMPL_DEF_SIG_SCOPED_)      \
 	(scope, name) 
 /**/
 
@@ -409,7 +409,7 @@ public:                                                                         
 
 #define BSTRM_SERIALIZE_METHOD_DEF_SIG_(scope, name)                                                                   \
 	BOOST_PP_IIF(                                                                                                      \
-			UTILS_PP_ISEMPTY(scope), BSTRM_SERIALIZE_METHOD_DEF_SIG_UNSCOPED_, BSTRM_SERIALIZE_METHOD_DEF_SIG_SCOPED_) \
+			UTIL_PP_ISEMPTY(scope), BSTRM_SERIALIZE_METHOD_DEF_SIG_UNSCOPED_, BSTRM_SERIALIZE_METHOD_DEF_SIG_SCOPED_)  \
 	(scope, name) 
 /**/
 

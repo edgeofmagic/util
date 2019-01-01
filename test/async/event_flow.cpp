@@ -24,13 +24,14 @@
 
 #include <doctest.h>
 #include <iostream>
-#include <logicmill/async/event.h>
+#include <logicmill/async/event_flow.h>
 
 using namespace logicmill;
 using namespace async;
+using namespace event_flow;
 
 #if 1
-namespace event_test
+namespace event_flow_test
 {
 enum class actions
 {
@@ -39,14 +40,14 @@ enum class actions
 	kill
 };
 
-using kill_event  = async::event<actions, actions::kill, std::string const&>;
-using start_event = async::event<actions, actions::start, int>;
-using stop_event  = async::event<actions, actions::stop, bool>;
+using kill_event  = event<actions, actions::kill, std::string const&>;
+using start_event = event<actions, actions::start, int>;
+using stop_event  = event<actions, actions::stop, bool>;
 
-class killer : public async::emitter<kill_event>
+class killer : public emitter<kill_event>
 {};
 
-class victim : public async::listener<kill_event, victim>
+class victim : public listener<kill_event, victim>
 {
 public:
 	void
@@ -118,10 +119,10 @@ public:
 	}
 
 	template<class T, class Emitter>
-	std::enable_if_t<std::is_same<T, kill_event>::value && async::has_get_source_method<Emitter, T>::value>
-	fit(Emitter& e)
+	std::enable_if_t<std::is_same<T, kill_event>::value && has_get_source_method<Emitter, T>::value>
+	bind(Emitter& e)
 	{
-		e.template get_source<T>().fit(get_sink<T>());
+		e.template get_source<T>().bind(get_sink<T>());
 	}
 
 	bool        m_is_dead;
@@ -160,10 +161,10 @@ public:
 	}
 
 	template<class T, class Emitter>
-	std::enable_if_t<std::is_same<T, kill_event>::value && async::has_get_source_method<Emitter, T>::value>
-	fit(Emitter& e)
+	std::enable_if_t<std::is_same<T, kill_event>::value && has_get_source_method<Emitter, T>::value>
+	bind(Emitter& e)
 	{
-		e.template get_source<T>().fit(get_sink<T>());
+		e.template get_source<T>().bind(get_sink<T>());
 	}
 
 	bool        m_is_dead;
@@ -312,8 +313,8 @@ public:
 
 	using foo_base::get_connector;
 	using oof_base::get_connector;
-	using foo_base::mate;
-	using oof_base::mate;
+	using foo_base::connect;
+	using oof_base::connect;
 
 	combo_a(combo_b& b);
 
@@ -392,8 +393,8 @@ public:
 
 	using foo_base::get_connector;
 	using oof_base::get_connector;
-	using foo_base::mate;
-	using oof_base::mate;
+	using foo_base::connect;
+	using oof_base::connect;
 
 	void
 	on(beep_event, bool b, int i)
@@ -420,28 +421,28 @@ public:
 	}
 };
 
-}    // namespace event_test
+}    // namespace event_flow_test
 
-event_test::combo_a::combo_a(combo_b& b)
+event_flow_test::combo_a::combo_a(combo_b& b)
 {
-	get_connector<foo_con>().mate(b.get_connector<oof_con>());
-	get_connector<oof_con>().mate(b.get_connector<foo_con>());
+	get_connector<foo_con>().connect(b.get_connector<oof_con>());
+	get_connector<oof_con>().connect(b.get_connector<foo_con>());
 }
 
 
-using namespace event_test;
+using namespace event_flow_test;
 
-TEST_CASE("logicmill::async::event [ smoke ] { functor }")
+TEST_CASE("logicmill::async::event_flow [ smoke ] { functor }")
 {
 
 	functor_victim nicole;
 
 	killer oh_jay;
 
-	// oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
-	// fit<kill_event>(oh_jay, nicole);
-	// oh_jay.fit<kill_event>(nicole);
-	nicole.fit<kill_event>(oh_jay);
+	// oh_jay.get_source<kill_event>().bind(nicole.get_sink<kill_event>());
+	// bind<kill_event>(oh_jay, nicole);
+	// oh_jay.bind<kill_event>(nicole);
+	nicole.bind<kill_event>(oh_jay);
 
 	oh_jay.send<kill_event>("Die, bitch!");
 
@@ -450,17 +451,17 @@ TEST_CASE("logicmill::async::event [ smoke ] { functor }")
 	CHECK(nicole.message() == "Die, bitch!");
 }
 
-TEST_CASE("logicmill::async::event [ smoke ] { naked emitter }")
+TEST_CASE("logicmill::async::event_flow [ smoke ] { naked emitter }")
 {
 
 	functor_victim nicole;
 
 	emitter<kill_event> oh_jay;
 
-	// oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
-	// fit<kill_event>(oh_jay, nicole);
-	// oh_jay.fit<kill_event>(nicole);
-	oh_jay.fit<kill_event>(nicole);
+	// oh_jay.get_source<kill_event>().bind(nicole.get_sink<kill_event>());
+	// bind<kill_event>(oh_jay, nicole);
+	// oh_jay.bind<kill_event>(nicole);
+	oh_jay.bind<kill_event>(nicole);
 
 	oh_jay.send<kill_event>("Die, bitch!");
 
@@ -468,14 +469,14 @@ TEST_CASE("logicmill::async::event [ smoke ] { naked emitter }")
 	CHECK(nicole.message() == "Die, bitch!");
 }
 
-TEST_CASE("logicmill::async::event::sink [ smoke ] { lambda move }")
+TEST_CASE("logicmill::async::event_flow::sink [ smoke ] { lambda move }")
 {
 	lambda_victim nicole;
 
 	killer oh_jay;
 
-	// oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
-	nicole.fit<kill_event>(oh_jay);
+	// oh_jay.get_source<kill_event>().bind(nicole.get_sink<kill_event>());
+	nicole.bind<kill_event>(oh_jay);
 
 	oh_jay.send<kill_event>("Die, bitch!");
 
@@ -484,7 +485,7 @@ TEST_CASE("logicmill::async::event::sink [ smoke ] { lambda move }")
 	CHECK(nicole.message() == "Die, bitch!");
 }
 
-TEST_CASE("logicmill::async::event::connector [ smoke ] { 1 }")
+TEST_CASE("logicmill::async::event_flow::connector [ smoke ] { 1 }")
 {
 	lambda_victim  nicole;
 	functor_victim jfk;
@@ -495,7 +496,7 @@ TEST_CASE("logicmill::async::event::connector [ smoke ] { 1 }")
 	connector<source<kill_event>, sink<kill_event>> left{oh_jay.get_source<kill_event>(), jfk.get_sink<kill_event>()};
 	connector<sink<kill_event>, source<kill_event>> right{nicole.get_sink<kill_event>(),
 														  lee_harvey.get_source<kill_event>()};
-	left.mate(right);
+	left.connect(right);
 
 	oh_jay.send<kill_event>("Die, bitch!");
 	lee_harvey.send<kill_event>("Bang, bang bang!");
@@ -508,13 +509,13 @@ TEST_CASE("logicmill::async::event::connector [ smoke ] { 1 }")
 	CHECK(jfk.message() == "Bang, bang bang!");
 }
 
-TEST_CASE("logicmill::async::event::connector [ smoke ] { 2 }")
+TEST_CASE("logicmill::async::event_flow::connector [ smoke ] { 2 }")
 {
 	victim nicole;
 
 	killer oh_jay;
 
-	oh_jay.get_source<kill_event>().fit(nicole.get_sink<kill_event>());
+	oh_jay.get_source<kill_event>().bind(nicole.get_sink<kill_event>());
 
 	oh_jay.send<kill_event>("Die, bitch!");
 
@@ -524,14 +525,14 @@ TEST_CASE("logicmill::async::event::connector [ smoke ] { 2 }")
 }
 
 
-TEST_CASE("logicmill::async::event::connectable [ smoke ] { simple }")
+TEST_CASE("logicmill::async::event_flow::connectable [ smoke ] { simple }")
 {
 	murder top;
 	redrum bottom;
 
-	top.mate(bottom);
+	top.connect(bottom);
 
-	//	top.get_connector< snuff >().mate( bottom.get_connector< ffuns >() );
+	//	top.get_connector< snuff >().connect( bottom.get_connector< ffuns >() );
 
 	top.send<kill_event>("Die, bitch!");
 	bottom.send<kill_event>("Bang, bang bang!");
@@ -544,12 +545,12 @@ TEST_CASE("logicmill::async::event::connectable [ smoke ] { simple }")
 	CHECK(bottom.message() == "Die, bitch!");
 }
 
-TEST_CASE("logicmill::async::event::connectable [ smoke ] { complex }")
+TEST_CASE("logicmill::async::event_flow::connectable [ smoke ] { complex }")
 {
 	foo f;
 	oof o;
 
-	f.get_connector<foo_con>().mate(o.get_connector<oof_con>());
+	f.get_connector<foo_con>().connect(o.get_connector<oof_con>());
 
 	f.send<beep_event>(true, 27);
 	f.send<ring_event>(true, 108);
@@ -568,7 +569,7 @@ TEST_CASE("logicmill::async::event::connectable [ smoke ] { complex }")
 	CHECK(*f.honk_ptr == 42);
 }
 
-namespace event_test
+namespace event_flow_test
 {
 using top_surface = surface<foo_con, oof_con>;
 
@@ -588,8 +589,8 @@ public:
 
 	// using foo_base::get_connector;
 	// using oof_base::get_connector;
-	// using foo_base::mate;
-	// using oof_base::mate;
+	// using foo_base::connect;
+	// using oof_base::connect;
 
 	bool                 beep_flag;
 	int                  beep_i;
@@ -665,8 +666,8 @@ public:
 
 	// using foo_base::get_connector;
 	// using oof_base::get_connector;
-	// using foo_base::mate;
-	// using oof_base::mate;
+	// using foo_base::connect;
+	// using oof_base::connect;
 
 	void
 	on(beep_event, bool b, int i)
@@ -693,9 +694,9 @@ public:
 	}
 };
 
-}    // namespace event_test
+}    // namespace event_flow_test
 
-TEST_CASE("logicmill::async::event::connectable [ smoke ] { double wrap }")
+TEST_CASE("logicmill::async::event_flow::connectable [ smoke ] { double wrap }")
 {
 	combo_b b;
 	combo_a a(b);
@@ -719,7 +720,7 @@ TEST_CASE("logicmill::async::event::connectable [ smoke ] { double wrap }")
 	CHECK(a.beep_i == 27);
 }
 
-TEST_CASE("logicmill::async::event::surface [ smoke ] { basic }")
+TEST_CASE("logicmill::async::event_flow::surface [ smoke ] { basic }")
 {
 	top    t;
 	bottom b;
@@ -859,9 +860,9 @@ private:
 
 }
 
-TEST_CASE("logicmill::async::event::surface [ smoke ] { layer stacking null constructed tuple }")
+TEST_CASE("logicmill::async::event_flow::surface [ smoke ] { layer stacking null constructed tuple }")
 {
-	layer_stack<stack_test::anchor, stack_test::repeater, stack_test::driver> stck;
+	assembly<stack_test::anchor, stack_test::repeater, stack_test::driver> stck;
 
 	bool handler_called{false};
 
@@ -877,9 +878,9 @@ TEST_CASE("logicmill::async::event::surface [ smoke ] { layer stacking null cons
 }
 
 
-TEST_CASE("logicmill::async::event::surface [ smoke ] { layer stacking move constructed tuple }")
+TEST_CASE("logicmill::async::event_flow::surface [ smoke ] { layer stacking move constructed tuple }")
 {
-	layer_stack<stack_test::anchor, stack_test::repeater, stack_test::driver>
+	assembly<stack_test::anchor, stack_test::repeater, stack_test::driver>
 		stck{stack_test::anchor{}, stack_test::repeater{}, stack_test::driver{}};
 
 	bool handler_called{false};
@@ -895,7 +896,7 @@ TEST_CASE("logicmill::async::event::surface [ smoke ] { layer stacking move cons
 	CHECK(handler_called);
 }
 
-TEST_CASE("logicmill::async::event::surface [ smoke ] { layer stacking manual }")
+TEST_CASE("logicmill::async::event_flow::surface [ smoke ] { layer stacking manual }")
 {
 	std::tuple<stack_test::anchor, stack_test::repeater, stack_test::driver> stck;
 	std::get<0>(stck).get_top().stack(std::get<1>(stck).get_bottom());

@@ -35,48 +35,65 @@ namespace logicmill
 namespace util
 {
 
-template<class U>
-struct default_deleter
-{
-	void operator()(U* p) const { delete p; }
-};
-
-template<class U>
-struct do_not_delete
-{
-	void operator()(U* p) const { }
-};
-
-template<class U, class Alloc = std::allocator<U>>
-struct allocator_delete
-{
-	void operator()(U*p) const
-	{
-		Alloc{}.deallocate(p, sizeof(U));
-	}
-};
-
-template<class Derived>
-class shareable
-{
-public:
-
-	template<class U, class V>
-	friend class handle;
-
-protected:
-	shareable() : m_use_count{1} {}
-
-private:
-
-	std::size_t m_use_count;
-};
-
-template<class T, class Deleter = default_deleter<T>>
+template<class T, class Alloc = std::allocator<T>>
 class handle
 {
 protected:
-	handle(T* ptr, Deleter del = Deleter{}) : m_ptr{ptr}, m_deleter{del} {} 
+
+	class shareable;
+
+	template<class _Alloc>
+	handle(shareable* ptr, _Alloc const& alloc ) : m_ptr{ptr}, m_allocator{alloc} {} 
+
+	class shareable
+	{
+	protected:
+
+		template<class U, class V>
+		friend class handle;
+
+		template<class U, class V>
+		friend class phandle;
+
+		template<class... Args>
+		shareable(Args&&... args) : m_value(std::forward<Args>(args)...), m_use_count{1} {}
+
+		T* get_value_ptr()
+		{
+			return &m_value;
+		}
+
+	private:
+
+		T m_value;
+		std::size_t m_use_count;
+	};
+
+public:
+
+	using value_type = T;
+	using pointer_type = T*;
+	using shareable_type = shareable;
+	using allocator_type = Alloc;
+	using shareable_allocator_type = typename Alloc::template rebind<shareable_type>::other;
+
+	// template<class... Args>
+	// static handle
+	// create(Args&&... args)
+	// {
+	// 	return handle{std::forward<Args>(args)...};
+	// 	// auto p = shareable_allocator_type{}.allocate(1);
+	// 	// new(p) shareable_type(std::forward<Args>(args)...);
+	// 	// return handle(p, shareable_allocator_type{});
+	// }
+
+protected:
+
+	template<class... Args>
+	handle(Args&&... args) : m_ptr{shareable_allocator_type{}.allocate(1)}, m_allocator{shareable_allocator_type{}}
+	{
+		new (m_ptr) shareable_type(std::forward<Args>(args)...);
+	}
 
 	handle(handle const& h)
 	{
@@ -115,20 +132,20 @@ protected:
 
 	T* get_ptr() const
 	{
-		return m_ptr;
+		return m_ptr->get_value_ptr();
 	}
 
 	void adopt(handle const& rhs)
 	{
 		m_ptr = rhs.m_ptr;
-		m_deleter = rhs.m_deleter;
+		m_allocator = rhs.m_allocator;
 		++m_ptr->m_use_count;
 	}
 
 	void steal(handle&& rhs)
 	{
 		m_ptr = rhs.m_ptr;
-		m_deleter = std::move(rhs.m_deleter);
+		m_allocator = rhs.m_allocator;
 		rhs.m_ptr = nullptr;
 	}
 
@@ -139,33 +156,52 @@ protected:
 			assert(m_ptr->m_use_count > 0);
 			if (--m_ptr->m_use_count == 0)
 			{
-				m_deleter(m_ptr);
+				m_allocator.destroy(m_ptr);
+				m_allocator.deallocate(m_ptr, 1);
 			}
 			m_ptr = nullptr;
 		}
 	}
 
 private:
-	T* m_ptr;
-	Deleter m_deleter;
+	shareable* m_ptr;
+	shareable_allocator_type m_allocator;
 };
 
-template<class T, class Deleter = default_deleter<T>>
-class phandle : public handle<T, Deleter>
+template<class T, class Alloc = std::allocator<T>>
+class phandle : public handle<T, Alloc>
 {
 protected:
-	using base = handle<T, Deleter>;
+	using base = handle<T, Alloc>;
 
 public:
+	using value_type = typename base::value_type;
+	using pointer_type = typename base::pointer_type;
+	using shareable_type = typename base::shareable_type;
+	using allocator_type = typename base::allocator_type;
+	using shareable_allocator_type = typename base::shareable_allocator_type;
 
-	phandle(T* ptr, Deleter del = Deleter{}) : base{ptr, del} {} 
+protected:
+
+	phandle(shareable_type* ptr, shareable_allocator_type const& alloc) : base{ptr, alloc} {} 
 
 	using base::disown;
+	using base::assign;
 	using base::get_ptr;
 
-	phandle(phandle const& rhs) : base{rhs} {}
+public:
+	template<class... Args>
+	static phandle
+	create(Args&&... args)
+	{
+		auto p = shareable_allocator_type{}.allocate(1);
+		new(p) shareable_type(std::forward<Args>(args)...);
+		return phandle(p, shareable_allocator_type{});
+	}
 
-	phandle(phandle&& rhs) : base{std::move(rhs)} {}
+	phandle(phandle const& rhs) : base{static_cast<base const&>(rhs)} {}
+
+	phandle(phandle&& rhs) : base{std::move(static_cast<base&&>(rhs))} {}
 
 	~phandle()
 	{
@@ -225,14 +261,6 @@ public:
 	}
 
 };
-
-template<class T, class... Args>
-inline phandle<T>
-make_shareable(Args&&... args)
-{
-	T* ptr = new T(std::forward<Args>(args)...);
-	return phandle<T>{ptr};
-}
 
 }    // namespace util
 }    // namespace logicmill

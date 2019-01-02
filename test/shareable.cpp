@@ -23,43 +23,52 @@
  */
 
 #include <logicmill/util/shareable.h>
+#include <logicmill/util/allocator.h>
 #include <doctest.h>
 #include <iostream>
 
 using namespace logicmill;
 using namespace util;
 
-class sstring : public shareable<sstring>
+namespace shareable_test
 {
-public:
-	sstring(std::string const& s) : m_str{s} {}
-	std::string const&
-	to_string() const
-	{
-		return m_str;
-	}
 
-private:
-	std::string m_str;
-};
+static bool free_mem_called{false};
 
-class sstr : handle<sstring>
+void* get_mem(unsigned long bytes)
+{
+	return ::malloc(bytes);
+}
+
+void free_mem(void* p, unsigned long /* bytes */)
+{
+	free_mem_called = true;
+	::free(p);
+}
+
+UTIL_ALLOCATOR_POLICY(ss_policy, get_mem, free_mem);
+
+UTIL_ALLOCATOR_ALIAS(ssalloc, ss_policy, std::string);
+
+
+class sstr : handle<std::string>
 {
 protected:
-	using base = handle<sstring>;
-
-	sstr(sstring* sp) : base{sp}, m_view{base::get_ptr()->to_string()} {}
+	using base = handle<std::string>;
 
 public:
 
-	sstr(sstr const& rhs) : base{rhs}, m_view{rhs.m_view} {}
+	template<class... Args>
+	sstr(Args... args) : base{std::forward<Args>(args)...}, m_view{*base::get_ptr()} {}
 
-	sstr(sstr&& rhs) : base{std::move(rhs)}, m_view{rhs.m_view} {}
+	sstr(sstr const& rhs) : base{ static_cast<base const&>(rhs)}, m_view{rhs.m_view} {}
+
+	sstr(sstr&& rhs) : base{std::move(static_cast<base&&>(rhs))}, m_view{rhs.m_view} {}
 
 	template<class... Args>
 	static sstr create(Args&&... args)
 	{
-		return sstr(new sstring(std::forward<Args>(args)...));
+		return sstr{std::forward<Args>(args)...};
 	}
 
 	std::string_view const&
@@ -89,56 +98,47 @@ private:
 	std::string_view m_view;
 };
 
-class sint : public shareable<int>
+class foo 
 {
 public:
-	using base = shareable<int>;
 
-	sint(int val = 0) : m_value{val} {}
+	foo(int i, std::string s) : m_ival{i}, m_sval{s} {}
 
-	int get() const
+	foo(foo const& f) : m_ival{f.m_ival}, m_sval{f.m_sval} {}
+
+	foo(foo&& f) : m_ival{f.m_ival}, m_sval{std::move(f.m_sval)} {}
+
+	int num() const
 	{
-		return m_value;
+		return m_ival;
 	}
 
-	operator int() const
+	std::string const& str() const
 	{
-		return m_value;
-	}
-
-	void set(int val)
-	{
-		m_value = val;
+		return m_sval;
 	}
 
 private:
-	int m_value;
+	int m_ival;
+	std::string m_sval;
  };
 
- using sint_deleter = std::function<void(sint*)>;
+}    // namespace shareable_test
+
 
 TEST_CASE( "logicmill::util::shareable [ smoke ]" )
 {
-	auto sh = make_shareable<sstring>("hello");
-	CHECK(sh->to_string() == "hello");
-	auto sh_copy = sh;
-	CHECK(sh.use_count() == 2);
-	CHECK(sh.get() == sh_copy.get());
-	CHECK(sh == sh_copy);
+	auto p = phandle<std::string>::create("hello");
+	CHECK(*p == "hello");
+	auto p_copy = p;
+	CHECK(p.use_count() == 2);
+	CHECK(p.get() == p_copy.get());
+	CHECK(p == p_copy);
 }
 
 TEST_CASE( "logicmill::util::shareable [ smoke ] { non-pointer handle }" )
 {
-	auto ss = sstr::create("hello");
-	CHECK(ss.view() == "hello");
-	auto ss_copy = ss;
-	CHECK(ss.use_count() == 2);
-	CHECK(ss.view() == ss_copy.view());
-}
-
-TEST_CASE( "logicmill::util::shareable [ smoke ] { non-pointer handle }" )
-{
-	auto ss = sstr::create("hello");
+	auto ss = shareable_test::sstr::create("hello");
 	CHECK(ss.view() == "hello");
 	auto ss_copy = ss;
 	CHECK(ss.use_count() == 2);
@@ -147,23 +147,23 @@ TEST_CASE( "logicmill::util::shareable [ smoke ] { non-pointer handle }" )
 
 TEST_CASE( "logicmill::util::shareable [ smoke ] { phandle with deleter }" )
 {
-	bool deleter_called{false};
-	using sintp = phandle<sint, sint_deleter>;
-	sintp p = sintp{new sint{7}, [&](sint* p) { delete p; deleter_called = true; }};
-	CHECK(p->get() == 7);
-	CHECK(p);
+	using sintp = phandle<std::string, shareable_test::ssalloc>;
+	sintp p = sintp::create("zoot");
+	CHECK(*p == "zoot");
+	CHECK(bool(p));
 	p.reset();
 	CHECK(!p);
-	CHECK(deleter_called);
+	CHECK(shareable_test::free_mem_called);
 }
 
-TEST_CASE( "logicmill::util::shareable [ smoke ] { phandle with null deleter }" )
+TEST_CASE( "logicmill::util::shareable [ smoke ] { phandle with class }" )
 {
-	using sintp = phandle<sint, do_not_delete<sint>>;
-	sint auto_sint{27};
-	sintp p = sintp{&auto_sint};
-	CHECK(p->get() == 27);
-	p.reset();
+	using foop = phandle<shareable_test::foo>;
+	foop p = foop::create(27, "zoot");
+	CHECK(p->str() == "zoot");
+	CHECK(p->num() == 27);
+	CHECK(bool(p));
+	foop p_moved(std::move(p));
+	CHECK(p_moved.use_count() == 1);
 	CHECK(!p);
 }
-

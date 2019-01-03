@@ -25,8 +25,8 @@
 #ifndef LOGICMILL_UTIL_SHAREABLE_H
 #define LOGICMILL_UTIL_SHAREABLE_H
 
-#include <cstdint>
 #include <cassert>
+#include <cstdint>
 #include <memory>
 
 namespace logicmill
@@ -38,16 +38,15 @@ template<class T, class Alloc = std::allocator<T>>
 class handle
 {
 protected:
-
 	class shareable;
 
 	template<class _Alloc>
-	handle(shareable* ptr, _Alloc const& alloc ) : m_ptr{ptr}, m_allocator{alloc} {} 
+	handle(shareable* ptr, _Alloc const& alloc) : m_ptr{ptr}, m_allocator{alloc}
+	{}
 
 	class shareable
 	{
 	protected:
-
 		template<class U, class V>
 		friend class handle;
 
@@ -55,25 +54,25 @@ protected:
 		friend class phandle;
 
 		template<class... Args>
-		shareable(Args&&... args) : m_value(std::forward<Args>(args)...), m_use_count{1} {}
+		shareable(Args&&... args) : m_value(std::forward<Args>(args)...), m_use_count{1}
+		{}
 
-		T* get_value_ptr()
+		T*
+		get_value_ptr()
 		{
 			return &m_value;
 		}
 
 	private:
-
-		T m_value;
+		T           m_value;
 		std::size_t m_use_count;
 	};
 
 public:
-
-	using value_type = T;
-	using pointer_type = T*;
-	using shareable_type = shareable;
-	using allocator_type = Alloc;
+	using value_type               = T;
+	using pointer_type             = T*;
+	using shareable_type           = shareable;
+	using allocator_type           = Alloc;
 	using shareable_allocator_type = typename Alloc::template rebind<shareable_type>::other;
 
 	// template<class... Args>
@@ -87,7 +86,6 @@ public:
 	// }
 
 protected:
-
 	template<class... Args>
 	handle(Args&&... args) : m_ptr{shareable_allocator_type{}.allocate(1)}, m_allocator{shareable_allocator_type{}}
 	{
@@ -129,26 +127,30 @@ protected:
 		return m_ptr->m_use_count;
 	}
 
-	T* get_ptr() const
+	T*
+	get_ptr() const
 	{
 		return m_ptr->get_value_ptr();
 	}
 
-	void adopt(handle const& rhs)
+	void
+	adopt(handle const& rhs)
 	{
-		m_ptr = rhs.m_ptr;
+		m_ptr       = rhs.m_ptr;
 		m_allocator = rhs.m_allocator;
 		++m_ptr->m_use_count;
 	}
 
-	void steal(handle&& rhs)
+	void
+	steal(handle&& rhs)
 	{
-		m_ptr = rhs.m_ptr;
+		m_ptr       = rhs.m_ptr;
 		m_allocator = rhs.m_allocator;
-		rhs.m_ptr = nullptr;
+		rhs.m_ptr   = nullptr;
 	}
 
-	void disown()
+	void
+	disown()
 	{
 		if (m_ptr)
 		{
@@ -163,7 +165,7 @@ protected:
 	}
 
 private:
-	shareable* m_ptr;
+	shareable*               m_ptr;
 	shareable_allocator_type m_allocator;
 };
 
@@ -174,15 +176,14 @@ protected:
 	using base = handle<T, Alloc>;
 
 public:
-	using value_type = typename base::value_type;
-	using pointer_type = typename base::pointer_type;
-	using shareable_type = typename base::shareable_type;
-	using allocator_type = typename base::allocator_type;
+	using value_type               = typename base::value_type;
+	using pointer_type             = typename base::pointer_type;
+	using shareable_type           = typename base::shareable_type;
+	using allocator_type           = typename base::allocator_type;
 	using shareable_allocator_type = typename base::shareable_allocator_type;
 
 protected:
-
-	phandle(shareable_type* ptr, shareable_allocator_type const& alloc) : base{ptr, alloc} {} 
+	phandle(shareable_type* ptr, shareable_allocator_type const& alloc) : base{ptr, alloc} {}
 
 	using base::disown;
 	using base::assign;
@@ -194,7 +195,7 @@ public:
 	create(Args&&... args)
 	{
 		auto p = shareable_allocator_type{}.allocate(1);
-		new(p) shareable_type(std::forward<Args>(args)...);
+		new (p) shareable_type(std::forward<Args>(args)...);
 		return phandle(p, shareable_allocator_type{});
 	}
 
@@ -202,23 +203,24 @@ public:
 
 	phandle(phandle&& rhs) : base{std::move(static_cast<base&&>(rhs))} {}
 
-	~phandle()
-	{
-	}
+	~phandle() {}
 
-	phandle& operator=(phandle const& rhs)
+	phandle&
+	operator=(phandle const& rhs)
 	{
 		assign(rhs);
 		return *this;
 	}
 
-	phandle& operator=(phandle&& rhs)
+	phandle&
+	operator=(phandle&& rhs)
 	{
 		assign(std::move(rhs));
 		return *this;
 	}
 
-	void reset()
+	void
+	reset()
 	{
 		disown();
 	}
@@ -228,17 +230,20 @@ public:
 		return get_ptr() != nullptr;
 	}
 
-	bool operator==(phandle const& rhs) const
+	bool
+	operator==(phandle const& rhs) const
 	{
 		return get_ptr() == rhs.get_ptr();
 	}
 
-	bool operator!=(phandle const& rhs) const
+	bool
+	operator!=(phandle const& rhs) const
 	{
 		return !(*this == rhs);
 	}
 
-	T* get() const
+	T*
+	get() const
 	{
 		return get_ptr();
 	}
@@ -258,7 +263,6 @@ public:
 	{
 		return base::get_refcount();
 	}
-
 };
 
 namespace detail
@@ -267,79 +271,85 @@ namespace detail
 class control_blk_base
 {
 public:
-
-	virtual ~control_blk_base() 
+	virtual ~control_blk_base()
 	{
 		assert(m_use_count == 0);
 	}
 
 	control_blk_base(void* p) : m_elem{p}, m_use_count{1} {}
 
-	void* get_vptr() const
+	void*
+	get_vptr() const
 	{
 		return m_elem;
 	}
 
-	void clear()
+	void
+	clear()
 	{
 		m_elem = nullptr;
 	}
 
-	std::size_t increment_use_count()
+	std::size_t
+	increment_use_count()
 	{
 		return ++m_use_count;
 	}
 
-	std::size_t decrement_use_count()
+	std::size_t
+	decrement_use_count()
 	{
 		return --m_use_count;
 	}
 
-	std::size_t use_count() const
+	std::size_t
+	use_count() const
 	{
 		return m_use_count;
 	}
 
 private:
-
-	void* m_elem;
+	void*       m_elem;
 	std::size_t m_use_count;
 };
 
-}
+}    // namespace detail
 
-template<class T>
+template<class T, class Deleter = std::default_delete<T>>
 class shared_ptr
 {
 public:
 	using element_type = T;
+	using deleter_type = Deleter;
 
 protected:
-
 	class control_blk : protected detail::control_blk_base
 	{
 	protected:
-
 		friend class shared_ptr;
 
-		control_blk(element_type* ep) : detail::control_blk_base{ep} {}
+		template<class _Del>
+		control_blk(element_type* ep, _Del&& del) : detail::control_blk_base{ep}, m_deleter{std::forward<_Del>(del)}
+		{}
 
-		virtual ~control_blk() 
+		virtual ~control_blk()
 		{
 			assert(use_count() == 0);
 
 			if (get_vptr())
 			{
-				delete static_cast<element_type*>(get_vptr());
+				m_deleter(static_cast<element_type*>(get_vptr()));
 				clear();
 			}
 		}
 
-		element_type* get_ptr()
+		element_type*
+		get_ptr()
 		{
 			return static_cast<element_type*>(get_vptr());
 		}
 
+		deleter_type m_deleter;
 	};
 
 	class shareable_value : public control_blk
@@ -349,17 +359,21 @@ protected:
 
 		// using allocator_type = typename Alloc::template rebind<shareable_value>::other;
 
-		virtual ~shareable_value() { detail::control_blk_base::clear(); }
+		virtual ~shareable_value()
+		{
+			detail::control_blk_base::clear();
+		}
 
 		template<class... Args>
-		shareable_value(Args&&... args) : control_blk{&m_value}, m_value(std::forward<Args>(args)...) {}
+		shareable_value(Args&&... args)
+			: control_blk{&m_value, std::default_delete<element_type>{}}, m_value(std::forward<Args>(args)...)
+		{}
 
 		element_type m_value;
 	};
 
 public:
-
-	template<class U>
+	template<class U, class V>
 	friend class shared_ptr;
 
 	template<class... Args>
@@ -369,9 +383,9 @@ public:
 		return shared_ptr{new shareable_value{std::forward<Args>(args)...}};
 	}
 
-	template<class U>
+	template<class U, class V>
 	static shared_ptr
-	static_ptr_cast(shared_ptr<U> const& p)
+	static_ptr_cast(shared_ptr<U, V> const& p)
 	{
 		detail::control_blk_base* cp = p.get_ctrl_blk();
 		if (cp)
@@ -381,9 +395,9 @@ public:
 		return shared_ptr{cp};
 	}
 
-	template<class U>
+	template<class U, class V>
 	static shared_ptr
-	dynamic_ptr_cast(shared_ptr<U> const& p)
+	dynamic_ptr_cast(shared_ptr<U, V> const& p)
 	{
 		element_type* ep = dynamic_cast<element_type*>(p.get());
 		if (ep)
@@ -402,15 +416,19 @@ public:
 
 	// shared_ptr(control_blk* sp) : m_cblk_ptr{sp}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())} {}
 
-	shared_ptr(element_type* ep) : m_cblk_ptr{new control_blk{ep}}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())} {}
+	template<class _Del>
+	shared_ptr(element_type* ep, _Del&& del)
+		: m_cblk_ptr{new control_blk{ep, std::forward<_Del>(del)}},
+		  m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())}
+	{}
 
 	shared_ptr(shared_ptr const& rhs)
 	{
 		adopt(rhs);
 	}
 
-	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
-	shared_ptr(shared_ptr<U> const& rhs)
+	template<class U, class V, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
+	shared_ptr(shared_ptr<U, V> const& rhs)
 	{
 		adopt(rhs);
 	}
@@ -420,8 +438,8 @@ public:
 		steal(std::move(rhs));
 	}
 
-	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
-	shared_ptr(shared_ptr<U>&& rhs)
+	template<class U, class V, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
+	shared_ptr(shared_ptr<U, V>&& rhs)
 	{
 		steal(std::move(rhs));
 	}
@@ -439,9 +457,9 @@ public:
 	}
 
 
-	template<class U>
+	template<class U, class V>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, shared_ptr&>
-	operator=(shared_ptr<U> const& rhs)
+	operator=(shared_ptr<U, V> const& rhs)
 	{
 		assign(rhs);
 		return *this;
@@ -467,12 +485,14 @@ public:
 	// 	return static_cast<control_blk*>(m_cblk_ptr);
 	// }
 
-	detail::control_blk_base* get_ctrl_blk() const
+	detail::control_blk_base*
+	get_ctrl_blk() const
 	{
 		return m_cblk_ptr;
-	}	
+	}
 
-	void reset()
+	void
+	reset()
 	{
 		disown();
 	}
@@ -482,21 +502,22 @@ public:
 		return m_elem_ptr != nullptr;
 	}
 
-	template<class U>
+	template<class U, class V>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, bool>
-	operator==(shared_ptr<U> const& rhs) const
+	operator==(shared_ptr<U, V> const& rhs) const
 	{
 		return m_elem_ptr == rhs.m_elem_ptr;
 	}
 
-	template<class U>
+	template<class U, class V>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, bool>
-	operator!=(shared_ptr<U> const& rhs) const
+	operator!=(shared_ptr<U, V> const& rhs) const
 	{
 		return !(*this == rhs);
 	}
 
-	element_type* get() const
+	element_type*
+	get() const
 	{
 		return m_elem_ptr;
 	}
@@ -519,21 +540,23 @@ public:
 
 private:
 
-	shared_ptr(detail::control_blk_base* p) : m_cblk_ptr{p}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())} {}
+	shared_ptr(detail::control_blk_base* p)
+		: m_cblk_ptr{p}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())}
+	{}
 
 	shared_ptr(detail::control_blk_base* p, element_type* ep) : m_cblk_ptr{p}, m_elem_ptr{ep} {}
 
-	template<class U>
+	template<class U, class V>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	assign(shared_ptr<U> const& rhs)
+	assign(shared_ptr<U, V> const& rhs)
 	{
 		disown();
 		adopt(rhs);
 	}
 
-	template<class U>
+	template<class U, class V>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	assign(shared_ptr<U>&& rhs)
+	assign(shared_ptr<U, V>&& rhs)
 	{
 		disown();
 		steal(std::move(rhs));
@@ -549,9 +572,9 @@ private:
 	// 	}
 	// }
 
-	template<class U>
+	template<class U, class V>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	adopt(shared_ptr<U> const& rhs)
+	adopt(shared_ptr<U, V> const& rhs)
 	{
 		m_cblk_ptr = rhs.m_cblk_ptr;
 		m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
@@ -561,29 +584,30 @@ private:
 		}
 	}
 
-	template<class U>
-	void
-	force_adopt(shared_ptr<U> const& rhs)
-	{
-		m_cblk_ptr = rhs.m_cblk_ptr;
-		m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
-		if (m_cblk_ptr)
-		{
-			m_cblk_ptr->increment_use_count();
-		}
-	}
+	// template<class U>
+	// void
+	// force_adopt(shared_ptr<U> const& rhs)
+	// {
+	// 	m_cblk_ptr = rhs.m_cblk_ptr;
+	// 	m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
+	// 	if (m_cblk_ptr)
+	// 	{
+	// 		m_cblk_ptr->increment_use_count();
+	// 	}
+	// }ß
 
-	template<class U>
+	template<class U, class V>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	steal(shared_ptr<U>&& rhs)
+	steal(shared_ptr<U, V>&& rhs)
 	{
-		m_cblk_ptr = rhs.m_cblk_ptr;
-		m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
+		m_cblk_ptr     = rhs.m_cblk_ptr;
+		m_elem_ptr     = static_cast<element_type*>(rhs.m_elem_ptr);
 		rhs.m_cblk_ptr = nullptr;
 		rhs.m_elem_ptr = nullptr;
 	}
 
-	void disown()
+	void
+	disown()
 	{
 		if (m_cblk_ptr)
 		{
@@ -599,7 +623,7 @@ private:
 
 private:
 	detail::control_blk_base* m_cblk_ptr;
-	element_type*   m_elem_ptr;
+	element_type*             m_elem_ptr;
 };
 
 

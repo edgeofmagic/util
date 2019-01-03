@@ -181,8 +181,26 @@ private:
 	double m_fpnum;
 };
 
-}    // namespace shareable_test
+struct int_malloc
+{
+	int* operator()() const
+	{
+		return static_cast<int*>(::malloc(sizeof(int)));
+	}
+};
 
+static int int_free_call_count{0};
+
+struct int_free
+{
+	void operator()(int* p) const
+	{
+		++int_free_call_count;
+		::free(p);
+	}
+};
+
+}    // namespace shareable_test
 
 TEST_CASE( "logicmill::util::shareable [ smoke ]" )
 {
@@ -350,3 +368,19 @@ TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr dynamic_ptr_c
 	CHECK(barvp->dnum() == 3.5);
 }
 
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr with deleter }")
+{
+	int* ip = shareable_test::int_malloc{}();
+	*ip = 27;
+	util::shared_ptr<int, shareable_test::int_free> p = util::shared_ptr<int, shareable_test::int_free>{ip, shareable_test::int_free{}};
+	util::shared_ptr<int, shareable_test::int_free> p_copy{p};
+	CHECK(p.use_count() == 2);
+	CHECK(p_copy == p);
+	CHECK(*p_copy == 27);
+	p_copy.reset();
+	CHECK(shareable_test::int_free_call_count == 0);
+	CHECK(!p_copy);
+	CHECK(p.use_count() == 1);
+	p.reset();
+	CHECK(shareable_test::int_free_call_count == 1);
+}

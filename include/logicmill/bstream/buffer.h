@@ -138,7 +138,8 @@ public:
 	 * \see memory_broker
 	 * \see default_allocator
 	 */
-	
+
+#if 1
 	using allocator = std::function< byte_type* ( size_type size ) >;
 
 	/** \brief The type of a <i>callable element</i> (a function or function object) that can be invoked to reallocate a region of memory.
@@ -572,6 +573,35 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 
 		return std::make_shared< d_broker >( std::forward< Dealloc >( d  ) );
 	}
+
+#else
+
+	class allocator
+	{
+	public:
+		virtual byte_type*
+		allocate(size_type size) = 0;
+
+		virtual void
+		deallocate(byte_type* p, size_type size) = 0;
+	};
+
+	class default_allocator : public allocator
+	{
+	public:
+		virtual byte_type*
+		allocate(size_type size) override
+		{
+			return reinterpret_cast<byte_type*>(::malloc(size));
+		}
+
+		virtual void
+		deallocate(byte_type* p, size_type /* size */)
+		{
+			::free(p);
+		}
+	};
+#endif
 
 protected:
 

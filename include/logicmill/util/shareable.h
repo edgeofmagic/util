@@ -26,7 +26,6 @@
 #define LOGICMILL_UTIL_SHAREABLE_H
 
 #include <cstdint>
-#include <logicmill/traits.h>
 #include <cassert>
 #include <memory>
 
@@ -261,6 +260,348 @@ public:
 	}
 
 };
+
+namespace detail
+{
+
+class control_blk_base
+{
+public:
+
+	virtual ~control_blk_base() 
+	{
+		assert(m_use_count == 0);
+	}
+
+	control_blk_base(void* p) : m_elem{p}, m_use_count{1} {}
+
+	void* get_vptr() const
+	{
+		return m_elem;
+	}
+
+	void clear()
+	{
+		m_elem = nullptr;
+	}
+
+	std::size_t increment_use_count()
+	{
+		return ++m_use_count;
+	}
+
+	std::size_t decrement_use_count()
+	{
+		return --m_use_count;
+	}
+
+	std::size_t use_count() const
+	{
+		return m_use_count;
+	}
+
+private:
+
+	void* m_elem;
+	std::size_t m_use_count;
+};
+
+}
+
+template<class T>
+class shared_ptr
+{
+public:
+	using element_type = T;
+
+protected:
+
+	class control_blk : protected detail::control_blk_base
+	{
+	protected:
+
+		friend class shared_ptr;
+
+		control_blk(element_type* ep) : detail::control_blk_base{ep} {}
+
+		virtual ~control_blk() 
+		{
+			assert(use_count() == 0);
+
+			if (get_vptr())
+			{
+				delete static_cast<element_type*>(get_vptr());
+				clear();
+			}
+		}
+
+		element_type* get_ptr()
+		{
+			return static_cast<element_type*>(get_vptr());
+		}
+
+	};
+
+	class shareable_value : public control_blk
+	{
+	private:
+		friend class shared_ptr;
+
+		// using allocator_type = typename Alloc::template rebind<shareable_value>::other;
+
+		virtual ~shareable_value() { detail::control_blk_base::clear(); }
+
+		template<class... Args>
+		shareable_value(Args&&... args) : control_blk{&m_value}, m_value(std::forward<Args>(args)...) {}
+
+		element_type m_value;
+	};
+
+public:
+
+	template<class U>
+	friend class shared_ptr;
+
+	template<class... Args>
+	static shared_ptr
+	create(Args&&... args)
+	{
+		return shared_ptr{new shareable_value{std::forward<Args>(args)...}};
+	}
+
+	template<class U>
+	static shared_ptr
+	static_ptr_cast(shared_ptr<U> const& p)
+	{
+		detail::control_blk_base* cp = p.get_ctrl_blk();
+		if (cp)
+		{
+			cp->increment_use_count();
+		}
+		return shared_ptr{cp};
+	}
+
+	template<class U>
+	static shared_ptr
+	dynamic_ptr_cast(shared_ptr<U> const& p)
+	{
+		element_type* ep = dynamic_cast<element_type*>(p.get());
+		if (ep)
+		{
+			auto cp = p.get_ctrl_blk();
+			cp->increment_use_count();
+			return shared_ptr{cp, ep};
+		}
+		else
+		{
+			return shared_ptr{};
+		}
+	}
+
+	shared_ptr() : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
+
+	// shared_ptr(control_blk* sp) : m_cblk_ptr{sp}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())} {}
+
+	shared_ptr(element_type* ep) : m_cblk_ptr{new control_blk{ep}}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())} {}
+
+	shared_ptr(shared_ptr const& rhs)
+	{
+		adopt(rhs);
+	}
+
+	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
+	shared_ptr(shared_ptr<U> const& rhs)
+	{
+		adopt(rhs);
+	}
+
+	shared_ptr(shared_ptr&& rhs)
+	{
+		steal(std::move(rhs));
+	}
+
+	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
+	shared_ptr(shared_ptr<U>&& rhs)
+	{
+		steal(std::move(rhs));
+	}
+
+	~shared_ptr()
+	{
+		disown();
+	}
+
+	shared_ptr&
+	operator=(shared_ptr const& rhs)
+	{
+		assign(rhs);
+		return *this;
+	}
+
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, shared_ptr&>
+	operator=(shared_ptr<U> const& rhs)
+	{
+		assign(rhs);
+		return *this;
+	}
+
+	shared_ptr&
+	operator=(shared_ptr&& rhs)
+	{
+		assign(std::move(rhs));
+		return *this;
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, shared_ptr&>
+	operator=(shared_ptr<U>&& rhs)
+	{
+		assign(std::move(rhs));
+		return *this;
+	}
+
+	// control_blk* get_shareable() const
+	// {
+	// 	return static_cast<control_blk*>(m_cblk_ptr);
+	// }
+
+	detail::control_blk_base* get_ctrl_blk() const
+	{
+		return m_cblk_ptr;
+	}	
+
+	void reset()
+	{
+		disown();
+	}
+
+	explicit operator bool() const
+	{
+		return m_elem_ptr != nullptr;
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, bool>
+	operator==(shared_ptr<U> const& rhs) const
+	{
+		return m_elem_ptr == rhs.m_elem_ptr;
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, bool>
+	operator!=(shared_ptr<U> const& rhs) const
+	{
+		return !(*this == rhs);
+	}
+
+	element_type* get() const
+	{
+		return m_elem_ptr;
+	}
+
+	element_type* operator->() const
+	{
+		return m_elem_ptr;
+	}
+
+	element_type& operator*() const
+	{
+		return *m_elem_ptr;
+	}
+
+	std::size_t
+	use_count() const
+	{
+		return m_cblk_ptr->use_count();
+	}
+
+private:
+
+	shared_ptr(detail::control_blk_base* p) : m_cblk_ptr{p}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())} {}
+
+	shared_ptr(detail::control_blk_base* p, element_type* ep) : m_cblk_ptr{p}, m_elem_ptr{ep} {}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
+	assign(shared_ptr<U> const& rhs)
+	{
+		disown();
+		adopt(rhs);
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
+	assign(shared_ptr<U>&& rhs)
+	{
+		disown();
+		steal(std::move(rhs));
+	}
+
+	// void adopt(shared_ptr const& rhs)
+	// {
+	// 	m_cblk_ptr = rhs.m_cblk_ptr;
+	// 	m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
+	// 	if (m_cblk_ptr)
+	// 	{
+	// 		m_cblk_ptr->increment_use_count();
+	// 	}
+	// }
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
+	adopt(shared_ptr<U> const& rhs)
+	{
+		m_cblk_ptr = rhs.m_cblk_ptr;
+		m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
+		if (m_cblk_ptr)
+		{
+			m_cblk_ptr->increment_use_count();
+		}
+	}
+
+	template<class U>
+	void
+	force_adopt(shared_ptr<U> const& rhs)
+	{
+		m_cblk_ptr = rhs.m_cblk_ptr;
+		m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
+		if (m_cblk_ptr)
+		{
+			m_cblk_ptr->increment_use_count();
+		}
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
+	steal(shared_ptr<U>&& rhs)
+	{
+		m_cblk_ptr = rhs.m_cblk_ptr;
+		m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
+		rhs.m_cblk_ptr = nullptr;
+		rhs.m_elem_ptr = nullptr;
+	}
+
+	void disown()
+	{
+		if (m_cblk_ptr)
+		{
+			assert(m_cblk_ptr->use_count() > 0);
+			if (m_cblk_ptr->decrement_use_count() == 0)
+			{
+				delete m_cblk_ptr;
+			}
+			m_cblk_ptr = nullptr;
+			m_elem_ptr = nullptr;
+		}
+	}
+
+private:
+	detail::control_blk_base* m_cblk_ptr;
+	element_type*   m_elem_ptr;
+};
+
 
 }    // namespace util
 }    // namespace logicmill

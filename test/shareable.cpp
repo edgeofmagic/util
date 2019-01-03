@@ -102,7 +102,7 @@ class foo
 {
 public:
 
-	foo(int i, std::string s) : m_ival{i}, m_sval{s} {}
+	foo(int i, std::string const& s) : m_ival{i}, m_sval{s} {}
 
 	foo(foo const& f) : m_ival{f.m_ival}, m_sval{f.m_sval} {}
 
@@ -122,6 +122,64 @@ private:
 	int m_ival;
 	std::string m_sval;
  };
+
+class bar : public foo
+{
+public:
+
+	bar(int i, std::string const& s, double d) : foo{i, s}, m_fpnum{d} {}
+
+	double dnum() const
+	{
+		return m_fpnum;
+	}
+
+private:
+	double m_fpnum;
+};
+
+
+class foov
+{
+public:
+
+	virtual ~foov() {}
+
+	foov(int i, std::string const& s) : m_ival{i}, m_sval{s} {}
+
+	foov(foov const& f) : m_ival{f.m_ival}, m_sval{f.m_sval} {}
+
+	foov(foov&& f) : m_ival{f.m_ival}, m_sval{std::move(f.m_sval)} {}
+
+	int num() const
+	{
+		return m_ival;
+	}
+
+	std::string const& str() const
+	{
+		return m_sval;
+	}
+
+private:
+	int m_ival;
+	std::string m_sval;
+ };
+
+class barv : public foov
+{
+public:
+
+	barv(int i, std::string const& s, double d) : foov{i, s}, m_fpnum{d} {}
+
+	double dnum() const
+	{
+		return m_fpnum;
+	}
+
+private:
+	double m_fpnum;
+};
 
 }    // namespace shareable_test
 
@@ -167,3 +225,128 @@ TEST_CASE( "logicmill::util::shareable [ smoke ] { phandle with class }" )
 	CHECK(p_moved.use_count() == 1);
 	CHECK(!p);
 }
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr copy ctor }")
+{
+	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::create("zoot");
+	util::shared_ptr<std::string> sp_copy{sp};
+	CHECK(sp.use_count() == 2);
+	CHECK(sp_copy == sp);
+	CHECK(*sp_copy == "zoot");
+	sp_copy.reset();
+	CHECK(!sp_copy);
+	CHECK(sp.use_count() == 1);
+}
+
+#if 1
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr move ctor }")
+{
+	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::create("zoot");
+	util::shared_ptr<std::string> sp_copy{std::move(sp)};
+	CHECK(!sp);
+	CHECK(sp_copy.use_count() == 1);
+	CHECK(*sp_copy == "zoot");
+	sp_copy.reset();
+	CHECK(!sp_copy);
+}
+#endif
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr copy assign }")
+{
+	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::create("zoot");
+	util::shared_ptr<std::string> sp_copy;
+	sp_copy = sp;
+	CHECK(sp.use_count() == 2);
+	CHECK(sp_copy == sp);
+	CHECK(*sp_copy == "zoot");
+	sp_copy.reset();
+	CHECK(!sp_copy);
+	CHECK(sp.use_count() == 1);
+}
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr move assign }")
+{
+	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::create("zoot");
+	util::shared_ptr<std::string> sp_copy;
+	sp_copy = std::move(sp);
+	CHECK(!sp);
+	CHECK(sp_copy.use_count() == 1);
+	CHECK(*sp_copy == "zoot");
+	sp_copy.reset();
+	CHECK(!sp_copy);
+}
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr copy construct poly }")
+{
+	util::shared_ptr<shareable_test::bar> bp = util::shared_ptr<shareable_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shareable_test::foo> fp{bp};
+	CHECK(fp.use_count() == 2);
+	CHECK(fp == bp);
+	CHECK(fp->num() == 7);
+	fp.reset();
+	CHECK(!fp);
+	CHECK(bp.use_count() == 1);
+}
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr move construct poly }")
+{
+	util::shared_ptr<shareable_test::bar> bp = util::shared_ptr<shareable_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shareable_test::foo> fp{std::move(bp)};
+	CHECK(!bp);
+	CHECK(fp.use_count() == 1);
+	CHECK(fp->num() == 7);
+	fp.reset();
+	CHECK(!fp);
+}
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr copy assign poly }")
+{
+	util::shared_ptr<shareable_test::bar> bp = util::shared_ptr<shareable_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shareable_test::foo> fp;
+	fp = bp;
+	CHECK(fp.use_count() == 2);
+	CHECK(fp == bp);
+	CHECK(fp->num() == 7);
+	fp.reset();
+	CHECK(!fp);
+	CHECK(bp.use_count() == 1);
+}
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr move assign poly }")
+{
+	util::shared_ptr<shareable_test::bar> bp = util::shared_ptr<shareable_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shareable_test::foo> fp;
+	fp = std::move(bp);
+	CHECK(!bp);
+	CHECK(fp.use_count() == 1);
+	CHECK(fp->num() == 7);
+	fp.reset();
+	CHECK(!fp);
+}
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr static_ptr_cast }")
+{
+	util::shared_ptr<shareable_test::bar> bp = util::shared_ptr<shareable_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shareable_test::foo> fp;
+	fp = std::move(bp);
+	CHECK(!bp);
+	CHECK(fp.use_count() == 1);
+	CHECK(fp->num() == 7);
+	util::shared_ptr<shareable_test::bar> barp = util::shared_ptr<shareable_test::bar>::static_ptr_cast(fp);
+	CHECK(fp.use_count() == 2);
+	CHECK(barp->dnum() == 3.5);
+}
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr dynamic_ptr_cast }")
+{
+	util::shared_ptr<shareable_test::barv> bp = util::shared_ptr<shareable_test::barv>::create(7, "groot", 3.5);
+	util::shared_ptr<shareable_test::foov> fp;
+	fp = std::move(bp);
+	CHECK(!bp);
+	CHECK(fp.use_count() == 1);
+	CHECK(fp->num() == 7);
+	util::shared_ptr<shareable_test::barv> barvp = util::shared_ptr<shareable_test::barv>::dynamic_ptr_cast(fp);
+	CHECK(fp.use_count() == 2);
+	CHECK(barvp->dnum() == 3.5);
+}
+

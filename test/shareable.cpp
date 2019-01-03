@@ -37,18 +37,20 @@ static bool free_mem_called{false};
 
 void* get_mem(unsigned long bytes)
 {
+	std::cout << "get_mem: " << bytes << std::endl;
 	return ::malloc(bytes);
 }
 
-void free_mem(void* p, unsigned long /* bytes */)
+void free_mem(void* p, unsigned long bytes)
 {
+	std::cout << "free_mem: " << bytes << std::endl;
 	free_mem_called = true;
 	::free(p);
 }
 
-UTIL_ALLOCATOR_POLICY(ss_policy, get_mem, free_mem);
+UTIL_ALLOCATOR_POLICY(malloc_policy, get_mem, free_mem);
 
-UTIL_ALLOCATOR_ALIAS(ssalloc, ss_policy, std::string);
+UTIL_ALLOCATOR_ALIAS(string_alloc, malloc_policy, std::string);
 
 
 class sstr : handle<std::string>
@@ -223,7 +225,7 @@ TEST_CASE( "logicmill::util::shareable [ smoke ] { non-pointer handle }" )
 
 TEST_CASE( "logicmill::util::shareable [ smoke ] { phandle with deleter }" )
 {
-	using sintp = phandle<std::string, shareable_test::ssalloc>;
+	using sintp = phandle<std::string, shareable_test::string_alloc>;
 	sintp p = sintp::create("zoot");
 	CHECK(*p == "zoot");
 	CHECK(bool(p));
@@ -383,4 +385,29 @@ TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr with deleter 
 	CHECK(p.use_count() == 1);
 	p.reset();
 	CHECK(shareable_test::int_free_call_count == 1);
+}
+
+TEST_CASE("logicmill::util::shareable [ smoke ] { util::shared_ptr with allocate }")
+{
+	using zallocator = util::allocator<std::string, shareable_test::malloc_policy<std::string>>;
+	using shared_ptr_type = util::shared_ptr<std::string>;
+	using control_blk_type = shared_ptr_type::control_blk;
+	using shareable_value_type = shared_ptr_type::shareable_value<zallocator>;
+	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::allocate(zallocator{}, "zoot");
+	util::shared_ptr<std::string> sp_copy{sp};
+	CHECK(sp.use_count() == 2);
+	CHECK(sp_copy == sp);
+	CHECK(*sp_copy == "zoot");
+	sp_copy.reset();
+	CHECK(!sp_copy);
+	CHECK(sp.use_count() == 1);
+
+	// std::cout << "sizeof string is " << sizeof(std::string) << std::endl;
+	// std::cout << "sizeof shared ptr is " << sizeof(shared_ptr_type) << std::endl;
+	// std::cout << "sizeof control blk base is " << sizeof(util::detail::control_blk_base) << std::endl;
+	// std::cout << "sizeof control blk is " << sizeof(control_blk_type) << std::endl;
+	// std::cout << "sizeof shareable value is " << sizeof(shareable_value_type) << std::endl;
+	// std::cout << "sizeof zallocator is " << sizeof(zallocator) << std::endl;
+	// std::cout << "sizeof deleter is " << sizeof(std::default_delete<std::string>) << std::endl;
+
 }

@@ -271,10 +271,12 @@ namespace detail
 class control_blk_base
 {
 public:
-	virtual ~control_blk_base()
+	~control_blk_base()
 	{
 		assert(m_use_count == 0);
 	}
+
+	virtual void destroy() = 0;
 
 	control_blk_base(void* p) : m_elem{p}, m_use_count{1} {}
 
@@ -322,7 +324,7 @@ public:
 	using element_type = T;
 	using deleter_type = Deleter;
 
-protected:
+// protected:
 	class control_blk : protected detail::control_blk_base
 	{
 	protected:
@@ -332,7 +334,12 @@ protected:
 		control_blk(element_type* ep, _Del&& del) : detail::control_blk_base{ep}, m_deleter{std::forward<_Del>(del)}
 		{}
 
-		virtual ~control_blk()
+		virtual void destroy()
+		{
+			delete this;
+		}
+
+		~control_blk()
 		{
 			assert(use_count() == 0);
 
@@ -352,23 +359,34 @@ protected:
 		deleter_type m_deleter;
 	};
 
+	template<class _Alloc>
 	class shareable_value : public control_blk
 	{
-	private:
+	public:
 		friend class shared_ptr;
 
-		// using allocator_type = typename Alloc::template rebind<shareable_value>::other;
+		using allocator_type = typename _Alloc::template rebind<shareable_value<_Alloc>>::other;
 
-		virtual ~shareable_value()
+		~shareable_value()
 		{
 			detail::control_blk_base::clear();
 		}
 
-		template<class... Args>
-		shareable_value(Args&&... args)
-			: control_blk{&m_value, std::default_delete<element_type>{}}, m_value(std::forward<Args>(args)...)
+		virtual void destroy()
+		{
+			allocator_type alloc{std::move(m_allocator)};
+			alloc.destroy(this);
+			alloc.deallocate(this, 1);
+		}
+
+		template<class _A, class... Args>
+		shareable_value(_A&& alloc, Args&&... args)
+			: control_blk{&m_value, std::default_delete<element_type>{}},
+			  m_allocator{std::forward<_A>(alloc)},
+			  m_value(std::forward<Args>(args)...)
 		{}
 
+		allocator_type m_allocator;
 		element_type m_value;
 	};
 
@@ -380,7 +398,17 @@ public:
 	static shared_ptr
 	create(Args&&... args)
 	{
-		return shared_ptr{new shareable_value{std::forward<Args>(args)...}};
+		return shared_ptr{new shareable_value<std::allocator<T>>{std::allocator<T>{}, std::forward<Args>(args)...}};
+	}
+
+	template<class _Alloc, class... Args>
+	static shared_ptr
+	allocate(_Alloc, Args&&... args)
+	{
+		typename shareable_value<_Alloc>::allocator_type alloc;
+		shareable_value<_Alloc>* cp = alloc.allocate(1);
+		new(cp) shareable_value<_Alloc>{std::move(alloc), std::forward<Args>(args)...};
+		return shared_ptr{cp};
 	}
 
 	template<class U, class V>
@@ -614,7 +642,8 @@ private:
 			assert(m_cblk_ptr->use_count() > 0);
 			if (m_cblk_ptr->decrement_use_count() == 0)
 			{
-				delete m_cblk_ptr;
+				// delete m_cblk_ptr;
+				m_cblk_ptr->destroy();
 			}
 			m_cblk_ptr = nullptr;
 			m_elem_ptr = nullptr;

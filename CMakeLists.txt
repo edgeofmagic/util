@@ -145,8 +145,9 @@ set(LOGICMILL_TEST_SRCS
 #	test/async/socket_behavior.cpp
 	test/armi/basic.cpp
 	test/laps/layers.cpp
-	test/shareable.cpp
-	test/allocators.cpp
+	test/util/shareable.cpp
+	test/util/allocators.cpp
+	test/util/shared_ptr.cpp
 	test/test_main.cpp)
 
 add_library(logicmill ${LOGICMILL_SRCS})

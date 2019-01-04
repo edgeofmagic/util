@@ -29,6 +29,7 @@
 #include <functional>
 #include <memory>
 #include <system_error>
+#include <logicmill/util/shared_ptr.h>
 
 namespace logicmill
 {
@@ -40,7 +41,7 @@ class loop;
 class timer
 {
 public:
-	using ptr     = std::shared_ptr<timer>;
+	using ptr     = util::shared_ptr<timer>;
 	using handler = std::function<void(timer::ptr)>;
 
 	virtual ~timer() {}

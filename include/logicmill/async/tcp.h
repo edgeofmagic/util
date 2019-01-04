@@ -29,6 +29,7 @@
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
 #include <logicmill/async/options.h>
+#include <logicmill/util/shared_ptr.h>
 
 namespace logicmill
 {
@@ -38,13 +39,13 @@ namespace async
 class tcp_channel : public channel
 {
 public:
-	using ptr = std::shared_ptr<tcp_channel>;
+	using ptr = util::shared_ptr<tcp_channel>;
 };
 
 class tcp_acceptor : public acceptor
 {
 public:
-	using ptr = std::shared_ptr<tcp_acceptor>;
+	using ptr = util::shared_ptr<tcp_acceptor>;
 };
 
 }    // namespace async

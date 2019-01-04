@@ -30,6 +30,7 @@
 #include <functional>
 #include <logicmill/bstream/buffer.h>
 #include <logicmill/async/endpoint.h>
+#include <logicmill/util/shared_ptr.h>
 #include <memory>
 #include <system_error>
 
@@ -43,7 +44,7 @@ class loop;
 class channel
 {
 public:
-	using ptr = std::shared_ptr<channel>;
+	using ptr = util::shared_ptr<channel>;
 
 	using read_handler
 			= std::function<void(channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err)>;
@@ -153,7 +154,7 @@ protected:
 class acceptor
 {
 public:
-	using ptr = std::shared_ptr<acceptor>;
+	using ptr = util::shared_ptr<acceptor>;
 	using connection_handler
 			= std::function<void(acceptor::ptr const& sp, channel::ptr const& chan, std::error_code err)>;
 	using close_handler = std::function<void(acceptor::ptr const& lp)>;

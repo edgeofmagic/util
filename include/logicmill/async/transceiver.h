@@ -30,6 +30,7 @@
 #include <functional>
 #include <logicmill/async/endpoint.h>
 #include <logicmill/bstream/buffer.h>
+#include <logicmill/util/shared_ptr.h>
 #include <memory>
 #include <system_error>
 
@@ -47,7 +48,7 @@ class loop;
 class transceiver
 {
 public:
-	using ptr = std::shared_ptr<transceiver>;
+	using ptr = util::shared_ptr<transceiver>;
 
 	using receive_handler = std::function<void(
 			transceiver::ptr const& chan,

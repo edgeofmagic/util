@@ -241,6 +241,8 @@ public:
 		steal(std::move(rhs));
 	}
 
+	shared_ptr(std::nullptr_t)  : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
+
 	~shared_ptr()
 	{
 		disown();
@@ -389,11 +391,17 @@ private:
 			assert(m_cblk_ptr->use_count() > 0);
 			if (m_cblk_ptr->decrement_use_count() == 0)
 			{
-				// delete m_cblk_ptr;
-				m_cblk_ptr->destroy();
+				auto cp = m_cblk_ptr;
+				m_cblk_ptr = nullptr;
+				m_elem_ptr = nullptr;
+				cp->destroy();
 			}
-			m_cblk_ptr = nullptr;
-			m_elem_ptr = nullptr;
+			else
+			{
+				
+				m_cblk_ptr = nullptr;
+				m_elem_ptr = nullptr;
+			}
 		}
 	}
 
@@ -404,5 +412,23 @@ private:
 
 }    // namespace util
 }    // namespace logicmill
+
+namespace std
+{
+
+template<class U, class V>
+struct hash<logicmill::util::shared_ptr<U, V>>
+{
+	typedef logicmill::util::shared_ptr<U, V> argument_type;
+	typedef std::size_t                    result_type;
+
+	result_type
+	operator()(const argument_type& v) const
+	{
+		return std::hash<void*>()(v.get());
+	}
+};
+
+}
 
 #endif    // LOGICMILL_UTIL_SHARED_PTR_H

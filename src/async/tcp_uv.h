@@ -91,7 +91,7 @@ private:
 	uv_connect_t                               m_uv_connect_request;
 	logicmill::async::channel::connect_handler m_handler;
 
-	static std::shared_ptr<tcp_channel_uv>
+	static logicmill::util::shared_ptr<tcp_channel_uv>
 	get_channel_shared_ptr(uv_connect_t* req);
 };
 
@@ -119,7 +119,7 @@ public:
 private:
 	~tcp_write_buf_req_uv() {}
 
-	static std::shared_ptr<tcp_channel_uv>
+	static logicmill::util::shared_ptr<tcp_channel_uv>
 	get_channel_shared_ptr(uv_write_t* req);
 
 	static void
@@ -170,7 +170,7 @@ private:
 		}
 	}
 
-	static std::shared_ptr<tcp_channel_uv>
+	static logicmill::util::shared_ptr<tcp_channel_uv>
 	get_channel_shared_ptr(uv_write_t* req);
 
 	static void
@@ -185,7 +185,7 @@ private:
 class tcp_base_uv
 {
 public:
-	static std::shared_ptr<tcp_base_uv>
+	static logicmill::util::shared_ptr<tcp_base_uv>
 	get_base_shared_ptr(uv_stream_t* stream_handle)
 	{
 		return get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(stream_handle));
@@ -216,7 +216,7 @@ public:
 	really_get_endpoint(std::error_code& err);
 
 protected:
-	using ptr = std::shared_ptr<tcp_base_uv>;
+	using ptr = logicmill::util::shared_ptr<tcp_base_uv>;
 
 	struct handle_data
 	{
@@ -300,7 +300,7 @@ protected:
 class tcp_channel_uv : public tcp_base_uv, public logicmill::async::tcp_channel
 {
 public:
-	using ptr = std::shared_ptr<tcp_channel_uv>;
+	using ptr = logicmill::util::shared_ptr<tcp_channel_uv>;
 
 	void
 	init(uv_loop_t* lp, ptr const& self, std::error_code& err);
@@ -413,9 +413,9 @@ class tcp_framed_channel_uv : public tcp_channel_uv
 {
 public:
 	tcp_framed_channel_uv() : m_header_byte_count{0}, m_frame_size{-1} {}
+	using ptr                           = logicmill::util::shared_ptr<tcp_framed_channel_uv>;
 
 private:
-	using ptr                           = std::shared_ptr<tcp_framed_channel_uv>;
 	using frame_size_type               = std::int64_t;
 	static constexpr bool reverse_order = boost::endian::order::native != boost::endian::order::big;
 
@@ -492,7 +492,7 @@ private:
 class tcp_acceptor_uv : public tcp_base_uv, public logicmill::async::tcp_acceptor
 {
 public:
-	using ptr = std::shared_ptr<tcp_acceptor_uv>;
+	using ptr = logicmill::util::shared_ptr<tcp_acceptor_uv>;
 
 	template<
 			class Handler,
@@ -510,7 +510,7 @@ public:
 	{
 		if (m_close_handler)
 		{
-			m_close_handler(std::dynamic_pointer_cast<tcp_acceptor_uv>(m_data.m_self_ptr));
+			m_close_handler(ptr::dynamic_ptr_cast(m_data.m_self_ptr));
 			m_close_handler = nullptr;
 		}
 		m_connection_handler = nullptr;
@@ -526,25 +526,25 @@ private:
 	static ptr
 	get_shared_acceptor(uv_stream_t* handle)
 	{
-		return std::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(handle)));
+		return ptr::dynamic_ptr_cast(get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(handle)));
 	}
 
 	static ptr
 	get_shared_acceptor(uv_tcp_t* handle)
 	{
-		return std::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(handle)));
+		return ptr::dynamic_ptr_cast(get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(handle)));
 	}
 
 	static ptr
 	get_shared_acceptor(uv_handle_t* handle)
 	{
-		return std::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(handle));
+		return ptr::dynamic_ptr_cast(get_base_shared_ptr(handle));
 	}
 
 	static tcp_acceptor_uv*
 	get_acceptor_impl_raw(uv_handle_t* handle)
 	{
-		return std::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(handle)).get();
+		return ptr::dynamic_ptr_cast(get_base_shared_ptr(handle)).get();
 	}
 
 	static void

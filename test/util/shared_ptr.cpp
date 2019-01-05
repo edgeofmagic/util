@@ -37,13 +37,13 @@ static bool free_mem_called{false};
 
 void* get_mem(unsigned long bytes)
 {
-	// std::cout << "get_mem: " << bytes << std::endl;
+	std::cout << "get_mem: " << bytes << std::endl;
 	return ::malloc(bytes);
 }
 
 void free_mem(void* p, unsigned long bytes)
 {
-	// std::cout << "free_mem: " << bytes << std::endl;
+	std::cout << "free_mem: " << bytes << std::endl;
 	free_mem_called = true;
 	::free(p);
 }
@@ -278,13 +278,12 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr dynamic_ptr_
 	CHECK(fp.use_count() == 2);
 	CHECK(barvp->dnum() == 3.5);
 }
-
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter }")
 {
 	int* ip = shared_ptr_test::int_malloc{}();
 	*ip = 27;
-	util::shared_ptr<int, shared_ptr_test::int_free> p = util::shared_ptr<int, shared_ptr_test::int_free>{ip, shared_ptr_test::int_free{}};
-	util::shared_ptr<int, shared_ptr_test::int_free> p_copy{p};
+	util::shared_ptr<int> p = util::shared_ptr<int>{ip, shared_ptr_test::int_free{}};
+	util::shared_ptr<int> p_copy{p};
 	CHECK(p.use_count() == 2);
 	CHECK(p_copy == p);
 	CHECK(*p_copy == 27);
@@ -308,3 +307,31 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocat
 	CHECK(!sp_copy);
 	CHECK(sp.use_count() == 1);
 }
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter and allocator }")
+{
+	shared_ptr_test::int_free_call_count = 0;
+	using zallocator = util::allocator<std::string, shared_ptr_test::malloc_policy<std::string>>;
+	int* ip = shared_ptr_test::int_malloc{}();
+	*ip = 27;
+	util::shared_ptr<int> p = util::shared_ptr<int>{ip, shared_ptr_test::int_free{}, zallocator{}};
+	util::shared_ptr<int> p_copy{p};
+	CHECK(p.use_count() == 2);
+	CHECK(p_copy == p);
+	CHECK(*p_copy == 27);
+	p_copy.reset();
+	CHECK(shared_ptr_test::int_free_call_count == 0);
+	CHECK(!p_copy);
+	CHECK(p.use_count() == 1);
+	p.reset();
+	CHECK(shared_ptr_test::int_free_call_count == 1);
+
+	std::cout << "size of shared_ptr is " << sizeof(util::shared_ptr<int>) << std::endl;
+	std::cout << "size of std::string is " << sizeof(std::string) << std::endl;
+	std::cout << "size of control_blk is " << sizeof(util::shared_ptr<int>::control_blk) << std::endl;
+	std::cout << "size of value_control_block is " << sizeof(util::shared_ptr<int>::value_control_block) << std::endl;
+	std::cout << "size of control_blk_base is " << sizeof(util::detail::control_blk_base) << std::endl;
+	std::cout << "size of control_blk_base::delete_erasure is " << sizeof(util::detail::control_blk_base::delete_erasure) << std::endl;
+	std::cout << "size of control_blk_base::destruct_erasure is " << sizeof(util::detail::control_blk_base::destruct_erasure) << std::endl;
+}
+

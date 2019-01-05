@@ -28,6 +28,7 @@
 #include <cassert>
 #include <cstdint>
 #include <memory>
+#include <functional>
 
 namespace logicmill
 {
@@ -40,14 +41,25 @@ namespace detail
 class control_blk_base
 {
 public:
+	using delete_erasure = std::function<void(void*)>;
+	using destruct_erasure = std::function<void(void*)>;
+
 	~control_blk_base()
 	{
 		assert(m_use_count == 0);
+		if (m_elem)
+		{
+			m_delete(m_elem);
+		}
+	}
+	void destroy()
+	{
+		m_destruct(this);
 	}
 
-	virtual void destroy() = 0;
-
-	control_blk_base(void* p) : m_elem{p}, m_use_count{1} {}
+	control_blk_base(void* p, delete_erasure&& deleter, destruct_erasure&& destruct)
+		: m_elem{p}, m_use_count{1}, m_delete{std::move(deleter)}, m_destruct{std::move(destruct)}
+	{}
 
 	void*
 	get_vptr() const
@@ -82,109 +94,105 @@ public:
 private:
 	void*       m_elem;
 	std::size_t m_use_count;
+	delete_erasure m_delete;
+	destruct_erasure m_destruct;
 };
 
 }    // namespace detail
 
-template<class T, class Deleter = std::default_delete<T>>
+template<class T>
 class shared_ptr
 {
 public:
 	using element_type = T;
-	using deleter_type = Deleter;
 
-protected:
-	class control_blk : protected detail::control_blk_base
+// protected:
+	class control_blk : public detail::control_blk_base
 	{
 	protected:
+
 		friend class shared_ptr;
 
-		template<class _Del>
-		control_blk(element_type* ep, _Del&& del) : detail::control_blk_base{ep}, m_deleter{std::forward<_Del>(del)}
+		control_blk(element_type* ep, delete_erasure&& deleter, destruct_erasure&& destruct)
+		: detail::control_blk_base{ep, std::move(deleter), std::move(destruct)}
 		{}
-
-		virtual void destroy()
-		{
-			delete this;
-		}
-
-		~control_blk()
-		{
-			assert(use_count() == 0);
-
-			if (get_vptr())
-			{
-				m_deleter(static_cast<element_type*>(get_vptr()));
-				clear();
-			}
-		}
 
 		element_type*
 		get_ptr()
 		{
 			return static_cast<element_type*>(get_vptr());
 		}
-
-		deleter_type m_deleter;
 	};
 
-	template<class _Alloc>
-	class shareable_value : public control_blk
+	class value_control_block : public control_blk
 	{
 	public:
 		friend class shared_ptr;
 
-		using allocator_type = typename _Alloc::template rebind<shareable_value<_Alloc>>::other;
-
-		~shareable_value()
+		~value_control_block()
 		{
 			detail::control_blk_base::clear();
 		}
 
-		virtual void destroy()
-		{
-			allocator_type alloc{std::move(m_allocator)};
-			alloc.destroy(this);
-			alloc.deallocate(this, 1);
-		}
+		struct use_allocator {};
 
-		template<class _A, class... Args>
-		shareable_value(_A&& alloc, Args&&... args)
-			: control_blk{&m_value, std::default_delete<element_type>{}},
-			  m_allocator{std::forward<_A>(alloc)},
+		template<class... Args>
+		value_control_block(Args&&... args)
+			: control_blk{&m_value,
+						  [](void*) { assert(false); },
+						  [](void* p) {
+							  auto cp = static_cast<value_control_block*>(p);
+							  cp->clear();
+							  delete cp;
+						  }},
 			  m_value(std::forward<Args>(args)...)
 		{}
 
-		allocator_type m_allocator;
+		template<class _Alloc, class... Args>
+		value_control_block(use_allocator, _Alloc&& alloc, Args&&... args)
+			: control_blk{&m_value,
+						  [](void*) mutable { assert(false); },
+						  [&alloc](void* p) {
+							  _Alloc a{std::forward<_Alloc>(alloc)};
+							  auto cp = static_cast<value_control_block*>(p);
+							  cp->clear();
+							  a.destroy(cp);
+							  a.deallocate(cp, 1);
+						  }},
+			  m_value(std::forward<Args>(args)...)
+		{}
+
 		element_type m_value;
 	};
 
 public:
-	template<class U, class V>
+	template<class U>
 	friend class shared_ptr;
 
 	template<class... Args>
 	static shared_ptr
 	create(Args&&... args)
 	{
-		return shared_ptr{new shareable_value<std::allocator<T>>{std::allocator<T>{}, std::forward<Args>(args)...}};
+		return shared_ptr{new value_control_block{std::forward<Args>(args)...}};
 	}
 
 	template<class _Alloc, class... Args>
 	static shared_ptr
-	allocate(_Alloc, Args&&... args)
+	allocate(_Alloc&& alloc, Args&&... args)
 	{
-		typename shareable_value<_Alloc>::allocator_type alloc;
-		shareable_value<_Alloc>* cp = alloc.allocate(1);
-		new(cp) shareable_value<_Alloc>{std::move(alloc), std::forward<Args>(args)...};
+		using allocator_type = typename _Alloc::template rebind<value_control_block>::other;
+
+		allocator_type salloc{std::forward<_Alloc>(alloc)};
+		value_control_block* cp = salloc.allocate(1);
+		new(cp) value_control_block(typename value_control_block::use_allocator{}, std::move(salloc), std::forward<Args>(args)...);
 		return shared_ptr{cp};
 	}
 
-	template<class U, class V>
+	template<class U>
 	static shared_ptr
-	static_ptr_cast(shared_ptr<U, V> const& p)
+	static_ptr_cast(shared_ptr<U> const& p)
 	{
-		detail::control_blk_base* cp = p.get_ctrl_blk();
+		auto cp = p.get_ctrl_blk();
 		if (cp)
 		{
 			cp->increment_use_count();
@@ -192,9 +200,9 @@ public:
 		return shared_ptr{cp};
 	}
 
-	template<class U, class V>
+	template<class U>
 	static shared_ptr
-	dynamic_ptr_cast(shared_ptr<U, V> const& p)
+	dynamic_ptr_cast(shared_ptr<U> const& p)
 	{
 		element_type* ep = dynamic_cast<element_type*>(p.get());
 		if (ep)
@@ -211,21 +219,62 @@ public:
 
 	shared_ptr() : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
 
-	// shared_ptr(control_blk* sp) : m_cblk_ptr{sp}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())} {}
+	shared_ptr(element_type* ep)
+		: m_cblk_ptr{new control_blk{ep,
+									 [](void* p) {
+										 if (p)
+										 {
+											 delete static_cast<element_type*>(p);
+										 }
+									 },
+									 [](void* p) { delete static_cast<control_blk*>(p); }}},
+		  m_elem_ptr{ep}
+	{}
 
 	template<class _Del>
 	shared_ptr(element_type* ep, _Del&& del)
-		: m_cblk_ptr{new control_blk{ep, std::forward<_Del>(del)}},
-		  m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())}
+		: m_cblk_ptr{new control_blk{ep,
+									 [del{std::forward<_Del>(del)}](void* p) {
+										 if (p)
+										 {
+											 del(static_cast<element_type*>(p));
+										 }
+									 },
+									 [](void* p) { delete static_cast<control_blk*>(p); }}},
+		  m_elem_ptr{ep}
 	{}
+
+	template<class _Del, class _Alloc>
+	shared_ptr(element_type* ep, _Del&& del, _Alloc&& alloc) : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr}
+	{
+		using allocator_type = typename _Alloc::template rebind<control_blk>::other;
+
+		allocator_type cballoc{std::forward<_Alloc>(alloc)};
+		m_cblk_ptr = cballoc.allocate(1);
+		new (m_cblk_ptr) control_blk{ep,
+									 [del{std::forward<_Del>(del)}](void* p) {
+										 if (p)
+										 {
+											 del(static_cast<element_type*>(p));
+										 }
+									 },
+									 [cballoc{std::move(cballoc)}](void* p) mutable {
+										 cballoc.destroy(static_cast<control_blk*>(p));
+										 cballoc.deallocate(static_cast<control_blk*>(p), 1);
+									 }
+
+
+		};
+		m_elem_ptr = ep;
+	}
 
 	shared_ptr(shared_ptr const& rhs)
 	{
 		adopt(rhs);
 	}
 
-	template<class U, class V, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
-	shared_ptr(shared_ptr<U, V> const& rhs)
+	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
+	shared_ptr(shared_ptr<U> const& rhs)
 	{
 		adopt(rhs);
 	}
@@ -235,8 +284,8 @@ public:
 		steal(std::move(rhs));
 	}
 
-	template<class U, class V, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
-	shared_ptr(shared_ptr<U, V>&& rhs)
+	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
+	shared_ptr(shared_ptr<U>&& rhs)
 	{
 		steal(std::move(rhs));
 	}
@@ -256,9 +305,9 @@ public:
 	}
 
 
-	template<class U, class V>
+	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, shared_ptr&>
-	operator=(shared_ptr<U, V> const& rhs)
+	operator=(shared_ptr<U> const& rhs)
 	{
 		assign(rhs);
 		return *this;
@@ -279,11 +328,6 @@ public:
 		return *this;
 	}
 
-	// control_blk* get_shareable() const
-	// {
-	// 	return static_cast<control_blk*>(m_cblk_ptr);
-	// }
-
 	detail::control_blk_base*
 	get_ctrl_blk() const
 	{
@@ -301,16 +345,16 @@ public:
 		return m_elem_ptr != nullptr;
 	}
 
-	template<class U, class V>
+	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, bool>
-	operator==(shared_ptr<U, V> const& rhs) const
+	operator==(shared_ptr<U> const& rhs) const
 	{
 		return m_elem_ptr == rhs.m_elem_ptr;
 	}
 
-	template<class U, class V>
+	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, bool>
-	operator!=(shared_ptr<U, V> const& rhs) const
+	operator!=(shared_ptr<U> const& rhs) const
 	{
 		return !(*this == rhs);
 	}
@@ -345,25 +389,25 @@ private:
 
 	shared_ptr(detail::control_blk_base* p, element_type* ep) : m_cblk_ptr{p}, m_elem_ptr{ep} {}
 
-	template<class U, class V>
+	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	assign(shared_ptr<U, V> const& rhs)
+	assign(shared_ptr<U> const& rhs)
 	{
 		disown();
 		adopt(rhs);
 	}
 
-	template<class U, class V>
+	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	assign(shared_ptr<U, V>&& rhs)
+	assign(shared_ptr<U>&& rhs)
 	{
 		disown();
 		steal(std::move(rhs));
 	}
 
-	template<class U, class V>
+	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	adopt(shared_ptr<U, V> const& rhs)
+	adopt(shared_ptr<U> const& rhs)
 	{
 		m_cblk_ptr = rhs.m_cblk_ptr;
 		m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
@@ -373,9 +417,9 @@ private:
 		}
 	}
 
-	template<class U, class V>
+	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	steal(shared_ptr<U, V>&& rhs)
+	steal(shared_ptr<U>&& rhs)
 	{
 		m_cblk_ptr     = rhs.m_cblk_ptr;
 		m_elem_ptr     = static_cast<element_type*>(rhs.m_elem_ptr);
@@ -398,17 +442,22 @@ private:
 			}
 			else
 			{
-				
 				m_cblk_ptr = nullptr;
 				m_elem_ptr = nullptr;
 			}
 		}
 	}
 
-	detail::control_blk_base* m_cblk_ptr;
-	element_type*             m_elem_ptr;
+	detail::control_blk_base*  m_cblk_ptr;
+	element_type* m_elem_ptr;
 };
 
+template<class T, class... Args>
+shared_ptr<T>
+make_shared(Args&&... args)
+{
+	return shared_ptr<T>::create(std::forward<Args>(args)...);
+}
 
 }    // namespace util
 }    // namespace logicmill
@@ -416,10 +465,10 @@ private:
 namespace std
 {
 
-template<class U, class V>
-struct hash<logicmill::util::shared_ptr<U, V>>
+template<class U>
+struct hash<logicmill::util::shared_ptr<U>>
 {
-	typedef logicmill::util::shared_ptr<U, V> argument_type;
+	typedef logicmill::util::shared_ptr<U> argument_type;
 	typedef std::size_t                    result_type;
 
 	result_type

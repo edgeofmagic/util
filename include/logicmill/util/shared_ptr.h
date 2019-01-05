@@ -169,6 +169,19 @@ public:
 	template<class U>
 	friend class shared_ptr;
 
+	template<class U, class... _Args>
+	friend shared_ptr<U> make_shared(_Args&&...);
+
+	template<class U, class _Alloc, class... _Args>
+	friend shared_ptr<U> allocate_shared(_Alloc&&, _Args&&...);
+
+	template<class U, class V>
+	friend shared_ptr<U> dynamic_pointer_cast(shared_ptr<V> const&);
+
+	template<class U, class V>
+	friend shared_ptr<U> static_pointer_cast(shared_ptr<V> const&);
+
+protected:
 	template<class... Args>
 	static shared_ptr
 	create(Args&&... args)
@@ -216,6 +229,8 @@ public:
 			return shared_ptr{};
 		}
 	}
+
+public:
 
 	shared_ptr() : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
 
@@ -457,6 +472,27 @@ shared_ptr<T>
 make_shared(Args&&... args)
 {
 	return shared_ptr<T>::create(std::forward<Args>(args)...);
+}
+
+template<class T, class Alloc, class... Args>
+shared_ptr<T>
+allocate_shared(Alloc&& alloc, Args&&... args)
+{
+	return shared_ptr<T>::allocate(std::forward<Alloc>(alloc), std::forward<Args>(args)...);
+}
+
+template<class T, class U>
+shared_ptr<T>
+dynamic_pointer_cast(shared_ptr<U> const& uptr)
+{
+	return shared_ptr<T>::dynamic_ptr_cast(uptr);
+}
+
+template<class T, class U>
+shared_ptr<T>
+static_pointer_cast(shared_ptr<U> const& uptr)
+{
+	return shared_ptr<T>::static_ptr_cast(uptr);
 }
 
 }    // namespace util

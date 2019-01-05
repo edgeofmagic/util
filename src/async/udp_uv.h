@@ -189,7 +189,7 @@ protected:
 	{
 		if (m_close_handler)
 		{
-			m_close_handler(udp_transceiver_uv::ptr::dynamic_ptr_cast(m_data.m_self_ptr));
+			m_close_handler(logicmill::util::dynamic_pointer_cast<udp_transceiver_uv>(m_data.m_self_ptr));
 			m_close_handler = nullptr;
 		}
 		m_receive_handler = nullptr;

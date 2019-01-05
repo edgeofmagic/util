@@ -157,7 +157,32 @@ struct int_free
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr copy ctor }")
 {
-	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::create("zoot");
+	util::shared_ptr<std::string> sp = util::make_shared<std::string>("zoot");
+	util::shared_ptr<std::string> sp_copy{sp};
+	CHECK(sp.use_count() == 2);
+	CHECK(sp_copy == sp);
+	CHECK(*sp_copy == "zoot");
+	sp_copy.reset();
+	CHECK(!sp_copy);
+	CHECK(sp.use_count() == 1);
+}
+
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr make_shared copy ctor }")
+{
+	util::shared_ptr<std::string> sp = util::make_shared<std::string>("zoot");
+	util::shared_ptr<std::string> sp_copy{sp};
+	CHECK(sp.use_count() == 2);
+	CHECK(sp_copy == sp);
+	CHECK(*sp_copy == "zoot");
+	sp_copy.reset();
+	CHECK(!sp_copy);
+	CHECK(sp.use_count() == 1);
+}
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr allocate_shared copy ctor }")
+{
+	util::shared_ptr<std::string> sp = util::allocate_shared<std::string>(std::allocator<std::string>{}, "zoot");
 	util::shared_ptr<std::string> sp_copy{sp};
 	CHECK(sp.use_count() == 2);
 	CHECK(sp_copy == sp);
@@ -170,7 +195,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr copy ctor }"
 #if 1
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr move ctor }")
 {
-	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::create("zoot");
+	util::shared_ptr<std::string> sp = util::make_shared<std::string>("zoot");
 	util::shared_ptr<std::string> sp_copy{std::move(sp)};
 	CHECK(!sp);
 	CHECK(sp_copy.use_count() == 1);
@@ -182,7 +207,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr move ctor }"
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr copy assign }")
 {
-	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::create("zoot");
+	util::shared_ptr<std::string> sp = util::make_shared<std::string>("zoot");
 	util::shared_ptr<std::string> sp_copy;
 	sp_copy = sp;
 	CHECK(sp.use_count() == 2);
@@ -195,7 +220,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr copy assign 
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr move assign }")
 {
-	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::create("zoot");
+	util::shared_ptr<std::string> sp = util::make_shared<std::string>("zoot");
 	util::shared_ptr<std::string> sp_copy;
 	sp_copy = std::move(sp);
 	CHECK(!sp);
@@ -207,7 +232,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr move assign 
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr copy construct poly }")
 {
-	util::shared_ptr<shared_ptr_test::bar> bp = util::shared_ptr<shared_ptr_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shared_ptr_test::bar> bp = util::make_shared<shared_ptr_test::bar>(7, "groot", 3.5);
 	util::shared_ptr<shared_ptr_test::foo> fp{bp};
 	CHECK(fp.use_count() == 2);
 	CHECK(fp == bp);
@@ -219,7 +244,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr copy constru
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr move construct poly }")
 {
-	util::shared_ptr<shared_ptr_test::bar> bp = util::shared_ptr<shared_ptr_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shared_ptr_test::bar> bp = util::make_shared<shared_ptr_test::bar>(7, "groot", 3.5);
 	util::shared_ptr<shared_ptr_test::foo> fp{std::move(bp)};
 	CHECK(!bp);
 	CHECK(fp.use_count() == 1);
@@ -230,7 +255,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr move constru
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr copy assign poly }")
 {
-	util::shared_ptr<shared_ptr_test::bar> bp = util::shared_ptr<shared_ptr_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shared_ptr_test::bar> bp = util::make_shared<shared_ptr_test::bar>(7, "groot", 3.5);
 	util::shared_ptr<shared_ptr_test::foo> fp;
 	fp = bp;
 	CHECK(fp.use_count() == 2);
@@ -243,7 +268,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr copy assign 
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr move assign poly }")
 {
-	util::shared_ptr<shared_ptr_test::bar> bp = util::shared_ptr<shared_ptr_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shared_ptr_test::bar> bp = util::make_shared<shared_ptr_test::bar>(7, "groot", 3.5);
 	util::shared_ptr<shared_ptr_test::foo> fp;
 	fp = std::move(bp);
 	CHECK(!bp);
@@ -255,29 +280,54 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr move assign 
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr static_ptr_cast }")
 {
-	util::shared_ptr<shared_ptr_test::bar> bp = util::shared_ptr<shared_ptr_test::bar>::create(7, "groot", 3.5);
+	util::shared_ptr<shared_ptr_test::bar> bp = util::make_shared<shared_ptr_test::bar>(7, "groot", 3.5);
 	util::shared_ptr<shared_ptr_test::foo> fp;
 	fp = std::move(bp);
 	CHECK(!bp);
 	CHECK(fp.use_count() == 1);
 	CHECK(fp->num() == 7);
-	util::shared_ptr<shared_ptr_test::bar> barp = util::shared_ptr<shared_ptr_test::bar>::static_ptr_cast(fp);
+	util::shared_ptr<shared_ptr_test::bar> barp = util::static_pointer_cast<shared_ptr_test::bar>(fp);
 	CHECK(fp.use_count() == 2);
 	CHECK(barp->dnum() == 3.5);
 }
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr dynamic_ptr_cast }")
 {
-	util::shared_ptr<shared_ptr_test::barv> bp = util::shared_ptr<shared_ptr_test::barv>::create(7, "groot", 3.5);
+	util::shared_ptr<shared_ptr_test::barv> bp = util::make_shared<shared_ptr_test::barv>(7, "groot", 3.5);
 	util::shared_ptr<shared_ptr_test::foov> fp;
 	fp = std::move(bp);
 	CHECK(!bp);
 	CHECK(fp.use_count() == 1);
 	CHECK(fp->num() == 7);
-	util::shared_ptr<shared_ptr_test::barv> barvp = util::shared_ptr<shared_ptr_test::barv>::dynamic_ptr_cast(fp);
+	util::shared_ptr<shared_ptr_test::barv> barvp = util::dynamic_pointer_cast<shared_ptr_test::barv>(fp);
 	CHECK(fp.use_count() == 2);
 	CHECK(barvp->dnum() == 3.5);
 }
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr dynamic_pointer_cast }")
+{
+	util::shared_ptr<shared_ptr_test::barv> bp = util::make_shared<shared_ptr_test::barv>(7, "groot", 3.5);
+	util::shared_ptr<shared_ptr_test::foov> fp;
+	fp = std::move(bp);
+	CHECK(!bp);
+	CHECK(fp.use_count() == 1);
+	CHECK(fp->num() == 7);
+	util::shared_ptr<shared_ptr_test::barv> barvp = util::dynamic_pointer_cast<shared_ptr_test::barv>(fp);
+	CHECK(fp.use_count() == 2);
+	CHECK(barvp->dnum() == 3.5);
+}
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr dynamic_pointer_cast failure}")
+{
+	util::shared_ptr<shared_ptr_test::foov> fp = util::make_shared<shared_ptr_test::foov>(7, "groot");
+	util::shared_ptr<shared_ptr_test::barv> bp = util::dynamic_pointer_cast<shared_ptr_test::barv>(fp);
+	CHECK(!bp);
+	CHECK(fp.use_count() == 1);
+	CHECK(fp->num() == 7);
+	fp = nullptr;
+	CHECK(!fp);
+}
+
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter }")
 {
 	int* ip = shared_ptr_test::int_malloc{}();
@@ -287,7 +337,8 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 	CHECK(p.use_count() == 2);
 	CHECK(p_copy == p);
 	CHECK(*p_copy == 27);
-	p_copy.reset();
+	// p_copy.reset();
+	p_copy = nullptr;
 	CHECK(shared_ptr_test::int_free_call_count == 0);
 	CHECK(!p_copy);
 	CHECK(p.use_count() == 1);
@@ -298,7 +349,20 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocate }")
 {
 	using zallocator = util::allocator<std::string, shared_ptr_test::malloc_policy<std::string>>;
-	util::shared_ptr<std::string> sp = util::shared_ptr<std::string>::allocate(zallocator{}, "zoot");
+	util::shared_ptr<std::string> sp = util::allocate_shared<std::string>(zallocator{}, "zoot");
+	util::shared_ptr<std::string> sp_copy{sp};
+	CHECK(sp.use_count() == 2);
+	CHECK(sp_copy == sp);
+	CHECK(*sp_copy == "zoot");
+	sp_copy.reset();
+	CHECK(!sp_copy);
+	CHECK(sp.use_count() == 1);
+}
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocate_shared }")
+{
+	using zallocator = util::allocator<std::string, shared_ptr_test::malloc_policy<std::string>>;
+	util::shared_ptr<std::string> sp = util::allocate_shared<std::string>(zallocator{}, "zoot");
 	util::shared_ptr<std::string> sp_copy{sp};
 	CHECK(sp.use_count() == 2);
 	CHECK(sp_copy == sp);
@@ -311,7 +375,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocat
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter and allocator }")
 {
 	shared_ptr_test::int_free_call_count = 0;
-	using zallocator = util::allocator<std::string, shared_ptr_test::malloc_policy<std::string>>;
+	using zallocator = util::allocator<int, shared_ptr_test::malloc_policy<int>>;
 	int* ip = shared_ptr_test::int_malloc{}();
 	*ip = 27;
 	util::shared_ptr<int> p = util::shared_ptr<int>{ip, shared_ptr_test::int_free{}, zallocator{}};

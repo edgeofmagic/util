@@ -510,7 +510,7 @@ public:
 	{
 		if (m_close_handler)
 		{
-			m_close_handler(ptr::dynamic_ptr_cast(m_data.m_self_ptr));
+			m_close_handler(logicmill::util::dynamic_pointer_cast<tcp_acceptor_uv>(m_data.m_self_ptr));
 			m_close_handler = nullptr;
 		}
 		m_connection_handler = nullptr;
@@ -526,25 +526,25 @@ private:
 	static ptr
 	get_shared_acceptor(uv_stream_t* handle)
 	{
-		return ptr::dynamic_ptr_cast(get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(handle)));
+		return logicmill::util::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(handle)));
 	}
 
 	static ptr
 	get_shared_acceptor(uv_tcp_t* handle)
 	{
-		return ptr::dynamic_ptr_cast(get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(handle)));
+		return logicmill::util::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(reinterpret_cast<uv_handle_t*>(handle)));
 	}
 
 	static ptr
 	get_shared_acceptor(uv_handle_t* handle)
 	{
-		return ptr::dynamic_ptr_cast(get_base_shared_ptr(handle));
+		return logicmill::util::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(handle));
 	}
 
 	static tcp_acceptor_uv*
 	get_acceptor_impl_raw(uv_handle_t* handle)
 	{
-		return ptr::dynamic_ptr_cast(get_base_shared_ptr(handle)).get();
+		return logicmill::util::dynamic_pointer_cast<tcp_acceptor_uv>(get_base_shared_ptr(handle)).get();
 	}
 
 	static void

@@ -33,6 +33,17 @@
 #include <iostream>
 #include <logicmill/util/macros.h>
 #include <logicmill/bstream/types.h>
+#include <logicmill/util/shared_ptr.h>
+
+#define USE_STD_SHARED_PTR 1
+
+#if (USE_STD_SHARED_PTR)
+#define SHARED_PTR_TYPE std::shared_ptr
+#define MAKE_SHARED std::make_shared
+#else
+#define SHARED_PTR_TYPE util::shared_ptr
+#define MAKE_SHARED util::make_shared
+#endif
 
 #ifndef NDEBUG
 
@@ -237,7 +248,7 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 	{
 	public:
 
-		using ptr = std::shared_ptr< memory_broker >;
+		using ptr = SHARED_PTR_TYPE< memory_broker >;
 
 		virtual ~memory_broker() {}
 
@@ -265,12 +276,12 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 	{
 	public:
 
-		using ptr = std::shared_ptr< null_broker >;
+		using ptr = SHARED_PTR_TYPE< null_broker >;
 
 		static memory_broker::ptr
 		get()
 		{
-			static memory_broker::ptr broker = std::make_shared< null_broker >();
+			static memory_broker::ptr broker = MAKE_SHARED< null_broker >();
 			return broker;
 		}
 
@@ -316,12 +327,12 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 	{
 	public:
 
-		using ptr = std::shared_ptr< default_broker >;
+		using ptr = SHARED_PTR_TYPE< default_broker >;
 
 		static memory_broker::ptr
 		get()
 		{
-			static memory_broker::ptr broker = std::make_shared< default_broker >();
+			static memory_broker::ptr broker = MAKE_SHARED< default_broker >();
 			return broker;
 		}
 
@@ -366,12 +377,12 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 	{
 	public:
 
-		using ptr = std::shared_ptr< no_realloc_broker >;
+		using ptr = SHARED_PTR_TYPE< no_realloc_broker >;
 
 		static memory_broker::ptr
 		get()
 		{
-			static memory_broker::ptr broker = std::make_shared< no_realloc_broker >();
+			static memory_broker::ptr broker = MAKE_SHARED< no_realloc_broker >();
 			return broker;
 		}
 
@@ -450,7 +461,7 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 			Dealloc			m_dealloc;
 		};
 
-		return std::make_shared< ard_broker >(
+		return MAKE_SHARED< ard_broker >(
 			std::forward< Alloc>( a ), 
 			std::forward< Realloc>( r ), 
 			std::forward< Dealloc >( d  ) );
@@ -514,7 +525,7 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 			Dealloc			m_dealloc;
 		};
 
-		return std::make_shared< ad_broker >( std::forward< Alloc>( a ), std::forward< Dealloc >( d  ) );
+		return MAKE_SHARED<ad_broker>(std::forward<Alloc>(a), std::forward<Dealloc>(d));
 	}
 
 	template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
@@ -571,7 +582,7 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 			Dealloc			m_dealloc;
 		};
 
-		return std::make_shared< d_broker >( std::forward< Dealloc >( d  ) );
+		return MAKE_SHARED< d_broker >( std::forward< Dealloc >( d  ) );
 	}
 
 #else
@@ -608,7 +619,7 @@ protected:
 	class allocation
 	{
 	public:
-		using sptr = std::shared_ptr< allocation >;
+		using sptr = SHARED_PTR_TYPE< allocation >;
 		using uptr = std::unique_ptr< allocation >;
 
 		friend class mutable_buffer;
@@ -1457,7 +1468,7 @@ public:
 
 	// const_buffer( mutable_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
 	// :
-	// m_alloc{ std::make_shared< allocation >( rhs.data(), rhs.size(), broker ) }
+	// m_alloc{ MAKE_SHARED< allocation >( rhs.data(), rhs.size(), broker ) }
 	// {
 	// 	m_data = m_alloc->data();
 	// 	m_size = rhs.size();
@@ -1572,7 +1583,7 @@ public:
 	// shared_buffer&
 	// operator=( mutable_buffer const& rhs )
 	// {
-	// 	m_alloc = std::make_shared< allocation >( rhs.data(), rhs.size() );
+	// 	m_alloc = MAKE_SHARED< allocation >( rhs.data(), rhs.size() );
 	// 	m_data = m_alloc->data();
 	// 	m_size = rhs.size();
 	// 	// ASSERT_MUTABLE_BUFFER_INVARIANTS( buf );
@@ -1605,7 +1616,7 @@ public:
 
 	shared_buffer()
 	:
-	m_alloc{ std::make_shared< allocation >( null_broker::get() ) }
+	m_alloc{ MAKE_SHARED< allocation >( null_broker::get() ) }
 	{
 		m_data = nullptr;
 		m_size = 0;
@@ -1614,7 +1625,7 @@ public:
 
 	// shared_buffer( const void* data, size_type size )
 	// :
-	// m_alloc{ std::make_shared< allocation >( reinterpret_cast< const byte_type* >( data ), size ) }
+	// m_alloc{ MAKE_SHARED< allocation >( reinterpret_cast< const byte_type* >( data ), size ) }
 	// {
 	// 	m_data = m_alloc->data();
 	// 	m_size = size;
@@ -1623,7 +1634,7 @@ public:
 	template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
 	shared_buffer( void* data, size_type size, Dealloc&& dealloc_f )
 	:
-	m_alloc{ std::make_shared< buffer::allocation >( 
+	m_alloc{ MAKE_SHARED< buffer::allocation >( 
 		reinterpret_cast< byte_type* >( data ), size, 
 		create_broker( std::forward< Dealloc >( dealloc_f ) ) ) }
 	{
@@ -1634,7 +1645,7 @@ public:
 
 	shared_buffer( const void* data, size_type size, memory_broker::ptr broker = default_broker::get() )
 	:
-	m_alloc{ std::make_shared< allocation >( reinterpret_cast< const byte_type* >( data ), size, broker ) }
+	m_alloc{ MAKE_SHARED< allocation >( reinterpret_cast< const byte_type* >( data ), size, broker ) }
 	{
 		m_data = m_alloc->data();
 		m_size = size;
@@ -1664,7 +1675,7 @@ public:
 
 	shared_buffer( buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
 	:
-	m_alloc{ std::make_shared< allocation >( rhs.data(), rhs.size(), broker ) }
+	m_alloc{ MAKE_SHARED< allocation >( rhs.data(), rhs.size(), broker ) }
 	{
 		m_data = m_alloc->data();
 		m_size = rhs.size();
@@ -1673,7 +1684,7 @@ public:
 
 	// shared_buffer( mutable_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
 	// :
-	// m_alloc{ std::make_shared< allocation >( rhs.data(), rhs.size(), broker ) }
+	// m_alloc{ MAKE_SHARED< allocation >( rhs.data(), rhs.size(), broker ) }
 	// {
 	// 	m_data = m_alloc->data();
 	// 	m_size = rhs.size();
@@ -1681,7 +1692,7 @@ public:
 
 	// shared_buffer( const_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
 	// :
-	// m_alloc{ std::make_shared< allocation >( rhs.data(), rhs.size(), broker ) }
+	// m_alloc{ MAKE_SHARED< allocation >( rhs.data(), rhs.size(), broker ) }
 	// {
 	// 	m_data = m_alloc->data();
 	// 	m_size = rhs.size();
@@ -1758,7 +1769,7 @@ public:
 
 	// shared_buffer( buffer const& rhs, memory_broker::ptr broker )
 	// :
-	// m_alloc{ std::make_shared< allocation >( rhs.m_data, rhs.m_size, broker ) }
+	// m_alloc{ MAKE_SHARED< allocation >( rhs.m_data, rhs.m_size, broker ) }
 	// {
 	// 	m_data = m_alloc->data();
 	// 	m_size = rhs.m_size;
@@ -1805,7 +1816,7 @@ public:
 	shared_buffer&
 	operator=( buffer const& rhs )
 	{
-		m_alloc = std::make_shared< allocation >( rhs.data(), rhs.size(), default_broker::get() );
+		m_alloc = MAKE_SHARED< allocation >( rhs.data(), rhs.size(), default_broker::get() );
 		m_data = m_alloc->data();
 		m_size = rhs.size();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );

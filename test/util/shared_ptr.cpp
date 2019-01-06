@@ -392,10 +392,16 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 
 	std::cout << "size of shared_ptr is " << sizeof(util::shared_ptr<int>) << std::endl;
 	std::cout << "size of std::string is " << sizeof(std::string) << std::endl;
-	std::cout << "size of control_blk is " << sizeof(util::shared_ptr<int>::control_blk) << std::endl;
-	std::cout << "size of value_control_block is " << sizeof(util::shared_ptr<int>::value_control_block) << std::endl;
-	std::cout << "size of control_blk_base is " << sizeof(util::detail::control_blk_base) << std::endl;
-	std::cout << "size of control_blk_base::delete_erasure is " << sizeof(util::detail::control_blk_base::delete_erasure) << std::endl;
-	std::cout << "size of control_blk_base::destruct_erasure is " << sizeof(util::detail::control_blk_base::destruct_erasure) << std::endl;
+	std::cout << "size of ptr_ctrl_blk is " << sizeof(util::detail::ptr_ctrl_blk<std::string, std::default_delete<std::string>, std::allocator<std::string>>) << std::endl;
+	std::cout << "size of value_control_block is " << sizeof(util::detail::value_ctrl_blk<std::string, std::allocator<std::string>>) << std::endl;
+	std::cout << "size of control_blk_base is " << sizeof(util::detail::ctrl_blk_base) << std::endl;
+}
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct from unique_ptr }")
+{
+	std::unique_ptr<std::string> ups{new std::string{"zoot"}};
+	util::shared_ptr<std::string> sps{std::move(ups)};
+	CHECK(*sps == "zoot");
+	CHECK(ups.get() == nullptr);
 }
 

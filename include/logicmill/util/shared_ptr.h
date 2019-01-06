@@ -27,8 +27,9 @@
 
 #include <cassert>
 #include <cstdint>
-#include <memory>
 #include <functional>
+#include <memory>
+#include <boost/compressed_pair.hpp>
 
 namespace logicmill
 {
@@ -38,40 +39,69 @@ namespace util
 namespace detail
 {
 
-class control_blk_base
+template<class Alloc>
+class allocator_deleter
+{
+	typedef std::allocator_traits<Alloc> alloc_traits;
+
+public:
+	using pointer   = typename alloc_traits::pointer;
+	using size_type = typename alloc_traits::size_type;
+
+private:
+	Alloc&    m_alloc;
+	size_type m_size;
+
+public:
+	allocator_deleter(Alloc& a, size_type s) noexcept : m_alloc(a), m_size(s) {}
+	void
+	operator()(pointer p) noexcept
+	{
+		alloc_traits::destroy(m_alloc, p);
+		alloc_traits::deallocate(m_alloc, p, m_size);
+	}
+};
+
+class ctrl_blk_base
 {
 public:
-	using delete_erasure = std::function<void(void*)>;
-	using destruct_erasure = std::function<void(void*)>;
+	// using delete_erasure = std::function<void(void*)>;
+	// using destruct_erasure = std::function<void(void*)>;
 
-	~control_blk_base()
-	{
-		assert(m_use_count == 0);
-		if (m_elem)
-		{
-			m_delete(m_elem);
-		}
-	}
-	void destroy()
-	{
-		m_destruct(this);
-	}
+	// ~ctrl_blk_base()
+	// {
+	// 	assert(m_use_count == 0);
+	// 	if (m_elem)
+	// 	{
+	// 		m_delete(m_elem);
+	// 	}
+	// }
+	// void destroy()
+	// {
+	// 	m_destruct(this);
+	// }
 
-	control_blk_base(void* p, delete_erasure&& deleter, destruct_erasure&& destruct)
-		: m_elem{p}, m_use_count{1}, m_delete{std::move(deleter)}, m_destruct{std::move(destruct)}
-	{}
+	// ctrl_blk_base(void* p, delete_erasure&& deleter, destruct_erasure&& destruct)
+	// 	: m_elem{p}, m_use_count{1}, m_delete{std::move(deleter)}, m_destruct{std::move(destruct)}
+	// {}
 
-	void*
-	get_vptr() const
-	{
-		return m_elem;
-	}
+	ctrl_blk_base() : m_use_count{1} {}
 
-	void
-	clear()
-	{
-		m_elem = nullptr;
-	}
+	// void*
+	// get_vptr() const
+	// {
+	// 	return m_elem;
+	// }
+
+	// void
+	// clear()
+	// {
+	// 	m_elem = nullptr;
+	// }
+
+	virtual void
+	on_zero_use_count()
+			= 0;
 
 	std::size_t
 	increment_use_count()
@@ -92,10 +122,90 @@ public:
 	}
 
 private:
-	void*       m_elem;
+	// void*       m_elem;
 	std::size_t m_use_count;
-	delete_erasure m_delete;
-	destruct_erasure m_destruct;
+	// delete_erasure m_delete;
+	// destruct_erasure m_destruct;
+};
+
+template<class T, class Del, class Alloc>
+class ptr_ctrl_blk : public ctrl_blk_base
+{
+public:
+	using element_type   = T;
+	using allocator_type = Alloc;
+	using deleter_type   = Del;
+
+	template<class _Del, class _Alloc>
+	ptr_ctrl_blk(element_type* p, _Del&& del, _Alloc&& alloc)
+		: m_data{{p, std::forward<_Del>(del)}, std::forward<_Alloc>(alloc)}
+		// : m_ptr{p}, m_del{std::forward<_Del>(del)}, m_alloc{std::forward<_Alloc>(alloc)}
+	{}
+
+	virtual void
+	on_zero_use_count()
+	{
+		using ctrl_blk_allocator_type = typename allocator_type::template rebind<ptr_ctrl_blk>::other;
+
+		get_deleter()(get_elem_ptr());
+		get_deleter().~deleter_type();
+
+		ctrl_blk_allocator_type cblk_alloc(get_alloc());
+		get_alloc().~allocator_type();
+		cblk_alloc.deallocate(this, 1);
+	}
+
+	element_type*
+	get_ptr() const noexcept
+	{
+		return get_elem_ptr();
+	}
+
+private:
+	using element_pointer = element_type*;
+	using data_type = boost::compressed_pair<boost::compressed_pair<element_pointer, deleter_type>, allocator_type>;
+	data_type m_data;
+
+	element_pointer& get_elem_ptr() { return m_data.first().first(); }
+	deleter_type& get_deleter() { return m_data.first().second(); }
+	allocator_type& get_alloc() {  return m_data.second(); }
+
+	// element_type* m_ptr;
+	// Del           m_del;
+	// Alloc         m_alloc;
+};
+
+template<class T, class Alloc>
+class value_ctrl_blk : public ctrl_blk_base
+{
+public:
+	using element_type   = T;
+	using allocator_type = Alloc;
+
+	template<class _Alloc, class... Args>
+	value_ctrl_blk(_Alloc&& alloc, Args&&... args)
+		: m_value{std::forward<Args>(args)...}, m_alloc{std::forward<_Alloc>(alloc)}
+	{}
+
+	element_type*
+	get_ptr() noexcept
+	{
+		return &m_value;
+	}
+
+	virtual void
+	on_zero_use_count()
+	{
+		using ctrl_blk_allocator_type = typename allocator_type::template rebind<value_ctrl_blk>::other;
+		m_value.~element_type();
+		ctrl_blk_allocator_type cblk_alloc(m_alloc);
+		m_alloc.~allocator_type();
+		cblk_alloc.deallocate(this, 1);
+	}
+
+private:
+	element_type   m_value;
+	allocator_type m_alloc;
 };
 
 }    // namespace detail
@@ -103,18 +213,27 @@ private:
 template<class T>
 class shared_ptr
 {
+private:
+	struct sig_flag
+	{
+		int iflag;
+	};
+
 public:
 	using element_type = T;
 
-// protected:
-	class control_blk : public detail::control_blk_base
+	// protected:
+
+#if 0
+
+	class ptr_ctrl_blk : public detail::ctrl_blk_base
 	{
 	protected:
 
 		friend class shared_ptr;
 
-		control_blk(element_type* ep, delete_erasure&& deleter, destruct_erasure&& destruct)
-		: detail::control_blk_base{ep, std::move(deleter), std::move(destruct)}
+		ptr_ctrl_blk(element_type* ep, delete_erasure&& deleter, destruct_erasure&& destruct)
+		: detail::ctrl_blk_base{ep, std::move(deleter), std::move(destruct)}
 		{}
 
 		element_type*
@@ -122,23 +241,26 @@ public:
 		{
 			return static_cast<element_type*>(get_vptr());
 		}
+	private:
+		element_type* m_elem;
+
 	};
 
-	class value_control_block : public control_blk
+	class value_control_block : public ptr_ctrl_blk
 	{
 	public:
 		friend class shared_ptr;
 
 		~value_control_block()
 		{
-			detail::control_blk_base::clear();
+			detail::ctrl_blk_base::clear();
 		}
 
 		struct use_allocator {};
 
 		template<class... Args>
 		value_control_block(Args&&... args)
-			: control_blk{&m_value,
+			: ptr_ctrl_blk{&m_value,
 						  [](void*) { assert(false); },
 						  [](void* p) {
 							  auto cp = static_cast<value_control_block*>(p);
@@ -150,7 +272,7 @@ public:
 
 		template<class _Alloc, class... Args>
 		value_control_block(use_allocator, _Alloc&& alloc, Args&&... args)
-			: control_blk{&m_value,
+			: ptr_ctrl_blk{&m_value,
 						  [](void*) mutable { assert(false); },
 						  [&alloc](void* p) {
 							  _Alloc a{std::forward<_Alloc>(alloc)};
@@ -164,41 +286,56 @@ public:
 
 		element_type m_value;
 	};
+#endif
 
 public:
 	template<class U>
 	friend class shared_ptr;
 
 	template<class U, class... _Args>
-	friend shared_ptr<U> make_shared(_Args&&...);
+	friend shared_ptr<U>
+	make_shared(_Args&&...);
 
 	template<class U, class _Alloc, class... _Args>
-	friend shared_ptr<U> allocate_shared(_Alloc&&, _Args&&...);
+	friend shared_ptr<U>
+	allocate_shared(_Alloc&&, _Args&&...);
 
 	template<class U, class V>
-	friend shared_ptr<U> dynamic_pointer_cast(shared_ptr<V> const&);
+	friend shared_ptr<U>
+	dynamic_pointer_cast(shared_ptr<V> const&);
 
 	template<class U, class V>
-	friend shared_ptr<U> static_pointer_cast(shared_ptr<V> const&);
+	friend shared_ptr<U>
+	static_pointer_cast(shared_ptr<V> const&);
 
 protected:
 	template<class... Args>
 	static shared_ptr
 	create(Args&&... args)
 	{
-		return shared_ptr{new value_control_block{std::forward<Args>(args)...}};
+		using allocator_type      = std::allocator<element_type>;
+		using deleter_type        = detail::allocator_deleter<allocator_type>;
+		using ctrl_blk_type       = detail::value_ctrl_blk<element_type, allocator_type>;
+		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
+
+		allocator_type alloc{};
+		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
+		new (cblk_ptr) ctrl_blk_type(std::move(alloc), std::forward<Args>(args)...);
+		return shared_ptr{cblk_ptr, cblk_ptr->get_ptr()};
 	}
 
 	template<class _Alloc, class... Args>
 	static shared_ptr
 	allocate(_Alloc&& alloc, Args&&... args)
 	{
-		using allocator_type = typename _Alloc::template rebind<value_control_block>::other;
+		using allocator_type      = _Alloc;
+		using deleter_type        = detail::allocator_deleter<allocator_type>;
+		using ctrl_blk_type       = detail::value_ctrl_blk<element_type, allocator_type>;
+		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
-		allocator_type salloc{std::forward<_Alloc>(alloc)};
-		value_control_block* cp = salloc.allocate(1);
-		new(cp) value_control_block(typename value_control_block::use_allocator{}, std::move(salloc), std::forward<Args>(args)...);
-		return shared_ptr{cp};
+		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
+		new (cblk_ptr) ctrl_blk_type(std::forward<_Alloc>(alloc), std::forward<Args>(args)...);
+		return shared_ptr{cblk_ptr, cblk_ptr->get_ptr()};
 	}
 
 	template<class U>
@@ -210,7 +347,7 @@ protected:
 		{
 			cp->increment_use_count();
 		}
-		return shared_ptr{cp};
+		return shared_ptr{cp, static_cast<element_type*>(p.get())};
 	}
 
 	template<class U>
@@ -231,56 +368,47 @@ protected:
 	}
 
 public:
-
 	shared_ptr() : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
 
-	shared_ptr(element_type* ep)
-		: m_cblk_ptr{new control_blk{ep,
-									 [](void* p) {
-										 if (p)
-										 {
-											 delete static_cast<element_type*>(p);
-										 }
-									 },
-									 [](void* p) { delete static_cast<control_blk*>(p); }}},
-		  m_elem_ptr{ep}
-	{}
+	shared_ptr(element_type* ep) : m_cblk_ptr{nullptr}, m_elem_ptr{ep}
+	{
+		using allocator_type      = std::allocator<element_type>;
+		using deleter_type        = detail::allocator_deleter<allocator_type>;
+		using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
+
+		allocator_type alloc{};
+		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
+		new (cblk_ptr) ctrl_blk_type(ep, deleter_type{alloc, 1}, std::move(alloc));
+		m_cblk_ptr = cblk_ptr;
+	}
 
 	template<class _Del>
-	shared_ptr(element_type* ep, _Del&& del)
-		: m_cblk_ptr{new control_blk{ep,
-									 [del{std::forward<_Del>(del)}](void* p) {
-										 if (p)
-										 {
-											 del(static_cast<element_type*>(p));
-										 }
-									 },
-									 [](void* p) { delete static_cast<control_blk*>(p); }}},
-		  m_elem_ptr{ep}
-	{}
+	shared_ptr(element_type* ep, _Del&& del) : m_cblk_ptr{nullptr}, m_elem_ptr{ep}
+	{
+		using allocator_type      = std::allocator<element_type>;
+		using deleter_type        = _Del;
+		using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
+
+		allocator_type alloc{};
+		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
+		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), std::move(alloc));
+		m_cblk_ptr = cblk_ptr;
+	}
 
 	template<class _Del, class _Alloc>
-	shared_ptr(element_type* ep, _Del&& del, _Alloc&& alloc) : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr}
+	shared_ptr(element_type* ep, _Del&& del, _Alloc&& alloc) : m_cblk_ptr{nullptr}, m_elem_ptr{ep}
 	{
-		using allocator_type = typename _Alloc::template rebind<control_blk>::other;
 
-		allocator_type cballoc{std::forward<_Alloc>(alloc)};
-		m_cblk_ptr = cballoc.allocate(1);
-		new (m_cblk_ptr) control_blk{ep,
-									 [del{std::forward<_Del>(del)}](void* p) {
-										 if (p)
-										 {
-											 del(static_cast<element_type*>(p));
-										 }
-									 },
-									 [cballoc{std::move(cballoc)}](void* p) mutable {
-										 cballoc.destroy(static_cast<control_blk*>(p));
-										 cballoc.deallocate(static_cast<control_blk*>(p), 1);
-									 }
+		using allocator_type      = _Alloc;
+		using deleter_type        = _Del;
+		using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
-
-		};
-		m_elem_ptr = ep;
+		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
+		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), std::forward<_Alloc>(alloc));
+		m_cblk_ptr = cblk_ptr;
 	}
 
 	shared_ptr(shared_ptr const& rhs)
@@ -305,7 +433,68 @@ public:
 		steal(std::move(rhs));
 	}
 
-	shared_ptr(std::nullptr_t)  : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
+	shared_ptr(std::nullptr_t) : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
+
+
+#if 1
+
+	template<class U, class _Del>
+	shared_ptr(
+			std::unique_ptr<U, _Del>&& uptr,
+			typename std::enable_if_t<
+					!std::is_lvalue_reference<_Del>::value && !std::is_array<U>::value
+							&& std::is_convertible<typename std::unique_ptr<U, _Del>::pointer, element_type*>::value,
+					sig_flag> = sig_flag{})
+		: m_elem_ptr(uptr.get())
+	{
+		if (m_elem_ptr == nullptr)
+		{
+			m_cblk_ptr = nullptr;
+		}
+		else
+		{
+			using allocator_type      = std::allocator<element_type>;
+			using deleter_type        = _Del;
+			using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+			using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
+
+			allocator_type alloc;
+			ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
+			new (cblk_ptr) ctrl_blk_type(uptr.get(), uptr.get_deleter(), std::move(alloc));
+			m_cblk_ptr = cblk_ptr;
+		}
+		uptr.release();
+	}
+
+	template<class U, class _Del>
+	shared_ptr(
+			std::unique_ptr<U, _Del>&& uptr,
+			typename std::enable_if_t<
+					std::is_lvalue_reference<_Del>::value && !std::is_array<U>::value
+							&& std::is_convertible<typename std::unique_ptr<U, _Del>::pointer, element_type*>::value,
+					sig_flag> = sig_flag{})
+		: m_elem_ptr(uptr.get())
+	{
+		if (m_elem_ptr == nullptr)
+		{
+			m_cblk_ptr = nullptr;
+		}
+		else
+		{
+			using allocator_type      = std::allocator<element_type>;
+			using deleter_type        = std::reference_wrapper<typename std::remove_reference<_Del>::type>;
+			using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+			using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
+
+			allocator_type alloc;
+			ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
+			new (cblk_ptr) ctrl_blk_type(uptr.get(), std::ref(uptr.get_deleter()), std::move(alloc));
+			m_cblk_ptr = cblk_ptr;
+		}
+		uptr.release();
+	}
+
+#endif
 
 	~shared_ptr()
 	{
@@ -343,7 +532,7 @@ public:
 		return *this;
 	}
 
-	detail::control_blk_base*
+	detail::ctrl_blk_base*
 	get_ctrl_blk() const
 	{
 		return m_cblk_ptr;
@@ -374,6 +563,16 @@ public:
 		return !(*this == rhs);
 	}
 
+	bool operator==(std::nullptr_t) const
+	{
+		return !bool(*this);
+	}
+
+	bool operator!=(std::nullptr_t) const
+	{
+		return bool(*this);
+	}
+
 	element_type*
 	get() const
 	{
@@ -397,12 +596,7 @@ public:
 	}
 
 private:
-
-	shared_ptr(detail::control_blk_base* p)
-		: m_cblk_ptr{p}, m_elem_ptr{static_cast<element_type*>(m_cblk_ptr->get_vptr())}
-	{}
-
-	shared_ptr(detail::control_blk_base* p, element_type* ep) : m_cblk_ptr{p}, m_elem_ptr{ep} {}
+	shared_ptr(detail::ctrl_blk_base* p, element_type* ep) : m_cblk_ptr{p}, m_elem_ptr{ep} {}
 
 	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
@@ -450,10 +644,10 @@ private:
 			assert(m_cblk_ptr->use_count() > 0);
 			if (m_cblk_ptr->decrement_use_count() == 0)
 			{
-				auto cp = m_cblk_ptr;
-				m_cblk_ptr = nullptr;
-				m_elem_ptr = nullptr;
-				cp->destroy();
+				auto cblk_ptr = m_cblk_ptr;
+				m_cblk_ptr    = nullptr;
+				m_elem_ptr    = nullptr;
+				cblk_ptr->on_zero_use_count();
 			}
 			else
 			{
@@ -463,8 +657,8 @@ private:
 		}
 	}
 
-	detail::control_blk_base*  m_cblk_ptr;
-	element_type* m_elem_ptr;
+	detail::ctrl_blk_base* m_cblk_ptr;
+	element_type*          m_elem_ptr;
 };
 
 template<class T, class... Args>
@@ -514,6 +708,6 @@ struct hash<logicmill::util::shared_ptr<U>>
 	}
 };
 
-}
+}    // namespace std
 
 #endif    // LOGICMILL_UTIL_SHARED_PTR_H

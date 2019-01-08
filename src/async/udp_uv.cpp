@@ -73,7 +73,7 @@ udp_transceiver_uv::on_receive(
 	{
 		if (buf->base)
 		{
-			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base));
+			delete [] reinterpret_cast<bstream::byte_type*>(buf->base);
 		}
 		transceiver_ptr->m_receive_handler(
 				transceiver_ptr,
@@ -85,7 +85,7 @@ udp_transceiver_uv::on_receive(
 	{
 		if (buf->base)
 		{
-			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base));
+			delete [] reinterpret_cast<bstream::byte_type*>(buf->base);
 		}
 		if (addr)
 		{
@@ -102,7 +102,7 @@ udp_transceiver_uv::on_receive(
 				transceiver_ptr,
 				bstream::const_buffer{reinterpret_cast<bstream::byte_type*>(buf->base),
 									  static_cast<bstream::size_type>(nread),
-									  bstream::buffer::default_deallocator{}},
+									  std::default_delete<bstream::byte_type[]>{}},
 				async::ip::endpoint{*reinterpret_cast<const sockaddr_storage*>(addr)},
 				std::error_code{});
 	}
@@ -111,9 +111,10 @@ udp_transceiver_uv::on_receive(
 void
 udp_transceiver_uv::on_allocate(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
-	static bstream::buffer::memory_broker::ptr broker = bstream::buffer::default_broker::get();
-	buf->base                                         = reinterpret_cast<char*>(broker->allocate(suggested_size));
-	buf->len                                          = suggested_size;
+	// static bstream::buffer::memory_broker::ptr broker = bstream::buffer::default_broker::get();
+	// buf->base = reinterpret_cast<char*>(std::allocator<bstream::byte_type>{}.allocate(suggested_size));
+	buf->base = reinterpret_cast<char*>(new bstream::byte_type[suggested_size]);
+	buf->len  = suggested_size;
 }
 
 bool

@@ -51,9 +51,16 @@ public:
 
 	friend class detail::sink_test_probe;
 
-	sink(size_type                  size   = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE,
-		 buffer::memory_broker::ptr broker = buffer::default_broker::get())
-		: base{}, m_buf{size, broker}
+	template<class _Alloc>
+	sink(size_type size, _Alloc&& alloc)
+	: base{}, m_buf{size, std::forward<_Alloc>(alloc)}
+	{
+		reset_ptrs();
+	}
+
+	template<class _Alloc>
+	sink(size_type size = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE)
+	: base{}, m_buf{size}
 	{
 		reset_ptrs();
 	}

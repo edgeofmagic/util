@@ -37,7 +37,7 @@ namespace logicmill
 {
 namespace bstream
 {
-
+// TODO: fix configurability of allocator, default size, etc.
 class ibstream;
 
 class context_impl_base : public error_category_context
@@ -52,27 +52,27 @@ public:
 	context_impl_base(
 			bool                       dedup_shared_ptrs,
 			boost::endian::order       byte_order,
-			size_type                  buffer_size = 65536,
-			buffer::memory_broker::ptr broker      = buffer::default_broker::get())
+			size_type                  buffer_size = 65536)
+			// buffer::memory_broker::ptr broker      = buffer::default_broker::get())
 		: error_category_context{},
 		  m_dedup_shared_ptrs{dedup_shared_ptrs},
 		  m_byte_order{byte_order},
-		  m_buffer_size{buffer_size},
-		  m_broker{broker}
+		  m_buffer_size{buffer_size}
+		//   m_broker{broker}
 	{}
 
 	context_impl_base(
 			error_category_context::category_init_list categories,
 			bool                                       dedup_shared_ptrs,
 			boost::endian::order                       byte_order,
-			size_type                                  buffer_size = 65536,
-			buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
+			size_type                                  buffer_size = 65536)
+			// buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
 
 		: error_category_context{categories},
 		  m_dedup_shared_ptrs{dedup_shared_ptrs},
 		  m_byte_order{byte_order},
-		  m_buffer_size{buffer_size},
-		  m_broker{broker}
+		  m_buffer_size{buffer_size}
+		//   m_broker{broker}
 	{}
 
 	virtual ~context_impl_base() {}
@@ -142,17 +142,17 @@ public:
 		return m_buffer_size;
 	}
 
-	buffer::memory_broker::ptr
-	broker() const
-	{
-		return m_broker;
-	}
+	// buffer::memory_broker::ptr
+	// broker() const
+	// {
+	// 	return m_broker;
+	// }
 
 private:
 	bool                       m_dedup_shared_ptrs;
 	boost::endian::order       m_byte_order;
 	size_type                  m_buffer_size;
-	buffer::memory_broker::ptr m_broker;
+	// buffer::memory_broker::ptr m_broker;
 };
 
 using poly_raw_factory_func = std::function<void*(ibstream&)>;

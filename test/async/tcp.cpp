@@ -59,6 +59,10 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
                 ls->close();
                 acceptor_handler_did_execute = true;
             });
+	if (err) 
+	{
+		std::cout << "err on create_acceptor is " << err.message() << std::endl;
+	}
 	CHECK(!err);
 
 	auto connect_timer = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {

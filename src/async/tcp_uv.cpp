@@ -121,7 +121,7 @@ tcp_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_
 	{
 		if (buf->base)
 		{
-			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base));
+			delete [] reinterpret_cast<bstream::byte_type*>(buf->base);
 		}
 		err = map_uv_error(nread);
 		channel_ptr->m_read_handler(channel_ptr, bstream::const_buffer{}, err);
@@ -132,7 +132,7 @@ tcp_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_
 				channel_ptr,
 				bstream::const_buffer{reinterpret_cast<bstream::byte_type*>(buf->base),
 									  static_cast<bstream::size_type>(nread),
-									  bstream::buffer::default_deallocator{}},
+									  std::default_delete<bstream::byte_type[]>{}},
 				err);
 	}
 }
@@ -140,9 +140,9 @@ tcp_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_
 void
 tcp_channel_uv::on_allocate(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
-	static bstream::buffer::memory_broker::ptr broker = bstream::buffer::default_broker::get();
-	buf->base                                         = reinterpret_cast<char*>(broker->allocate(suggested_size));
-	buf->len                                          = suggested_size;
+	// static bstream::buffer::memory_broker::ptr broker = bstream::buffer::default_broker::get();
+	buf->base = reinterpret_cast<char*>(new bstream::byte_type[suggested_size]);
+	buf->len  = suggested_size;
 }
 
 bool
@@ -305,7 +305,7 @@ tcp_framed_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const 
 	{
 		if (buf->base)
 		{
-			logicmill::bstream::buffer::default_deallocator{}(reinterpret_cast<bstream::byte_type*>(buf->base));
+			delete [] reinterpret_cast<bstream::byte_type*>(buf->base);
 		}
 		err = map_uv_error(nread);
 		channel_ptr->m_read_handler(channel_ptr, bstream::const_buffer{}, err);
@@ -316,7 +316,7 @@ tcp_framed_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const 
 				channel_ptr,
 				bstream::const_buffer{reinterpret_cast<bstream::byte_type*>(buf->base),
 									  static_cast<bstream::size_type>(nread),
-									  bstream::buffer::default_deallocator{}});
+									  std::default_delete<bstream::byte_type[]>{}});
 	}
 }
 

@@ -49,18 +49,59 @@ class sink : public bstream::sink
 {
 public:
 	using base = bstream::sink;
+	using default_alloc = std::allocator<byte_type>;
 
 	using buffers = std::deque<mutable_buffer>;
 
 	friend class detail::sink_test_probe;
 
-	sink(size_type                  size   = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE,
-		 buffer::memory_broker::ptr broker = buffer::default_broker::get())
-		: base{}, m_segment_capacity{size}, m_current{0}, m_bufs{}, m_broker{broker}
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	sink(size_type size, _Alloc&& alloc)
+		: base{},
+		  m_segment_capacity{size},
+		  m_current{0},
+		  m_bufs{},
+		  m_factory{std::make_unique<mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
 	{
-		m_bufs.emplace_back(mutable_buffer{m_segment_capacity, m_broker});
+		m_bufs.emplace_back(m_factory->create(size));
 		reset_ptrs();
 	}
+
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	sink(_Alloc&& alloc)
+	: base{},
+	m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
+	m_current{0},
+	m_bufs{},
+	m_factory{std::make_unique<mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
+	{
+		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
+		reset_ptrs();
+	}
+
+	sink(size_type size)
+		: base{},
+		  m_segment_capacity{size},
+		  m_current{0},
+		  m_bufs{},
+		  m_factory{std::make_unique<mutable_buffer_alloc_factory<default_alloc>>()}
+	{
+		m_bufs.emplace_back(m_factory->create(size));
+		reset_ptrs();
+	}
+
+	sink()
+		: base{},
+		  m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
+		  m_current{0},
+		  m_bufs{},
+		  m_factory{std::make_unique<mutable_buffer_alloc_factory<default_alloc>>()}
+	{
+		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
+		reset_ptrs();
+	}
+
+
 
 	sink(sink&&)      = delete;
 	sink(sink const&) = delete;
@@ -110,10 +151,10 @@ protected:
 		set_ptrs(base, base, base + m_segment_capacity);
 	}
 
-	size_type                  m_segment_capacity;    // capacity of individual buffers
-	size_type                  m_current;             // index of current buffer
-	buffers                    m_bufs;
-	buffer::memory_broker::ptr m_broker;
+	size_type                               m_segment_capacity;    // capacity of individual buffers
+	size_type                               m_current;             // index of current buffer
+	buffers                                 m_bufs;
+	std::unique_ptr<mutable_buffer_factory> m_factory;
 };
 
 }    // namespace compound_memory

@@ -138,8 +138,8 @@ public:
 
 	template<class _Del, class _Alloc>
 	ptr_ctrl_blk(element_type* p, _Del&& del, _Alloc&& alloc)
-		: m_data{{p, std::forward<_Del>(del)}, std::forward<_Alloc>(alloc)}
-		// : m_ptr{p}, m_del{std::forward<_Del>(del)}, m_alloc{std::forward<_Alloc>(alloc)}
+		// : m_data{{p, std::forward<_Del>(del)}, std::forward<_Alloc>(alloc)}
+		: m_ptr{p}, m_del{std::forward<_Del>(del)}, m_alloc{std::forward<_Alloc>(alloc)}
 	{}
 
 	virtual void
@@ -147,44 +147,53 @@ public:
 	{
 		using ctrl_blk_allocator_type = typename allocator_type::template rebind<ptr_ctrl_blk>::other;
 
-		get_deleter()(get_elem_ptr());
-		get_deleter().~deleter_type();
+		// get_deleter()(get_elem_ptr());
+		// get_deleter().~deleter_type();
+		m_del(m_ptr);
+		m_del.~deleter_type();
 
-		ctrl_blk_allocator_type cblk_alloc(get_alloc());
-		get_alloc().~allocator_type();
+		// ctrl_blk_allocator_type cblk_alloc(get_alloc());
+		// get_alloc().~allocator_type();
+		// cblk_alloc.deallocate(this, 1);
+
+		ctrl_blk_allocator_type cblk_alloc(m_alloc);
+		m_alloc.~allocator_type();
 		cblk_alloc.deallocate(this, 1);
+
 	}
 
 	element_type*
 	get_ptr() const noexcept
 	{
-		return get_elem_ptr();
+		// return get_elem_ptr();
+		return m_ptr;
 	}
 
 private:
 	using element_pointer = element_type*;
-	using data_type = boost::compressed_pair<boost::compressed_pair<element_pointer, deleter_type>, allocator_type>;
-	data_type m_data;
+	// using data_type = boost::compressed_pair<boost::compressed_pair<element_pointer, deleter_type>, allocator_type>;
+	// data_type m_data;
 
-	element_pointer& get_elem_ptr() { return m_data.first().first(); }
-	deleter_type& get_deleter() { return m_data.first().second(); }
-	allocator_type& get_alloc() {  return m_data.second(); }
+	// element_pointer get_elem_ptr() { return m_data.first().first(); }
+	// deleter_type& get_deleter() { return m_data.first().second(); }
+	// allocator_type& get_alloc() {  return m_data.second(); }
 
-	// element_type* m_ptr;
-	// Del           m_del;
-	// Alloc         m_alloc;
+	element_type* m_ptr;
+	Del           m_del;
+	Alloc         m_alloc;
 };
 
 template<class T, class Alloc>
-class value_ctrl_blk : public ctrl_blk_base
+class value_ctrl_blk : public Alloc, public ctrl_blk_base
 {
 public:
 	using element_type   = T;
 	using allocator_type = Alloc;
+	using base = Alloc;
 
 	template<class _Alloc, class... Args>
 	value_ctrl_blk(_Alloc&& alloc, Args&&... args)
-		: m_value{std::forward<Args>(args)...}, m_alloc{std::forward<_Alloc>(alloc)}
+		: base{std::forward<Alloc>(alloc)}, m_value{std::forward<Args>(args)...}
 	{}
 
 	element_type*
@@ -198,14 +207,14 @@ public:
 	{
 		using ctrl_blk_allocator_type = typename allocator_type::template rebind<value_ctrl_blk>::other;
 		m_value.~element_type();
-		ctrl_blk_allocator_type cblk_alloc(m_alloc);
-		m_alloc.~allocator_type();
+		ctrl_blk_allocator_type cblk_alloc(static_cast<base&>(*this));
+		static_cast<base&>(*this).~allocator_type();
 		cblk_alloc.deallocate(this, 1);
 	}
 
 private:
 	element_type   m_value;
-	allocator_type m_alloc;
+	// allocator_type m_alloc;
 };
 
 }    // namespace detail
@@ -453,9 +462,10 @@ public:
 		}
 		else
 		{
-			using allocator_type      = std::allocator<element_type>;
-			using deleter_type        = _Del;
-			using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+			using uptr_element_type = U;
+			using uptr_deleter_type = _Del;
+			using allocator_type = std::allocator<uptr_element_type>;
+			using ctrl_blk_type       = detail::ptr_ctrl_blk<uptr_element_type, uptr_deleter_type, allocator_type>;
 			using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
 			allocator_type alloc;
@@ -481,9 +491,10 @@ public:
 		}
 		else
 		{
-			using allocator_type      = std::allocator<element_type>;
-			using deleter_type        = std::reference_wrapper<typename std::remove_reference<_Del>::type>;
-			using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+			using uptr_element_type = U;
+			using uptr_deleter_type = _Del;
+			using allocator_type = std::allocator<uptr_element_type>;
+			using ctrl_blk_type       = detail::ptr_ctrl_blk<uptr_element_type, uptr_deleter_type, allocator_type>;
 			using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
 			allocator_type alloc;
@@ -592,7 +603,14 @@ public:
 	std::size_t
 	use_count() const
 	{
-		return m_cblk_ptr->use_count();
+		if (!m_cblk_ptr)
+		{
+			return 0;
+		}
+		else
+		{
+			return m_cblk_ptr->use_count();
+		}
 	}
 
 private:

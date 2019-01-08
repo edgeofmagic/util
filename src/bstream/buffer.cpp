@@ -39,11 +39,11 @@ mutable_buffer::mutable_buffer(const_buffer&& cbuf)
 	:
 
 	  buffer{cbuf.m_data, cbuf.m_size},
-	  m_alloc{std::move(cbuf.m_alloc)},
-	  m_capacity{m_alloc->capacity()}
+	  m_region{std::move(cbuf.m_region)},
+	  m_capacity{m_region->capacity()}
 {
 	cbuf.m_data = nullptr;
 	cbuf.m_size = 0;
-	assert(m_data == m_alloc->data());
+	assert(m_data == m_region->data());
 	ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 }

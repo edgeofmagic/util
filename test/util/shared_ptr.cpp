@@ -403,5 +403,6 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct fr
 	util::shared_ptr<std::string> sps{std::move(ups)};
 	CHECK(*sps == "zoot");
 	CHECK(ups.get() == nullptr);
+
 }
 

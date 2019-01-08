@@ -35,7 +35,7 @@
 #include <logicmill/bstream/types.h>
 #include <logicmill/util/shared_ptr.h>
 
-#define USE_STD_SHARED_PTR 1
+#define USE_STD_SHARED_PTR 0
 
 #if (USE_STD_SHARED_PTR)
 #define SHARED_PTR_TYPE std::shared_ptr
@@ -47,13 +47,13 @@
 
 #ifndef NDEBUG
 
-#define ASSERT_MUTABLE_BUFFER_INVARIANTS( _buf_ )															\
-{																											\
-	assert( ( _buf_ ).m_alloc != nullptr );																	\
-	assert( ( _buf_ ).m_data == ( _buf_ ).m_alloc->data() );												\
-	assert( ( _buf_ ).m_size <= ( _buf_ ).m_alloc->capacity() );											\
-	assert( ( _buf_ ).m_capacity == ( _buf_ ).m_alloc->capacity() );										\
-}																											\
+#define ASSERT_MUTABLE_BUFFER_INVARIANTS(_buf_)                                                                        \
+	{                                                                                                                  \
+		assert((_buf_).m_region != nullptr);                                                                           \
+		assert((_buf_).m_data == (_buf_).m_region->data());                                                            \
+		assert((_buf_).m_size <= (_buf_).m_region->capacity());                                                        \
+		assert((_buf_).m_capacity == (_buf_).m_region->capacity());                                                    \
+	}                                                                                                                  \
 /**/
 
 #if 0
@@ -75,16 +75,15 @@
 }																											\
 /**/
 
-#endif 
+#endif
 
-#define ASSERT_CONST_BUFFER_INVARIANTS( _buf_ )																\
-{																											\
-	assert( ( _buf_ ).m_alloc != nullptr );																	\
-	assert( ( _buf_ ).m_data >= ( _buf_ ).m_alloc->data() );												\
-	assert( ( _buf_ ).m_data <= ( ( _buf_ ).m_alloc->data() + ( _buf_ ).m_alloc->capacity() ) );				\
-	assert( ( ( _buf_ ).m_data + ( _buf_ ).m_size )															\
-			<= ( ( _buf_ ).m_alloc->data() + ( _buf_ ).m_alloc->capacity() ) );								\
-}																											\
+#define ASSERT_CONST_BUFFER_INVARIANTS(_buf_)                                                                          \
+	{                                                                                                                  \
+		assert((_buf_).m_region != nullptr);                                                                           \
+		assert((_buf_).m_data >= (_buf_).m_region->data());                                                            \
+		assert((_buf_).m_data <= ((_buf_).m_region->data() + (_buf_).m_region->capacity()));                           \
+		assert(((_buf_).m_data + (_buf_).m_size) <= ((_buf_).m_region->data() + (_buf_).m_region->capacity()));        \
+	}                                                                                                                  \
 /**/
 
 #define ASSERT_SHARED_BUFFER_INVARIANTS( _buf_ )															\
@@ -106,6 +105,19 @@ namespace logicmill
 namespace bstream
 {
 
+template<class T>
+struct null_delete
+{
+	void operator()(T*) {}
+};
+
+template<class T>
+struct null_delete<T[]>
+{
+	void operator()(T*)
+	{}
+};
+
 class const_buffer;
 
 /** \brief Represents and manages a contiguous region of memory.
@@ -120,187 +132,206 @@ class buffer
 {
 public:
 
-	/** \brief The type used to represent a single byte in the memory region.
-	 */
-	// using byte_type = std::uint8_t;
-	/** \brief The type used to represent the size and capacity of a buffer.
-	 */
-	// using size_type = std::size_t;
-	/** \brief The type used to represent the absolute position of a byte in 
-	 * the memory region, as an offset from the beginning of the region.
-	 */
-	// using position_type = std::uint64_t;
-
-	//	using offset_type = std::int64_t;
-
 	/** \brief The type used to represent a checksum value calculated for
 	 * the memory region.
 	 */
 	using checksum_type = std::uint32_t;
 
-	/** \brief A value representing an invalid size.
-	 */
-	// static const size_type npos = std::numeric_limits< size_type >::max();
+protected:
 
-	/** \brief The type of a <i>callable element</i> (a function or function object) that can be invoked to allocate a region of memory.
-	 * 
-	 * \param size the size of the region to be allocated
-	 * \return	a pointer to the allocated region
-	 * \see memory_broker
-	 * \see default_allocator
-	 */
-
-#if 1
-	using allocator = std::function< byte_type* ( size_type size ) >;
-
-	/** \brief The type of a <i>callable element</i> (a function or function object) that can be invoked to reallocate a region of memory.
-	 * It is typically used to either expand the size of the current region (if possible) or to allocate a new region
-	 * and copy the contents of the existing region into the new region.
-	 * 
-	 * \param data a pointer to the memory region currently in use by the owning buffer
-	 * \param current_size the number of bytes in the current region (data) whose values will be preserved in the reallocated region
-	 * \return	a pointer to the reallocated region
-	 * \see memory_broker
-	 * \see default_reallocator
-	 */
-	using reallocator = std::function< byte_type* ( byte_type* data, size_type current_size, size_type new_size ) >;
-
-	/** \brief The type of a <i>callable element</i> (a function or function object) that can be invoked to deallocate a region of memory.
-	 * 
-	 * \param data a pointer to the memory region to be deallocated
-	 * \see memory_broker
-	 * \see default_deallocator
-	 */
-	using deallocator = std::function< void ( byte_type* data ) >;
-
-	/** \brief The default implementation of allocator used by buffer instances to allocate memory regions.
-	 * This implementation calls the malloc() standard library function.
-	 */
-	struct default_allocator
-	{
-		/** \brief Allocates a memory region of the specified capacity.
-		 * 
-		 * \param capacity the number of bytes to allocate
-		 * \return a pointer to the allocated region
-		 * \see memory_broker
-		 * \see allocator
-		 */
-		byte_type* operator()( size_type capacity ) const
-		{
-			return reinterpret_cast< byte_type* >( ::malloc( capacity ) );
-		}
-	};
-
-LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()
-
-	/** \brief The default implementation of reallocator used by buffer instances to reallocate memory regions.
-	 * This implementation calls the realloc() standard library function.
-	 */
-	struct default_reallocator
-	{
-		/** \brief Rellocates a memory region, preserving the values in the current buffer.
-		 * 
-		 * \param data a pointer to the current region
-		 * \param size the number of bytes in the current region whose values will be preserved
-		 * \param new_cap the capacity of the resulting region
-		 * \return a pointer to the reallocated region
-		 * \see memory_broker
-		 * \see reallocator
-		 */
-		byte_type* operator()( byte_type* data, size_type size, size_type new_cap ) const
-		{
-			return reinterpret_cast< byte_type* >( ::realloc( data, new_cap ) );
-		}
-	};
-
-LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
-
-	/** \brief The default implementation of deallocator used by buffer instances to release memory regions.
-	 * This implementation calls the free() standard library function.
-	 */
-	struct default_deallocator
-	{
-		/** \brief Deallocates a memory region.
-		 * 
-		 * \param data a pointer to the region to be deallocated
-		 * \see memory_broker
-		 * \see deallocator
-		 */
-		void operator()( byte_type* data ) const
-		{
-			::free( data );
-		}
-	};
-
-	/** \brief An implementation of deallocator that does nothing.
-	 * 
-	 * This implementation is useful in situations where the calling environment
-	 * assumes responsibility for managing memory region lifecycles, to prevent
-	 * deallocation by the buffer object.
-	 */
-	struct null_deallocator
-	{
-		void operator()( byte_type* ) const
-		{}
-	};
-
-	class memory_broker
+	class region
 	{
 	public:
+		region(byte_type* data, size_type capacity) : m_data{data}, m_capacity{capacity} {}
 
-		using ptr = SHARED_PTR_TYPE< memory_broker >;
+		virtual ~region() {}
 
-		virtual ~memory_broker() {}
-
-		virtual byte_type* 
-		allocate( size_type capacity ) = 0;
+	protected:
 
 		virtual byte_type*
-		reallocate( byte_type* data, size_type preserve, size_type new_capacity ) = 0;
+		alloc(size_type capacity) = 0;
 
 		virtual void
-		deallocate( byte_type* data ) = 0;
+		dealloc(byte_type* p, size_type capacity) = 0;
+
+	public:
 
 		virtual bool
 		can_allocate() const = 0;
 
-		virtual bool
-		can_reallocate() const = 0;
+		byte_type*
+		allocate(size_type capacity)
+		{
+			if (!can_allocate())
+			{
+				throw std::system_error{make_error_code(std::errc::operation_not_supported)};
+			}
+			auto m_data = alloc(capacity);
+			if (!m_data)
+			{
+				throw std::system_error{make_error_code(std::errc::no_buffer_space)};
+			}
+			m_capacity = capacity;
+			return m_data;
+		}
 
-		virtual bool
-		can_deallocate() const = 0;
+		byte_type*
+		allocate(size_type capacity, std::error_code& err)
+		{
+			err.clear();
+			byte_type* p{nullptr};
+			if (!can_allocate())
+			{
+				err = make_error_code(std::errc::operation_not_supported);
+				goto exit;
+			}
+			p = alloc(capacity);
+			if (!p)
+			{
+				err = make_error_code(std::errc::no_buffer_space);
+				goto exit;
+			}
+			m_data = p;
+			m_capacity = capacity;
 
+		exit:
+			return m_data;
+		}
+
+
+		void
+		deallocate()
+		{
+			dealloc(m_data, m_capacity);
+			m_data = nullptr;
+			m_capacity = 0;
+		}
+
+		byte_type*
+		reallocate(size_type new_capacity)
+		{
+			return reallocate(m_capacity, new_capacity);
+		}
+
+		byte_type*
+		reallocate(size_type new_capacity, std::error_code& err)
+		{
+			return reallocate(m_capacity, new_capacity, err);
+		}
+
+
+		byte_type*
+		reallocate( size_type current_size, size_type new_capacity )
+		{
+			if (!can_allocate())
+			{
+				throw std::system_error{make_error_code(std::errc::operation_not_supported)};
+			}
+
+			if ( ! m_data && new_capacity > 0 )
+			{
+				auto p = alloc(new_capacity);
+				if (!p)
+				{
+					throw std::system_error{make_error_code(std::errc::no_buffer_space)};
+				}
+				m_data = p;
+				m_capacity = new_capacity;
+				// m_data = m_broker->allocate( new_capacity );
+				// m_capacity = new_capacity;
+			}
+			else if ( new_capacity > m_capacity )
+			{
+				current_size = ( current_size > m_capacity ) ?  m_capacity : current_size;
+				auto p = alloc(new_capacity);
+				if (!p)
+				{
+					throw std::system_error{make_error_code(std::errc::no_buffer_space)};
+				}
+				::memcpy(p, m_data, current_size);
+				dealloc(m_data, m_capacity);
+				m_data = p;
+				m_capacity = new_capacity;
+			}
+			return m_data;
+		}
+
+		byte_type*
+		reallocate( size_type current_size, size_type new_capacity, std::error_code& err )
+		{
+			err.clear();
+			if (!can_allocate())
+			{
+				err = make_error_code(std::errc::operation_not_supported);
+				goto exit;
+			}
+
+			if ( ! m_data && new_capacity > 0 )
+			{
+				auto p = alloc(new_capacity);
+				if (!p)
+				{
+					err = make_error_code(std::errc::no_buffer_space);
+					goto exit;
+				}
+				m_data = p;
+				m_capacity = new_capacity;
+				// m_data = m_broker->allocate( new_capacity );
+				// m_capacity = new_capacity;
+			}
+			else if ( new_capacity > m_capacity )
+			{
+				current_size = ( current_size > m_capacity ) ?  m_capacity : current_size;
+				auto p = alloc(new_capacity);
+				if (!p)
+				{
+					err = make_error_code(std::errc::no_buffer_space);
+					goto exit;
+				}
+				::memcpy(p, m_data, current_size);
+				dealloc(m_data, m_capacity);
+				m_data = p;
+				m_capacity = new_capacity;
+			}
+		exit:
+			return m_data;
+		}
+
+		byte_type*
+		data()
+		{
+			return m_data;
+		}
+
+		size_type
+		capacity()
+		{
+			return m_capacity;
+		}
+
+	protected:
+		byte_type* m_data;
+		size_type m_capacity;
 	};
 
-	class null_broker : public memory_broker
+	template<class Del>
+	class del_region : protected Del, public region
 	{
 	public:
+		using deleter_base = Del;
+		using deleter_type = Del;
 
-		using ptr = SHARED_PTR_TYPE< null_broker >;
+		template<class _Del>
+		del_region(byte_type* data, size_type capacity, _Del&& del)
+			: deleter_base{std::forward<_Del>(del)}, region{data, capacity}
+		{}
 
-		static memory_broker::ptr
-		get()
+		del_region(byte_type* data, size_type capacity) : deleter_base{deleter_type{}}, region{data, capacity} {}
+
+		virtual ~del_region()
 		{
-			static memory_broker::ptr broker = MAKE_SHARED< null_broker >();
-			return broker;
-		}
-
-		virtual byte_type* 
-		allocate( size_type capacity ) override
-		{
-			throw std::system_error{ make_error_code( std::errc::operation_not_supported ) };
-		}
-
-		virtual byte_type*
-		reallocate( byte_type* buf, size_type preserve, size_type new_capacity ) override
-		{
-			throw std::system_error{ make_error_code( std::errc::operation_not_supported ) };
-		}
-
-		virtual void
-		deallocate( byte_type* buf ) override
-		{
-			throw std::system_error{ make_error_code( std::errc::operation_not_supported ) };
+			dealloc(m_data, m_capacity);
+			m_data = nullptr;
 		}
 
 		virtual bool
@@ -309,49 +340,87 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 			return false;
 		}
 
-		virtual bool
-		can_reallocate() const override
-		{
-			return false;
-		}
-
-		virtual bool
-		can_deallocate() const override
-		{
-			return false;
-		}
-
-	};
-
-	class default_broker : public memory_broker
-	{
-	public:
-
-		using ptr = SHARED_PTR_TYPE< default_broker >;
-
-		static memory_broker::ptr
-		get()
-		{
-			static memory_broker::ptr broker = MAKE_SHARED< default_broker >();
-			return broker;
-		}
-
-		virtual byte_type* 
-		allocate( size_type capacity ) override
-		{
-			return ( capacity > 0 ) ? reinterpret_cast< byte_type* >( ::malloc( capacity ) ) : nullptr;
-		}
+	protected:
 
 		virtual byte_type*
-		reallocate( byte_type* data, size_type, size_type new_capacity ) override
+		alloc(size_type) override
 		{
-			return ( new_capacity > 0 ) ? reinterpret_cast< byte_type* >( ::realloc( data, new_capacity ) ) : nullptr;
+			return nullptr;
 		}
 
 		virtual void
-		deallocate( byte_type* data ) override
+		dealloc(byte_type* p, size_type) override
 		{
-			::free( data );
+			deleter_base::operator()(p);
+		}
+	};
+
+
+	template<class Alloc = std::allocator<byte_type>>
+	class alloc_region : protected Alloc, public region
+	{
+	public:
+		using sptr = SHARED_PTR_TYPE<alloc_region>;
+		using uptr = std::unique_ptr<alloc_region>;
+
+		using allocator_type = Alloc;
+		using allocator_base = Alloc;
+
+
+		alloc_region() : allocator_base{allocator_type{}}, region{nullptr, 0} {}
+
+		template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+		alloc_region(_Alloc&& alloc) : allocator_base{std::forward<_Alloc>(alloc)},
+		region{nullptr, 0}
+		{}
+
+		template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+		alloc_region(size_type capacity, _Alloc&& alloc)
+			: allocator_base{std::forward<_Alloc>(alloc)},
+			region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
+		{}
+
+		alloc_region(size_type capacity)
+			: allocator_base{allocator_type{}},
+			region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
+		{}
+
+		template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+		alloc_region(const byte_type* data, size_type size, _Alloc&& alloc)
+			: allocator_base{std::forward<_Alloc>(alloc)},
+			region{allocator_base::allocate(size), size}
+		{
+			if ( m_data && data && size > 0 )
+			{
+				::memcpy( m_data, data, size );
+			}
+		}
+
+		alloc_region(const byte_type* data, size_type size)
+		: allocator_base{allocator_type{}}, region{allocator_base::allocate(size), size}
+		{
+			if ( m_data && data && size > 0 )
+			{
+				::memcpy( m_data, data, size );
+			}
+		}
+
+		template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+		alloc_region(byte_type* data, size_type capacity, _Alloc&& alloc)
+		: allocator_base{std::forward<_Alloc>(alloc)},
+		region{data, capacity}
+		{}
+
+		alloc_region(byte_type* data, size_type capacity)
+		: allocator_base{allocator_type{}},
+		region{data, capacity}
+		{}
+
+		virtual ~alloc_region() 
+		{
+			dealloc(m_data, m_capacity);
+			m_data = nullptr;
+			m_capacity = 0;
 		}
 
 		virtual bool
@@ -360,262 +429,51 @@ LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()
 			return true;
 		}
 
-		virtual bool
-		can_reallocate() const override
-		{
-			return true;
-		}
-
-		virtual bool
-		can_deallocate() const override
-		{
-			return true;
-		}
-	};
-
-	class no_realloc_broker : public default_broker
-	{
-	public:
-
-		using ptr = SHARED_PTR_TYPE< no_realloc_broker >;
-
-		static memory_broker::ptr
-		get()
-		{
-			static memory_broker::ptr broker = MAKE_SHARED< no_realloc_broker >();
-			return broker;
-		}
+	protected:
 
 		virtual byte_type*
-		reallocate( byte_type* buf, size_type preserve, size_type new_capacity ) override
+		alloc(size_type capacity) override
 		{
-			throw std::system_error{ make_error_code( std::errc::operation_not_supported ) };
-		}
-
-		virtual bool
-		can_reallocate() const override
-		{
-			return false;
-		}
-
-	};
-
-	template< class Alloc, class Realloc, class Dealloc, class = std::enable_if_t< 
-		std::is_convertible_v< Alloc, allocator >
-		&& std::is_convertible_v< Realloc, reallocator >
-		&& std::is_convertible_v< Dealloc, deallocator > > >
-	static memory_broker::ptr
-	create_broker( Alloc&& a, Realloc&& r, Dealloc&& d )
-	{
-
-		class ard_broker : public memory_broker
-		{
-		public:
-
-			ard_broker( Alloc&& a, Realloc&& r, Dealloc&& d )
-			:
-			m_alloc{ std::forward< Alloc >( a ) },
-			m_realloc{ std::forward< Realloc >( r ) },
-			m_dealloc{ std::forward< Dealloc >( d ) }
-			{}
-
-			virtual byte_type* 
-			allocate( size_type capacity ) override
-			{
-				return m_alloc( capacity );
-			}
-
-			virtual byte_type*
-			reallocate( byte_type* data, size_type preserve, size_type new_capacity ) override
-			{
-				return m_realloc( data, preserve, new_capacity );
-			}
-
-			virtual void
-			deallocate( byte_type* data ) override
-			{
-				m_dealloc( data );
-			}
-
-			virtual bool
-			can_allocate() const override
-			{
-				return true;
-			}
-
-			virtual bool
-			can_reallocate() const override
-			{
-				return true;
-			}
-
-			virtual bool
-			can_deallocate() const override
-			{
-				return true;
-			}
-
-		private:
-			Alloc			m_alloc;
-			Realloc			m_realloc;
-			Dealloc			m_dealloc;
-		};
-
-		return MAKE_SHARED< ard_broker >(
-			std::forward< Alloc>( a ), 
-			std::forward< Realloc>( r ), 
-			std::forward< Dealloc >( d  ) );
-	}
-
-	template< class Alloc, class Dealloc, class = std::enable_if_t< 
-		std::is_convertible_v< Alloc, allocator >
-		&& std::is_convertible_v< Dealloc, deallocator > > >
-	static memory_broker::ptr
-	create_broker( Alloc&& a, Dealloc&& d )
-	{
-
-		class ad_broker : public memory_broker
-		{
-		public:
-
-			ad_broker( Alloc&& a, Dealloc&& d )
-			:
-			m_alloc{ std::forward< Alloc >( a ) },
-			m_dealloc{ std::forward< Dealloc >( d ) }
-			{}
-
-			virtual byte_type* 
-			allocate( size_type capacity ) override
-			{
-				return m_alloc( capacity );
-			}
-
-			virtual byte_type*
-			reallocate( byte_type* data, size_type preserve, size_type new_capacity ) override
-			{
-				throw std::system_error{ make_error_code( std::errc::operation_not_supported ) };
-			}
-
-			virtual void
-			deallocate( byte_type* data ) override
-			{
-				m_dealloc( data );
-			}
-
-			virtual bool
-			can_allocate() const override
-			{
-				return true;
-			}
-
-			virtual bool
-			can_reallocate() const override
-			{
-				return false;
-			}
-
-			virtual bool
-			can_deallocate() const override
-			{
-				return true;
-			}
-
-		private:
-			Alloc			m_alloc;
-			Dealloc			m_dealloc;
-		};
-
-		return MAKE_SHARED<ad_broker>(std::forward<Alloc>(a), std::forward<Dealloc>(d));
-	}
-
-	template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
-	static memory_broker::ptr
-	create_broker( Dealloc&& d )
-	{
-
-		class d_broker : public memory_broker
-		{
-		public:
-
-			d_broker( Dealloc&& d )
-			:
-			m_dealloc{ std::forward< Dealloc >( d ) }
-			{}
-
-			virtual byte_type* 
-			allocate( size_type capacity ) override
-			{
-				throw std::system_error{ make_error_code( std::errc::operation_not_supported ) };
-			}
-
-			virtual byte_type*
-			reallocate( byte_type* data, size_type preserve, size_type new_capacity ) override
-			{
-				throw std::system_error{ make_error_code( std::errc::operation_not_supported ) };
-			}
-
-			virtual void
-			deallocate( byte_type* data ) override
-			{
-				m_dealloc( data );
-			}
-
-			virtual bool
-			can_allocate() const override
-			{
-				return false;
-			}
-
-			virtual bool
-			can_reallocate() const override
-			{
-				return false;
-			}
-
-			virtual bool
-			can_deallocate() const override
-			{
-				return true;
-			}
-
-		private:
-			Dealloc			m_dealloc;
-		};
-
-		return MAKE_SHARED< d_broker >( std::forward< Dealloc >( d  ) );
-	}
-
-#else
-
-	class allocator
-	{
-	public:
-		virtual byte_type*
-		allocate(size_type size) = 0;
-
-		virtual void
-		deallocate(byte_type* p, size_type size) = 0;
-	};
-
-	class default_allocator : public allocator
-	{
-	public:
-		virtual byte_type*
-		allocate(size_type size) override
-		{
-			return reinterpret_cast<byte_type*>(::malloc(size));
+			return allocator_base::allocate(capacity);
 		}
 
 		virtual void
-		deallocate(byte_type* p, size_type /* size */)
+		dealloc(byte_type* p, size_type capacity) override
 		{
-			::free(p);
+			allocator_base::deallocate(p, capacity);
 		}
 	};
-#endif
 
-protected:
+	class region_factory
+	{
+	public:
+		virtual std::unique_ptr<region>
+		create(size_type capacity) = 0;
+	};
 
+	template<class Alloc = std::allocator<byte_type>, class Enable = void>
+	class alloc_region_factory;
+
+	template<class Alloc>
+	class alloc_region_factory<Alloc, typename std::enable_if_t<std::is_same<typename Alloc::pointer, byte_type*>::value>>
+		: public region_factory, public Alloc
+	{
+	public:
+		template< class _Alloc>
+		alloc_region_factory(_Alloc&& alloc) : Alloc{std::forward<_Alloc>(alloc)}
+		{}
+
+		alloc_region_factory() : Alloc{}
+		{}
+
+		virtual std::unique_ptr<region>
+		create(size_type capacity) override
+		{
+			return std::make_unique<alloc_region<Alloc>>(capacity, static_cast<Alloc>(*this));
+		}
+	};
+
+#if 0
 	class allocation
 	{
 	public:
@@ -751,6 +609,7 @@ protected:
 		size_type 					m_capacity;
 		byte_type* 					m_data;
 	};
+#endif
 
 public:
 
@@ -935,10 +794,17 @@ protected:
  */
 class mutable_buffer : public buffer
 {
+protected:
+	std::unique_ptr<region> m_region;
+	size_type               m_capacity;
+
 public:
 
 	using buffer::data;
 	using buffer::size;
+
+	using default_alloc = std::allocator<byte_type>;
+	using default_del = std::default_delete<byte_type>;
 
 	friend class const_buffer;
 	friend class shared_buffer;
@@ -948,6 +814,12 @@ public:
 	 * The constructed instance owns a copy of the default memory_broker, and no allocated memory region, such that
 	 * data() == nullptr, capacity() == 0, size() == 0.
 	 */
+	mutable_buffer() :
+	m_region{std::make_unique<alloc_region<default_alloc>>()},
+	m_capacity{0}
+	{
+		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+	}
 	// mutable_buffer()
 	// :
 	// m_alloc{ std::make_unique< allocation >() },
@@ -956,17 +828,26 @@ public:
 	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	// }
 
+
+
 	/** \brief Construct with the specified memory_broker.
 	 * 
 	 * \param broker a shared pointer to the memory_broker to be used by the allocation
 	 */
-	mutable_buffer( memory_broker::ptr broker = default_broker::get() )
-	:
-	m_alloc{ std::make_unique< allocation >( broker ) },
-	m_capacity{ 0 }
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	mutable_buffer(_Alloc&& alloc) :
+	m_region{ std::make_unique<alloc_region<_Alloc>>(std::forward<_Alloc>(alloc))},
+	m_capacity{0}
 	{
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	}
+	// mutable_buffer( memory_broker::ptr broker = default_broker::get() )
+	// :
+	// m_alloc{ std::make_unique< allocation >( broker ) },
+	// m_capacity{ 0 }
+	// {
+	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+	// }
 
 	/** \brief Construct with the specified capacity.
 	 * 
@@ -992,6 +873,7 @@ public:
 	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	// }
 
+
 	/** \brief Construct with the specified memory_broker and capacity
 	 * 
 	 * The consructed instance uses the provided memory_broker to allocate a region with the specified capacity.
@@ -1000,22 +882,41 @@ public:
 	 * \param capacity the capacity of the allocated memory region
 	 * \param alloc a universal reference to an allocation_manager that is forwarded to the constructed instance
 	 */
-	mutable_buffer( size_type capacity, memory_broker::ptr broker = default_broker::get() )
-	:
-	m_alloc{ std::make_unique< allocation >( capacity, broker ) },
-	m_capacity{ capacity }
+	mutable_buffer(size_type capacity)
+	: m_region{std::make_unique<alloc_region<default_alloc>>(capacity)}, m_capacity{capacity}
 	{
-		// if ( m_alloc->can_allocate() )
-		// {
-		// 	m_data = m_alloc->allocate( capacity );
-		// 	assert( m_data != nullptr );
-		// 	m_capacity = capacity;
-		// 	m_size = 0;
-		// }
-		m_data = m_alloc->data();
+		m_data = m_region->data();
 		m_size = 0;
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	}
+
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	mutable_buffer(size_type capacity, _Alloc&& alloc)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(capacity, std::forward<_Alloc>(alloc))}, m_capacity{capacity}
+	{
+		m_data = m_region->data();
+		m_size = 0;
+		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+	}
+
+
+	// mutable_buffer( size_type capacity, memory_broker::ptr broker = default_broker::get() )
+	// :
+	// m_region{ std::make_unique< allocation >( capacity, broker ) },
+	// m_capacity{ capacity }
+	// {
+	// 	// if ( m_alloc->can_allocate() )
+	// 	// {
+	// 	// 	m_data = m_alloc->allocate( capacity );
+	// 	// 	assert( m_data != nullptr );
+	// 	// 	m_capacity = capacity;
+	// 	// 	m_size = 0;
+	// 	// }
+	// 	m_data = m_region->data();
+	// 	m_size = 0;
+	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+	// }
+
 
 	/** \brief Construct with the provided memory region and specified deallocator callable object.
 	 * 
@@ -1033,36 +934,79 @@ public:
 	 * \param cap the size of the region
 	 * \param dealloc_f a callable object convertible to type deallocator, to be invoked when this instance is destroyed
 	 */
-
-	template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
-	mutable_buffer( void* data, size_type capacity, Dealloc&& dealloc_f )
-	:
-	m_alloc{ std::make_unique< allocation >( reinterpret_cast< byte_type* >( data ), capacity, std::forward< Dealloc >( dealloc_f ) ) },
-	m_capacity{ capacity }
+	template<class _Del>
+	mutable_buffer(void* data, size_type capacity, _Del&& del)
+		: m_region{std::make_unique<del_region<_Del>>(
+				  reinterpret_cast<byte_type*>(data),
+				  capacity,
+				  std::forward<_Del>(del))},
+		  m_capacity{capacity}
 	{
-		m_data = reinterpret_cast< byte_type* >( data );
+		m_data = m_region->data();
 		m_size = 0;
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	}
 
+	// mutable_buffer(void* data, size_type capacity)
+	// 	: m_region{std::make_unique<del_region<default_del>>(static_cast<byte_type*>(data), capacity)}, m_capacity{capacity}
+	// {
+	// 	m_data = m_region->data();
+	// 	m_size = 0;
+	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+	// }
+
+
+	// template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
+	// mutable_buffer( void* data, size_type capacity, Dealloc&& dealloc_f )
+	// :
+	// m_region{ std::make_unique< allocation >( reinterpret_cast< byte_type* >( data ), capacity, std::forward< Dealloc >( dealloc_f ) ) },
+	// m_capacity{ capacity }
+	// {
+	// 	m_data = reinterpret_cast< byte_type* >( data );
+	// 	m_size = 0;
+	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+	// }
+
+
+
+
 #if 1
-	mutable_buffer( const void* data, size_type capacity ) // TODO: mostly here for testing, consider removing
-	:
-	m_alloc{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( data ), capacity ) },
-	m_capacity{ capacity }
+
+	mutable_buffer(const void* data, size_type capacity) // TODO: mostly here for testing, consider removing
+	: m_region{std::make_unique<alloc_region<default_alloc>>(reinterpret_cast<const byte_type*>(data), capacity)},
+	m_capacity{capacity}
 	{
-		m_data = m_alloc->data();
+		m_data = m_region->data();
 		m_size = capacity;
+		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	}
 
-	mutable_buffer( std::string const& s )
-	:
-	m_alloc{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( s.data() ), s.size() ) },
-	m_capacity{ s.size() }
+	// mutable_buffer( const void* data, size_type capacity ) // TODO: mostly here for testing, consider removing
+	// :
+	// m_region{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( data ), capacity ) },
+	// m_capacity{ capacity }
+	// {
+	// 	m_data = m_region->data();
+	// 	m_size = capacity;
+	// }
+
+	mutable_buffer(std::string const& s)
+	: m_region{std::make_unique<alloc_region<default_alloc>>(reinterpret_cast< const byte_type* >( s.data() ), s.size())},
+	m_capacity{s.size()}
 	{
-		m_data = m_alloc->data();
+		m_data = m_region->data();
 		m_size = s.size();
+		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 	}
+
+	// mutable_buffer( std::string const& s )
+	// :
+	// m_region{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( s.data() ), s.size() ) },
+	// m_capacity{ s.size() }
+	// {
+	// 	m_data = m_region->data();
+	// 	m_size = s.size();
+	// }
 
 #endif
 
@@ -1071,7 +1015,7 @@ public:
 	mutable_buffer( mutable_buffer&& rhs )
 	:
 	// buffer{ rhs.m_data, rhs.m_size },
-	m_alloc{ std::move( rhs.m_alloc ) },
+	m_region{ std::move( rhs.m_region ) },
 	m_capacity{ rhs.m_capacity }
 	{
 		m_data = rhs.m_data;
@@ -1084,20 +1028,21 @@ public:
 
 	mutable_buffer(const_buffer&& cbuf);
 
-	mutable_buffer
-	fork()
-	{
-		return mutable_buffer{ m_capacity, m_alloc->m_broker };
-	}
+	// mutable_buffer
+	// fork()
+	// {
+	// 	return mutable_buffer{ m_capacity, m_region->m_broker };
+	// }
 
 	mutable_buffer&
 	operator=( mutable_buffer&& rhs )
 	{
 		// don't assert invariants, this (lhs of assign) may be victim of a move
 		// ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
 
-		m_alloc = std::move( rhs.m_alloc );
+		m_region = std::move( rhs.m_region );
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		m_capacity = rhs.m_capacity;
@@ -1160,7 +1105,7 @@ public:
 
 	bool is_expandable() const
 	{
-		return m_alloc->can_reallocate();
+		return m_region->can_allocate();
 	}
 
 	mutable_buffer&
@@ -1176,12 +1121,14 @@ public:
 			{
 				assert( m_capacity == 0 );
 				assert( m_size == 0 );
-				assert( m_alloc->data() == nullptr );
-				assert( m_alloc->capacity() == 0 );
-				if ( m_alloc->can_allocate() )
+				assert( m_region->data() == nullptr );
+				assert( m_region->capacity() == 0 );
+				if ( m_region->can_allocate() )
 				{
-					m_data = m_alloc->allocate( new_cap );
-					m_capacity = m_alloc->capacity();
+					m_data = m_region->allocate(new_cap, err);
+					if (err) goto exit;
+
+					m_capacity = m_region->capacity();
 				}
 				else
 				{
@@ -1189,18 +1136,21 @@ public:
 					goto exit;
 				}
 			}
-			else if ( m_alloc->can_reallocate() )
+			else if ( m_region->can_allocate() )
 			{
 				assert( m_capacity > 0 );
-				m_alloc->reallocate( m_size, new_cap );
+				m_data = m_region->reallocate( m_size, new_cap, err);
+				if (err) goto exit;
+
+				m_capacity = m_region->capacity();
 			}
 			else
 			{
 				err = make_error_code( std::errc::operation_not_supported );
 				goto exit;
 			}
-			m_data = m_alloc->data();
-			m_capacity = m_alloc->capacity();
+			m_data = m_region->data();
+			m_capacity = m_region->capacity();
 		}
 
 	exit:
@@ -1358,27 +1308,53 @@ public:
 	{
 		return putn( offset, s, ::strlen( s ) );
 	}
+};
 
+class mutable_buffer_factory
+{
+public:
+	virtual ~mutable_buffer_factory() {}
+	virtual mutable_buffer
+	create(size_type size) = 0;
+};
 
-protected:
+template<class Alloc = std::allocator<byte_type>, class Enable = void>
+class mutable_buffer_alloc_factory;
 
-	allocation::uptr	m_alloc;
-	size_type			m_capacity;
+template<class Alloc>
+class mutable_buffer_alloc_factory<Alloc, typename std::enable_if_t<std::is_same<typename Alloc::pointer, byte_type*>::value>>
+	: public Alloc, public mutable_buffer_factory
+{
+public:
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	mutable_buffer_alloc_factory(_Alloc&& alloc) : Alloc{std::forward<_Alloc>(alloc)}
+	{}
+
+	mutable_buffer_alloc_factory() : Alloc{}
+	{}
+
+	virtual mutable_buffer
+	create(size_type size) override
+	{
+		return mutable_buffer{size, static_cast<Alloc>(*this)};
+	}
 };
 
 class const_buffer : public buffer
 {
 protected:
-	buffer::allocation::uptr	m_alloc;
+	std::unique_ptr<region>	m_region;
 
 public:
+	using default_alloc = std::allocator<byte_type>;
+	using default_del = std::default_delete<byte_type>;
 
 	friend class mutable_buffer;
 	friend class shared_buffer;
 
 	const_buffer()
 	:
-	m_alloc{ std::make_unique< allocation >( null_broker::get() ) }
+	m_region{std::make_unique<alloc_region<default_alloc>>()}
 	{
 		m_data = nullptr;
 		m_size = 0;
@@ -1393,44 +1369,63 @@ public:
 	// 	m_size = size;
 	// }
 
-	template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
-	const_buffer( void* data, size_type size, Dealloc&& dealloc_f )
-	:
-	m_alloc{ std::make_unique< buffer::allocation >( 
-		reinterpret_cast< byte_type* >( data ), size, 
-		// create_broker( std::forward< Dealloc >( dealloc_f ) ) ) }
-		std::forward< Dealloc >( dealloc_f ) ) }
+	template<class _Del>
+	const_buffer(void* data, size_type size, _Del&& del)
+		: m_region{
+				  std::make_unique<del_region<_Del>>(reinterpret_cast<byte_type*>(data), size, std::forward<_Del>(del))}
 	{
-		m_data = reinterpret_cast< byte_type* >( data );
+		m_data = reinterpret_cast<byte_type*>(data);
 		m_size = size;
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
 
-	const_buffer( const void* data, size_type size, memory_broker::ptr broker = buffer::default_broker::get() )
-	:
-	m_alloc{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( data ), size, broker ) }
+	const_buffer(const void* data, size_type size)
+		: m_region{std::make_unique<alloc_region<default_alloc>>(reinterpret_cast<const byte_type*>(data), size)}
 	{
-		m_data = m_alloc->data();
+		m_data = m_region->data();
 		m_size = size;
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
 
-	const_buffer( buffer const& rhs, memory_broker::ptr broker = buffer::default_broker::get() )
-	:
-	m_alloc{ std::make_unique< allocation >( rhs.m_data, rhs.m_size, broker ) }
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	const_buffer(const void* data, size_type size, _Alloc&& alloc)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(
+				  reinterpret_cast<const byte_type*>(data),
+				  size,
+				  std::forward<_Alloc>(alloc))}
 	{
-		m_data = m_alloc->data();
-		m_size = rhs.m_size;
+		m_data = m_region->data();
+		m_size = size;
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
+	}
+
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	const_buffer( buffer const& rhs, _Alloc&& alloc )
+	:
+	m_region{ std::make_unique< alloc_region<_Alloc> >( rhs.data(), rhs.size(), std::forward<_Alloc>(alloc) ) }
+	{
+		m_data = m_region->data();
+		m_size = rhs.size();
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
 		// ASSERT_CONST_BUFFER_INVARIANTS( rhs );
 	}
 
-	const_buffer( const_buffer const& rhs, memory_broker::ptr broker = buffer::default_broker::get() )
+	const_buffer( buffer const& rhs)
 	:
-	m_alloc{ std::make_unique< allocation >( rhs.m_data, rhs.m_size, broker ) }
+	m_region{ std::make_unique< alloc_region<default_alloc> >( rhs.data(), rhs.size())}
 	{
-		m_data = m_alloc->data();
-		m_size = rhs.m_size;
+		m_data = m_region->data();
+		m_size = rhs.size();
+		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		// ASSERT_CONST_BUFFER_INVARIANTS( rhs );
+	}
+
+	const_buffer( const_buffer const& rhs)
+	:
+	m_region{ std::make_unique< alloc_region<default_alloc> >( rhs.data(), rhs.size() ) }
+	{
+		m_data = m_region->data();
+		m_size = rhs.size();
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
 		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
 	}
@@ -1457,7 +1452,7 @@ public:
 
 	const_buffer( const_buffer&& rhs )
 	:
-	m_alloc{ std::move( rhs.m_alloc ) } 
+	m_region{ std::move( rhs.m_region ) } 
 	{
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
@@ -1476,7 +1471,7 @@ public:
 
 	const_buffer( mutable_buffer&& rhs )
 	:
-	m_alloc{ std::move( rhs.m_alloc ) }
+	m_region{ std::move( rhs.m_region ) }
 	{
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
@@ -1486,26 +1481,26 @@ public:
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
 	}
 
-	const_buffer( buffer const& rhs, position_type offset, size_type length, memory_broker::ptr broker = default_broker::get() )
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	const_buffer( buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc )
 	:
-	m_alloc{ std::make_unique< allocation >( broker ) }
+	m_region{ std::make_unique< alloc_region<_Alloc> >(std::forward<_Alloc>(alloc)) }
 	{
-		// ASSERT_BUFFER_INVARIANTS( buf );
-
 		if ( offset + length > rhs.m_size )
 		{
 			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
 		}
-		m_data = m_alloc->allocate( length );
+		m_data = m_region->allocate( length );
 		::memcpy( m_data, rhs.m_data + offset, length );
 		m_size = length;
 
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
 	}
 
-	const_buffer( buffer const& rhs, position_type offset, size_type length, std::error_code& err, memory_broker::ptr broker = default_broker::get() )
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	const_buffer( buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc, std::error_code& err )
 	:
-	m_alloc{ std::make_unique< allocation >( broker ) }
+	m_region{ std::make_unique< alloc_region<_Alloc> >(std::forward<_Alloc>(alloc)) }
 	{
 		// ASSERT_BUFFER_INVARIANTS( buf );
 		err.clear();
@@ -1514,7 +1509,45 @@ public:
 			err = make_error_code( std::errc::invalid_argument );
 			goto exit;
 		}
-		m_data = m_alloc->allocate( length );
+
+		m_data = m_region->allocate( length, err );
+		if (err) goto exit;
+
+		::memcpy( m_data, rhs.m_data + offset, length );
+		m_size = length;
+
+		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+
+	exit:
+		return;
+	}
+
+	const_buffer( buffer const& rhs, position_type offset, size_type length)
+	: m_region{std::make_unique<alloc_region<default_alloc>>()}
+	{
+		if ( offset + length > rhs.m_size )
+		{
+			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
+		}
+		m_data = m_region->allocate( length );
+		::memcpy( m_data, rhs.m_data + offset, length );
+		m_size = length;
+
+		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+	}
+
+	const_buffer( buffer const& rhs, position_type offset, size_type length, std::error_code& err)
+	: m_region{std::make_unique<alloc_region<default_alloc>>()}
+	{
+		err.clear();
+		if ( offset + length > rhs.m_size )
+		{
+			err = make_error_code( std::errc::invalid_argument );
+			goto exit;
+		}
+		m_data = m_region->allocate( length, err );
+		if (err) goto exit;
+
 		::memcpy( m_data, rhs.m_data + offset, length );
 		m_size = length;
 
@@ -1531,27 +1564,45 @@ public:
 	// 	m_size = rhs.m_size;
 	// }
 
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	const_buffer
-	slice( position_type offset, size_type length, memory_broker::ptr broker = default_broker::get() ) const
+	slice( position_type offset, size_type length, _Alloc&& alloc ) const
 	{
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
-		return const_buffer{ *this, offset, length, broker };
+		return const_buffer{ *this, offset, length, std::forward<_Alloc>(alloc) };
+	}
+
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	const_buffer
+	slice( position_type offset, size_type length, _Alloc&& alloc, std::error_code& err) const
+	{
+		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		err.clear();
+		return const_buffer{ *this, offset, length, std::forward<_Alloc>(alloc), err };
 	}
 
 	const_buffer
-	slice( position_type offset, size_type length, std::error_code& err, memory_broker::ptr broker = default_broker::get() ) const
+	slice( position_type offset, size_type length) const
 	{
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
-		return const_buffer{ *this, offset, length, err, broker };
+		return const_buffer{ *this, offset, length};
+	}
+
+	const_buffer
+	slice( position_type offset, size_type length, std::error_code& err) const
+	{
+		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		err.clear();
+		return const_buffer{ *this, offset, length, err };
 	}
 
 	const_buffer&
 	operator=( const_buffer const& rhs )
 	{
 		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
-		m_alloc = std::make_unique< allocation >( rhs.m_data, rhs.m_size, default_broker::get() );
-		m_data = m_alloc->data();
-		m_size = rhs.m_size;
+		m_region = std::make_unique< alloc_region<default_alloc>>( rhs.data(), rhs.size() );
+		m_data = m_region->data();
+		m_size = rhs.size();
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
 		return *this;
 	}
@@ -1560,9 +1611,9 @@ public:
 	operator=( mutable_buffer const& rhs )
 	{
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
-		m_alloc = std::make_unique< allocation >( rhs.m_data, rhs.m_size, default_broker::get() );
-		m_data = m_alloc->data();
-		m_size = rhs.m_size;
+		m_region = std::make_unique<alloc_region<default_alloc>>( rhs.buffer::data(), rhs.size()); // force const
+		m_data = m_region->data();
+		m_size = rhs.size();
 		ASSERT_CONST_BUFFER_INVARIANTS( *this );
 		return *this;
 	}
@@ -1571,7 +1622,7 @@ public:
 	operator=( const_buffer&& rhs )
 	{
 		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
-		m_alloc = std::move( rhs.m_alloc );
+		m_region = std::move( rhs.m_region );
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		rhs.m_data = nullptr;
@@ -1594,7 +1645,7 @@ public:
 	operator=( mutable_buffer&& rhs )
 	{
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
-		m_alloc = std::move( rhs.m_alloc );
+		m_region = std::move( rhs.m_region );
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		rhs.m_data = nullptr;
@@ -1610,16 +1661,60 @@ class shared_buffer  : public buffer
 {
 protected:
 
-	allocation::sptr	m_alloc;
+	SHARED_PTR_TYPE<region>	m_region;
 
 public:
 
+	~shared_buffer()
+	{
+		// std::cout << "in shared_buffer dtor, region use count is " << m_region.use_count();
+		// if (!m_region)
+		// {
+		// 	std::cout << "in shared_buffer dtor, region is null" << std::endl;
+		// }
+		// else
+		// {
+		// 	if (m_region->can_allocate())
+		// 	{
+		// 		std::cout << ", region is alloc_region" << std::endl;
+		// 	}
+		// 	else
+		// 	{
+		// 		std::cout << ", region is del_region" << std::endl;
+		// 	}
+		// }
+	}
+
+	using default_alloc = std::allocator<byte_type>;
+	using default_del = std::default_delete<byte_type>;
+
+	// void announce()
+	// {
+	// 	std::cout << "in shared_buffer ctor, region use_count is " << m_region.use_count();
+	// 	if (!m_region)
+	// 	{
+	// 		std::cout << ", region is null" << std::endl;
+	// 	}
+	// 	else
+	// 	{
+	// 		if (m_region->can_allocate())
+	// 		{
+	// 			std::cout << ", region is alloc_region" << std::endl;
+	// 		}
+	// 		else
+	// 		{
+	// 			std::cout << ", region is del_region" << std::endl;
+	// 		}
+	// 	}
+	// }
+
 	shared_buffer()
 	:
-	m_alloc{ MAKE_SHARED< allocation >( null_broker::get() ) }
+	m_region{ MAKE_SHARED< alloc_region<default_alloc> >() }
 	{
 		m_data = nullptr;
 		m_size = 0;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
@@ -1631,54 +1726,91 @@ public:
 	// 	m_size = size;
 	// }
 
-	template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
-	shared_buffer( void* data, size_type size, Dealloc&& dealloc_f )
+	template< class _Del >
+	shared_buffer( void* data, size_type size, _Del&& del )
 	:
-	m_alloc{ MAKE_SHARED< buffer::allocation >( 
-		reinterpret_cast< byte_type* >( data ), size, 
-		create_broker( std::forward< Dealloc >( dealloc_f ) ) ) }
+	m_region{ MAKE_SHARED< del_region<_Del> >( 
+		reinterpret_cast< byte_type* >( data ), size, std::forward<_Del>(del) ) }
 	{
 		m_data = reinterpret_cast< byte_type* >( data );
 		m_size = size;
+		// announce();
+		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+	}
+/*
+	shared_buffer( void* data, size_type size)
+	:
+	m_region{ MAKE_SHARED< del_region<default_del> >( 
+		reinterpret_cast< byte_type* >( data ), size ) }
+	{
+		m_data = reinterpret_cast< byte_type* >( data );
+		m_size = size;
+		announce();
+		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+	}
+*/
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	shared_buffer( const void* data, size_type size, _Alloc&& alloc )
+	:
+	m_region{ MAKE_SHARED< alloc_region<_Alloc> >( reinterpret_cast< const byte_type* >( data ), size, std::forward<_Alloc>(alloc) ) }
+	{
+		m_data = m_region->data();
+		m_size = size;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
-	shared_buffer( const void* data, size_type size, memory_broker::ptr broker = default_broker::get() )
+	shared_buffer( const void* data, size_type size )
 	:
-	m_alloc{ MAKE_SHARED< allocation >( reinterpret_cast< const byte_type* >( data ), size, broker ) }
+	m_region{ MAKE_SHARED< alloc_region<default_alloc> >( reinterpret_cast< const byte_type* >( data ), size ) }
 	{
-		m_data = m_alloc->data();
+		m_data = m_region->data();
 		m_size = size;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
 	shared_buffer( shared_buffer const& rhs )
 	:
-	m_alloc{ rhs.m_alloc }
+	m_region{ rhs.m_region }
 	{
 		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
 	shared_buffer( shared_buffer&& rhs )
 	:
-	m_alloc{ std::move( rhs.m_alloc ) } 
+	m_region{ std::move( rhs.m_region ) } 
 	{
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
-	shared_buffer( buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	shared_buffer( buffer const& rhs, _Alloc&& alloc )
 	:
-	m_alloc{ MAKE_SHARED< allocation >( rhs.data(), rhs.size(), broker ) }
+	m_region{ MAKE_SHARED< alloc_region<_Alloc> >( rhs.data(), rhs.size(), std::forward<_Alloc>(alloc) ) }
 	{
-		m_data = m_alloc->data();
+		m_data = m_region->data();
 		m_size = rhs.size();
+		// announce();
+		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+	}
+
+	shared_buffer( buffer const& rhs)
+	:
+	m_region{ MAKE_SHARED< alloc_region<default_alloc> >( rhs.data(), rhs.size()) }
+	{
+		m_data = m_region->data();
+		m_size = rhs.size();
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
@@ -1700,30 +1832,32 @@ public:
 
 	shared_buffer( mutable_buffer&& rhs )
 	:
-	m_alloc{ std::move( rhs.m_alloc ) }
+	m_region{ std::move( rhs.m_region ) }
 	{
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
 		rhs.m_capacity = 0;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
 	shared_buffer( const_buffer&& rhs )
 	:
-	m_alloc{ std::move( rhs.m_alloc ) }
+	m_region{ std::move( rhs.m_region ) }
 	{
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
 	shared_buffer( shared_buffer const& rhs, position_type offset, size_type length )
 	:
-	m_alloc{ rhs.m_alloc }
+	m_region{ rhs.m_region }
 	{
 		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
 		if ( offset + length > rhs.m_size )
@@ -1732,12 +1866,13 @@ public:
 		}
 		m_data = rhs.m_data + offset;
 		m_size = length;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	}
 
 	shared_buffer( shared_buffer const& rhs, position_type offset, size_type length, std::error_code& err )
 	:
-	m_alloc{ rhs.m_alloc }
+	m_region{ rhs.m_region }
 	{
 		err.clear();
 		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
@@ -1748,23 +1883,81 @@ public:
 		}
 		m_data = rhs.m_data + offset;
 		m_size = length;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 	exit:
 		return;
 	}
 
-	shared_buffer( buffer const& rhs, position_type offset, size_type length, memory_broker::ptr broker = default_broker::get() )
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	shared_buffer( buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc )
 	:
-	m_alloc{ std::make_unique< allocation >( broker ) }
+	m_region{ std::make_unique< alloc_region<_Alloc> >( std::forward<_Alloc>(alloc) ) }
 	{
 		if ( offset + length > rhs.size() )
 		{
 			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
 		}
-		m_data = m_alloc->allocate( length );
+		m_data = m_region->allocate( length );
 		::memcpy( m_data, rhs.data() + offset, length );
 		m_size = length;
+		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+	}
+
+	shared_buffer( buffer const& rhs, position_type offset, size_type length )
+	:
+	m_region{ std::make_unique< alloc_region<default_alloc> >() }
+	{
+		if ( offset + length > rhs.size() )
+		{
+			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
+		}
+		m_data = m_region->allocate( length );
+		::memcpy( m_data, rhs.data() + offset, length );
+		m_size = length;
+		// announce();
+		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+	}
+
+	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	shared_buffer( buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc, std::error_code& err )
+	:
+	m_region{ std::make_unique< alloc_region<_Alloc> >( std::forward<_Alloc>(alloc) ) }
+	{
+		err.clear();
+		if ( offset + length > rhs.size() )
+		{
+			err = make_error_code( std::errc::invalid_argument );
+			goto exit;
+		}
+		m_data = m_region->allocate( length, err );
+		if (err) goto exit;
+		::memcpy( m_data, rhs.data() + offset, length );
+		m_size = length;
+		// announce();
+		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+	exit:
+		return;
+	}
+
+	shared_buffer( buffer const& rhs, position_type offset, size_type length, std::error_code& err )
+	:
+	m_region{ std::make_unique< alloc_region<default_alloc> >() }
+	{
+		if ( offset + length > rhs.size() )
+		{
+			err = make_error_code( std::errc::invalid_argument );
+			goto exit;
+		}
+		m_data = m_region->allocate( length, err );
+		if (err) goto exit;
+		::memcpy( m_data, rhs.data() + offset, length );
+		m_size = length;
+		// announce();
+		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+	exit:
+		return;
 	}
 
 	// shared_buffer( buffer const& rhs, memory_broker::ptr broker )
@@ -1793,7 +1986,7 @@ public:
 	operator=( shared_buffer const& rhs )
 	{
 		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
-		m_alloc = rhs.m_alloc;
+		m_region = rhs.m_region;
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
@@ -1804,7 +1997,7 @@ public:
 	operator=( shared_buffer&& rhs )
 	{
 		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
-		m_alloc = std::move( rhs.m_alloc );
+		m_region = std::move( rhs.m_region );
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		rhs.m_data = nullptr;
@@ -1816,8 +2009,8 @@ public:
 	shared_buffer&
 	operator=( buffer const& rhs )
 	{
-		m_alloc = MAKE_SHARED< allocation >( rhs.data(), rhs.size(), default_broker::get() );
-		m_data = m_alloc->data();
+		m_region = MAKE_SHARED< alloc_region<default_alloc> >( rhs.data(), rhs.size());
+		m_data = m_region->data();
 		m_size = rhs.size();
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
 		return *this;
@@ -1827,7 +2020,7 @@ public:
 	operator=( mutable_buffer&& rhs )
 	{
 		ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
-		m_alloc = std::move( rhs.m_alloc );
+		m_region = std::move( rhs.m_region );
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		rhs.m_data = nullptr;
@@ -1841,7 +2034,7 @@ public:
 	operator=( const_buffer&& rhs )
 	{
 		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
-		m_alloc = std::move( rhs.m_alloc );
+		m_region = std::move( rhs.m_region );
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		rhs.m_data = nullptr;
@@ -1854,7 +2047,7 @@ public:
 	ref_count() const
 	{
 		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
-		return m_alloc.use_count();
+		return m_region.use_count();
 	}
 };
 

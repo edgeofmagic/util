@@ -64,7 +64,7 @@ TEST_CASE("logicmill::bstream::memory::sink [ smoke ] { basic functionality }")
 			0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	};
 
-	mutable_buffer mbuf{buf, sizeof(buf), buffer::null_deallocator{}};
+	mutable_buffer mbuf{buf, sizeof(buf), bstream::null_delete<byte_type[]>{}};
 
 	memory::sink snk{std::move(mbuf)};
 

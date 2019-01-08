@@ -394,7 +394,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 	std::cout << "size of std::string is " << sizeof(std::string) << std::endl;
 	std::cout << "size of ptr_ctrl_blk is " << sizeof(util::detail::ptr_ctrl_blk<std::string, std::default_delete<std::string>, std::allocator<std::string>>) << std::endl;
 	std::cout << "size of value_control_block is " << sizeof(util::detail::value_ctrl_blk<std::string, std::allocator<std::string>>) << std::endl;
-	std::cout << "size of control_blk_base is " << sizeof(util::detail::ctrl_blk_base) << std::endl;
+	std::cout << "size of control_blk is " << sizeof(util::detail::ctrl_blk) << std::endl;
 }
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct from unique_ptr }")

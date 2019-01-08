@@ -35,7 +35,6 @@ namespace logicmill
 {
 namespace util
 {
-
 namespace detail
 {
 
@@ -62,74 +61,75 @@ public:
 	}
 };
 
-class ctrl_blk_base
+class ctrl_blk
 {
 public:
-	// using delete_erasure = std::function<void(void*)>;
-	// using destruct_erasure = std::function<void(void*)>;
 
-	// ~ctrl_blk_base()
-	// {
-	// 	assert(m_use_count == 0);
-	// 	if (m_elem)
-	// 	{
-	// 		m_delete(m_elem);
-	// 	}
-	// }
-	// void destroy()
-	// {
-	// 	m_destruct(this);
-	// }
-
-	// ctrl_blk_base(void* p, delete_erasure&& deleter, destruct_erasure&& destruct)
-	// 	: m_elem{p}, m_use_count{1}, m_delete{std::move(deleter)}, m_destruct{std::move(destruct)}
-	// {}
-
-	ctrl_blk_base() : m_use_count{1} {}
-
-	// void*
-	// get_vptr() const
-	// {
-	// 	return m_elem;
-	// }
-
-	// void
-	// clear()
-	// {
-	// 	m_elem = nullptr;
-	// }
+	ctrl_blk() : m_use_count{1}, m_weak_count{1} {}
 
 	virtual void
 	on_zero_use_count()
 			= 0;
 
-	std::size_t
+	virtual void
+	on_zero_weak_count()
+			= 0;
+
+	long
 	increment_use_count()
 	{
 		return ++m_use_count;
 	}
 
-	std::size_t
+	long
 	decrement_use_count()
 	{
 		return --m_use_count;
 	}
 
-	std::size_t
+	long
+	increment_weak_count()
+	{
+		return ++m_weak_count;
+	}
+
+	long
+	decrement_weak_count()
+	{
+		return --m_weak_count;
+	}
+
+	long
 	use_count() const
 	{
 		return m_use_count;
 	}
 
+	long
+	weak_count() const
+	{
+		return m_weak_count;
+	}
+
+	ctrl_blk* lock()
+	{
+		ctrl_blk* result{nullptr};
+
+		if (use_count() > 0)
+		{
+			increment_use_count();
+			result = this;
+		}
+		return result;
+	}
+
 private:
-	// void*       m_elem;
-	std::size_t m_use_count;
-	// delete_erasure m_delete;
-	// destruct_erasure m_destruct;
+	long m_use_count;
+	long m_weak_count;
 };
 
 template<class T, class Del, class Alloc>
-class ptr_ctrl_blk : public ctrl_blk_base
+class ptr_ctrl_blk : public ctrl_blk
 {
 public:
 	using element_type   = T;
@@ -138,34 +138,37 @@ public:
 
 	template<class _Del, class _Alloc>
 	ptr_ctrl_blk(element_type* p, _Del&& del, _Alloc&& alloc)
-		// : m_data{{p, std::forward<_Del>(del)}, std::forward<_Alloc>(alloc)}
 		: m_ptr{p}, m_del{std::forward<_Del>(del)}, m_alloc{std::forward<_Alloc>(alloc)}
 	{}
 
 	virtual void
 	on_zero_use_count()
 	{
-		using ctrl_blk_allocator_type = typename allocator_type::template rebind<ptr_ctrl_blk>::other;
-
-		// get_deleter()(get_elem_ptr());
-		// get_deleter().~deleter_type();
 		m_del(m_ptr);
 		m_del.~deleter_type();
+		m_ptr = nullptr;
 
-		// ctrl_blk_allocator_type cblk_alloc(get_alloc());
-		// get_alloc().~allocator_type();
-		// cblk_alloc.deallocate(this, 1);
+		assert(weak_count() >= 1);
+		if (decrement_weak_count() == 0)
+		{
+			on_zero_weak_count();
+		}
+	}
 
+	virtual void
+	on_zero_weak_count()
+	{
+		assert(use_count() == 0);
+
+		using ctrl_blk_allocator_type = typename allocator_type::template rebind<ptr_ctrl_blk>::other;
 		ctrl_blk_allocator_type cblk_alloc(m_alloc);
 		m_alloc.~allocator_type();
 		cblk_alloc.deallocate(this, 1);
-
 	}
 
 	element_type*
 	get_ptr() const noexcept
 	{
-		// return get_elem_ptr();
 		return m_ptr;
 	}
 
@@ -184,7 +187,7 @@ private:
 };
 
 template<class T, class Alloc>
-class value_ctrl_blk : public Alloc, public ctrl_blk_base
+class value_ctrl_blk : public Alloc, public ctrl_blk
 {
 public:
 	using element_type   = T;
@@ -205,8 +208,19 @@ public:
 	virtual void
 	on_zero_use_count()
 	{
-		using ctrl_blk_allocator_type = typename allocator_type::template rebind<value_ctrl_blk>::other;
 		m_value.~element_type();
+		assert(weak_count() >= 1);
+		if (decrement_weak_count() == 0)
+		{
+			on_zero_weak_count();
+		}
+ 	}
+
+	virtual void
+	on_zero_weak_count()
+	{
+		assert(use_count() == 0);
+		using ctrl_blk_allocator_type = typename allocator_type::template rebind<value_ctrl_blk>::other;
 		ctrl_blk_allocator_type cblk_alloc(static_cast<base&>(*this));
 		static_cast<base&>(*this).~allocator_type();
 		cblk_alloc.deallocate(this, 1);
@@ -214,10 +228,102 @@ public:
 
 private:
 	element_type   m_value;
-	// allocator_type m_alloc;
+};
+
+template<class T>
+struct pstate
+{
+	using element_type = T;
+
+	struct sig_flag
+	{
+		int iflag;
+	};
+
+	ctrl_blk* cblk;
+	element_type* ptr;
+
+	template<class U>
+	friend class pstate;
+
+	pstate(ctrl_blk* cp, element_type* p) : cblk{cp}, ptr{p} {}
+
+	template<class U>
+	pstate(ctrl_blk* cp, U* p, typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag> = sig_flag{})
+		: cblk{cp}, ptr{static_cast<T*>(p)}
+	{}
+
+	pstate(pstate&& rhs) : cblk{rhs.cblk}, ptr{rhs.ptr}
+	{
+		rhs.cblk = nullptr;
+		rhs.ptr = nullptr;
+	}
+
+	template<class U>
+	pstate(pstate<U>&& rhs, typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag> = sig_flag{})
+		: cblk{rhs.cblk}, ptr{static_cast<T*>(rhs.ptr)}
+	{
+		rhs.cblk = nullptr;
+		rhs.ptr  = nullptr;
+	}
+
+	pstate(pstate const& rhs) : cblk{rhs.cblk}, ptr{rhs.ptr} {}
+
+	template<class U>
+	pstate(pstate<U> const& rhs, typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag> = sig_flag{})
+		: cblk{rhs.cblk}, ptr{static_cast<T*>(rhs.ptr)}
+	{}
+
+	pstate() : cblk{nullptr}, ptr{nullptr} {}
+
+	void
+	swap(pstate& rhs) noexcept
+	{
+		std::swap(cblk, rhs.cblk);
+		std::swap(ptr, rhs.ptr);
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible_v<U*, T*>>
+	swap(pstate<U>& rhs) noexcept
+	{
+		std::swap(cblk, rhs.cblk);
+		std::swap(ptr, rhs.ptr);
+	}
+
+	pstate& operator=(pstate const& rhs)
+	{
+		pstate{rhs}.swap(*this);
+		return *this;
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible_v<U*, T*>, pstate&>
+	operator=(pstate<U> const& rhs)
+	{
+		pstate{rhs}.swap(*this);
+		return *this;
+	}
+
+	pstate& operator=(pstate&& rhs)
+	{
+		pstate{std::move(rhs)}.swap(*this);
+		return *this;
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible_v<U*, T*>, pstate&>
+	operator=(pstate<U>&& rhs)
+	{
+		pstate{std::move(rhs)}.swap(*this);
+		return *this;
+	}
 };
 
 }    // namespace detail
+
+template<class U>
+class weak_ptr;
 
 template<class T>
 class shared_ptr
@@ -231,75 +337,12 @@ private:
 public:
 	using element_type = T;
 
-	// protected:
-
-#if 0
-
-	class ptr_ctrl_blk : public detail::ctrl_blk_base
-	{
-	protected:
-
-		friend class shared_ptr;
-
-		ptr_ctrl_blk(element_type* ep, delete_erasure&& deleter, destruct_erasure&& destruct)
-		: detail::ctrl_blk_base{ep, std::move(deleter), std::move(destruct)}
-		{}
-
-		element_type*
-		get_ptr()
-		{
-			return static_cast<element_type*>(get_vptr());
-		}
-	private:
-		element_type* m_elem;
-
-	};
-
-	class value_control_block : public ptr_ctrl_blk
-	{
-	public:
-		friend class shared_ptr;
-
-		~value_control_block()
-		{
-			detail::ctrl_blk_base::clear();
-		}
-
-		struct use_allocator {};
-
-		template<class... Args>
-		value_control_block(Args&&... args)
-			: ptr_ctrl_blk{&m_value,
-						  [](void*) { assert(false); },
-						  [](void* p) {
-							  auto cp = static_cast<value_control_block*>(p);
-							  cp->clear();
-							  delete cp;
-						  }},
-			  m_value(std::forward<Args>(args)...)
-		{}
-
-		template<class _Alloc, class... Args>
-		value_control_block(use_allocator, _Alloc&& alloc, Args&&... args)
-			: ptr_ctrl_blk{&m_value,
-						  [](void*) mutable { assert(false); },
-						  [&alloc](void* p) {
-							  _Alloc a{std::forward<_Alloc>(alloc)};
-							  auto cp = static_cast<value_control_block*>(p);
-							  cp->clear();
-							  a.destroy(cp);
-							  a.deallocate(cp, 1);
-						  }},
-			  m_value(std::forward<Args>(args)...)
-		{}
-
-		element_type m_value;
-	};
-#endif
-
 public:
 	template<class U>
 	friend class shared_ptr;
+
+	template<class U>
+	friend class weak_ptr;
 
 	template<class U, class... _Args>
 	friend shared_ptr<U>
@@ -318,6 +361,7 @@ public:
 	static_pointer_cast(shared_ptr<V> const&);
 
 protected:
+
 	template<class... Args>
 	static shared_ptr
 	create(Args&&... args)
@@ -377,6 +421,7 @@ protected:
 	}
 
 public:
+
 	shared_ptr() : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
 
 	shared_ptr(element_type* ep) : m_cblk_ptr{nullptr}, m_elem_ptr{ep}
@@ -420,30 +465,43 @@ public:
 		m_cblk_ptr = cblk_ptr;
 	}
 
-	shared_ptr(shared_ptr const& rhs)
+	shared_ptr(shared_ptr const& rhs) : m_cblk_ptr{rhs.m_cblk_ptr}, m_elem_ptr{rhs.m_elem_ptr} 
 	{
-		adopt(rhs);
+		if (m_cblk_ptr)
+		{
+			m_cblk_ptr->increment_use_count();
+		}
 	}
 
 	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
 	shared_ptr(shared_ptr<U> const& rhs)
+		: m_cblk_ptr{rhs.m_cblk_ptr}, m_elem_ptr{static_cast<element_type*>(rhs.m_elem_ptr)}
 	{
-		adopt(rhs);
+		if (m_cblk_ptr)
+		{
+			m_cblk_ptr->increment_use_count();
+		}
 	}
 
-	shared_ptr(shared_ptr&& rhs)
+	shared_ptr(shared_ptr&& rhs) : m_cblk_ptr{rhs.m_cblk_ptr}, m_elem_ptr{rhs.m_elem_ptr} 
 	{
-		steal(std::move(rhs));
+		rhs.m_cblk_ptr = nullptr;
+		rhs.m_elem_ptr = nullptr;
 	}
 
 	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
-	shared_ptr(shared_ptr<U>&& rhs)
+	shared_ptr(shared_ptr<U>&& rhs): m_cblk_ptr{rhs.m_cblk_ptr}, m_elem_ptr{static_cast<element_type*>(rhs.m_elem_ptr)}
 	{
-		steal(std::move(rhs));
+		rhs.m_cblk_ptr = nullptr;
+		rhs.m_elem_ptr = nullptr;
 	}
 
 	shared_ptr(std::nullptr_t) : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
 
+	template<class U>
+	shared_ptr(
+			weak_ptr<U> const& wp,
+			typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, sig_flag> = sig_flag{});
 
 #if 1
 
@@ -509,29 +567,50 @@ public:
 
 	~shared_ptr()
 	{
-		disown();
+		if (m_cblk_ptr)
+		{
+			assert(m_cblk_ptr->use_count() > 0);
+			if (m_cblk_ptr->decrement_use_count() == 0)
+			{
+				auto cblk_ptr = m_cblk_ptr;
+				m_cblk_ptr    = nullptr;
+				m_elem_ptr    = nullptr;
+				cblk_ptr->on_zero_use_count();
+			}
+			else
+			{
+				m_cblk_ptr = nullptr;
+				m_elem_ptr = nullptr;
+			}
+		}
+	}
+
+	void
+	swap(shared_ptr& rhs) noexcept
+	{
+		std::swap(m_cblk_ptr, rhs.m_cblk_ptr);
+		std::swap(m_elem_ptr, rhs.m_elem_ptr);
 	}
 
 	shared_ptr&
 	operator=(shared_ptr const& rhs)
 	{
-		assign(rhs);
+		shared_ptr{rhs}.swap(*this);
 		return *this;
 	}
-
 
 	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, shared_ptr&>
 	operator=(shared_ptr<U> const& rhs)
 	{
-		assign(rhs);
+		shared_ptr{rhs}.swap(*this);
 		return *this;
 	}
 
 	shared_ptr&
 	operator=(shared_ptr&& rhs)
 	{
-		assign(std::move(rhs));
+		shared_ptr{std::move(rhs)}.swap(*this);
 		return *this;
 	}
 
@@ -539,11 +618,11 @@ public:
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, shared_ptr&>
 	operator=(shared_ptr<U>&& rhs)
 	{
-		assign(std::move(rhs));
+		shared_ptr{std::move(rhs)}.swap(*this);
 		return *this;
 	}
 
-	detail::ctrl_blk_base*
+	detail::ctrl_blk*
 	get_ctrl_blk() const
 	{
 		return m_cblk_ptr;
@@ -552,7 +631,7 @@ public:
 	void
 	reset()
 	{
-		disown();
+		shared_ptr{}.swap(*this);
 	}
 
 	explicit operator bool() const
@@ -600,7 +679,7 @@ public:
 		return *m_elem_ptr;
 	}
 
-	std::size_t
+	long
 	use_count() const
 	{
 		if (!m_cblk_ptr)
@@ -614,69 +693,11 @@ public:
 	}
 
 private:
-	shared_ptr(detail::ctrl_blk_base* p, element_type* ep) : m_cblk_ptr{p}, m_elem_ptr{ep} {}
 
-	template<class U>
-	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	assign(shared_ptr<U> const& rhs)
-	{
-		disown();
-		adopt(rhs);
-	}
+	shared_ptr(detail::ctrl_blk* p, element_type* ep) : m_cblk_ptr{p}, m_elem_ptr{ep} {}
 
-	template<class U>
-	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	assign(shared_ptr<U>&& rhs)
-	{
-		disown();
-		steal(std::move(rhs));
-	}
-
-	template<class U>
-	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	adopt(shared_ptr<U> const& rhs)
-	{
-		m_cblk_ptr = rhs.m_cblk_ptr;
-		m_elem_ptr = static_cast<element_type*>(rhs.m_elem_ptr);
-		if (m_cblk_ptr)
-		{
-			m_cblk_ptr->increment_use_count();
-		}
-	}
-
-	template<class U>
-	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>
-	steal(shared_ptr<U>&& rhs)
-	{
-		m_cblk_ptr     = rhs.m_cblk_ptr;
-		m_elem_ptr     = static_cast<element_type*>(rhs.m_elem_ptr);
-		rhs.m_cblk_ptr = nullptr;
-		rhs.m_elem_ptr = nullptr;
-	}
-
-	void
-	disown()
-	{
-		if (m_cblk_ptr)
-		{
-			assert(m_cblk_ptr->use_count() > 0);
-			if (m_cblk_ptr->decrement_use_count() == 0)
-			{
-				auto cblk_ptr = m_cblk_ptr;
-				m_cblk_ptr    = nullptr;
-				m_elem_ptr    = nullptr;
-				cblk_ptr->on_zero_use_count();
-			}
-			else
-			{
-				m_cblk_ptr = nullptr;
-				m_elem_ptr = nullptr;
-			}
-		}
-	}
-
-	detail::ctrl_blk_base* m_cblk_ptr;
-	element_type*          m_elem_ptr;
+	detail::ctrl_blk* m_cblk_ptr;
+	element_type*     m_elem_ptr;
 };
 
 template<class T, class... Args>
@@ -705,6 +726,196 @@ shared_ptr<T>
 static_pointer_cast(shared_ptr<U> const& uptr)
 {
 	return shared_ptr<T>::static_ptr_cast(uptr);
+}
+
+template<class T>
+class weak_ptr
+{
+public:
+
+    typedef T element_type;
+
+private:
+
+	detail::ctrl_blk* m_cblk_ptr;
+	element_type*          m_elem_ptr;
+
+	struct sig_flag
+	{
+		int iflag;
+	};
+
+public:
+	weak_ptr() noexcept : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
+
+	template<class U>
+	weak_ptr(
+			shared_ptr<U> const& sp,
+			typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, sig_flag> = sig_flag{}) noexcept
+		: m_cblk_ptr{sp.m_cblk_ptr}, m_elem_ptr{sp.m_elem_ptr}
+	{
+		if (m_cblk_ptr)
+		{
+			m_cblk_ptr->increment_weak_count();
+		}
+	}
+
+	weak_ptr(weak_ptr const& wp) noexcept : m_cblk_ptr{wp.m_cblk_ptr}, m_elem_ptr{wp.m_elem_ptr}
+	{
+		if (m_cblk_ptr)
+		{
+			m_cblk_ptr->increment_weak_count();
+		}
+	}
+
+	template<class U>
+	weak_ptr(
+			weak_ptr<U> const& wp,
+			typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, sig_flag> = sig_flag{}) noexcept
+		: m_cblk_ptr{wp.m_cblk_ptr}, m_elem_ptr{static_cast<element_type*>(wp.m_elem_ptr)}
+	{
+		if (m_cblk_ptr)
+		{
+			m_cblk_ptr->increment_weak_count();
+		}
+	}
+
+	weak_ptr(weak_ptr&& wp) noexcept : m_cblk_ptr{wp.m_cblk_ptr}, m_elem_ptr{wp.m_elem_ptr}
+	{
+		wp.m_cblk_ptr = nullptr;
+		wp.m_elem_ptr = nullptr;
+	}
+
+	template<class U>
+	weak_ptr(
+			weak_ptr<U>&& wp,
+			typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, sig_flag> = sig_flag{}) noexcept
+		: m_cblk_ptr{wp.m_cblk_ptr}, m_elem_ptr{static_cast<element_type*>(wp.m_elem_ptr)}
+	{
+		wp.m_cblk_ptr = nullptr;
+		wp.m_elem_ptr = nullptr;
+	}
+
+	~weak_ptr()
+	{
+		if (m_cblk_ptr)
+		{
+			assert(m_cblk_ptr->weak_count() > 0);
+			if (m_cblk_ptr->decrement_weak_count() == 0)
+			{
+				assert(m_cblk_ptr->use_count() == 0);
+				auto cblk_ptr = m_cblk_ptr;
+				m_cblk_ptr    = nullptr;
+				m_elem_ptr    = nullptr;
+				cblk_ptr->on_zero_weak_count();
+			}
+			else
+			{
+				m_cblk_ptr = nullptr;
+				m_elem_ptr = nullptr;
+			}
+		}
+	}
+
+    weak_ptr& operator=(weak_ptr const& rhs) noexcept
+	{
+		weak_ptr{rhs}.swap(*this);
+		return *this;
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, weak_ptr&>
+	operator=(weak_ptr<U> const& rhs) noexcept
+	{
+		weak_ptr{rhs}.swap(*this);
+		return *this;
+	}
+
+    weak_ptr& operator=(weak_ptr&& rhs) noexcept
+	{
+		weak_ptr{std::move(rhs)}.swap(*this);
+		return *this;
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, weak_ptr&>
+	operator=(weak_ptr<U>&& rhs) noexcept
+	{
+		weak_ptr{std::move(rhs)}.swap(*this);
+		return *this;
+	}
+
+	template<class U>
+	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, weak_ptr&>
+	operator=(shared_ptr<U> const& rhs) noexcept
+	{
+		weak_ptr{rhs}.swap(*this);
+		return *this;
+	}
+
+	void
+	swap(weak_ptr& rhs) noexcept
+	{
+		std::swap(m_cblk_ptr, rhs.m_cblk_ptr);
+		std::swap(m_elem_ptr, rhs.m_elem_ptr);
+	}
+
+	void
+	reset() noexcept
+	{
+		weak_ptr{}.swap(*this);
+	}
+
+	long
+	use_count() const noexcept
+	{
+		return m_cblk_ptr ? m_cblk_ptr->use_count() : 0;
+	}
+
+	long
+	weak_count() const noexcept
+	{
+		return m_cblk_ptr ? m_cblk_ptr->weak_count() : 0;
+	}
+
+	bool
+	expired() const noexcept
+	{
+		return m_cblk_ptr == 0 || m_cblk_ptr->use_count() == 0;
+	}
+
+	shared_ptr<element_type>
+	lock() const noexcept
+	{
+		shared_ptr<element_type> result;
+		result.m_cblk_ptr = m_cblk_ptr ? m_cblk_ptr->lock() : nullptr;
+		if (result.m_cblk_ptr)
+			result.m_elem_ptr = m_elem_ptr;
+		return result;
+	}
+
+    template <class U> friend class weak_ptr;
+    template <class U> friend class shared_ptr;
+};
+
+template<class T>
+inline void
+swap(weak_ptr<T>& x, weak_ptr<T>& y) noexcept
+{
+    x.swap(y);
+}
+
+template<class T>
+template<class U>
+shared_ptr<T>::shared_ptr(
+		weak_ptr<U> const& wp,
+		typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag>)
+	: m_cblk_ptr{wp.m_ctrl_blk ? wp.m_ctrl_blk->lock() : nullptr}, m_elem_ptr{wp.m_elem_ptr}
+{
+	if (!m_cblk_ptr)
+	{
+		throw std::bad_weak_ptr{};
+	}
 }
 
 }    // namespace util

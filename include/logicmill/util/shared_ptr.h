@@ -129,7 +129,7 @@ private:
 };
 
 template<class T, class Del, class Alloc>
-class ptr_ctrl_blk : public ctrl_blk
+class ptr_ctrl_blk : public ctrl_blk, public Del, public Alloc
 {
 public:
 	using element_type   = T;
@@ -138,14 +138,14 @@ public:
 
 	template<class _Del, class _Alloc>
 	ptr_ctrl_blk(element_type* p, _Del&& del, _Alloc&& alloc)
-		: m_ptr{p}, m_del{std::forward<_Del>(del)}, m_alloc{std::forward<_Alloc>(alloc)}
+		: Del{std::forward<_Del>(del)}, Alloc{std::forward<_Alloc>(alloc)}, m_ptr{p}
 	{}
 
 	virtual void
 	on_zero_use_count()
 	{
-		m_del(m_ptr);
-		m_del.~deleter_type();
+		static_cast<Del&>(*this)(m_ptr);
+		static_cast<Del&>(*this).~deleter_type();
 		m_ptr = nullptr;
 
 		assert(weak_count() >= 1);
@@ -161,8 +161,8 @@ public:
 		assert(use_count() == 0);
 
 		using ctrl_blk_allocator_type = typename allocator_type::template rebind<ptr_ctrl_blk>::other;
-		ctrl_blk_allocator_type cblk_alloc(m_alloc);
-		m_alloc.~allocator_type();
+		ctrl_blk_allocator_type cblk_alloc(static_cast<Alloc&>(*this));
+		static_cast<Alloc&>(*this).~allocator_type();
 		cblk_alloc.deallocate(this, 1);
 	}
 
@@ -174,16 +174,8 @@ public:
 
 private:
 	using element_pointer = element_type*;
-	// using data_type = boost::compressed_pair<boost::compressed_pair<element_pointer, deleter_type>, allocator_type>;
-	// data_type m_data;
-
-	// element_pointer get_elem_ptr() { return m_data.first().first(); }
-	// deleter_type& get_deleter() { return m_data.first().second(); }
-	// allocator_type& get_alloc() {  return m_data.second(); }
 
 	element_type* m_ptr;
-	Del           m_del;
-	Alloc         m_alloc;
 };
 
 template<class T, class Alloc>
@@ -343,7 +335,9 @@ public:
 		pstate{std::move(rhs)}.swap(*this);
 		return *this;
 	}
+
 private:
+
 	ctrl_blk* m_ctrl;
 	element_type* m_ptr;
 };
@@ -525,8 +519,6 @@ public:
 			weak_ptr<U> const& wp,
 			typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, sig_flag> = sig_flag{});
 
-#if 1
-
 	template<class U, class _Del>
 	shared_ptr(
 			std::unique_ptr<U, _Del>&& uptr,
@@ -584,8 +576,6 @@ public:
 		}
 		uptr.release();
 	}
-
-#endif
 
 	~shared_ptr()
 	{

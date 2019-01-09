@@ -231,8 +231,9 @@ private:
 };
 
 template<class T>
-struct pstate
+class pstate
 {
+public:
 	using element_type = T;
 
 	struct sig_flag
@@ -240,58 +241,81 @@ struct pstate
 		int iflag;
 	};
 
-	ctrl_blk* cblk;
-	element_type* ptr;
-
 	template<class U>
 	friend class pstate;
 
-	pstate(ctrl_blk* cp, element_type* p) : cblk{cp}, ptr{p} {}
+	pstate(ctrl_blk* cp, element_type* p) : m_ctrl{cp}, m_ptr{p} {}
+	pstate(element_type* p) : m_ctrl{nullptr}, m_ptr{p} {}
 
 	template<class U>
 	pstate(ctrl_blk* cp, U* p, typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag> = sig_flag{})
-		: cblk{cp}, ptr{static_cast<T*>(p)}
+		: m_ctrl{cp}, m_ptr{static_cast<T*>(p)}
 	{}
 
-	pstate(pstate&& rhs) : cblk{rhs.cblk}, ptr{rhs.ptr}
+	pstate(pstate&& rhs) : m_ctrl{rhs.m_ctrl}, m_ptr{rhs.m_ptr}
 	{
-		rhs.cblk = nullptr;
-		rhs.ptr = nullptr;
+		rhs.m_ctrl = nullptr;
+		rhs.m_ptr = nullptr;
 	}
 
 	template<class U>
 	pstate(pstate<U>&& rhs, typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag> = sig_flag{})
-		: cblk{rhs.cblk}, ptr{static_cast<T*>(rhs.ptr)}
+		: m_ctrl{rhs.m_ctrl}, m_ptr{static_cast<T*>(rhs.m_ptr)}
 	{
-		rhs.cblk = nullptr;
-		rhs.ptr  = nullptr;
+		rhs.m_ctrl = nullptr;
+		rhs.m_ptr  = nullptr;
 	}
 
-	pstate(pstate const& rhs) : cblk{rhs.cblk}, ptr{rhs.ptr} {}
+	pstate(pstate const& rhs) : m_ctrl{rhs.m_ctrl}, m_ptr{rhs.m_ptr} {}
 
 	template<class U>
 	pstate(pstate<U> const& rhs, typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag> = sig_flag{})
-		: cblk{rhs.cblk}, ptr{static_cast<T*>(rhs.ptr)}
+		: m_ctrl{rhs.m_ctrl}, m_ptr{static_cast<T*>(rhs.m_ptr)}
 	{}
 
-	pstate() : cblk{nullptr}, ptr{nullptr} {}
+	pstate() : m_ctrl{nullptr}, m_ptr{nullptr} {}
+
+	ctrl_blk*
+	ctrl() const
+	{
+		return m_ctrl;
+	}
+
+	void
+	ctrl(ctrl_blk* cp)
+	{
+		m_ctrl = cp;
+	}
+
+	element_type*
+	ptr() const
+	{
+		return m_ptr;
+	}
+
+	void
+	ptr(element_type* p)
+	{
+		m_ptr = p;
+	}
 
 	void
 	swap(pstate& rhs) noexcept
 	{
-		std::swap(cblk, rhs.cblk);
-		std::swap(ptr, rhs.ptr);
+		std::swap(m_ctrl, rhs.m_ctrl);
+		std::swap(m_ptr, rhs.m_ptr);
 	}
 
 	template<class U>
 	typename std::enable_if_t<std::is_convertible_v<U*, T*>>
 	swap(pstate<U>& rhs) noexcept
 	{
-		std::swap(cblk, rhs.cblk);
-		std::swap(ptr, rhs.ptr);
+		std::swap(m_ctrl, rhs.m_ctrl);
+		std::swap(m_ptr, rhs.m_ptr);
 	}
 
-	pstate& operator=(pstate const& rhs)
+	pstate&
+	operator=(pstate const& rhs)
 	{
 		pstate{rhs}.swap(*this);
 		return *this;
@@ -305,7 +329,8 @@ struct pstate
 		return *this;
 	}
 
-	pstate& operator=(pstate&& rhs)
+	pstate&
+	operator=(pstate&& rhs)
 	{
 		pstate{std::move(rhs)}.swap(*this);
 		return *this;
@@ -318,6 +343,9 @@ struct pstate
 		pstate{std::move(rhs)}.swap(*this);
 		return *this;
 	}
+private:
+	ctrl_blk* m_ctrl;
+	element_type* m_ptr;
 };
 
 }    // namespace detail
@@ -422,9 +450,9 @@ protected:
 
 public:
 
-	shared_ptr() : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
+	shared_ptr() : m_state{} {}
 
-	shared_ptr(element_type* ep) : m_cblk_ptr{nullptr}, m_elem_ptr{ep}
+	shared_ptr(element_type* ep) :  m_state{ep}
 	{
 		using allocator_type      = std::allocator<element_type>;
 		using deleter_type        = detail::allocator_deleter<allocator_type>;
@@ -434,11 +462,12 @@ public:
 		allocator_type alloc{};
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 		new (cblk_ptr) ctrl_blk_type(ep, deleter_type{alloc, 1}, std::move(alloc));
-		m_cblk_ptr = cblk_ptr;
+		// m_cblk_ptr = cblk_ptr;
+		m_state.ctrl(cblk_ptr);
 	}
 
 	template<class _Del>
-	shared_ptr(element_type* ep, _Del&& del) : m_cblk_ptr{nullptr}, m_elem_ptr{ep}
+	shared_ptr(element_type* ep, _Del&& del) : m_state{ep}
 	{
 		using allocator_type      = std::allocator<element_type>;
 		using deleter_type        = _Del;
@@ -448,11 +477,12 @@ public:
 		allocator_type alloc{};
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), std::move(alloc));
-		m_cblk_ptr = cblk_ptr;
+		// m_cblk_ptr = cblk_ptr;
+		m_state.ctrl(cblk_ptr);
 	}
 
 	template<class _Del, class _Alloc>
-	shared_ptr(element_type* ep, _Del&& del, _Alloc&& alloc) : m_cblk_ptr{nullptr}, m_elem_ptr{ep}
+	shared_ptr(element_type* ep, _Del&& del, _Alloc&& alloc) : m_state{ep}
 	{
 
 		using allocator_type      = _Alloc;
@@ -462,41 +492,33 @@ public:
 
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), std::forward<_Alloc>(alloc));
-		m_cblk_ptr = cblk_ptr;
+		m_state.ctrl(cblk_ptr);
 	}
 
-	shared_ptr(shared_ptr const& rhs) : m_cblk_ptr{rhs.m_cblk_ptr}, m_elem_ptr{rhs.m_elem_ptr} 
+	shared_ptr(shared_ptr const& rhs) : m_state{rhs.m_state}
 	{
-		if (m_cblk_ptr)
+		if (m_state.ctrl())
 		{
-			m_cblk_ptr->increment_use_count();
+			m_state.ctrl()->increment_use_count();
 		}
 	}
 
 	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
-	shared_ptr(shared_ptr<U> const& rhs)
-		: m_cblk_ptr{rhs.m_cblk_ptr}, m_elem_ptr{static_cast<element_type*>(rhs.m_elem_ptr)}
+	shared_ptr(shared_ptr<U> const& rhs) : m_state{rhs.m_state}
 	{
-		if (m_cblk_ptr)
+		if (m_state.ctrl())
 		{
-			m_cblk_ptr->increment_use_count();
+			m_state.ctrl()->increment_use_count();
 		}
 	}
 
-	shared_ptr(shared_ptr&& rhs) : m_cblk_ptr{rhs.m_cblk_ptr}, m_elem_ptr{rhs.m_elem_ptr} 
-	{
-		rhs.m_cblk_ptr = nullptr;
-		rhs.m_elem_ptr = nullptr;
-	}
+	shared_ptr(shared_ptr&& rhs) : m_state{std::move(rhs.m_state)} {}
 
 	template<class U, class = typename std::enable_if_t<std::is_convertible<U*, element_type*>::value>>
-	shared_ptr(shared_ptr<U>&& rhs): m_cblk_ptr{rhs.m_cblk_ptr}, m_elem_ptr{static_cast<element_type*>(rhs.m_elem_ptr)}
-	{
-		rhs.m_cblk_ptr = nullptr;
-		rhs.m_elem_ptr = nullptr;
-	}
+	shared_ptr(shared_ptr<U>&& rhs) : m_state{std::move(rhs.m_state)}
+	{}
 
-	shared_ptr(std::nullptr_t) : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
+	shared_ptr(std::nullptr_t) : m_state{} {}
 
 	template<class U>
 	shared_ptr(
@@ -512,11 +534,11 @@ public:
 					!std::is_lvalue_reference<_Del>::value && !std::is_array<U>::value
 							&& std::is_convertible<typename std::unique_ptr<U, _Del>::pointer, element_type*>::value,
 					sig_flag> = sig_flag{})
-		: m_elem_ptr(uptr.get())
+		: m_state{uptr.get()}
 	{
-		if (m_elem_ptr == nullptr)
+		if (!m_state.ptr())
 		{
-			m_cblk_ptr = nullptr;
+			m_state.ctrl(nullptr);
 		}
 		else
 		{
@@ -529,7 +551,7 @@ public:
 			allocator_type alloc;
 			ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 			new (cblk_ptr) ctrl_blk_type(uptr.get(), uptr.get_deleter(), std::move(alloc));
-			m_cblk_ptr = cblk_ptr;
+			m_state.ctrl(cblk_ptr);
 		}
 		uptr.release();
 	}
@@ -541,11 +563,11 @@ public:
 					std::is_lvalue_reference<_Del>::value && !std::is_array<U>::value
 							&& std::is_convertible<typename std::unique_ptr<U, _Del>::pointer, element_type*>::value,
 					sig_flag> = sig_flag{})
-		: m_elem_ptr(uptr.get())
+		: m_state{uptr.get()}
 	{
-		if (m_elem_ptr == nullptr)
+		if (!m_state.ptr())
 		{
-			m_cblk_ptr = nullptr;
+			m_state.ctrl(nullptr);
 		}
 		else
 		{
@@ -558,7 +580,7 @@ public:
 			allocator_type alloc;
 			ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 			new (cblk_ptr) ctrl_blk_type(uptr.get(), std::ref(uptr.get_deleter()), std::move(alloc));
-			m_cblk_ptr = cblk_ptr;
+			m_state.ctrl(cblk_ptr);
 		}
 		uptr.release();
 	}
@@ -567,20 +589,20 @@ public:
 
 	~shared_ptr()
 	{
-		if (m_cblk_ptr)
+		if (m_state.ctrl())
 		{
-			assert(m_cblk_ptr->use_count() > 0);
-			if (m_cblk_ptr->decrement_use_count() == 0)
+			assert(m_state.ctrl()->use_count() > 0);
+			if (m_state.ctrl()->decrement_use_count() == 0)
 			{
-				auto cblk_ptr = m_cblk_ptr;
-				m_cblk_ptr    = nullptr;
-				m_elem_ptr    = nullptr;
+				auto cblk_ptr = m_state.ctrl();
+				m_state.ctrl(nullptr);
+				m_state.ptr(nullptr);
 				cblk_ptr->on_zero_use_count();
 			}
 			else
 			{
-				m_cblk_ptr = nullptr;
-				m_elem_ptr = nullptr;
+				m_state.ctrl(nullptr);
+				m_state.ptr(nullptr);
 			}
 		}
 	}
@@ -588,8 +610,7 @@ public:
 	void
 	swap(shared_ptr& rhs) noexcept
 	{
-		std::swap(m_cblk_ptr, rhs.m_cblk_ptr);
-		std::swap(m_elem_ptr, rhs.m_elem_ptr);
+		m_state.swap(rhs.m_state);
 	}
 
 	shared_ptr&
@@ -625,7 +646,7 @@ public:
 	detail::ctrl_blk*
 	get_ctrl_blk() const
 	{
-		return m_cblk_ptr;
+		return m_state.ctrl();
 	}
 
 	void
@@ -636,14 +657,14 @@ public:
 
 	explicit operator bool() const
 	{
-		return m_elem_ptr != nullptr;
+		return m_state.ptr() != nullptr;
 	}
 
 	template<class U>
 	typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, bool>
 	operator==(shared_ptr<U> const& rhs) const
 	{
-		return m_elem_ptr == rhs.m_elem_ptr;
+		return m_state.ptr() == rhs.m_state.ptr();
 	}
 
 	template<class U>
@@ -666,38 +687,37 @@ public:
 	element_type*
 	get() const
 	{
-		return m_elem_ptr;
+		return m_state.ptr();
 	}
 
 	element_type* operator->() const
 	{
-		return m_elem_ptr;
+		return m_state.ptr();
 	}
 
 	element_type& operator*() const
 	{
-		return *m_elem_ptr;
+		return *m_state.ptr();
 	}
 
 	long
 	use_count() const
 	{
-		if (!m_cblk_ptr)
+		if (!m_state.ctrl())
 		{
 			return 0;
 		}
 		else
 		{
-			return m_cblk_ptr->use_count();
+			return m_state.ctrl()->use_count();
 		}
 	}
 
 private:
 
-	shared_ptr(detail::ctrl_blk* p, element_type* ep) : m_cblk_ptr{p}, m_elem_ptr{ep} {}
+	shared_ptr(detail::ctrl_blk* p, element_type* ep) : m_state{p, ep} {}
 
-	detail::ctrl_blk* m_cblk_ptr;
-	element_type*     m_elem_ptr;
+	detail::pstate<element_type> m_state;
 };
 
 template<class T, class... Args>
@@ -737,8 +757,7 @@ public:
 
 private:
 
-	detail::ctrl_blk* m_cblk_ptr;
-	element_type*          m_elem_ptr;
+	detail::pstate<T> m_state;
 
 	struct sig_flag
 	{
@@ -746,25 +765,25 @@ private:
 	};
 
 public:
-	weak_ptr() noexcept : m_cblk_ptr{nullptr}, m_elem_ptr{nullptr} {}
+	weak_ptr() noexcept : m_state{} {}
 
 	template<class U>
 	weak_ptr(
 			shared_ptr<U> const& sp,
 			typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, sig_flag> = sig_flag{}) noexcept
-		: m_cblk_ptr{sp.m_cblk_ptr}, m_elem_ptr{sp.m_elem_ptr}
+		: m_state{sp.m_state}
 	{
-		if (m_cblk_ptr)
+		if (m_state.ctrl())
 		{
-			m_cblk_ptr->increment_weak_count();
+			m_state.ctrl()->increment_weak_count();
 		}
 	}
 
-	weak_ptr(weak_ptr const& wp) noexcept : m_cblk_ptr{wp.m_cblk_ptr}, m_elem_ptr{wp.m_elem_ptr}
+	weak_ptr(weak_ptr const& wp) noexcept : m_state{wp.m_state}
 	{
-		if (m_cblk_ptr)
+		if (m_state.ctrl())
 		{
-			m_cblk_ptr->increment_weak_count();
+			m_state.ctrl()->increment_weak_count();
 		}
 	}
 
@@ -772,47 +791,40 @@ public:
 	weak_ptr(
 			weak_ptr<U> const& wp,
 			typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, sig_flag> = sig_flag{}) noexcept
-		: m_cblk_ptr{wp.m_cblk_ptr}, m_elem_ptr{static_cast<element_type*>(wp.m_elem_ptr)}
+		: m_state{wp.m_state}
 	{
-		if (m_cblk_ptr)
+		if (m_state.ctrl())
 		{
-			m_cblk_ptr->increment_weak_count();
+			m_state.ctrl()->increment_weak_count();
 		}
 	}
 
-	weak_ptr(weak_ptr&& wp) noexcept : m_cblk_ptr{wp.m_cblk_ptr}, m_elem_ptr{wp.m_elem_ptr}
-	{
-		wp.m_cblk_ptr = nullptr;
-		wp.m_elem_ptr = nullptr;
-	}
+	weak_ptr(weak_ptr&& wp) noexcept : m_state{std::move(wp.m_state)} {}
 
 	template<class U>
 	weak_ptr(
 			weak_ptr<U>&& wp,
 			typename std::enable_if_t<std::is_convertible<U*, element_type*>::value, sig_flag> = sig_flag{}) noexcept
-		: m_cblk_ptr{wp.m_cblk_ptr}, m_elem_ptr{static_cast<element_type*>(wp.m_elem_ptr)}
-	{
-		wp.m_cblk_ptr = nullptr;
-		wp.m_elem_ptr = nullptr;
-	}
+		: m_state{std::move(wp.m_state)}
+	{}
 
 	~weak_ptr()
 	{
-		if (m_cblk_ptr)
+		if (m_state.ctrl())
 		{
-			assert(m_cblk_ptr->weak_count() > 0);
-			if (m_cblk_ptr->decrement_weak_count() == 0)
+			assert(m_state.ctrl()->weak_count() > 0);
+			if (m_state.ctrl()->decrement_weak_count() == 0)
 			{
-				assert(m_cblk_ptr->use_count() == 0);
-				auto cblk_ptr = m_cblk_ptr;
-				m_cblk_ptr    = nullptr;
-				m_elem_ptr    = nullptr;
+				assert(m_state.ctrl()->use_count() == 0);
+				auto cblk_ptr = m_state.ctrl();
+				m_state.ctrl(nullptr);
+				m_state.ptr(nullptr);
 				cblk_ptr->on_zero_weak_count();
 			}
 			else
 			{
-				m_cblk_ptr = nullptr;
-				m_elem_ptr = nullptr;
+				m_state.ctrl(nullptr);
+				m_state.ptr(nullptr);
 			}
 		}
 	}
@@ -856,8 +868,7 @@ public:
 	void
 	swap(weak_ptr& rhs) noexcept
 	{
-		std::swap(m_cblk_ptr, rhs.m_cblk_ptr);
-		std::swap(m_elem_ptr, rhs.m_elem_ptr);
+		m_state.swap(rhs.m_state);
 	}
 
 	void
@@ -869,32 +880,41 @@ public:
 	long
 	use_count() const noexcept
 	{
-		return m_cblk_ptr ? m_cblk_ptr->use_count() : 0;
+		return m_state.ctrl() ? m_state.ctrl()->use_count() : 0;
 	}
 
 	long
 	weak_count() const noexcept
 	{
-		return m_cblk_ptr ? m_cblk_ptr->weak_count() : 0;
+		return m_state.ctrl() ? m_state.ctrl()->weak_count() : 0;
 	}
 
 	bool
 	expired() const noexcept
 	{
-		return m_cblk_ptr == 0 || m_cblk_ptr->use_count() == 0;
+		return m_state.ctrl() == 0 || m_state.ctrl()->use_count() == 0;
 	}
 
 	shared_ptr<element_type>
 	lock() const noexcept
 	{
 		shared_ptr<element_type> result;
-		result.m_cblk_ptr = m_cblk_ptr ? m_cblk_ptr->lock() : nullptr;
-		if (result.m_cblk_ptr)
-			result.m_elem_ptr = m_elem_ptr;
+		if (m_state.ctrl())
+		{
+			result.m_state.ctrl(m_state.ctrl()->lock());
+		}
+		else
+		{
+			result.m_state.ctrl(nullptr);
+		}
+		if (result.m_state.ctrl())
+		{
+			result.m_state.ptr(m_state.ptr());
+		}
 		return result;
 	}
 
-    template <class U> friend class weak_ptr;
+	template <class U> friend class weak_ptr;
     template <class U> friend class shared_ptr;
 };
 
@@ -910,9 +930,9 @@ template<class U>
 shared_ptr<T>::shared_ptr(
 		weak_ptr<U> const& wp,
 		typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag>)
-	: m_cblk_ptr{wp.m_ctrl_blk ? wp.m_ctrl_blk->lock() : nullptr}, m_elem_ptr{wp.m_elem_ptr}
+		: m_state{(wp.m_state.ctrl() ? wp.m_state.ctrl()->lock() : nullptr), wp.m_state.ptr()}
 {
-	if (!m_cblk_ptr)
+	if (!m_state.ctrl())
 	{
 		throw std::bad_weak_ptr{};
 	}

@@ -51,6 +51,8 @@ public:
 	using bstream::source::getn;
 	using base = bstream::source;
 
+	source() : base{}, m_buf{} {}
+
 	source(shared_buffer const& buf);
 
 	source(shared_buffer&& buf);

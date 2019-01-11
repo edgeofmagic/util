@@ -642,6 +642,13 @@ public:
 		bind_each(m_tuple, that.m_tuple);
 	}
 
+	template<class U>
+	U& 
+	get_binding()
+	{
+		return std::get<U>(m_tuple);
+	}
+
 private:
 	std::tuple<Args...> m_tuple;
 };

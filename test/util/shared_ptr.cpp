@@ -403,6 +403,44 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct fr
 	util::shared_ptr<std::string> sps{std::move(ups)};
 	CHECK(*sps == "zoot");
 	CHECK(ups.get() == nullptr);
-
 }
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { weak_ptr construct from shared_ptr }")
+{
+	auto sp0 = util::make_shared<std::string>("zoot");
+	util::weak_ptr<std::string> wp{sp0};
+	CHECK(wp.weak_count() == 2);
+	CHECK(wp.use_count() == 1);
+	CHECK(sp0.weak_count() == 2);
+	CHECK(sp0.use_count() == 1);
+	auto sp1 = wp.lock();
+	CHECK(sp1.use_count() == 2);
+	util::shared_ptr<std::string> sp2{wp};
+	CHECK(sp2.use_count() == 3);
+	sp2.reset();
+	sp1.reset();
+	CHECK(sp0.use_count() == 1);
+	CHECK(wp.weak_count() == 2);
+	CHECK(sp1.use_count() == 0);
+	CHECK(sp2.use_count() == 0);
+	sp0.reset();
+	CHECK(wp.use_count() == 0);
+	CHECK(wp.weak_count() == 1);
+	sp1 = wp.lock();
+	CHECK(!sp1);
+	CHECK(wp.use_count() == 0);
+	CHECK(wp.weak_count() == 1);
+	bool caught{false};
+	try
+	{
+		util::shared_ptr<std::string> sp3{wp};
+		CHECK(false);
+	}
+	catch(std::bad_weak_ptr const& e)
+	{
+		caught = true;
+	}
+	CHECK(caught);
+}
+
 

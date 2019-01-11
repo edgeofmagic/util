@@ -49,11 +49,19 @@ class source_test_probe;
 template<class Buffer>
 class source : public bstream::source
 {
+private:
+	struct signature_enable {};
+
 public:
-	friend class detail::source_test_probe<Buffer>;
 
 	using bstream::source::getn;
+	using bstream::source::get_num;
 	using base = bstream::source;
+	using buffer_type = Buffer;
+
+	friend class detail::source_test_probe<Buffer>;
+
+	source() : base{}, m_bufs{}, m_size{0}, m_current{0}, m_offsets{} {}
 
 	source(shared_buffer const& buf);
 
@@ -134,6 +142,206 @@ public:
 				m_bufs[m_current].data() + m_bufs[m_current].size());
 	}
 
+	void
+	use(std::deque<mutable_buffer>&& bufs)
+	{
+		m_bufs.clear();
+		m_offsets.clear();
+		m_size = 0;
+		m_current = 0;
+		m_offsets.resize(bufs.size(), 0);
+
+		size_type index = 0;
+		using iter_type = std::deque<mutable_buffer>::iterator;
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			std::move_iterator<iter_type> move_it{it};
+			m_offsets[index++] = m_size;
+			m_size += it->size();
+			m_bufs.emplace_back(*move_it);
+		}
+		bufs.clear();
+		set_ptrs(
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data() + m_bufs[m_current].size());
+	}
+
+	void
+	use(std::deque<const_buffer>&& bufs)
+	{
+		m_bufs.clear();
+		m_offsets.clear();
+		m_size = 0;
+		m_current = 0;
+		m_offsets.resize(bufs.size(), 0);
+
+		size_type index = 0;
+		using iter_type = std::deque<const_buffer>::iterator;
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			std::move_iterator<iter_type> move_it{it};
+			m_offsets[index++] = m_size;
+			m_size += it->size();
+			m_bufs.emplace_back(*move_it);
+		}
+		bufs.clear();
+		set_ptrs(
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data() + m_bufs[m_current].size());
+	}
+
+	void
+	use(std::deque<shared_buffer>&& bufs);
+
+	void
+	use(std::deque<shared_buffer> const& bufs); // TODO: here
+
+	void
+	use(mutable_buffer&& buf)
+	{
+		m_bufs.clear();
+		m_offsets.clear();
+		m_size = buf.size();
+		m_current = 0;
+		m_offsets.resize(1, 0);
+		m_bufs.emplace_back(std::move(buf));
+		set_ptrs(
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data() + m_bufs[m_current].size());
+	}
+
+	void
+	use(const_buffer&& buf)
+	{
+		m_bufs.clear();
+		m_offsets.clear();
+		m_size = buf.size();
+		m_current = 0;
+		m_offsets.resize(1, 0);
+		m_bufs.emplace_back(std::move(buf));
+		set_ptrs(
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data(),
+				m_bufs[m_current].data() + m_bufs[m_current].size());
+	}
+
+	void
+	use(shared_buffer&& buf);
+
+
+	void
+	trim()
+	{
+		while (m_current > 0)
+		{
+			m_bufs.pop_front();
+			m_offsets.pop_front();
+			--m_current;
+		}
+		assert(m_current == 0);
+		refresh_offsets();
+	}
+
+	void
+	append(std::deque<shared_buffer>&& bufs);
+
+	void
+	append(std::deque<shared_buffer> const& bufs);
+
+	void
+	append(std::deque<const_buffer>&& bufs)
+	{
+		if (m_bufs.empty())
+		{
+			use(std::move(bufs));
+		}
+		else
+		{
+			for (auto it = bufs.begin(); it != bufs.end(); ++it)
+			{
+				std::move_iterator<std::deque<const_buffer>::iterator> mit{it};
+				m_offsets.push_back(m_size);
+				m_size += it->size();
+				m_bufs.emplace_back(*mit);
+			}
+			bufs.clear();
+		}
+	}
+
+	void
+	append(std::deque<mutable_buffer>&& bufs)
+	{
+		if (m_bufs.empty())
+		{
+			use(std::move(bufs));
+		}
+		else
+		{
+			for (auto it = bufs.begin(); it != bufs.end(); ++it)
+			{
+				std::move_iterator<std::deque<mutable_buffer>::iterator> mit{it};
+				m_offsets.push_back(m_size);
+				m_size += it->size();
+				m_bufs.emplace_back(*mit);
+			}
+			bufs.clear();
+		}
+	}
+
+	void
+	append(shared_buffer&& buf);
+
+	void
+	append(shared_buffer const& buf);
+
+	void
+	append(const_buffer&& buf)
+	{
+		if (m_bufs.empty())
+		{
+			use(std::move(buf));
+		}
+		else
+		{
+			m_offsets.push_back(m_size);
+			m_size += buf.size();
+			m_bufs.emplace_back(std::move(buf));
+		}
+	}
+
+	void
+	append(mutable_buffer&& buf)
+	{
+		if (m_bufs.empty())
+		{
+			use(std::move(buf));
+		}
+		else
+		{
+			m_offsets.push_back(m_size);
+			m_size += buf.size();
+			m_bufs.emplace_back(std::move(buf));
+		}
+	}
+
+	void
+	refresh_offsets()
+	{
+		size_type index = 0;
+		size_type size = 0;
+		using iter_type = typename std::deque<buffer_type>::iterator;
+		for (auto it = m_bufs.begin(); it != m_bufs.end(); ++it)
+		{
+			m_offsets[index++] = size;
+			size += it->size();
+		}
+		m_base_offset = m_offsets[m_current];
+		m_size = size;
+	}
+
 	std::deque<Buffer>&
 	get_buffers_ref()
 	{
@@ -161,6 +369,12 @@ public:
 
 	virtual const_buffer
 	get_slice(size_type n) override;
+
+	std::deque<shared_buffer>
+	get_segmented_slice(size_type n);
+
+	std::deque<shared_buffer>
+	get_segmented_slice(size_type n, std::error_code& err);
 
 	virtual size_type
 	really_get_size() const override
@@ -235,10 +449,10 @@ public:
 	}
 
 protected:
-	std::deque<Buffer>     m_bufs;
-	size_type              m_size;
-	size_type              m_current;
-	std::vector<size_type> m_offsets;
+	std::deque<Buffer>    m_bufs;
+	size_type             m_size;
+	size_type             m_current;
+	std::deque<size_type> m_offsets;
 };
 
 
@@ -425,7 +639,7 @@ template<>
 inline const_buffer
 source<const_buffer>::get_slice(size_type n, std::error_code& err)
 {
-	return base::get_slice(n);
+	return base::get_slice(n, err);
 }
 
 template<>
@@ -439,7 +653,7 @@ template<>
 inline const_buffer
 source<shared_buffer>::get_slice(size_type n, std::error_code& err)
 {
-	return base::get_slice(n);
+	return base::get_slice(n, err);
 }
 
 template<>
@@ -448,6 +662,434 @@ source<shared_buffer>::get_slice(size_type n)
 {
 	return base::get_slice(n);
 }
+
+template<>
+inline std::deque<shared_buffer>
+source<shared_buffer>::get_segmented_slice(size_type n, std::error_code& err)
+{
+	err.clear();
+	std::deque<shared_buffer> result;
+
+	if (n < 1) goto exit;
+
+	if (n > remaining())
+	{
+		throw std::system_error{make_error_code(bstream::errc::read_past_end_of_stream)};
+	}
+
+	if (m_next == m_end)
+	{
+		assert(m_current < m_bufs.size() - 1);
+		assert(remaining() > 0);
+		auto available = really_underflow(err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+		if (available < 1) //  shouldn't happen
+		{
+			throw std::system_error{make_error_code(bstream::errc::read_past_end_of_stream)};
+		}
+	}
+	while(n > 0)
+	{
+		auto grab = std::min(n, available());
+		result.emplace_back(get_shared_slice(grab, err));
+		if (err) goto exit;
+		n -= grab;
+	}
+exit:
+	return result;
+}
+
+template<>
+inline std::deque<shared_buffer>
+source<shared_buffer>::get_segmented_slice(size_type n)
+{
+	std::deque<shared_buffer> result;
+	std::error_code err;
+	result = get_segmented_slice(n, err);
+	if (err)
+	{
+		throw std::system_error{err};
+	}
+	return result;
+}
+
+template<>
+inline std::deque<shared_buffer>
+source<const_buffer>::get_segmented_slice(size_type n)
+{
+	std::deque<shared_buffer> result;
+	result.emplace_back(shared_buffer{base::get_slice(n)});
+	return result;
+}
+
+template<>
+inline std::deque<shared_buffer>
+source<const_buffer>::get_segmented_slice(size_type n, std::error_code& err)
+{
+	std::deque<shared_buffer> result;
+	result.emplace_back(shared_buffer{base::get_slice(n, err)});
+	return result;	
+}
+
+template<>
+inline std::deque<shared_buffer>
+source<mutable_buffer>::get_segmented_slice(size_type n)
+{
+	std::deque<shared_buffer> result;
+	result.emplace_back(shared_buffer{base::get_slice(n)});
+	return result;
+}
+
+template<>
+inline std::deque<shared_buffer>
+source<mutable_buffer>::get_segmented_slice(size_type n, std::error_code& err)
+{
+	std::deque<shared_buffer> result;
+	result.emplace_back(shared_buffer{base::get_slice(n, err)});
+	return result;	
+}
+
+
+
+template<>
+inline void
+source<mutable_buffer>::use(std::deque<shared_buffer>&&  bufs)
+{
+	m_bufs.clear();
+	m_offsets.clear();
+	m_size = 0;
+	m_current = 0;
+	m_offsets.resize(bufs.size(), 0);
+
+	size_type index = 0;
+	for (auto it = bufs.begin(); it != bufs.end(); ++it)
+	{
+		m_offsets[index++] = m_size;
+		m_size += it->size();
+		m_bufs.emplace_back(*it);
+	}
+	bufs.clear();
+	set_ptrs(
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data() + m_bufs[m_current].size());
+}
+
+template<>
+inline void
+source<const_buffer>::use(std::deque<shared_buffer>&&  bufs)
+{
+	m_bufs.clear();
+	m_offsets.clear();
+	m_size = 0;
+	m_current = 0;
+	m_offsets.resize(bufs.size(), 0);
+
+	size_type index = 0;
+	for (auto it = bufs.begin(); it != bufs.end(); ++it)
+	{
+		m_offsets[index++] = m_size;
+		m_size += it->size();
+		m_bufs.emplace_back(*it);
+	}
+	bufs.clear();
+	set_ptrs(
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data() + m_bufs[m_current].size());
+}
+
+template<>
+inline void
+source<shared_buffer>::use(std::deque<shared_buffer>&&  bufs)
+{
+	m_bufs.clear();
+	m_offsets.clear();
+	m_size = 0;
+	m_current = 0;
+	m_offsets.resize(bufs.size(), 0);
+
+	size_type index = 0;
+	using iter_type = std::deque<shared_buffer>::iterator;
+	for (auto it = bufs.begin(); it != bufs.end(); ++it)
+	{
+		std::move_iterator<iter_type> move_it{it};
+		m_offsets[index++] = m_size;
+		m_size += it->size();
+		m_bufs.emplace_back(*move_it);
+	}
+	bufs.clear();
+	set_ptrs(
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data() + m_bufs[m_current].size());
+}
+
+template<>
+inline void
+source<mutable_buffer>::use(shared_buffer&& buf)
+{
+	m_bufs.clear();
+	m_offsets.clear();
+	m_size = buf.size();
+	m_current = 0;
+	m_offsets.resize(1, 0);
+	m_bufs.emplace_back(buf);
+	set_ptrs(
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data() + m_bufs[m_current].size());	
+}
+
+template<>
+inline void
+source<const_buffer>::use(shared_buffer&& buf)
+{
+	m_bufs.clear();
+	m_offsets.clear();
+	m_size = buf.size();
+	m_current = 0;
+	m_offsets.resize(1, 0);
+	m_bufs.emplace_back(buf);
+	set_ptrs(
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data() + m_bufs[m_current].size());	
+}
+
+template<>
+inline void
+source<shared_buffer>::use(shared_buffer&& buf)
+{
+	m_bufs.clear();
+	m_offsets.clear();
+	m_size = buf.size();
+	m_current = 0;
+	m_offsets.resize(1, 0);
+	m_bufs.emplace_back(std::move(buf));
+	set_ptrs(
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data(),
+			m_bufs[m_current].data() + m_bufs[m_current].size());	
+}
+
+template<>
+inline void
+source<shared_buffer>::append(std::deque<shared_buffer>&& bufs)
+{
+	if (m_bufs.empty())
+	{
+		use(std::move(bufs));
+	}
+	else
+	{
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			std::move_iterator<std::deque<shared_buffer>::iterator> mit{it};
+			m_offsets.push_back(m_size);
+			m_size += it->size();
+			m_bufs.emplace_back(*mit);
+		}
+		bufs.clear();
+	}
+}
+
+template<>
+inline void
+source<shared_buffer>::append(std::deque<shared_buffer> const& bufs)
+{
+	if (m_bufs.empty())
+	{
+		use(bufs);
+	}
+	else
+	{
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			m_offsets.push_back(m_size);
+			m_size += it->size();
+			m_bufs.emplace_back(*it);
+		}
+	}
+}
+
+template<>
+inline void
+source<shared_buffer>::append(shared_buffer&& buf)
+{
+	if (m_bufs.empty())
+	{
+		use(buf);
+	}
+	else
+	{
+		m_offsets.push_back(m_size);
+		m_size += buf.size();
+		m_bufs.emplace_back(std::move(buf));
+	}
+}
+
+template<>
+inline void
+source<shared_buffer>::append(shared_buffer const& buf)
+{
+	if (m_bufs.empty())
+	{
+		use(buf);
+	}
+	else
+	{
+		m_offsets.push_back(m_size);
+		m_size += buf.size();
+		m_bufs.emplace_back(buf);
+	}
+}
+
+
+template<>
+inline void
+source<const_buffer>::append(std::deque<shared_buffer>&& bufs)
+{
+	if (m_bufs.empty())
+	{
+		use(bufs);
+	}
+	else
+	{
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			m_offsets.push_back(m_size);
+			m_size += it->size();
+			m_bufs.emplace_back(*it);
+		}
+	}
+}
+
+template<>
+inline void
+source<const_buffer>::append(std::deque<shared_buffer> const& bufs)
+{
+	if (m_bufs.empty())
+	{
+		use(bufs);
+	}
+	else
+	{
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			m_offsets.push_back(m_size);
+			m_size += it->size();
+			m_bufs.emplace_back(*it);
+		}
+	}
+}
+
+template<>
+inline void
+source<const_buffer>::append(shared_buffer&& buf)
+{
+	if (m_bufs.empty())
+	{
+		use(buf);
+	}
+	else
+	{
+		m_offsets.push_back(m_size);
+		m_size += buf.size();
+		m_bufs.emplace_back(buf);
+	}
+}
+
+template<>
+inline void
+source<const_buffer>::append(shared_buffer const& buf)
+{
+	if (m_bufs.empty())
+	{
+		use(buf);
+	}
+	else
+	{
+		m_offsets.push_back(m_size);
+		m_size += buf.size();
+		m_bufs.emplace_back(buf);
+	}
+}
+
+
+template<>
+inline void
+source<mutable_buffer>::append(std::deque<shared_buffer>&& bufs)
+{
+	if (m_bufs.empty())
+	{
+		use(bufs);
+	}
+	else
+	{
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			m_offsets.push_back(m_size);
+			m_size += it->size();
+			m_bufs.emplace_back(*it);
+		}
+	}
+}
+
+template<>
+inline void
+source<mutable_buffer>::append(std::deque<shared_buffer> const& bufs)
+{
+	if (m_bufs.empty())
+	{
+		use(bufs);
+	}
+	else
+	{
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			m_offsets.push_back(m_size);
+			m_size += it->size();
+			m_bufs.emplace_back(*it);
+		}
+	}
+}
+
+template<>
+inline void
+source<mutable_buffer>::append(shared_buffer&& buf)
+{
+	if (m_bufs.empty())
+	{
+		use(buf);
+	}
+	else
+	{
+		m_offsets.push_back(m_size);
+		m_size += buf.size();
+		m_bufs.emplace_back(buf);
+	}
+}
+
+template<>
+inline void
+source<mutable_buffer>::append(shared_buffer const& buf)
+{
+	if (m_bufs.empty())
+	{
+		use(buf);
+	}
+	else
+	{
+		m_offsets.push_back(m_size);
+		m_size += buf.size();
+		m_bufs.emplace_back(buf);
+	}
+}
+
 
 }    // namespace compound_memory
 }    // namespace bstream

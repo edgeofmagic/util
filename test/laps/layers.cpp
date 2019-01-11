@@ -28,6 +28,7 @@
 #include <logicmill/bstream/buffer.h>
 #include <logicmill/laps/channel_anchor.h>
 #include <logicmill/laps/driver.h>
+#include <logicmill/laps/framer.h>
 
 using namespace logicmill;
 using namespace async;
@@ -137,4 +138,66 @@ TEST_CASE("logicmill::laps::channel_anchor [ smoke ] { stackable connect read wr
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(driver_read_handler);
 	CHECK(!err);
+}
+
+namespace framer_test
+{
+	class frame_top_catcher : public stackable<laps::frame_duplex_bottom, frame_top_catcher>
+	{
+	public:
+
+		void on(laps::shared_frame_event, laps::frame_header header, laps::sbuf_sequence&& bufs)
+		{
+			m_header = header;
+			m_bufs = std::move(bufs);
+			std::cout << "received event: " << header.size << ", " << m_bufs.size() << ": " << m_bufs[0].to_string() << std::endl;
+		}
+
+		void on(laps::control_event, laps::control_state s) {}
+
+		void on(laps::error_event, std::error_code err) {}
+
+		laps::frame_header const& header() const
+		{
+			return m_header;
+		}
+
+		laps::sbuf_sequence const& bufs() const
+		{
+			return m_bufs;
+		}
+
+	private:
+		laps::frame_header m_header;
+		laps::sbuf_sequence m_bufs;
+	};
+}
+
+TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
+{
+	laps::framer frmr;
+	framer_test::frame_top_catcher ftop;
+	frmr.get_top().stack(ftop.get_surface<laps::frame_duplex_bottom>());
+	emitter<laps::const_data_event> driver;
+	driver.get_source<laps::const_data_event>().bind(frmr.get_bottom()
+						.get_connector<laps::const_data_in_connector>()
+						.get_binding<sink<laps::const_data_event>>());
+	
+	bstream::memory::sink snk{8};
+	bstream::mutable_buffer b{"here is some buffer content, should be long enought to avoid short string optimization"};
+
+	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
+	std::uint32_t flags{0};
+	snk.put_num(blen, true);
+	snk.put_num(flags, true);
+	bstream::mutable_buffer mbuf{snk.release_buffer()};
+	std::cout << "mbuf size: " << mbuf.size() << std::endl;
+	mbuf.dump(std::cout);
+	std::deque<bstream::const_buffer> bufs;
+	bufs.emplace_back(std::move(mbuf));
+	bufs.emplace_back(bstream::const_buffer{std::move(b)});
+
+	driver.send<laps::const_data_event>(std::move(bufs));
+
+	// driver.send<laps::const_data_event>();
 }

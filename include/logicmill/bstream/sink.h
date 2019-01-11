@@ -223,6 +223,12 @@ public:
 
 		if ((m_end - m_next) >= usize)
 		{
+			if (!m_dirty)
+			{
+				m_dirty_start = m_next;
+			}
+			m_dirty   = true;
+
 			if (reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[1];
@@ -260,6 +266,12 @@ public:
 
 		if ((m_end - m_next) >= usize)
 		{
+			if (!m_dirty)
+			{
+				m_dirty_start = m_next;
+			}
+			m_dirty   = true;
+
 			if (reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[1];
@@ -301,6 +313,12 @@ public:
 
 		if ((m_end - m_next) >= usize)
 		{
+			if (!m_dirty)
+			{
+				m_dirty_start = m_next;
+			}
+			m_dirty   = true;
+
 			if (reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[3];
@@ -342,6 +360,12 @@ public:
 
 		if ((m_end - m_next) >= usize)
 		{
+			if (!m_dirty)
+			{
+				m_dirty_start = m_next;
+			}
+			m_dirty   = true;
+
 			if (reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[3];
@@ -386,6 +410,12 @@ public:
 
 		if ((m_end - m_next) >= usize)
 		{
+			if (!m_dirty)
+			{
+				m_dirty_start = m_next;
+			}
+			m_dirty   = true;
+
 			if (reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[7];
@@ -435,6 +465,12 @@ public:
 
 		if ((m_end - m_next) >= usize)
 		{
+			if (!m_dirty)
+			{
+				m_dirty_start = m_next;
+			}
+			m_dirty   = true;
+
 			if (reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[7];

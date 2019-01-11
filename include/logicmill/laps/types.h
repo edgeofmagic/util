@@ -41,6 +41,10 @@ enum class event_type
 	data,
 	mutable_data,
 	const_data,
+	frame,
+	mutable_frame,
+	const_frame,
+	shared_frame,
 	control,
 	error
 };
@@ -69,6 +73,20 @@ using data_event         = flow::event<event_type, event_type::data, Payload>;
 using mutable_data_event = data_event<mbuf_sequence&&>;
 using const_data_event   = data_event<cbuf_sequence&&>;
 using shared_data_event  = data_event<sbuf_sequence&&>;
+
+
+struct frame_header
+{
+	std::uint32_t size;
+	std::uint32_t flags;
+};
+
+template<class Payload>
+using frame_event = flow::event<event_type, event_type::frame, frame_header, Payload>;
+using mutable_frame_event = frame_event<mbuf_sequence&&>;
+using const_frame_event   = frame_event<cbuf_sequence&&>;
+using shared_frame_event  = frame_event<sbuf_sequence&&>;
+
 using control_event      = flow::event<event_type, event_type::control, control_state>;
 using error_event        = flow::event<event_type, event_type::error, std::error_code>;
 using mutable_data_in_connector
@@ -80,10 +98,24 @@ using const_data_out_connector = flow::complement<const_data_in_connector>::type
 using shared_data_in_connector
 		= flow::connector<flow::sink<shared_data_event>, flow::source<control_event>, flow::sink<error_event>>;
 using shared_data_out_connector = flow::complement<shared_data_in_connector>::type;
+
+using mutable_frame_in_connector
+		= flow::connector<flow::sink<mutable_frame_event>, flow::source<control_event>, flow::source<error_event>>;
+using mutable_frame_out_connector = flow::complement<mutable_frame_in_connector>::type;
+using const_frame_in_connector
+		= flow::connector<flow::sink<const_frame_event>, flow::source<control_event>, flow::source<error_event>>;
+using const_frame_out_connector = flow::complement<const_frame_in_connector>::type;
+using shared_frame_in_connector
+		= flow::connector<flow::sink<shared_frame_event>, flow::source<control_event>, flow::source<error_event>>;
+using shared_frame_out_connector = flow::complement<shared_frame_in_connector>::type;
+
 using stream_duplex_top         = flow::surface<mutable_data_in_connector, const_data_out_connector>;
-using stream_duplex_bottom      = flow::complement<stream_duplex_top>::type;
-using frame_duplex_top          = flow::surface<mutable_data_in_connector, shared_data_out_connector>;
-using frame_duplex_bottom       = flow::complement<frame_duplex_top>::type;
+// using stream_duplex_bottom      = flow::complement<stream_duplex_top>::type;
+using stream_duplex_bottom      = flow::surface<mutable_data_out_connector, const_data_in_connector>;
+using frame_duplex_top          = flow::surface<mutable_frame_in_connector, shared_frame_out_connector>;
+// using frame_duplex_bottom       = flow::complement<frame_duplex_top>::type; 
+// causes failing template recursion of complement<>, see binds_with<>
+using frame_duplex_bottom       = flow::surface<mutable_frame_out_connector, shared_frame_in_connector>;
 
 }    // namespace laps
 }    // namespace logicmill

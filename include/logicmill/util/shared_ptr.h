@@ -29,7 +29,6 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <boost/compressed_pair.hpp>
 
 namespace logicmill
 {
@@ -64,7 +63,6 @@ public:
 class ctrl_blk
 {
 public:
-
 	ctrl_blk() : m_use_count{1}, m_weak_count{1} {}
 
 	virtual void
@@ -111,7 +109,8 @@ public:
 		return m_weak_count;
 	}
 
-	ctrl_blk* lock()
+	ctrl_blk*
+	lock()
 	{
 		ctrl_blk* result{nullptr};
 
@@ -144,7 +143,7 @@ public:
 	virtual void
 	on_zero_use_count()
 	{
-		static_cast<Del&>(*this)(m_ptr);
+		static_cast<Del&> (*this)(m_ptr);
 		static_cast<Del&>(*this).~deleter_type();
 		m_ptr = nullptr;
 
@@ -159,7 +158,6 @@ public:
 	on_zero_weak_count()
 	{
 		assert(use_count() == 0);
-
 		using ctrl_blk_allocator_type = typename allocator_type::template rebind<ptr_ctrl_blk>::other;
 		ctrl_blk_allocator_type cblk_alloc(static_cast<Alloc&>(*this));
 		static_cast<Alloc&>(*this).~allocator_type();
@@ -184,11 +182,10 @@ class value_ctrl_blk : public Alloc, public ctrl_blk
 public:
 	using element_type   = T;
 	using allocator_type = Alloc;
-	using base = Alloc;
 
 	template<class _Alloc, class... Args>
 	value_ctrl_blk(_Alloc&& alloc, Args&&... args)
-		: base{std::forward<Alloc>(alloc)}, m_value{std::forward<Args>(args)...}
+		: Alloc{std::forward<Alloc>(alloc)}, m_value{std::forward<Args>(args)...}
 	{}
 
 	element_type*
@@ -206,20 +203,20 @@ public:
 		{
 			on_zero_weak_count();
 		}
- 	}
+	}
 
 	virtual void
 	on_zero_weak_count()
 	{
 		assert(use_count() == 0);
 		using ctrl_blk_allocator_type = typename allocator_type::template rebind<value_ctrl_blk>::other;
-		ctrl_blk_allocator_type cblk_alloc(static_cast<base&>(*this));
-		static_cast<base&>(*this).~allocator_type();
+		ctrl_blk_allocator_type cblk_alloc(static_cast<Alloc&>(*this));
+		static_cast<Alloc&>(*this).~allocator_type();
 		cblk_alloc.deallocate(this, 1);
 	}
 
 private:
-	element_type   m_value;
+	element_type m_value;
 };
 
 template<class T>
@@ -247,7 +244,7 @@ public:
 	pstate(pstate&& rhs) : m_ctrl{rhs.m_ctrl}, m_ptr{rhs.m_ptr}
 	{
 		rhs.m_ctrl = nullptr;
-		rhs.m_ptr = nullptr;
+		rhs.m_ptr  = nullptr;
 	}
 
 	template<class U>
@@ -337,8 +334,7 @@ public:
 	}
 
 private:
-
-	ctrl_blk* m_ctrl;
+	ctrl_blk*     m_ctrl;
 	element_type* m_ptr;
 };
 
@@ -383,13 +379,11 @@ public:
 	static_pointer_cast(shared_ptr<V> const&);
 
 protected:
-
 	template<class... Args>
 	static shared_ptr
 	create(Args&&... args)
 	{
 		using allocator_type      = std::allocator<element_type>;
-		using deleter_type        = detail::allocator_deleter<allocator_type>;
 		using ctrl_blk_type       = detail::value_ctrl_blk<element_type, allocator_type>;
 		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
@@ -404,7 +398,6 @@ protected:
 	allocate(_Alloc&& alloc, Args&&... args)
 	{
 		using allocator_type      = _Alloc;
-		using deleter_type        = detail::allocator_deleter<allocator_type>;
 		using ctrl_blk_type       = detail::value_ctrl_blk<element_type, allocator_type>;
 		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
@@ -443,10 +436,9 @@ protected:
 	}
 
 public:
-
 	shared_ptr() : m_state{} {}
 
-	shared_ptr(element_type* ep) :  m_state{ep}
+	shared_ptr(element_type* ep) : m_state{ep}
 	{
 		using allocator_type      = std::allocator<element_type>;
 		using deleter_type        = detail::allocator_deleter<allocator_type>;
@@ -534,9 +526,9 @@ public:
 		}
 		else
 		{
-			using uptr_element_type = U;
-			using uptr_deleter_type = _Del;
-			using allocator_type = std::allocator<uptr_element_type>;
+			using uptr_element_type   = U;
+			using uptr_deleter_type   = _Del;
+			using allocator_type      = std::allocator<uptr_element_type>;
 			using ctrl_blk_type       = detail::ptr_ctrl_blk<uptr_element_type, uptr_deleter_type, allocator_type>;
 			using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
@@ -563,9 +555,9 @@ public:
 		}
 		else
 		{
-			using uptr_element_type = U;
-			using uptr_deleter_type = _Del;
-			using allocator_type = std::allocator<uptr_element_type>;
+			using uptr_element_type   = U;
+			using uptr_deleter_type   = _Del;
+			using allocator_type      = std::allocator<uptr_element_type>;
 			using ctrl_blk_type       = detail::ptr_ctrl_blk<uptr_element_type, uptr_deleter_type, allocator_type>;
 			using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
@@ -693,18 +685,17 @@ public:
 	long
 	use_count() const
 	{
-		if (!m_state.ctrl())
-		{
-			return 0;
-		}
-		else
-		{
-			return m_state.ctrl()->use_count();
-		}
+		return m_state.ctrl() ? m_state.ctrl()->use_count() : 0;
 	}
 
-private:
+	long
+	weak_count() const noexcept
+	{
+		return m_state.ctrl() ? m_state.ctrl()->weak_count() : 0;
+	}
 
+
+private:
 	shared_ptr(detail::ctrl_blk* p, element_type* ep) : m_state{p, ep} {}
 
 	detail::pstate<element_type> m_state;
@@ -742,11 +733,9 @@ template<class T>
 class weak_ptr
 {
 public:
-
-    typedef T element_type;
+	typedef T element_type;
 
 private:
-
 	detail::pstate<T> m_state;
 
 	struct sig_flag
@@ -819,7 +808,8 @@ public:
 		}
 	}
 
-    weak_ptr& operator=(weak_ptr const& rhs) noexcept
+	weak_ptr&
+	operator=(weak_ptr const& rhs) noexcept
 	{
 		weak_ptr{rhs}.swap(*this);
 		return *this;
@@ -833,7 +823,8 @@ public:
 		return *this;
 	}
 
-    weak_ptr& operator=(weak_ptr&& rhs) noexcept
+	weak_ptr&
+	operator=(weak_ptr&& rhs) noexcept
 	{
 		weak_ptr{std::move(rhs)}.swap(*this);
 		return *this;
@@ -904,15 +895,17 @@ public:
 		return result;
 	}
 
-	template <class U> friend class weak_ptr;
-    template <class U> friend class shared_ptr;
+	template<class U>
+	friend class weak_ptr;
+	template<class U>
+	friend class shared_ptr;
 };
 
 template<class T>
 inline void
 swap(weak_ptr<T>& x, weak_ptr<T>& y) noexcept
 {
-    x.swap(y);
+	x.swap(y);
 }
 
 template<class T>
@@ -920,7 +913,7 @@ template<class U>
 shared_ptr<T>::shared_ptr(
 		weak_ptr<U> const& wp,
 		typename std::enable_if_t<std::is_convertible<U*, T*>::value, sig_flag>)
-		: m_state{(wp.m_state.ctrl() ? wp.m_state.ctrl()->lock() : nullptr), wp.m_state.ptr()}
+	: m_state{(wp.m_state.ctrl() ? wp.m_state.ctrl()->lock() : nullptr), wp.m_state.ptr()}
 {
 	if (!m_state.ctrl())
 	{

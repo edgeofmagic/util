@@ -337,6 +337,12 @@ public:
 		return really_get_size();
 	}
 
+	size_type
+	remaining() const
+	{
+		return really_get_size() - gpos();
+	}
+
 	void
 	rewind()
 	{

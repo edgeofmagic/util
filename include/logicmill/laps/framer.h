@@ -22,12 +22,14 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_LAPS_DRIVER_H
-#define LOGICMILL_LAPS_DRIVER_H
+#ifndef LOGICMILL_LAPS_FRAMER_H
+#define LOGICMILL_LAPS_FRAMER_H
 
 #include <boost/endian/conversion.hpp>
 #include <list>
 #include <logicmill/async/event_flow.h>
+#include <logicmill/bstream/compound_memory/source.h>
+#include <logicmill/bstream/memory/sink.h>
 #include <logicmill/laps/types.h>
 
 namespace logicmill
@@ -38,50 +40,25 @@ namespace laps
 class framer
 {
 public:
-	struct frame_header
-	{
-		std::uint32_t size;
-		std::uint32_t flags;
-	};
-
 	static constexpr std::size_t header_size = sizeof(std::uint32_t) * 2;
-	
-	using frame_size_type               = std::int64_t;
 	static constexpr bool reverse_order = boost::endian::order::native != boost::endian::order::big;
 
 private:
-	static logicmill::bstream::mutable_buffer
-	pack_frame_header(std::uint64_t frame_size)
-	{
-		std::uint64_t packed_frame_size = boost::endian::native_to_big(frame_size);
-		return logicmill::bstream::mutable_buffer{&packed_frame_size, sizeof(frame_size)};
-	}
-
-	static std::uint64_t
-	unpack_frame_header(const void* buf_ptr)
-	{
-		std::uint64_t packed_frame_size{0};
-		::memcpy(&packed_frame_size, buf_ptr, sizeof(packed_frame_size));
-		return boost::endian::big_to_native(packed_frame_size);
-	}
-
-
-
 	class bottom;
 
-	class top : public flow::stackable<stream_duplex_top, top>
+	class top : public flow::stackable<frame_duplex_top, top>
 	{
 	public:
-		using base = flow::stackable<stream_duplex_top, top>;
-		using emitter<const_data_event>::send;
-		using emitter<control_event>::send;
-		using emitter<error_event>::send;
+		using base = flow::stackable<frame_duplex_top, top>;
+		using flow::emitter<shared_frame_event>::send;
+		using flow::emitter<control_event>::send;
+		using flow::emitter<error_event>::send;
 		using base::get_surface;
 
 		top(bottom* bp) : m_bottom{bp} {}
 
 		void
-		on(mutable_data_event, std::deque<bstream::mutable_buffer>&& bufs);
+		on(mutable_frame_event, frame_header header, std::deque<bstream::mutable_buffer>&& bufs);
 
 		void
 		on(control_event, control_state state);
@@ -102,111 +79,67 @@ private:
 		using emitter<error_event>::send;
 		using base::get_surface;
 
-		bottom(top* tp) : m_top{tp}, m_header_byte_count{0}, m_frame_size{-1} {}
+		bottom(top* tp) : m_top{tp}, m_header_is_valid{false} {}
 
 		void
 		on(const_data_event, std::deque<bstream::const_buffer>&& bufs)
 		{
-			if (is_valid_header())
+			std::cout << "bufs size is : " << bufs.size() << "[" << bufs[0].size() << ", " << bufs[1].size() << "]" << std::endl;
+			bufs[0].dump(std::cout);
+			bufs[1].dump(std::cout);
+			m_source.append(std::move(bufs));
+			while (true)
 			{
-				assert(m_partial_frame_size < m_current_header.size())
-			}
-
-			laps::sbuf_sequence incoming{laps::make_sbuf_sequence(std::move(bufs))};
-
-			assert((is_frame_size_valid() && (m_payload_buffer.size() < m_frame_size)) || (!is_frame_size_valid()));
-
-			std::size_t current_buffer_position{0};
-			std::size_t remaining_in_buffer{buf.size()};
-
-			while (remaining_in_buffer > 0)
-			{
-				if (!is_frame_size_valid())
+				if (m_header_is_valid)
 				{
-					assert(!is_header_complete());
-					std::size_t nbytes_to_move{0};
-					auto        needed_to_complete = sizeof(m_header_buf) - m_header_byte_count;
-					if (buf.size() >= needed_to_complete)
+					if (m_source.remaining() >= m_header.size)
 					{
-						nbytes_to_move = needed_to_complete;
+						m_top->send<shared_frame_event>(m_header, m_source.get_segmented_slice(m_header.size));
+						m_header_is_valid = false;
 					}
 					else
 					{
-						nbytes_to_move = buf.size();
-					}
-					bstream::mutable_buffer hbuf{&m_header_buf, 8};
-					::memcpy(&m_header_buf[m_header_byte_count], buf.data() + current_buffer_position, nbytes_to_move);
-					m_header_byte_count += nbytes_to_move;
-					current_buffer_position += nbytes_to_move;
-					remaining_in_buffer -= nbytes_to_move;
-					if (is_header_complete())
-					{
-						m_frame_size = unpack_frame_header(&m_header_buf);
-						assert(m_frame_size >= 0);
-
-						assert(m_payload_buffer.size() == 0);
-						if (m_frame_size > 0)
-						{
-							m_payload_buffer.expand(m_frame_size);
-						}
+						break;
 					}
 				}
-
-				assert((is_frame_size_valid() || remaining_in_buffer < 1));
-
-				if (is_frame_size_valid())
+				else
 				{
-					assert(m_payload_buffer.size() <= m_frame_size);
-					std::size_t needed_to_complete{m_frame_size - m_payload_buffer.size()};
-					if (needed_to_complete > 0 && remaining_in_buffer > 0)
+					if (m_source.remaining() >= header_size)
 					{
-						assert(m_payload_buffer.capacity() == m_frame_size);
-						std::size_t nbytes_to_move = std::min(remaining_in_buffer, needed_to_complete);
-						assert(nbytes_to_move > 0);
-						m_payload_buffer.putn(m_payload_buffer.size(), buf.data() + current_buffer_position, nbytes_to_move);
-						needed_to_complete -= nbytes_to_move;
-						current_buffer_position += nbytes_to_move;
-						remaining_in_buffer -= nbytes_to_move;
-						m_payload_buffer.size(m_payload_buffer.size() + nbytes_to_move);
+						m_header.size     = m_source.get_num<std::uint32_t>(reverse_order);
+						m_header.flags    = m_source.get_num<std::uint32_t>(reverse_order);
+						m_header_is_valid = true;
 					}
-					if (needed_to_complete < 1)
+					else
 					{
-						std::error_code err;
-						m_read_handler(channel_ptr, std::move(m_payload_buffer), err);
-						m_header_byte_count = 0;
-						assert(m_payload_buffer.size() == 0);
-						m_frame_size = -1;
+						break;
 					}
 				}
 			}
+			m_source.trim();
+		}
+
+		void
+		on(control_event, control_state s)
+		{
+			m_top->send<control_event>(s);
+		}
+
+		void
+		on(error_event, std::error_code err)
+		{
+			m_top->send<error_event>(err);
 		}
 
 
 	private:
-
-		bool
-		is_frame_size_valid() const
-		{
-			return m_frame_size >= 0;
-		}
-
-		bool
-		is_header_complete() const
-		{
-			assert(m_header_byte_count <= sizeof(framer::frame_size_type));
-			return m_header_byte_count == sizeof(framer::frame_size_type);
-		}
-
-		top*                                           m_top;
-		std::size_t                                    m_header_byte_count;
-		framer::frame_size_type                        m_frame_size;
-		logicmill::bstream::byte_type                  m_header_buf[sizeof(framer::frame_size_type)];
-		std::deque<logicmill::bstream::mutable_buffer> m_payload;
-		std::size_t                                    m_payload_size;
+		top*                                                     m_top;
+		bstream::compound_memory::source<bstream::shared_buffer> m_source;
+		frame_header                                             m_header;
+		bool                                                     m_header_is_valid;
 	};
 
 public:
-
 	framer() : m_top{&m_bottom}, m_bottom{&m_top} {}
 
 	stream_duplex_bottom&
@@ -215,17 +148,17 @@ public:
 		return m_bottom.get_surface<stream_duplex_bottom>();
 	}
 
-	stream_duplex_top&
+	frame_duplex_top&
 	get_top()
 	{
-		return m_top.get_surface<stream_duplex_top>();
+		return m_top.get_surface<frame_duplex_top>();
 	}
 
 	framer(framer&& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
 	framer(framer const& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
 
 private:
-	top m_top;
+	top    m_top;
 	bottom m_bottom;
 };
 
@@ -233,14 +166,12 @@ private:
 }    // namespace logicmill
 
 void
-logicmill::laps::framer::top::on(mutable_data_event, std::deque<bstream::mutable_buffer>&& bufs)
+logicmill::laps::framer::top::on(mutable_frame_event, frame_header header, std::deque<bstream::mutable_buffer>&& bufs)
 {
-	std::uint64_t frame_size{0};
-	for (auto& buf : bufs)
-	{
-		frame_size += buf.size();
-	}
-	bufs.emplace_front(framer::pack_frame_header(frame_size));
+	bstream::memory::sink header_sink{header_size};
+	header_sink.put_num(header.size, reverse_order);
+	header_sink.put_num(header.flags, reverse_order);
+	bufs.emplace_front(header_sink.release_buffer());
 	m_bottom->send<mutable_data_event>(std::move(bufs));
 }
 
@@ -256,4 +187,4 @@ logicmill::laps::framer::top::on(error_event, std::error_code err)
 	m_bottom->send<error_event>(err);
 }
 
-#endif    // LOGICMILL_LAPS_DRIVER_H
+#endif    // LOGICMILL_LAPS_FRAMER_H

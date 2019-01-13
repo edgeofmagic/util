@@ -25,15 +25,15 @@
 #ifndef LOGICMILL_BSTREAM_BUFFER_H
 #define LOGICMILL_BSTREAM_BUFFER_H
 
+#include <assert.h>
 #include <cstdint>
 #include <functional>
-#include <limits>
-#include <system_error>
-#include <assert.h>
 #include <iostream>
-#include <logicmill/util/macros.h>
+#include <limits>
 #include <logicmill/bstream/types.h>
+#include <logicmill/util/macros.h>
 #include <logicmill/util/shared_ptr.h>
+#include <system_error>
 
 #define USE_STD_SHARED_PTR 0
 
@@ -54,26 +54,26 @@
 		assert((_buf_).m_size <= (_buf_).m_region->capacity());                                                        \
 		assert((_buf_).m_capacity == (_buf_).m_region->capacity());                                                    \
 	}                                                                                                                  \
-/**/
+	/**/
 
 #if 0
 
-#define ASSERT_MUTABLE_BUFFER_INVARIANTS( _buf_ )															\
-{																											\
-	if ( ( _buf_ ).m_alloc != nullptr )																		\
-	{																										\
-		assert( ( _buf_ ).m_data == ( _buf_ ).m_alloc->data() );											\
-		assert( ( _buf_ ).m_size <= ( _buf_ ).m_alloc->capacity() );										\
-		assert( ( _buf_ ).m_capacity == ( _buf_ ).m_alloc->capacity() );									\
-	}																										\
-	else																									\
-	{																										\
-		assert( ( _buf_ ).m_data == nullptr );																\
-		assert( ( _buf_ ).m_capacity == 0 );																\
-		assert( ( _buf_ ).m_size == 0 );																	\
-	}																										\
-}																											\
-/**/
+#define ASSERT_MUTABLE_BUFFER_INVARIANTS(_buf_)                                                                        \
+	{                                                                                                                  \
+		if ((_buf_).m_alloc != nullptr)                                                                                \
+		{                                                                                                              \
+			assert((_buf_).m_data == (_buf_).m_alloc->data());                                                         \
+			assert((_buf_).m_size <= (_buf_).m_alloc->capacity());                                                     \
+			assert((_buf_).m_capacity == (_buf_).m_alloc->capacity());                                                 \
+		}                                                                                                              \
+		else                                                                                                           \
+		{                                                                                                              \
+			assert((_buf_).m_data == nullptr);                                                                         \
+			assert((_buf_).m_capacity == 0);                                                                           \
+			assert((_buf_).m_size == 0);                                                                               \
+		}                                                                                                              \
+	}                                                                                                                  \
+	/**/
 
 #endif
 
@@ -84,19 +84,19 @@
 		assert((_buf_).m_data <= ((_buf_).m_region->data() + (_buf_).m_region->capacity()));                           \
 		assert(((_buf_).m_data + (_buf_).m_size) <= ((_buf_).m_region->data() + (_buf_).m_region->capacity()));        \
 	}                                                                                                                  \
-/**/
+	/**/
 
-#define ASSERT_SHARED_BUFFER_INVARIANTS( _buf_ )															\
-	ASSERT_CONST_BUFFER_INVARIANTS( _buf_ )																	\
-/**/
+#define ASSERT_SHARED_BUFFER_INVARIANTS(_buf_)                                                                         \
+	ASSERT_CONST_BUFFER_INVARIANTS(_buf_)                                                                              \
+	/**/
 
 #else
 
-#define ASSERT_MUTABLE_BUFFER_INVARIANTS( _buf_ )
+#define ASSERT_MUTABLE_BUFFER_INVARIANTS(_buf_)
 
-#define ASSERT_CONST_BUFFER_INVARIANTS( _buf_ )
+#define ASSERT_CONST_BUFFER_INVARIANTS(_buf_)
 
-#define ASSERT_SHARED_BUFFER_INVARIANTS( _buf_ )
+#define ASSERT_SHARED_BUFFER_INVARIANTS(_buf_)
 
 #endif
 
@@ -108,13 +108,16 @@ namespace bstream
 template<class T>
 struct null_delete
 {
-	void operator()(T*) {}
+	void
+	operator()(T*)
+	{}
 };
 
 template<class T>
 struct null_delete<T[]>
 {
-	void operator()(T*)
+	void
+	operator()(T*)
 	{}
 };
 
@@ -131,14 +134,12 @@ class const_buffer;
 class buffer
 {
 public:
-
 	/** \brief The type used to represent a checksum value calculated for
 	 * the memory region.
 	 */
 	using checksum_type = std::uint32_t;
 
 protected:
-
 	class region
 	{
 	public:
@@ -147,15 +148,15 @@ protected:
 		virtual ~region() {}
 
 	protected:
-
 		virtual byte_type*
-		alloc(size_type capacity) = 0;
+		alloc(size_type capacity)
+				= 0;
 
 		virtual void
-		dealloc(byte_type* p, size_type capacity) = 0;
+		dealloc(byte_type* p, size_type capacity)
+				= 0;
 
 	public:
-
 		virtual bool
 		can_allocate() const = 0;
 
@@ -175,7 +176,7 @@ protected:
 				err = make_error_code(std::errc::no_buffer_space);
 				goto exit;
 			}
-			m_data = p;
+			m_data     = p;
 			m_capacity = capacity;
 
 		exit:
@@ -186,7 +187,7 @@ protected:
 		allocate(size_type capacity)
 		{
 			std::error_code err;
-			auto result = allocate(capacity, err);
+			auto            result = allocate(capacity, err);
 			if (err)
 			{
 				throw std::system_error{err};
@@ -198,7 +199,7 @@ protected:
 		deallocate()
 		{
 			dealloc(m_data, m_capacity);
-			m_data = nullptr;
+			m_data     = nullptr;
 			m_capacity = 0;
 		}
 
@@ -216,10 +217,10 @@ protected:
 
 
 		byte_type*
-		reallocate( size_type current_size, size_type new_capacity )
+		reallocate(size_type current_size, size_type new_capacity)
 		{
 			std::error_code err;
-			auto result = reallocate(current_size, new_capacity, err);
+			auto            result = reallocate(current_size, new_capacity, err);
 			if (err)
 			{
 				throw std::system_error{err};
@@ -229,7 +230,7 @@ protected:
 
 
 		byte_type*
-		reallocate( size_type current_size, size_type new_capacity, std::error_code& err )
+		reallocate(size_type current_size, size_type new_capacity, std::error_code& err)
 		{
 			err.clear();
 			if (!can_allocate())
@@ -238,7 +239,7 @@ protected:
 				goto exit;
 			}
 
-			if ( ! m_data && new_capacity > 0 )
+			if (!m_data && new_capacity > 0)
 			{
 				auto p = alloc(new_capacity);
 				if (!p)
@@ -246,15 +247,15 @@ protected:
 					err = make_error_code(std::errc::no_buffer_space);
 					goto exit;
 				}
-				m_data = p;
+				m_data     = p;
 				m_capacity = new_capacity;
 				// m_data = m_broker->allocate( new_capacity );
 				// m_capacity = new_capacity;
 			}
-			else if ( new_capacity > m_capacity )
+			else if (new_capacity > m_capacity)
 			{
-				current_size = ( current_size > m_capacity ) ?  m_capacity : current_size;
-				auto p = alloc(new_capacity);
+				current_size = (current_size > m_capacity) ? m_capacity : current_size;
+				auto p       = alloc(new_capacity);
 				if (!p)
 				{
 					err = make_error_code(std::errc::no_buffer_space);
@@ -262,7 +263,7 @@ protected:
 				}
 				::memcpy(p, m_data, current_size);
 				dealloc(m_data, m_capacity);
-				m_data = p;
+				m_data     = p;
 				m_capacity = new_capacity;
 			}
 		exit:
@@ -283,7 +284,7 @@ protected:
 
 	protected:
 		byte_type* m_data;
-		size_type m_capacity;
+		size_type  m_capacity;
 	};
 
 	template<class Del>
@@ -313,9 +314,7 @@ protected:
 		}
 
 	protected:
-
-		virtual byte_type*
-		alloc(size_type) override
+		virtual byte_type* alloc(size_type) override
 		{
 			return nullptr;
 		}
@@ -341,57 +340,59 @@ protected:
 
 		alloc_region() : allocator_base{allocator_type{}}, region{nullptr, 0} {}
 
-		template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-		alloc_region(_Alloc&& alloc) : allocator_base{std::forward<_Alloc>(alloc)},
-		region{nullptr, 0}
+		template<
+				class _Alloc,
+				class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+		alloc_region(_Alloc&& alloc) : allocator_base{std::forward<_Alloc>(alloc)}, region{nullptr, 0}
 		{}
 
-		template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+		template<
+				class _Alloc,
+				class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 		alloc_region(size_type capacity, _Alloc&& alloc)
 			: allocator_base{std::forward<_Alloc>(alloc)},
-			region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
+			  region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
 		{}
 
 		alloc_region(size_type capacity)
 			: allocator_base{allocator_type{}},
-			region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
+			  region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
 		{}
 
-		template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+		template<
+				class _Alloc,
+				class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 		alloc_region(const byte_type* data, size_type size, _Alloc&& alloc)
-			: allocator_base{std::forward<_Alloc>(alloc)},
-			region{allocator_base::allocate(size), size}
+			: allocator_base{std::forward<_Alloc>(alloc)}, region{allocator_base::allocate(size), size}
 		{
-			if ( m_data && data && size > 0 )
+			if (m_data && data && size > 0)
 			{
-				::memcpy( m_data, data, size );
+				::memcpy(m_data, data, size);
 			}
 		}
 
 		alloc_region(const byte_type* data, size_type size)
-		: allocator_base{allocator_type{}}, region{allocator_base::allocate(size), size}
+			: allocator_base{allocator_type{}}, region{allocator_base::allocate(size), size}
 		{
-			if ( m_data && data && size > 0 )
+			if (m_data && data && size > 0)
 			{
-				::memcpy( m_data, data, size );
+				::memcpy(m_data, data, size);
 			}
 		}
 
-		template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+		template<
+				class _Alloc,
+				class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 		alloc_region(byte_type* data, size_type capacity, _Alloc&& alloc)
-		: allocator_base{std::forward<_Alloc>(alloc)},
-		region{data, capacity}
+			: allocator_base{std::forward<_Alloc>(alloc)}, region{data, capacity}
 		{}
 
-		alloc_region(byte_type* data, size_type capacity)
-		: allocator_base{allocator_type{}},
-		region{data, capacity}
-		{}
+		alloc_region(byte_type* data, size_type capacity) : allocator_base{allocator_type{}}, region{data, capacity} {}
 
-		virtual ~alloc_region() 
+		virtual ~alloc_region()
 		{
 			dealloc(m_data, m_capacity);
-			m_data = nullptr;
+			m_data     = nullptr;
 			m_capacity = 0;
 		}
 
@@ -402,7 +403,6 @@ protected:
 		}
 
 	protected:
-
 		virtual byte_type*
 		alloc(size_type capacity) override
 		{
@@ -427,16 +427,17 @@ protected:
 	class alloc_region_factory;
 
 	template<class Alloc>
-	class alloc_region_factory<Alloc, typename std::enable_if_t<std::is_same<typename Alloc::pointer, byte_type*>::value>>
+	class alloc_region_factory<
+			Alloc,
+			typename std::enable_if_t<std::is_same<typename Alloc::pointer, byte_type*>::value>>
 		: public region_factory, public Alloc
 	{
 	public:
-		template< class _Alloc>
+		template<class _Alloc>
 		alloc_region_factory(_Alloc&& alloc) : Alloc{std::forward<_Alloc>(alloc)}
 		{}
 
-		alloc_region_factory() : Alloc{}
-		{}
+		alloc_region_factory() : Alloc{} {}
 
 		virtual std::unique_ptr<region>
 		create(size_type capacity) override
@@ -445,146 +446,7 @@ protected:
 		}
 	};
 
-#if 0
-	class allocation
-	{
-	public:
-		using sptr = SHARED_PTR_TYPE< allocation >;
-		using uptr = std::unique_ptr< allocation >;
-
-		friend class mutable_buffer;
-
-		allocation( memory_broker::ptr broker = default_broker::get() )
-		:
-		m_broker{ broker },
-		m_capacity{ 0 },
-		m_data{ nullptr }
-		{}
-
-		allocation( size_type capacity, memory_broker::ptr broker = default_broker::get() )
-		:
-		m_broker{ broker },
-		m_capacity{ capacity },
-		m_data{ m_broker->allocate( capacity ) }
-		{}
-
-		allocation( const byte_type* data, size_type size, memory_broker::ptr broker = default_broker::get() )
-		:
-		m_broker{ broker },
-		m_capacity{ ( ( data != nullptr ) ? size : 0 ) },
-		m_data{ ( ( data != nullptr ) ? m_broker->allocate( size ) : nullptr ) }
-		{
-			if ( m_data && data && size > 0 )
-			{
-				::memcpy( m_data, data, size );
-			}
-		}
-
-		template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
-		allocation( byte_type* data, size_type size, Dealloc&& dealloc_functor )
-		:
-		m_broker{ create_broker( std::forward< Dealloc >( dealloc_functor ) ) },
-		m_capacity{ size },
-		m_data{ data }
-		{
-			// std::cout << "constructing dealloc-only allocation" << std::endl;
-		}
-
-		~allocation()
-		{
-			if ( m_broker->can_deallocate() && m_data )
-			{
-				m_broker->deallocate( m_data );
-			}
-			m_data = nullptr;
-			m_capacity = 0;
-			m_broker.reset();
-		}
-
-		byte_type* data()
-		{
-			return m_data;
-		}
-
-		size_type capacity()
-		{
-			return m_capacity;
-		}
-
-		bool can_allocate() const
-		{
-			return m_broker->can_allocate();
-		}
-
-		bool can_reallocate() const
-		{
-			return m_broker->can_reallocate();
-		}
-
-		bool can_deallocate() const
-		{
-			return m_broker->can_deallocate();
-		}
-
-		byte_type* allocate( size_type capacity )
-		{
-			if ( m_data )
-			{
-				deallocate();
-			}
-			assert( m_data == nullptr );
-			if ( capacity > 0 )
-			{
-				m_data = m_broker->allocate( capacity );
-			}
-			m_capacity = capacity;
-			return m_data;
-		}
-
-		byte_type* reallocate( size_type new_capacity )
-		{
-			return reallocate( m_capacity, new_capacity );
-		}
-
-		byte_type* reallocate( size_type current_size, size_type new_capacity )
-		{
-			if ( ! m_broker->can_reallocate() )
-			{
-				throw std::system_error{ make_error_code( std::errc::operation_not_supported ) };
-			}
-			if ( ! m_data && new_capacity > 0 )
-			{
-				m_data = m_broker->allocate( new_capacity );
-				m_capacity = new_capacity;
-			}
-			else if ( new_capacity > m_capacity )
-			{
-				current_size = ( current_size > m_capacity ) ?  m_capacity : current_size;
-				m_data = m_broker->reallocate( m_data, current_size, new_capacity );
-				m_capacity = new_capacity;
-			}
-			return m_data;
-		}
-
-		void deallocate()
-		{
-			if ( m_data && m_broker->can_deallocate() )
-			{
-				m_broker->deallocate( m_data );
-				m_data = nullptr;
-				m_capacity = 0;
-			}
-		}
-
-	private:
-		memory_broker::ptr			m_broker;
-		size_type 					m_capacity;
-		byte_type* 					m_data;
-	};
-#endif
-
 public:
-
 	friend class const_buffer;
 
 	~buffer()
@@ -622,25 +484,31 @@ public:
 	 * \return true if the buffers are equal, false otherwise
 	 */
 	bool
-	operator==( buffer const& rhs ) const
+	operator==(buffer const& rhs) const
 	{
 		bool result = true;
 
-		if ( this != &rhs )
+		if (this != &rhs)
 		{
-			if ( m_size != rhs.m_size )
+			if (m_size != rhs.m_size)
 			{
 				result = false;
 			}
 			else
 			{
-				if ( m_size != 0 )
+				if (m_size != 0)
 				{
-					result = ( std::memcmp( m_data, rhs.m_data, m_size ) == 0 );
+					result = (std::memcmp(m_data, rhs.m_data, m_size) == 0);
 				}
 			}
 		}
 		return result;
+	}
+
+	bool
+	operator!=(buffer const& rhs) const
+	{
+		return !(*this == rhs);
 	}
 
 	/** \brief Construct a std::string value from the contents of this instance's memory region.
@@ -655,9 +523,9 @@ public:
 	to_string() const
 	{
 		std::string result;
-		if ( m_size > 0 )
+		if (m_size > 0)
 		{
-			result = std::string( reinterpret_cast< const char* >( m_data ), m_size );
+			result = std::string(reinterpret_cast<const char*>(m_data), m_size);
 		}
 		return result;
 	}
@@ -673,7 +541,7 @@ public:
 	std::string_view
 	as_string() const
 	{
-		return std::string_view( reinterpret_cast< char* >( m_data ), m_size );
+		return std::string_view(reinterpret_cast<char*>(m_data), m_size);
 	}
 
 	/** Test this buffer for size() == 0
@@ -689,38 +557,28 @@ public:
 	checksum_type
 	checksum() const
 	{
-		return checksum( 0, size() );
+		return checksum(0, size());
 	}
 
 	checksum_type
-	checksum( size_type length ) const
+	checksum(size_type length) const
 	{
-		return checksum( 0, std::min( length, size() ) );
+		return checksum(0, std::min(length, size()));
 	}
 
 	checksum_type
-	checksum( size_type offset, size_type length ) const;
+	checksum(size_type offset, size_type length) const;
 
 	void
-	dump( std::ostream& os ) const;
+	dump(std::ostream& os) const;
 
 protected:
+	buffer() : m_data{nullptr}, m_size{0} {}
 
-	buffer()
-	:
-	m_data{ nullptr },
-	m_size{ 0 }
-	{}
+	buffer(byte_type* data, size_type size) : m_data{data}, m_size{size} {}
 
-	buffer( byte_type* data, size_type size )
-	:
-	m_data{ data },
-	m_size{ size }
-	{}
-
-	byte_type*				m_data;
-	size_type				m_size;
-
+	byte_type* m_data;
+	size_type  m_size;
 };
 
 /** \brief Represents and manages a contiguous region of memory that can be modified. 
@@ -771,12 +629,11 @@ protected:
 	size_type               m_capacity;
 
 public:
-
 	using buffer::data;
 	using buffer::size;
 
 	using default_alloc = std::allocator<byte_type>;
-	using default_del = std::default_delete<byte_type>;
+	using default_del   = std::default_delete<byte_type>;
 
 	friend class const_buffer;
 	friend class shared_buffer;
@@ -786,80 +643,28 @@ public:
 	 * The constructed instance owns a copy of the default memory_broker, and no allocated memory region, such that
 	 * data() == nullptr, capacity() == 0, size() == 0.
 	 */
-	mutable_buffer() :
-	m_region{std::make_unique<alloc_region<default_alloc>>()},
-	m_capacity{0}
+	mutable_buffer() : m_region{std::make_unique<alloc_region<default_alloc>>()}, m_capacity{0}
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
-	// mutable_buffer()
-	// :
-	// m_alloc{ std::make_unique< allocation >() },
-	// m_capacity{ 0 }
-	// {
-	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-	// }
-
-
 
 	/** \brief Construct with the specified memory_broker.
 	 * 
 	 * \param broker a shared pointer to the memory_broker to be used by the allocation
 	 */
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	mutable_buffer(_Alloc&& alloc) :
-	m_region{ std::make_unique<alloc_region<_Alloc>>(std::forward<_Alloc>(alloc))},
-	m_capacity{0}
+	mutable_buffer(_Alloc&& alloc)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(std::forward<_Alloc>(alloc))}, m_capacity{0}
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
-	// mutable_buffer( memory_broker::ptr broker = default_broker::get() )
-	// :
-	// m_alloc{ std::make_unique< allocation >( broker ) },
-	// m_capacity{ 0 }
-	// {
-	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-	// }
 
-	/** \brief Construct with the specified capacity.
-	 * 
-	 * The consructed instance uses the default memory_broker to allocate a region with the specified capacity.
-	 * The size of the resulting instance is set to zero.
-	 * 
-	 * \param capacity the capacity of the allocated memory region
-	 */
-	// mutable_buffer( size_type capacity )
-	// :
-	// m_alloc{ std::make_unique< buffer::allocation >( capacity ) },
-	// m_capacity{ capacity }
-	// {
-	// 	// if ( capacity > 0 )
-	// 	// {
-	// 	// 	m_data = m_alloc->allocate( capacity );
-	// 	// 	assert( m_data != nullptr );
-	// 	// 	m_capacity = capacity;
-	// 	// 	m_size = 0;
-	// 	// }
-	// 	m_data = m_alloc->data();
-	// 	m_size = 0;
-	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-	// }
-
-
-	/** \brief Construct with the specified memory_broker and capacity
-	 * 
-	 * The consructed instance uses the provided memory_broker to allocate a region with the specified capacity.
-	 * The size of the resulting instance is set to zero.
-	 * 
-	 * \param capacity the capacity of the allocated memory region
-	 * \param alloc a universal reference to an allocation_manager that is forwarded to the constructed instance
-	 */
 	mutable_buffer(size_type capacity)
-	: m_region{std::make_unique<alloc_region<default_alloc>>(capacity)}, m_capacity{capacity}
+		: m_region{std::make_unique<alloc_region<default_alloc>>(capacity)}, m_capacity{capacity}
 	{
 		m_data = m_region->data();
 		m_size = 0;
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
@@ -868,27 +673,8 @@ public:
 	{
 		m_data = m_region->data();
 		m_size = 0;
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
-
-
-	// mutable_buffer( size_type capacity, memory_broker::ptr broker = default_broker::get() )
-	// :
-	// m_region{ std::make_unique< allocation >( capacity, broker ) },
-	// m_capacity{ capacity }
-	// {
-	// 	// if ( m_alloc->can_allocate() )
-	// 	// {
-	// 	// 	m_data = m_alloc->allocate( capacity );
-	// 	// 	assert( m_data != nullptr );
-	// 	// 	m_capacity = capacity;
-	// 	// 	m_size = 0;
-	// 	// }
-	// 	m_data = m_region->data();
-	// 	m_size = 0;
-	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-	// }
-
 
 	/** \brief Construct with the provided memory region and specified deallocator callable object.
 	 * 
@@ -919,29 +705,6 @@ public:
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
-	// mutable_buffer(void* data, size_type capacity)
-	// 	: m_region{std::make_unique<del_region<default_del>>(static_cast<byte_type*>(data), capacity)}, m_capacity{capacity}
-	// {
-	// 	m_data = m_region->data();
-	// 	m_size = 0;
-	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-	// }
-
-
-	// template< class Dealloc, class = std::enable_if_t< std::is_convertible_v< Dealloc, deallocator > > >
-	// mutable_buffer( void* data, size_type capacity, Dealloc&& dealloc_f )
-	// :
-	// m_region{ std::make_unique< allocation >( reinterpret_cast< byte_type* >( data ), capacity, std::forward< Dealloc >( dealloc_f ) ) },
-	// m_capacity{ capacity }
-	// {
-	// 	m_data = reinterpret_cast< byte_type* >( data );
-	// 	m_size = 0;
-	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-	// }
-
-
-
-
 #if 1
 
 	mutable_buffer(const void* data, size_type capacity)    // TODO: mostly here for testing, consider removing
@@ -963,12 +726,14 @@ public:
 	// }
 
 	mutable_buffer(std::string const& s)
-	: m_region{std::make_unique<alloc_region<default_alloc>>(reinterpret_cast< const byte_type* >( s.data() ), s.size())},
-	m_capacity{s.size()}
+		: m_region{std::make_unique<alloc_region<default_alloc>>(
+				  reinterpret_cast<const byte_type*>(s.data()),
+				  s.size())},
+		  m_capacity{s.size()}
 	{
 		m_data = m_region->data();
 		m_size = s.size();
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
 	// mutable_buffer( std::string const& s )
@@ -982,41 +747,39 @@ public:
 
 #endif
 
-	mutable_buffer( mutable_buffer const& ) = delete;
+	mutable_buffer(mutable_buffer const&) = delete;
 
 	mutable_buffer(mutable_buffer&& rhs) : m_region{std::move(rhs.m_region)}, m_capacity{rhs.m_capacity}
 	{
-		m_data         = rhs.m_data;
-		m_size         = rhs.m_size;
+		m_data = rhs.m_data;
+		m_size = rhs.m_size;
 		rhs.pclear();
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
 private:
-
-	void ctor_body(byte_type* data, size_type size, position_type offset, size_type length, std::error_code& err)
+	void
+	ctor_body(byte_type* data, size_type size, position_type offset, size_type length, std::error_code& err)
 	{
-		if ( offset + length > size)
+		if (offset + length > size)
 		{
-			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
+			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
-		m_data = data + offset;
-		m_size = length;
+		m_data     = data + offset;
+		m_size     = length;
 		m_capacity = (m_region->data() + m_region->capacity()) - m_data;
 	}
 
-	void pclear()
+	void
+	pclear()
 	{
-		m_data = nullptr;
-		m_size = 0;
+		m_data     = nullptr;
+		m_size     = 0;
 		m_capacity = 0;
 	}
 
 public:
-
-	mutable_buffer(mutable_buffer&& rhs, size_type offset, size_type length)
-	:
-	m_region{std::move(rhs.m_region)}
+	mutable_buffer(mutable_buffer&& rhs, size_type offset, size_type length) : m_region{std::move(rhs.m_region)}
 	{
 		std::error_code err;
 		ctor_body(rhs.m_data, rhs.m_size, offset, length, err);
@@ -1028,8 +791,7 @@ public:
 	}
 
 	mutable_buffer(mutable_buffer&& rhs, size_type offset, size_type length, std::error_code& err)
-	:
-	m_region{std::move(rhs.m_region)}
+		: m_region{std::move(rhs.m_region)}
 	{
 		ctor_body(rhs.m_data, rhs.m_size, offset, length, err);
 		rhs.pclear();
@@ -1042,267 +804,271 @@ public:
 	mutable_buffer(const_buffer&& cbuf);
 
 	mutable_buffer&
-	operator=( mutable_buffer&& rhs )
+	operator=(mutable_buffer&& rhs)
 	{
 		// don't assert invariants, this (lhs of assign) may be victim of a move
 		// ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
 
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(rhs);
 
-		m_region = std::move( rhs.m_region );
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
+		m_region   = std::move(rhs.m_region);
+		m_data     = rhs.m_data;
+		m_size     = rhs.m_size;
 		m_capacity = rhs.m_capacity;
 
-		rhs.m_data = nullptr;
-		rhs.m_size = 0;
+		rhs.m_data     = nullptr;
+		rhs.m_size     = 0;
 		rhs.m_capacity = 0;
 
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 
 		return *this;
 	}
 
 	mutable_buffer&
-	operator=( mutable_buffer const& ) = delete;
+	operator=(mutable_buffer const&)
+			= delete;
 
 	byte_type*
 	data()
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		return m_data;
 	}
 
 	void
-	size( size_type new_size, std::error_code& err )
+	size(size_type new_size, std::error_code& err)
 	{
 		err.clear();
 
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-		if (new_size > m_capacity ) 
-		{ 
-			err = make_error_code( std::errc::invalid_argument );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
+		if (new_size > m_capacity)
+		{
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
 
 		m_size = new_size;
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	exit:
 		return;
 	}
 
 	void
-	size( size_type new_size )
+	size(size_type new_size)
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-		if (new_size > m_capacity )
-		{ 
-			throw std::system_error{ make_error_code( std::errc::invalid_argument ) }; 
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
+		if (new_size > m_capacity)
+		{
+			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
 		m_size = new_size;
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
 	size_type
 	capacity() const
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		return m_capacity;
 	}
 
-	bool is_expandable() const
+	bool
+	is_expandable() const
 	{
 		return m_region->can_allocate();
 	}
 
 	mutable_buffer&
-	expand( size_type new_cap, std::error_code& err )
+	expand(size_type new_cap, std::error_code& err)
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 
 		err.clear();
 
-		if ( new_cap > m_capacity )
+		if (new_cap > m_capacity)
 		{
-			if ( ! m_data )
+			if (!m_data)
 			{
-				assert( m_capacity == 0 );
-				assert( m_size == 0 );
-				assert( m_region->data() == nullptr );
-				assert( m_region->capacity() == 0 );
-				if ( m_region->can_allocate() )
+				assert(m_capacity == 0);
+				assert(m_size == 0);
+				assert(m_region->data() == nullptr);
+				assert(m_region->capacity() == 0);
+				if (m_region->can_allocate())
 				{
 					m_data = m_region->allocate(new_cap, err);
-					if (err) goto exit;
+					if (err)
+						goto exit;
 
 					m_capacity = m_region->capacity();
 				}
 				else
 				{
-					err = make_error_code( std::errc::operation_not_supported );
+					err = make_error_code(std::errc::operation_not_supported);
 					goto exit;
 				}
 			}
-			else if ( m_region->can_allocate() )
+			else if (m_region->can_allocate())
 			{
-				assert( m_capacity > 0 );
-				m_data = m_region->reallocate( m_size, new_cap, err);
-				if (err) goto exit;
+				assert(m_capacity > 0);
+				m_data = m_region->reallocate(m_size, new_cap, err);
+				if (err)
+					goto exit;
 
 				m_capacity = m_region->capacity();
 			}
 			else
 			{
-				err = make_error_code( std::errc::operation_not_supported );
+				err = make_error_code(std::errc::operation_not_supported);
 				goto exit;
 			}
-			m_data = m_region->data();
+			m_data     = m_region->data();
 			m_capacity = m_region->capacity();
 		}
 
 	exit:
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	mutable_buffer&
-	expand( size_type new_capacity )
+	expand(size_type new_capacity)
 	{
 		std::error_code err;
-		expand( new_capacity, err );
-		if ( err )
+		expand(new_capacity, err);
+		if (err)
 		{
-			throw std::system_error{ err };
+			throw std::system_error{err};
 		}
-		
+
 	exit:
 		return *this;
 	}
 
 	mutable_buffer&
-	fill( position_type offset, size_type length, byte_type value, std::error_code& err )
+	fill(position_type offset, size_type length, byte_type value, std::error_code& err)
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
-		if ( offset + length > m_capacity )
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
+		if (offset + length > m_capacity)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
 
-		if ( length > 0 )
+		if (length > 0)
 		{
-			::memset( m_data, value, length );
+			::memset(m_data, value, length);
 		}
 
 	exit:
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	mutable_buffer&
-	fill( position_type offset, size_type length, byte_type value )
+	fill(position_type offset, size_type length, byte_type value)
 	{
 		std::error_code err;
 		fill(offset, length, value, err);
 		if (err)
 		{
-			throw std::system_error{ err };
+			throw std::system_error{err};
 		}
 		return *this;
 	}
 
 	mutable_buffer&
-	fill( byte_type value )
+	fill(byte_type value)
 	{
-		return fill( 0, m_capacity, value );
+		return fill(0, m_capacity, value);
 	}
 
 	mutable_buffer&
-	put( position_type offset, byte_type value )
+	put(position_type offset, byte_type value)
 	{
 		std::error_code err;
 		put(offset, value, err);
 		if (err)
 		{
-			throw std::system_error{ err };
+			throw std::system_error{err};
 		}
 		return *this;
 	}
 
 	mutable_buffer&
-	put( position_type offset, byte_type value, std::error_code& err )
+	put(position_type offset, byte_type value, std::error_code& err)
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		err.clear();
 
-		if ( offset >= m_capacity )
+		if (offset >= m_capacity)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
 
-		*( m_data + offset ) = value;
+		*(m_data + offset) = value;
 
 	exit:
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	mutable_buffer&
-	putn( position_type offset, const void* src, size_type length )
+	putn(position_type offset, const void* src, size_type length)
 	{
 		std::error_code err;
 		putn(offset, src, length, err);
 		if (err)
 		{
-			throw std::system_error{ err };
+			throw std::system_error{err};
 		}
 		return *this;
 	}
 
 	mutable_buffer&
-	putn( position_type offset, const void* src, size_type length, std::error_code& err )
+	putn(position_type offset, const void* src, size_type length, std::error_code& err)
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		err.clear();
 
-		if ( length > 0 )
+		if (length > 0)
 		{
-			if ( ! src || offset + length > m_capacity )
+			if (!src || offset + length > m_capacity)
 			{
-				err = make_error_code( std::errc::invalid_argument );
+				err = make_error_code(std::errc::invalid_argument);
 				goto exit;
 			}
-			::memcpy( m_data + offset, src, length );
+			::memcpy(m_data + offset, src, length);
 		}
 
 	exit:
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	mutable_buffer&
-	putn( position_type offset, std::string const& s, std::error_code& err )
+	putn(position_type offset, std::string const& s, std::error_code& err)
 	{
-		return putn( offset, s.data(), s.size(), err );
+		return putn(offset, s.data(), s.size(), err);
 	}
 
 	mutable_buffer&
-	putn( position_type offset, std::string const& s )
+	putn(position_type offset, std::string const& s)
 	{
-		return putn( offset, s.data(), s.size() );
+		return putn(offset, s.data(), s.size());
 	}
 
 	mutable_buffer&
-	putn( position_type offset, const char *s, std::error_code& err )
+	putn(position_type offset, const char* s, std::error_code& err)
 	{
-		return putn( offset, s, ::strlen( s ), err );
+		return putn(offset, s, ::strlen(s), err);
 	}
 
 	mutable_buffer&
-	putn( position_type offset, const char *s )
+	putn(position_type offset, const char* s)
 	{
-		return putn( offset, s, ::strlen( s ) );
+		return putn(offset, s, ::strlen(s));
 	}
 };
 
@@ -1311,14 +1077,17 @@ class mutable_buffer_factory
 public:
 	virtual ~mutable_buffer_factory() {}
 	virtual mutable_buffer
-	create(size_type size) = 0;
+	create(size_type size)
+			= 0;
 };
 
 template<class Alloc = std::allocator<byte_type>, class Enable = void>
 class mutable_buffer_alloc_factory;
 
 template<class Alloc>
-class mutable_buffer_alloc_factory<Alloc, typename std::enable_if_t<std::is_same<typename Alloc::pointer, byte_type*>::value>>
+class mutable_buffer_alloc_factory<
+		Alloc,
+		typename std::enable_if_t<std::is_same<typename Alloc::pointer, byte_type*>::value>>
 	: public Alloc, public mutable_buffer_factory
 {
 public:
@@ -1326,8 +1095,7 @@ public:
 	mutable_buffer_alloc_factory(_Alloc&& alloc) : Alloc{std::forward<_Alloc>(alloc)}
 	{}
 
-	mutable_buffer_alloc_factory() : Alloc{}
-	{}
+	mutable_buffer_alloc_factory() : Alloc{} {}
 
 	virtual mutable_buffer
 	create(size_type size) override
@@ -1339,22 +1107,20 @@ public:
 class const_buffer : public buffer
 {
 protected:
-	std::unique_ptr<region>	m_region;
+	std::unique_ptr<region> m_region;
 
 public:
 	using default_alloc = std::allocator<byte_type>;
-	using default_del = std::default_delete<byte_type>;
+	using default_del   = std::default_delete<byte_type>;
 
 	friend class mutable_buffer;
 	friend class shared_buffer;
 
-	const_buffer()
-	:
-	m_region{std::make_unique<alloc_region<default_alloc>>()}
+	const_buffer() : m_region{std::make_unique<alloc_region<default_alloc>>()}
 	{
 		m_data = nullptr;
 		m_size = 0;
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
 
 	// const_buffer( const void* data, size_type size )
@@ -1396,34 +1162,30 @@ public:
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	const_buffer( buffer const& rhs, _Alloc&& alloc )
-	:
-	m_region{ std::make_unique< alloc_region<_Alloc> >( rhs.data(), rhs.size(), std::forward<_Alloc>(alloc) ) }
+	const_buffer(buffer const& rhs, _Alloc&& alloc)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(rhs.data(), rhs.size(), std::forward<_Alloc>(alloc))}
 	{
 		m_data = m_region->data();
 		m_size = rhs.size();
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		// ASSERT_CONST_BUFFER_INVARIANTS( rhs );
 	}
 
-	const_buffer( buffer const& rhs)
-	:
-	m_region{ std::make_unique< alloc_region<default_alloc> >( rhs.data(), rhs.size())}
+	const_buffer(buffer const& rhs) : m_region{std::make_unique<alloc_region<default_alloc>>(rhs.data(), rhs.size())}
 	{
 		m_data = m_region->data();
 		m_size = rhs.size();
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		// ASSERT_CONST_BUFFER_INVARIANTS( rhs );
 	}
 
-	const_buffer( const_buffer const& rhs)
-	:
-	m_region{ std::make_unique< alloc_region<default_alloc> >( rhs.data(), rhs.size() ) }
+	const_buffer(const_buffer const& rhs)
+		: m_region{std::make_unique<alloc_region<default_alloc>>(rhs.data(), rhs.size())}
 	{
 		m_data = m_region->data();
 		m_size = rhs.size();
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
-		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
+		ASSERT_CONST_BUFFER_INVARIANTS(rhs);
 	}
 
 	// const_buffer( mutable_buffer const& rhs, memory_broker::ptr broker = buffer::default_broker::get() )
@@ -1446,15 +1208,13 @@ public:
 	// 	// ASSERT_BUFFER_INVARIANTS( rhs );
 	// }
 
-	const_buffer( const_buffer&& rhs )
-	:
-	m_region{ std::move( rhs.m_region ) } 
+	const_buffer(const_buffer&& rhs) : m_region{std::move(rhs.m_region)}
 	{
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
+		m_data     = rhs.m_data;
+		m_size     = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
 
 	// const_buffer( mutable_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
@@ -1465,47 +1225,44 @@ public:
 	// 	m_size = rhs.size();
 	// }
 
-	const_buffer( mutable_buffer&& rhs )
-	:
-	m_region{ std::move( rhs.m_region ) }
+	const_buffer(mutable_buffer&& rhs) : m_region{std::move(rhs.m_region)}
 	{
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
-		rhs.m_data = nullptr;
-		rhs.m_size = 0;
+		m_data         = rhs.m_data;
+		m_size         = rhs.m_size;
+		rhs.m_data     = nullptr;
+		rhs.m_size     = 0;
 		rhs.m_capacity = 0;
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
 
 private:
-
-	void ctor_body(byte_type* data, size_type size, position_type offset, size_type length, std::error_code& err)
+	void
+	ctor_body(byte_type* data, size_type size, position_type offset, size_type length, std::error_code& err)
 	{
 		err.clear();
-		if ( offset + length > size )
+		if (offset + length > size)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
 
-		m_data = m_region->allocate( length, err );
-		if (err) goto exit;
+		m_data = m_region->allocate(length, err);
+		if (err)
+			goto exit;
 
-		::memcpy( m_data, data + offset, length );
+		::memcpy(m_data, data + offset, length);
 		m_size = length;
 
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 
 	exit:
 		return;
 	}
 
 public:
-
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	const_buffer( buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc )
-	:
-	m_region{ std::make_unique< alloc_region<_Alloc> >(std::forward<_Alloc>(alloc)) }
+	const_buffer(buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(std::forward<_Alloc>(alloc))}
 	{
 		std::error_code err;
 		ctor_body(rhs.m_data, rhs.m_size, offset, length, err);
@@ -1516,15 +1273,14 @@ public:
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	const_buffer( buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc, std::error_code& err )
-	:
-	m_region{ std::make_unique< alloc_region<_Alloc> >(std::forward<_Alloc>(alloc)) }
+	const_buffer(buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc, std::error_code& err)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(std::forward<_Alloc>(alloc))}
 	{
 		ctor_body(rhs.m_data, rhs.m_size, offset, length, err);
 	}
 
-	const_buffer( buffer const& rhs, position_type offset, size_type length)
-	: m_region{std::make_unique<alloc_region<default_alloc>>()}
+	const_buffer(buffer const& rhs, position_type offset, size_type length)
+		: m_region{std::make_unique<alloc_region<default_alloc>>()}
 	{
 		std::error_code err;
 		ctor_body(rhs.m_data, rhs.m_size, offset, length, err);
@@ -1534,38 +1290,35 @@ public:
 		}
 	}
 
-	const_buffer( buffer const& rhs, position_type offset, size_type length, std::error_code& err)
-	: m_region{std::make_unique<alloc_region<default_alloc>>()}
+	const_buffer(buffer const& rhs, position_type offset, size_type length, std::error_code& err)
+		: m_region{std::make_unique<alloc_region<default_alloc>>()}
 	{
 		ctor_body(rhs.m_data, rhs.m_size, offset, length, err);
 	}
 
 
-	const_buffer(const_buffer&& rhs, size_type offset, size_type length)
-	:
-	m_region{std::move(rhs.m_region)}
+	const_buffer(const_buffer&& rhs, size_type offset, size_type length) : m_region{std::move(rhs.m_region)}
 	{
-		if ( offset + length > rhs.m_size )
+		if (offset + length > rhs.m_size)
 		{
-			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
+			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
-		m_data = rhs.m_data + offset;
-		m_size = length;
+		m_data     = rhs.m_data + offset;
+		m_size     = length;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
 	}
 
 	const_buffer(mutable_buffer&& rhs, size_type offset, size_type length, std::error_code& err)
-	:
-	m_region{std::move(rhs.m_region)}
+		: m_region{std::move(rhs.m_region)}
 	{
-		if ( offset + length > rhs.m_size )
+		if (offset + length > rhs.m_size)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
-		m_data = rhs.m_data + offset;
-		m_size = length;
+		m_data     = rhs.m_data + offset;
+		m_size     = length;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
 
@@ -1583,68 +1336,68 @@ public:
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	const_buffer
-	slice( position_type offset, size_type length, _Alloc&& alloc ) const
+	slice(position_type offset, size_type length, _Alloc&& alloc) const
 	{
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
-		return const_buffer{ *this, offset, length, std::forward<_Alloc>(alloc) };
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
+		return const_buffer{*this, offset, length, std::forward<_Alloc>(alloc)};
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	const_buffer
-	slice( position_type offset, size_type length, _Alloc&& alloc, std::error_code& err) const
+	slice(position_type offset, size_type length, _Alloc&& alloc, std::error_code& err) const
 	{
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		err.clear();
-		return const_buffer{ *this, offset, length, std::forward<_Alloc>(alloc), err };
+		return const_buffer{*this, offset, length, std::forward<_Alloc>(alloc), err};
 	}
 
 	const_buffer
-	slice( position_type offset, size_type length) const
+	slice(position_type offset, size_type length) const
 	{
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
-		return const_buffer{ *this, offset, length};
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
+		return const_buffer{*this, offset, length};
 	}
 
 	const_buffer
-	slice( position_type offset, size_type length, std::error_code& err) const
+	slice(position_type offset, size_type length, std::error_code& err) const
 	{
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		err.clear();
-		return const_buffer{ *this, offset, length, err };
+		return const_buffer{*this, offset, length, err};
 	}
 
 	const_buffer&
-	operator=( const_buffer const& rhs )
+	operator=(const_buffer const& rhs)
 	{
-		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
-		m_region = std::make_unique< alloc_region<default_alloc>>( rhs.data(), rhs.size() );
-		m_data = m_region->data();
-		m_size = rhs.size();
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(rhs);
+		m_region = std::make_unique<alloc_region<default_alloc>>(rhs.data(), rhs.size());
+		m_data   = m_region->data();
+		m_size   = rhs.size();
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	const_buffer&
-	operator=( mutable_buffer const& rhs )
+	operator=(mutable_buffer const& rhs)
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
-		m_region = std::make_unique<alloc_region<default_alloc>>( rhs.buffer::data(), rhs.size()); // force const
-		m_data = m_region->data();
-		m_size = rhs.size();
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(rhs);
+		m_region = std::make_unique<alloc_region<default_alloc>>(rhs.buffer::data(), rhs.size());    // force const
+		m_data   = m_region->data();
+		m_size   = rhs.size();
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	const_buffer&
-	operator=( const_buffer&& rhs )
+	operator=(const_buffer&& rhs)
 	{
-		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
-		m_region = std::move( rhs.m_region );
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
+		ASSERT_CONST_BUFFER_INVARIANTS(rhs);
+		m_region   = std::move(rhs.m_region);
+		m_data     = rhs.m_data;
+		m_size     = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
@@ -1659,29 +1412,26 @@ public:
 	// }
 
 	const_buffer&
-	operator=( mutable_buffer&& rhs )
+	operator=(mutable_buffer&& rhs)
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
-		m_region = std::move( rhs.m_region );
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
-		rhs.m_data = nullptr;
-		rhs.m_size = 0;
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(rhs);
+		m_region       = std::move(rhs.m_region);
+		m_data         = rhs.m_data;
+		m_size         = rhs.m_size;
+		rhs.m_data     = nullptr;
+		rhs.m_size     = 0;
 		rhs.m_capacity = 0;
-		ASSERT_CONST_BUFFER_INVARIANTS( *this );
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
-
 };
 
-class shared_buffer  : public buffer
+class shared_buffer : public buffer
 {
 protected:
-
-	SHARED_PTR_TYPE<region>	m_region;
+	SHARED_PTR_TYPE<region> m_region;
 
 public:
-
 	~shared_buffer()
 	{
 		// std::cout << "in shared_buffer dtor, region use count is " << m_region.use_count();
@@ -1703,7 +1453,7 @@ public:
 	}
 
 	using default_alloc = std::allocator<byte_type>;
-	using default_del = std::default_delete<byte_type>;
+	using default_del   = std::default_delete<byte_type>;
 
 	// void announce()
 	// {
@@ -1725,14 +1475,12 @@ public:
 	// 	}
 	// }
 
-	shared_buffer()
-	:
-	m_region{ MAKE_SHARED< alloc_region<default_alloc> >() }
+	shared_buffer() : m_region{MAKE_SHARED<alloc_region<default_alloc>>()}
 	{
 		m_data = nullptr;
 		m_size = 0;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
 	// shared_buffer( const void* data, size_type size )
@@ -1743,18 +1491,16 @@ public:
 	// 	m_size = size;
 	// }
 
-	template< class _Del >
-	shared_buffer( void* data, size_type size, _Del&& del )
-	:
-	m_region{ MAKE_SHARED< del_region<_Del> >( 
-		reinterpret_cast< byte_type* >( data ), size, std::forward<_Del>(del) ) }
+	template<class _Del>
+	shared_buffer(void* data, size_type size, _Del&& del)
+		: m_region{MAKE_SHARED<del_region<_Del>>(reinterpret_cast<byte_type*>(data), size, std::forward<_Del>(del))}
 	{
-		m_data = reinterpret_cast< byte_type* >( data );
+		m_data = reinterpret_cast<byte_type*>(data);
 		m_size = size;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
-/*
+	/*
 	shared_buffer( void* data, size_type size)
 	:
 	m_region{ MAKE_SHARED< del_region<default_del> >( 
@@ -1767,68 +1513,62 @@ public:
 	}
 */
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	shared_buffer( const void* data, size_type size, _Alloc&& alloc )
-	:
-	m_region{ MAKE_SHARED< alloc_region<_Alloc> >( reinterpret_cast< const byte_type* >( data ), size, std::forward<_Alloc>(alloc) ) }
+	shared_buffer(const void* data, size_type size, _Alloc&& alloc)
+		: m_region{MAKE_SHARED<alloc_region<_Alloc>>(
+				  reinterpret_cast<const byte_type*>(data),
+				  size,
+				  std::forward<_Alloc>(alloc))}
 	{
 		m_data = m_region->data();
 		m_size = size;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer( const void* data, size_type size )
-	:
-	m_region{ MAKE_SHARED< alloc_region<default_alloc> >( reinterpret_cast< const byte_type* >( data ), size ) }
+	shared_buffer(const void* data, size_type size)
+		: m_region{MAKE_SHARED<alloc_region<default_alloc>>(reinterpret_cast<const byte_type*>(data), size)}
 	{
 		m_data = m_region->data();
 		m_size = size;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer( shared_buffer const& rhs )
-	:
-	m_region{ rhs.m_region }
+	shared_buffer(shared_buffer const& rhs) : m_region{rhs.m_region}
 	{
-		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
+		ASSERT_CONST_BUFFER_INVARIANTS(rhs);
 		m_data = rhs.m_data;
 		m_size = rhs.m_size;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer( shared_buffer&& rhs )
-	:
-	m_region{ std::move( rhs.m_region ) } 
+	shared_buffer(shared_buffer&& rhs) : m_region{std::move(rhs.m_region)}
 	{
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
+		m_data     = rhs.m_data;
+		m_size     = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	shared_buffer( buffer const& rhs, _Alloc&& alloc )
-	:
-	m_region{ MAKE_SHARED< alloc_region<_Alloc> >( rhs.data(), rhs.size(), std::forward<_Alloc>(alloc) ) }
+	shared_buffer(buffer const& rhs, _Alloc&& alloc)
+		: m_region{MAKE_SHARED<alloc_region<_Alloc>>(rhs.data(), rhs.size(), std::forward<_Alloc>(alloc))}
 	{
 		m_data = m_region->data();
 		m_size = rhs.size();
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer( buffer const& rhs)
-	:
-	m_region{ MAKE_SHARED< alloc_region<default_alloc> >( rhs.data(), rhs.size()) }
+	shared_buffer(buffer const& rhs) : m_region{MAKE_SHARED<alloc_region<default_alloc>>(rhs.data(), rhs.size())}
 	{
 		m_data = m_region->data();
 		m_size = rhs.size();
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
 	// shared_buffer( mutable_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
@@ -1847,150 +1587,140 @@ public:
 	// 	m_size = rhs.size();
 	// }
 
-	shared_buffer( mutable_buffer&& rhs )
-	:
-	m_region{ std::move( rhs.m_region ) }
+	shared_buffer(mutable_buffer&& rhs) : m_region{std::move(rhs.m_region)}
 	{
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
-		rhs.m_data = nullptr;
-		rhs.m_size = 0;
+		m_data         = rhs.m_data;
+		m_size         = rhs.m_size;
+		rhs.m_data     = nullptr;
+		rhs.m_size     = 0;
 		rhs.m_capacity = 0;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer( const_buffer&& rhs )
-	:
-	m_region{ std::move( rhs.m_region ) }
+	shared_buffer(const_buffer&& rhs) : m_region{std::move(rhs.m_region)}
 	{
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
+		m_data     = rhs.m_data;
+		m_size     = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer( shared_buffer const& rhs, position_type offset, size_type length )
-	:
-	m_region{ rhs.m_region }
+	shared_buffer(shared_buffer const& rhs, position_type offset, size_type length) : m_region{rhs.m_region}
 	{
-		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
-		if ( offset + length > rhs.m_size )
+		ASSERT_SHARED_BUFFER_INVARIANTS(rhs);
+		if (offset + length > rhs.m_size)
 		{
-			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
+			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
 		m_data = rhs.m_data + offset;
 		m_size = length;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer( shared_buffer const& rhs, position_type offset, size_type length, std::error_code& err )
-	:
-	m_region{ rhs.m_region }
+	shared_buffer(shared_buffer const& rhs, position_type offset, size_type length, std::error_code& err)
+		: m_region{rhs.m_region}
 	{
 		err.clear();
-		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
-		if ( offset + length > rhs.m_size )
+		ASSERT_SHARED_BUFFER_INVARIANTS(rhs);
+		if (offset + length > rhs.m_size)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
 		m_data = rhs.m_data + offset;
 		m_size = length;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	exit:
 		return;
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	shared_buffer( buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc )
-	:
-	m_region{ std::make_unique< alloc_region<_Alloc> >( std::forward<_Alloc>(alloc) ) }
+	shared_buffer(buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(std::forward<_Alloc>(alloc))}
 	{
-		if ( offset + length > rhs.size() )
+		if (offset + length > rhs.size())
 		{
-			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
+			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
-		m_data = m_region->allocate( length );
-		::memcpy( m_data, rhs.data() + offset, length );
+		m_data = m_region->allocate(length);
+		::memcpy(m_data, rhs.data() + offset, length);
 		m_size = length;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer( buffer const& rhs, position_type offset, size_type length )
-	:
-	m_region{ std::make_unique< alloc_region<default_alloc> >() }
+	shared_buffer(buffer const& rhs, position_type offset, size_type length)
+		: m_region{std::make_unique<alloc_region<default_alloc>>()}
 	{
-		if ( offset + length > rhs.size() )
+		if (offset + length > rhs.size())
 		{
-			throw std::system_error{ make_error_code( std::errc::invalid_argument ) };
+			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
-		m_data = m_region->allocate( length );
-		::memcpy( m_data, rhs.data() + offset, length );
+		m_data = m_region->allocate(length);
+		::memcpy(m_data, rhs.data() + offset, length);
 		m_size = length;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	shared_buffer( buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc, std::error_code& err )
-	:
-	m_region{ std::make_unique< alloc_region<_Alloc> >( std::forward<_Alloc>(alloc) ) }
+	shared_buffer(buffer const& rhs, position_type offset, size_type length, _Alloc&& alloc, std::error_code& err)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(std::forward<_Alloc>(alloc))}
 	{
 		err.clear();
-		if ( offset + length > rhs.size() )
+		if (offset + length > rhs.size())
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
-		m_data = m_region->allocate( length, err );
-		if (err) goto exit;
-		::memcpy( m_data, rhs.data() + offset, length );
+		m_data = m_region->allocate(length, err);
+		if (err)
+			goto exit;
+		::memcpy(m_data, rhs.data() + offset, length);
 		m_size = length;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	exit:
 		return;
 	}
 
-	shared_buffer( buffer const& rhs, position_type offset, size_type length, std::error_code& err )
-	:
-	m_region{ std::make_unique< alloc_region<default_alloc> >() }
+	shared_buffer(buffer const& rhs, position_type offset, size_type length, std::error_code& err)
+		: m_region{std::make_unique<alloc_region<default_alloc>>()}
 	{
-		if ( offset + length > rhs.size() )
+		if (offset + length > rhs.size())
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
-		m_data = m_region->allocate( length, err );
-		if (err) goto exit;
-		::memcpy( m_data, rhs.data() + offset, length );
+		m_data = m_region->allocate(length, err);
+		if (err)
+			goto exit;
+		::memcpy(m_data, rhs.data() + offset, length);
 		m_size = length;
 		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	exit:
 		return;
 	}
 
 	shared_buffer(mutable_buffer&& rhs, position_type offset, size_type length, std::error_code& err)
-	:
-	m_region{std::move(rhs.m_region)}
+		: m_region{std::move(rhs.m_region)}
 	{
 		err.clear();
-		if ( offset + length > rhs.m_size )
+		if (offset + length > rhs.m_size)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
-		m_data = rhs.m_data + offset;
-		m_size = length;
-		rhs.m_data = nullptr;
-		rhs.m_size = 0;
+		m_data         = rhs.m_data + offset;
+		m_size         = length;
+		rhs.m_data     = nullptr;
+		rhs.m_size     = 0;
 		rhs.m_capacity = 0;
 
 	exit:
@@ -1998,17 +1728,16 @@ public:
 	}
 
 	shared_buffer(const_buffer&& rhs, position_type offset, size_type length, std::error_code& err)
-	:
-	m_region{std::move(rhs.m_region)}
+		: m_region{std::move(rhs.m_region)}
 	{
 		err.clear();
-		if ( offset + length > rhs.m_size )
+		if (offset + length > rhs.m_size)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
-		m_data = rhs.m_data + offset;
-		m_size = length;
+		m_data     = rhs.m_data + offset;
+		m_size     = length;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
 
@@ -2017,17 +1746,16 @@ public:
 	}
 
 	shared_buffer(shared_buffer&& rhs, position_type offset, size_type length, std::error_code& err)
-	:
-	m_region{std::move(rhs.m_region)}
+		: m_region{std::move(rhs.m_region)}
 	{
 		err.clear();
-		if ( offset + length > rhs.m_size )
+		if (offset + length > rhs.m_size)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
-		m_data = rhs.m_data + offset;
-		m_size = length;
+		m_data     = rhs.m_data + offset;
+		m_size     = length;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
 
@@ -2039,9 +1767,9 @@ public:
 	pare(position_type offset, size_type length, std::error_code& err)
 	{
 		err.clear();
-		if ( offset + length > m_size )
+		if (offset + length > m_size)
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
 		m_data = m_data + offset;
@@ -2053,9 +1781,9 @@ public:
 	shared_buffer&
 	pare(position_type offset, size_type length)
 	{
-		if ( offset + length > m_size )
+		if (offset + length > m_size)
 		{
-			throw std::system_error{make_error_code( std::errc::invalid_argument )};
+			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
 		m_data = m_data + offset;
 		m_size = length;
@@ -2072,130 +1800,130 @@ public:
 	// }
 
 	shared_buffer
-	slice( position_type offset, size_type length ) const
+	slice(position_type offset, size_type length) const
 	{
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
-		return shared_buffer{ *this, offset, length };
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
+		return shared_buffer{*this, offset, length};
 	}
 
 	shared_buffer
-	slice( position_type offset, size_type length, std::error_code& err ) const
+	slice(position_type offset, size_type length, std::error_code& err) const
 	{
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
-		return shared_buffer{ *this, offset, length, err };
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
+		return shared_buffer{*this, offset, length, err};
 	}
 
 	shared_buffer&
-	operator=( shared_buffer const& rhs )
+	operator=(shared_buffer const& rhs)
 	{
-		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
+		ASSERT_SHARED_BUFFER_INVARIANTS(rhs);
 		m_region = rhs.m_region;
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		m_data   = rhs.m_data;
+		m_size   = rhs.m_size;
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	shared_buffer&
-	operator=( shared_buffer&& rhs )
+	operator=(shared_buffer&& rhs)
 	{
-		ASSERT_SHARED_BUFFER_INVARIANTS( rhs );
-		m_region = std::move( rhs.m_region );
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
+		ASSERT_SHARED_BUFFER_INVARIANTS(rhs);
+		m_region   = std::move(rhs.m_region);
+		m_data     = rhs.m_data;
+		m_size     = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	shared_buffer&
-	operator=( buffer const& rhs )
+	operator=(buffer const& rhs)
 	{
-		m_region = MAKE_SHARED< alloc_region<default_alloc> >( rhs.data(), rhs.size());
-		m_data = m_region->data();
-		m_size = rhs.size();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		m_region = MAKE_SHARED<alloc_region<default_alloc>>(rhs.data(), rhs.size());
+		m_data   = m_region->data();
+		m_size   = rhs.size();
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	shared_buffer&
-	operator=( mutable_buffer&& rhs )
+	operator=(mutable_buffer&& rhs)
 	{
-		ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
-		m_region = std::move( rhs.m_region );
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
-		rhs.m_data = nullptr;
-		rhs.m_size = 0;
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(rhs);
+		m_region       = std::move(rhs.m_region);
+		m_data         = rhs.m_data;
+		m_size         = rhs.m_size;
+		rhs.m_data     = nullptr;
+		rhs.m_size     = 0;
 		rhs.m_capacity = 0;
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	shared_buffer&
-	operator=( const_buffer&& rhs )
+	operator=(const_buffer&& rhs)
 	{
-		ASSERT_CONST_BUFFER_INVARIANTS( rhs );
-		m_region = std::move( rhs.m_region );
-		m_data = rhs.m_data;
-		m_size = rhs.m_size;
+		ASSERT_CONST_BUFFER_INVARIANTS(rhs);
+		m_region   = std::move(rhs.m_region);
+		m_data     = rhs.m_data;
+		m_size     = rhs.m_size;
 		rhs.m_data = nullptr;
 		rhs.m_size = 0;
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
 
 	std::size_t
 	ref_count() const
 	{
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 		return m_region.use_count();
 	}
 };
 
 class string_alias
 {
-	public:
+public:
 	string_alias() : m_buf{} {}
 
-	string_alias( shared_buffer const& buf) : m_buf{ buf } {}
+	string_alias(shared_buffer const& buf) : m_buf{buf} {}
 
-	string_alias( shared_buffer const& buf, std::size_t offset, std::size_t size ) : m_buf{ buf.slice( offset, size ) } {}
+	string_alias(shared_buffer const& buf, std::size_t offset, std::size_t size) : m_buf{buf.slice(offset, size)} {}
 
-	string_alias( string_alias const& rhs ) : m_buf{ rhs.m_buf } {}
+	string_alias(string_alias const& rhs) : m_buf{rhs.m_buf} {}
 
-	string_alias( string_alias&& rhs ) : m_buf{ std::move( rhs.m_buf ) } {}
+	string_alias(string_alias&& rhs) : m_buf{std::move(rhs.m_buf)} {}
 
 	string_alias&
-	operator=( string_alias const& rhs )
+	operator=(string_alias const& rhs)
 	{
-		if ( this != &rhs ) 
-		{ 
-			m_buf = rhs.m_buf; 
+		if (this != &rhs)
+		{
+			m_buf = rhs.m_buf;
 		}
 		return *this;
 	}
 
 	string_alias&
-	operator=( string_alias&& rhs )
+	operator=(string_alias&& rhs)
 	{
-		if ( this != &rhs ) 
-		{ 
-			m_buf = std::move( rhs.m_buf );
+		if (this != &rhs)
+		{
+			m_buf = std::move(rhs.m_buf);
 		}
 		return *this;
 	}
 
 	operator std::string_view() const noexcept
 	{
-		return std::string_view{ reinterpret_cast< const char* > ( m_buf.data() ), m_buf.size() };
+		return std::string_view{reinterpret_cast<const char*>(m_buf.data()), m_buf.size()};
 	}
 
 	std::string_view
 	view() const noexcept
 	{
-		return std::string_view{ reinterpret_cast< const char* >( m_buf.data() ), m_buf.size() };
+		return std::string_view{reinterpret_cast<const char*>(m_buf.data()), m_buf.size()};
 	}
 
 private:
@@ -2207,8 +1935,8 @@ private:
 
 class bufwriter
 {
-	public:
-	bufwriter( std::size_t size ) : m_buf{ size }, m_pos{ 0 } {}
+public:
+	bufwriter(std::size_t size) : m_buf{size}, m_pos{0} {}
 
 	void
 	reset()
@@ -2223,36 +1951,36 @@ class bufwriter
 	}
 
 	void
-	putn( const void* src, std::size_t n )
+	putn(const void* src, std::size_t n)
 	{
-		accommodate( n );
-		m_buf.putn( m_pos, src, n );
+		accommodate(n);
+		m_buf.putn(m_pos, src, n);
 		m_pos += n;
 	}
 
 	void
-	put( std::uint8_t b )
+	put(std::uint8_t b)
 	{
-		accommodate( 1 );
-		m_buf.put( m_pos, b );
+		accommodate(1);
+		m_buf.put(m_pos, b);
 		++m_pos;
 	}
 
 	std::uint8_t*
-	accommodate( std::size_t n )
+	accommodate(std::size_t n)
 	{
 		auto remaining = m_buf.capacity() - m_pos;
 		if (n > remaining)
 		{
-			auto required = m_pos + n;
+			auto required       = m_pos + n;
 			auto cushioned_size = (3 * required) / 2;
-			m_buf.expand( cushioned_size );
+			m_buf.expand(cushioned_size);
 		}
 		return m_buf.data() + m_pos;
 	}
 
 	void
-	advance( std::size_t n )
+	advance(std::size_t n)
 	{
 		m_pos += n;
 	}
@@ -2260,25 +1988,24 @@ class bufwriter
 	const_buffer
 	get_buffer()
 	{
-		m_buf.size( m_pos );
-		return const_buffer{ m_buf };
+		m_buf.size(m_pos);
+		return const_buffer{m_buf};
 	}
 
 	void
-	write( const char* src, std::size_t len )
+	write(const char* src, std::size_t len)
 	{
 		putn(src, len);
 	}
 
 private:
-
 	mutable_buffer m_buf;
-	std::size_t m_pos;
+	std::size_t    m_pos;
 };
 
 #endif
 
-} // namespace bstream
-} // namespace logicmill
+}    // namespace bstream
+}    // namespace logicmill
 
 #endif    // LOGICMILL_BSTREAM_BUFFER_H

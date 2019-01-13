@@ -28,6 +28,8 @@
 #include <deque>
 #include <logicmill/async/event_flow.h>
 #include <logicmill/bstream/buffer.h>
+#include <logicmill/bstream/compound_memory/source.h>
+#include <memory>
 
 namespace logicmill
 {
@@ -75,26 +77,154 @@ using const_data_event   = data_event<cbuf_sequence&&>;
 using shared_data_event  = data_event<sbuf_sequence&&>;
 
 
-struct frame_header
+class frame
 {
-	std::uint32_t size;
-	std::uint32_t flags;
+public:
+	using flags_type      = std::uint32_t;
+	using frame_size_type = std::uint32_t;
+
+	frame_size_type
+	size() const
+	{
+		return m_size;
+	}
+
+	flags_type
+	flags() const
+	{
+		return m_flags;
+	}
+
+protected:
+
+	frame() : m_size{0}, m_flags{0}
+	{}
+
+	frame(frame const& rhs) : m_size{rhs.m_size}, m_flags{rhs.m_flags} {}
+
+	frame(frame_size_type size, flags_type flags) : m_size{size}, m_flags{flags} {}
+
+	frame_size_type    m_size;
+	flags_type         m_flags;
 };
 
+class mutable_frame : public frame
+{
+public:
+	using buffer_type = bstream::mutable_buffer;
+	using sequence_type = std::deque<buffer_type>;
+
+	mutable_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)} 
+	{
+		for (auto& buf : m_bufs)
+		{
+			m_size += buf.size();
+		}
+	}
+
+	mutable_frame(mutable_frame&& rhs) : frame{rhs}, m_bufs{std::move(rhs.m_bufs)} {}
+
+	sequence_type const&
+	bufs() const
+	{
+		return m_bufs;
+	}
+
+	sequence_type
+	release_bufs()
+	{
+		return std::move(m_bufs);
+	}
+
+	bstream::compound_memory::source<buffer_type>
+	make_source()
+	{
+		return bstream::compound_memory::source<buffer_type>{std::move(m_bufs)};
+	}
+
+private:
+	sequence_type m_bufs;
+};
+
+class shared_frame : public frame
+{
+public:
+	using buffer_type = bstream::shared_buffer;
+	using sequence_type = std::deque<buffer_type>;
+
+	shared_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)} 
+	{
+		for (auto& buf : m_bufs)
+		{
+			m_size += buf.size();
+		}
+	}
+
+	shared_frame(flags_type flags, std::deque<bstream::const_buffer>&& bufs) : frame{0, flags}, m_bufs{}
+	{
+		using iter_type = std::deque<bstream::const_buffer>::iterator;
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			// std::move_iterator<iter_type> move_it{it};
+			m_size += it->size();
+			m_bufs.emplace_back(*std::move_iterator<iter_type>{it});
+		}
+		bufs.clear();
+	}
+
+	shared_frame(flags_type flags, std::deque<bstream::mutable_buffer>&& bufs) : frame{0, flags}, m_bufs{}
+	{
+		using iter_type = std::deque<bstream::mutable_buffer>::iterator;
+		for (auto it = bufs.begin(); it != bufs.end(); ++it)
+		{
+			// std::move_iterator<iter_type> move_it{it};
+			m_size += it->size();
+			m_bufs.emplace_back(*std::move_iterator<iter_type>{it});
+		}
+		bufs.clear();
+	}
+
+	shared_frame(shared_frame&& rhs) : frame{rhs}, m_bufs{std::move(rhs.m_bufs)} {}
+
+	sequence_type const&
+	bufs() const
+	{
+		return m_bufs;
+	}
+
+	sequence_type
+	release_bufs()
+	{
+		return std::move(m_bufs);
+	}
+
+	bstream::compound_memory::source<buffer_type>
+	make_source() const
+	{
+		return bstream::compound_memory::source<buffer_type>{std::move(m_bufs)};
+	}
+
+private:
+	sequence_type m_bufs;
+};
+
+
 template<class Payload>
-using frame_event = flow::event<event_type, event_type::frame, frame_header, Payload>;
-using mutable_frame_event = frame_event<mbuf_sequence&&>;
-using const_frame_event   = frame_event<cbuf_sequence&&>;
-using shared_frame_event  = frame_event<sbuf_sequence&&>;
+using frame_event = flow::event<event_type, event_type::frame, Payload>;
+using mutable_frame_event = frame_event<mutable_frame&&>;
+using shared_frame_event  = frame_event<shared_frame&&>;
 
 using control_event      = flow::event<event_type, event_type::control, control_state>;
 using error_event        = flow::event<event_type, event_type::error, std::error_code>;
+
 using mutable_data_in_connector
 		= flow::connector<flow::sink<mutable_data_event>, flow::source<control_event>, flow::source<error_event>>;
 using mutable_data_out_connector = flow::complement<mutable_data_in_connector>::type;
+
 using const_data_in_connector
 		= flow::connector<flow::sink<const_data_event>, flow::source<control_event>, flow::source<error_event>>;
 using const_data_out_connector = flow::complement<const_data_in_connector>::type;
+
 using shared_data_in_connector
 		= flow::connector<flow::sink<shared_data_event>, flow::source<control_event>, flow::sink<error_event>>;
 using shared_data_out_connector = flow::complement<shared_data_in_connector>::type;
@@ -102,9 +232,7 @@ using shared_data_out_connector = flow::complement<shared_data_in_connector>::ty
 using mutable_frame_in_connector
 		= flow::connector<flow::sink<mutable_frame_event>, flow::source<control_event>, flow::source<error_event>>;
 using mutable_frame_out_connector = flow::complement<mutable_frame_in_connector>::type;
-using const_frame_in_connector
-		= flow::connector<flow::sink<const_frame_event>, flow::source<control_event>, flow::source<error_event>>;
-using const_frame_out_connector = flow::complement<const_frame_in_connector>::type;
+
 using shared_frame_in_connector
 		= flow::connector<flow::sink<shared_frame_event>, flow::source<control_event>, flow::source<error_event>>;
 using shared_frame_out_connector = flow::complement<shared_frame_in_connector>::type;

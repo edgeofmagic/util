@@ -142,24 +142,37 @@ TEST_CASE("logicmill::laps::channel_anchor [ smoke ] { stackable connect read wr
 
 namespace framer_test
 {
+
 	class frame_top_catcher : public stackable<laps::frame_duplex_bottom, frame_top_catcher>
 	{
 	public:
 
-		void on(laps::shared_frame_event, laps::frame_header header, laps::sbuf_sequence&& bufs)
+		frame_top_catcher() : m_size{0}, m_flags{0}, m_event_count{0} {}
+
+		void on(laps::shared_frame_event, laps::shared_frame&& frm)
 		{
-			m_header = header;
-			m_bufs = std::move(bufs);
-			std::cout << "received event: " << header.size << ", " << m_bufs.size() << ": " << m_bufs[0].to_string() << std::endl;
+
+			m_size = frm.size();
+			m_flags = frm.flags();
+			std::cout << "received event " << m_event_count << ": " << frm.size() << ", " << frm.bufs().size() << ": " << frm.bufs()[0].to_string() << std::endl;
+			m_bufs = frm.release_bufs();
+			m_size = frm.size();
+			m_flags = frm.flags();
+			++m_event_count;
 		}
 
 		void on(laps::control_event, laps::control_state s) {}
 
 		void on(laps::error_event, std::error_code err) {}
 
-		laps::frame_header const& header() const
+		laps::frame::frame_size_type size() const
 		{
-			return m_header;
+			return m_size;
+		}
+
+		laps::frame::flags_type flags() const
+		{
+			return m_flags;
 		}
 
 		laps::sbuf_sequence const& bufs() const
@@ -167,9 +180,16 @@ namespace framer_test
 			return m_bufs;
 		}
 
+		int event_count() const
+		{
+			return m_event_count;
+		}
+
 	private:
-		laps::frame_header m_header;
+		laps::frame::frame_size_type m_size;
+		laps::frame::flags_type m_flags;
 		laps::sbuf_sequence m_bufs;
+		int m_event_count;
 	};
 }
 
@@ -183,8 +203,9 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 						.get_connector<laps::const_data_in_connector>()
 						.get_binding<sink<laps::const_data_event>>());
 	
+	std::string payload{"here is some buffer content, should be long enought to avoid short string optimization"};
 	bstream::memory::sink snk{8};
-	bstream::mutable_buffer b{"here is some buffer content, should be long enought to avoid short string optimization"};
+	bstream::mutable_buffer b{payload};
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
 	std::uint32_t flags{0};
@@ -199,5 +220,91 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 
 	driver.send<laps::const_data_event>(std::move(bufs));
 
+	CHECK(ftop.size() == blen);
+	CHECK(ftop.flags() == 0);
+	CHECK(ftop.bufs().size() == 1);
+	CHECK(ftop.bufs()[0].to_string() == payload);
+
+
 	// driver.send<laps::const_data_event>();
+}
+
+
+
+TEST_CASE("logicmill::laps::framer [ smoke ] { split header }")
+{
+	laps::framer frmr;
+	framer_test::frame_top_catcher ftop;
+	frmr.get_top().stack(ftop.get_surface<laps::frame_duplex_bottom>());
+	emitter<laps::const_data_event> driver;
+	driver.get_source<laps::const_data_event>().bind(frmr.get_bottom()
+						.get_connector<laps::const_data_in_connector>()
+						.get_binding<sink<laps::const_data_event>>());
+	
+	std::string payload{"here is some buffer content, should be long enought to avoid short string optimization"};
+	bstream::memory::sink hdr1{8};
+	bstream::memory::sink hdr2{8};
+	bstream::mutable_buffer b{payload};
+
+	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
+	std::uint32_t flags{0};
+	hdr1.put_num(blen, true);
+	hdr2.put_num(flags, true);
+	bstream::mutable_buffer mbuf1{hdr1.release_buffer()};
+	bstream::mutable_buffer mbuf2{hdr2.release_buffer()};
+
+	std::deque<bstream::const_buffer> bufs;
+	bufs.emplace_back(std::move(mbuf1));
+	bufs.emplace_back(std::move(mbuf2));
+	bufs.emplace_back(bstream::const_buffer{std::move(b)});
+
+	driver.send<laps::const_data_event>(std::move(bufs));
+
+	CHECK(ftop.size() == blen);
+	CHECK(ftop.flags() == 0);
+	CHECK(ftop.bufs().size() == 1);
+	CHECK(ftop.bufs()[0].to_string() == payload);
+
+}
+
+TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer }")
+{
+	laps::framer frmr;
+	framer_test::frame_top_catcher ftop;
+	frmr.get_top().stack(ftop.get_surface<laps::frame_duplex_bottom>());
+	emitter<laps::const_data_event> driver;
+	driver.get_source<laps::const_data_event>().bind(frmr.get_bottom()
+						.get_connector<laps::const_data_in_connector>()
+						.get_binding<sink<laps::const_data_event>>());
+	
+	std::string payload1{"here is some buffer content, should be long enough to avoid short string optimization"};
+	bstream::mutable_buffer b1{payload1};
+
+	std::string payload2{"here is some more buffer content, with a somewhat different length"};
+	bstream::mutable_buffer b2{payload2};
+
+	bstream::memory::sink snk{1024};
+
+	std::uint32_t blen{static_cast<std::uint32_t>(b1.size())};
+	std::uint32_t flags{7};
+	snk.put_num(blen, true);
+	snk.put_num(flags, true);
+	snk.putn(b1);
+
+	blen = static_cast<std::uint32_t>(b2.size());
+	flags = 21;
+	snk.put_num(blen, true);
+	snk.put_num(flags, true);
+	snk.putn(b2);
+
+	std::deque<bstream::const_buffer> bufs;
+	bufs.emplace_back(snk.release_buffer());
+
+	driver.send<laps::const_data_event>(std::move(bufs));
+
+	CHECK(ftop.size() == payload2.size());
+	CHECK(ftop.flags() == 21);
+	CHECK(ftop.bufs()[0].to_string() == payload2);
+	CHECK(ftop.event_count() == 2);
+
 }

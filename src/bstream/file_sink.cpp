@@ -39,8 +39,8 @@ file::sink::sink(sink&& rhs)
 	  m_fd{rhs.m_fd}
 {}
 
-file::sink::sink(std::string const& filename, open_mode mode, std::error_code& err, size_type buffer_size)
-	: base{},
+file::sink::sink(std::string const& filename, open_mode mode, size_type buffer_size, byte_order order, std::error_code& err)
+	: base{order},
 	  m_buf{buffer_size},
 	  m_filename{filename},
 	  m_is_open{false},
@@ -52,8 +52,8 @@ file::sink::sink(std::string const& filename, open_mode mode, std::error_code& e
 	really_open(err);
 }
 
-file::sink::sink(std::string const& filename, open_mode mode, size_type buffer_size)
-	: base{},
+file::sink::sink(std::string const& filename, open_mode mode, size_type buffer_size, byte_order order)
+	: base{order},
 	  m_buf{buffer_size},
 	  m_filename{filename},
 	  m_is_open{false},
@@ -70,18 +70,66 @@ file::sink::sink(std::string const& filename, open_mode mode, size_type buffer_s
 	}
 }
 
-file::sink::sink(open_mode mode, size_type buffer_size)
-	: base{}, m_buf{buffer_size}, m_filename{}, m_is_open{false}, m_mode{mode}, m_flags{to_flags(m_mode)}, m_fd{-1}
+
+file::sink::sink(std::string const& filename, open_mode mode, size_type buffer_size, std::error_code& err)
+	: base{byte_order::big_endian},
+	  m_buf{buffer_size},
+	  m_filename{filename},
+	  m_is_open{false},
+	  m_mode{mode},
+	  m_flags{to_flags(mode)},
+	  m_fd{-1}
+{
+	reset_ptrs();
+	really_open(err);
+}
+
+file::sink::sink(std::string const& filename, open_mode mode, size_type buffer_size)
+	: base{byte_order::big_endian},
+	  m_buf{buffer_size},
+	  m_filename{filename},
+	  m_is_open{false},
+	  m_mode{mode},
+	  m_flags{to_flags(mode)},
+	  m_fd{-1}
+{
+	reset_ptrs();
+	std::error_code err;
+	really_open(err);
+	if (err)
+	{
+		throw std::system_error{err};
+	}
+}
+
+
+
+
+
+
+file::sink::sink(open_mode mode, size_type buffer_size, byte_order order)
+	: base{order}, m_buf{buffer_size}, m_filename{}, m_is_open{false}, m_mode{mode}, m_flags{to_flags(m_mode)}, m_fd{-1}
 {
 	reset_ptrs();
 }
 
 void
-file::sink::open(std::string const& filename, open_mode mode, std::error_code& err)
+file::sink::open(std::string const& filename)
 {
 	m_filename = filename;
-	m_mode     = mode;
-	m_flags    = to_flags(mode);
+	std::error_code err;
+	really_open(err);
+	if (err)
+	{
+		throw std::system_error{err};
+	}
+}
+
+void
+file::sink::open(std::string const& filename, std::error_code& err)
+{
+	err.clear();
+	m_filename = filename;
 	really_open(err);
 }
 
@@ -97,6 +145,15 @@ file::sink::open(std::string const& filename, open_mode mode)
 	{
 		throw std::system_error{err};
 	}
+}
+
+void
+file::sink::open(std::string const& filename, open_mode mode, std::error_code& err)
+{
+	m_filename = filename;
+	m_mode     = mode;
+	m_flags    = to_flags(mode);
+	really_open(err);
 }
 
 void

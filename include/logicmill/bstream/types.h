@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <limits>
 #include <system_error>
+#include <boost/endian/conversion.hpp>
 
 namespace logicmill
 {
@@ -83,6 +84,18 @@ enum class open_mode
 	at_end,
 	at_begin,
 };
+
+enum class byte_order
+{
+	big_endian,
+	little_endian
+};
+
+constexpr bool is_reverse(byte_order order)
+{
+	return boost::endian::order::native
+		   != ((order == byte_order::big_endian) ? boost::endian::order::big : boost::endian::order::little);
+}
 
 struct as_shared_buffer
 {};

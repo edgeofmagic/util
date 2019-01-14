@@ -51,28 +51,28 @@ public:
 	using bstream::source::getn;
 	using base = bstream::source;
 
-	source() : base{}, m_buf{} {}
+	source(byte_order order = byte_order::big_endian) : base{order}, m_buf{} {}
 
-	source(shared_buffer const& buf);
+	source(shared_buffer const& buf, byte_order order = byte_order::big_endian);
 
-	source(shared_buffer&& buf);
+	source(shared_buffer&& buf, byte_order order = byte_order::big_endian);
 
-	source(const_buffer const& buf) : base{}, m_buf{buf}
+	source(const_buffer const& buf, byte_order order = byte_order::big_endian) : base{order}, m_buf{buf}
 	{
 		set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 	}
 
-	source(const_buffer&& buf) : base{}, m_buf{std::move(buf)}
+	source(const_buffer&& buf, byte_order order = byte_order::big_endian) : base{order}, m_buf{std::move(buf)}
 	{
 		set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 	}
 
-	source(mutable_buffer&& buf) : base{}, m_buf{std::move(buf)}
+	source(mutable_buffer&& buf, byte_order order = byte_order::big_endian) : base{order}, m_buf{std::move(buf)}
 	{
 		set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 	}
 
-	source(buffer const& buf) : base{}, m_buf{buf}
+	source(buffer const& buf, byte_order order = byte_order::big_endian) : base{order}, m_buf{buf}
 	{
 		set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 	}
@@ -134,26 +134,26 @@ protected:
 
 
 template<>
-inline source<const_buffer>::source(shared_buffer const& buf) : base{}, m_buf{buf}
+inline source<const_buffer>::source(shared_buffer const& buf, bstream::byte_order order) : base{order}, m_buf{buf}
 {
 	set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 }
 
 template<>
-inline source<const_buffer>::source(shared_buffer&& buf)
-	: base{}, m_buf{buf}    // construct by copy (as base type buffer); can't move shared_buffer to const_buffer
+inline source<const_buffer>::source(shared_buffer&& buf, bstream::byte_order order)
+	: base{order}, m_buf{buf}    // construct by copy (as base type buffer); can't move shared_buffer to const_buffer
 {
 	set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 }
 
 template<>
-inline source<shared_buffer>::source(shared_buffer const& buf) : base{}, m_buf{buf}
+inline source<shared_buffer>::source(shared_buffer const& buf, bstream::byte_order order) : base{order}, m_buf{buf}
 {
 	set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 }
 
 template<>
-inline source<shared_buffer>::source(shared_buffer&& buf) : base{}, m_buf{std::move(buf)}
+inline source<shared_buffer>::source(shared_buffer&& buf, bstream::byte_order order) : base{order}, m_buf{std::move(buf)}
 {
 	set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 }

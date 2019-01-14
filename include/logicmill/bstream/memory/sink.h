@@ -52,20 +52,21 @@ public:
 	friend class detail::sink_test_probe;
 
 	template<class _Alloc>
-	sink(size_type size, _Alloc&& alloc)
-	: base{}, m_buf{size, std::forward<_Alloc>(alloc)}
+	sink(size_type size, _Alloc&& alloc, byte_order order = byte_order::big_endian)
+	: base{order}, m_buf{size, std::forward<_Alloc>(alloc)}
 	{
 		reset_ptrs();
 	}
 
-	template<class _Alloc>
-	sink(size_type size = LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE)
-	: base{}, m_buf{size}
+	sink(size_type size, byte_order order = byte_order::big_endian)
+	: base{order}, m_buf{size}
 	{
 		reset_ptrs();
 	}
 
-	sink(mutable_buffer&& buf) : base{}, m_buf{std::move(buf)}
+	sink(byte_order order) : base{order}, m_buf{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE} {}
+
+	sink(mutable_buffer&& buf, byte_order order = byte_order::big_endian) : base{order}, m_buf{std::move(buf)}
 	{
 		reset_ptrs();
 	}

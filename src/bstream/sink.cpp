@@ -27,7 +27,7 @@
 using namespace logicmill;
 using namespace bstream;
 
-bstream::sink::sink(byte_type* data, size_type size)
+bstream::sink::sink(byte_type* data, size_type size, byte_order order)
 	: m_base_offset{0},
 	  m_high_watermark{0},
 	  m_jump_to{0},
@@ -36,10 +36,11 @@ bstream::sink::sink(byte_type* data, size_type size)
 	  m_end{data + size},
 	  m_dirty_start{data},
 	  m_dirty{false},
-	  m_did_jump{false}
+	  m_did_jump{false},
+	  m_reverse{is_reverse(order)}
 {}
 
-bstream::sink::sink()
+bstream::sink::sink(byte_order order)
 	: m_base_offset{0},
 	  m_high_watermark{0},
 	  m_jump_to{0},
@@ -48,7 +49,8 @@ bstream::sink::sink()
 	  m_end{nullptr},
 	  m_dirty_start{nullptr},
 	  m_dirty{false},
-	  m_did_jump{false}
+	  m_did_jump{false},
+	  m_reverse{is_reverse(order)}
 {}
 
 bstream::sink::sink(sink&& rhs)
@@ -60,7 +62,8 @@ bstream::sink::sink(sink&& rhs)
 	  m_end{rhs.m_end},
 	  m_dirty_start{rhs.m_dirty_start},
 	  m_dirty{rhs.m_dirty},
-	  m_did_jump{rhs.m_did_jump}
+	  m_did_jump{rhs.m_did_jump},
+	  m_reverse{rhs.m_reverse}
 {
 	rhs.m_base_offset    = 0;
 	rhs.m_high_watermark = 0;

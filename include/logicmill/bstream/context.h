@@ -51,12 +51,12 @@ public:
 
 	context_impl_base(
 			bool                       dedup_shared_ptrs,
-			boost::endian::order       byte_order,
+			byte_order       order,
 			size_type                  buffer_size = 65536)
 			// buffer::memory_broker::ptr broker      = buffer::default_broker::get())
 		: error_category_context{},
 		  m_dedup_shared_ptrs{dedup_shared_ptrs},
-		  m_byte_order{byte_order},
+		  m_byte_order{order},
 		  m_buffer_size{buffer_size}
 		//   m_broker{broker}
 	{}
@@ -64,13 +64,13 @@ public:
 	context_impl_base(
 			error_category_context::category_init_list categories,
 			bool                                       dedup_shared_ptrs,
-			boost::endian::order                       byte_order,
+			byte_order                       order,
 			size_type                                  buffer_size = 65536)
 			// buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
 
 		: error_category_context{categories},
 		  m_dedup_shared_ptrs{dedup_shared_ptrs},
-		  m_byte_order{byte_order},
+		  m_byte_order{order},
 		  m_buffer_size{buffer_size}
 		//   m_broker{broker}
 	{}
@@ -130,7 +130,7 @@ public:
 		return m_dedup_shared_ptrs;
 	}
 
-	boost::endian::order
+	byte_order
 	byte_order() const
 	{
 		return m_byte_order;
@@ -149,9 +149,9 @@ public:
 	// }
 
 private:
-	bool                       m_dedup_shared_ptrs;
-	boost::endian::order       m_byte_order;
-	size_type                  m_buffer_size;
+	bool       m_dedup_shared_ptrs;
+	enum byte_order m_byte_order;
+	size_type  m_buffer_size;
 	// buffer::memory_broker::ptr m_broker;
 };
 
@@ -190,15 +190,15 @@ template<class... Args>
 class context_impl : public context_impl_base
 {
 public:
-	context_impl(bool dedup_shared_ptrs, boost::endian::order byte_order)
-		: context_impl_base{dedup_shared_ptrs, byte_order}
+	context_impl(bool dedup_shared_ptrs, enum byte_order order)
+		: context_impl_base{dedup_shared_ptrs, order}
 	{}
 
 	context_impl(
 			error_category_context::category_init_list categories,
 			bool                                       dedup_shared_ptrs,
-			boost::endian::order                       byte_order)
-		: context_impl_base{categories, dedup_shared_ptrs, byte_order}
+			enum byte_order                       order)
+		: context_impl_base{categories, dedup_shared_ptrs, order}
 	{}
 
 	virtual poly_tag_type
@@ -362,14 +362,14 @@ template<class... Args>
 class context : public context_base
 {
 public:
-	context(bool dedup_shared_ptrs = true, boost::endian::order byte_order = boost::endian::order::big)
-		: m_context_impl{std::make_shared<const context_impl<Args...>>(dedup_shared_ptrs, byte_order)}
+	context(bool dedup_shared_ptrs = true, byte_order order = byte_order::big_endian)
+		: m_context_impl{std::make_shared<const context_impl<Args...>>(dedup_shared_ptrs, order)}
 	{}
 
 	context(error_category_context::category_init_list categories,
 			bool                                       dedup_shared_ptrs = true,
-			boost::endian::order                       byte_order        = boost::endian::order::big)
-		: m_context_impl{std::make_shared<const context_impl<Args...>>(categories, dedup_shared_ptrs, byte_order)}
+			byte_order                       order        = byte_order::big_endian)
+		: m_context_impl{std::make_shared<const context_impl<Args...>>(categories, dedup_shared_ptrs, order)}
 	{}
 
 	// context(context const& rhs)

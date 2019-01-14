@@ -36,11 +36,17 @@ namespace logicmill
 namespace bstream
 {
 
+// configure, don't open
 class ofbstream : public obstream
 {
 public:
-
-	ofbstream(context_base const& cntxt = get_default_context()) : obstream{std::make_unique<file::sink>(), cntxt} {}
+	ofbstream(open_mode mode = file::sink::default_mode, context_base const& cntxt = get_default_context())
+		: obstream{std::make_unique<file::sink>(
+						   mode,
+						   cntxt.get_context_impl()->buffer_size(),
+						   cntxt.get_context_impl()->byte_order()),
+				   cntxt}
+	{}
 
 	ofbstream(ofbstream const&) = delete;
 	ofbstream(ofbstream&&)      = delete;
@@ -49,20 +55,62 @@ public:
 		: obstream{std::move(fbuf), cntxt}
 	{}
 
-	ofbstream(std::string const&  filename,
-			  open_mode           mode  = file::sink::default_mode,
-			  context_base const& cntxt = get_default_context())
-		: obstream{std::make_unique<file::sink>(filename, mode), cntxt}
+	ofbstream(std::string const& filename)
+		: obstream{std::make_unique<file::sink>(
+						   filename,
+						   file::sink::default_mode,
+						   get_default_context().get_context_impl()->buffer_size(),
+						   get_default_context().get_context_impl()->byte_order()),
+				   get_default_context()}
 	{}
 
-	ofbstream(std::string const&  filename,
-			  open_mode           mode,
-			  std::error_code&    err,
-			  context_base const& cntxt = get_default_context())
-		: obstream{std::make_unique<file::sink>(), cntxt}
-	{
-		get_filebuf().open(filename, mode, err);
-	}
+	ofbstream(std::string const& filename, std::error_code& err)
+		: obstream{std::make_unique<file::sink>(
+						   filename,
+						   file::sink::default_mode,
+						   get_default_context().get_context_impl()->buffer_size(),
+						   get_default_context().get_context_impl()->byte_order(),
+						   err),
+				   get_default_context()}
+	{}
+
+	ofbstream(std::string const& filename, open_mode mode)
+		: obstream{std::make_unique<file::sink>(
+						   filename,
+						   mode,
+						   get_default_context().get_context_impl()->buffer_size(),
+						   get_default_context().get_context_impl()->byte_order()),
+				   get_default_context()}
+	{}
+
+	ofbstream(std::string const& filename, open_mode mode, std::error_code& err)
+		: obstream{std::make_unique<file::sink>(
+						   filename,
+						   mode,
+						   get_default_context().get_context_impl()->buffer_size(),
+						   get_default_context().get_context_impl()->byte_order(),
+						   err),
+				   get_default_context()}
+	{}
+
+	ofbstream(std::string const& filename, open_mode mode, context_base const& cntxt)
+		: obstream{std::make_unique<file::sink>(
+						   filename,
+						   mode,
+						   cntxt.get_context_impl()->buffer_size(),
+						   cntxt.get_context_impl()->byte_order()),
+				   cntxt}
+	{}
+
+	ofbstream(std::string const& filename, open_mode mode, context_base const& cntxt, std::error_code& err)
+		: obstream{std::make_unique<file::sink>(
+						   filename,
+						   mode,
+						   cntxt.get_context_impl()->buffer_size(),
+						   cntxt.get_context_impl()->byte_order(),
+						   err),
+				   cntxt}
+	{}
 
 	void
 	open(std::string const& filename, open_mode mode)

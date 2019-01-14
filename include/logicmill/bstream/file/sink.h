@@ -55,22 +55,46 @@ public:
 
 	sink(sink&& rhs);
 
-	sink(std::string const& filename,
-		 open_mode          mode,
-		 std::error_code&   err,
-		 size_type          buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
+	// sink(std::string const& filename,
+	// 	 open_mode          mode,
+	// 	 std::error_code&   err,
+	// 	 size_type          buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
+	// 	 byte_order         order       = byte_order::big_endian);
 
-	sink(std::string const& filename,
-		 open_mode          mode        = default_mode,
-		 size_type          buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
+	// sink(std::string const& filename,
+	// 	 open_mode          mode        = default_mode,
+	// 	 size_type          buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
+	// 	 byte_order         order       = byte_order::big_endian);
 
-	sink(open_mode mode = default_mode, size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
+	// sink(open_mode  mode        = default_mode,
+	// 	 size_type  buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
+	// 	 byte_order order       = byte_order::big_endian);
+
+	sink(std::string const& filename, open_mode mode, size_type buffer_size, byte_order order, std::error_code& err);
+
+	sink(std::string const& filename, open_mode mode, size_type buffer_size, byte_order order);
+
+	sink(std::string const& filename, open_mode mode, size_type buffer_size, std::error_code& err);
+
+	sink(std::string const& filename, open_mode mode, size_type buffer_size);
+
+
+	sink(open_mode  mode = default_mode,
+		 size_type  buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
+		 byte_order order = byte_order::big_endian);
+
+
+	void
+	open(std::string const& filename);
+
+	void
+	open(std::string const& filename, std::error_code& err);
+
+	void
+	open(std::string const& filename, open_mode mode);
 
 	void
 	open(std::string const& filename, open_mode mode, std::error_code& err);
-
-	void
-	open(std::string const& filename, open_mode mode = default_mode);
 
 	void
 	open(std::string const& filename, open_mode mode, int flags_override, std::error_code& err);

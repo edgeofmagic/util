@@ -107,8 +107,8 @@ namespace laps
 					{
 						if (m_source.remaining() >= header_size)
 						{
-							m_frame_size     = m_source.get_num<std::uint32_t>(reverse_order);
-							m_flags    = m_source.get_num<std::uint32_t>(reverse_order);
+							m_frame_size     = m_source.get_num<std::uint32_t>();
+							m_flags    = m_source.get_num<std::uint32_t>();
 							m_header_is_valid = true;
 						}
 						else
@@ -172,8 +172,8 @@ logicmill::laps::framer::top::on(mutable_frame_event, mutable_frame&& frm)
 // logicmill::laps::framer::top::on(mutable_frame_event, frame_header header, std::deque<bstream::mutable_buffer>&& bufs)
 {
 	bstream::memory::sink header_sink{header_size};
-	header_sink.put_num(frm.size(), reverse_order);
-	header_sink.put_num(frm.flags(), reverse_order);
+	header_sink.put_num(frm.size());
+	header_sink.put_num(frm.flags());
 	std::deque<bstream::mutable_buffer> bufs = frm.release_bufs();
 	bufs.emplace_front(header_sink.release_buffer());
 	m_bottom->send<mutable_data_event>(std::move(bufs));

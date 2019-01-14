@@ -46,17 +46,16 @@ public:
 	{}
 
 	ombstream(mutable_buffer&& buf, context_base const& cntxt = get_default_context())
-		: obstream{std::make_unique<memory::sink>(std::move(buf)), cntxt}
+		: obstream{std::make_unique<memory::sink>(std::move(buf), cntxt.get_context_impl()->byte_order()), cntxt}
 	{}
 
 	ombstream(size_type size, context_base const& cntxt = get_default_context())
-		: ombstream(std::make_unique<memory::sink>(size), cntxt)
+		: ombstream(std::make_unique<memory::sink>(size, cntxt.get_context_impl()->byte_order()), cntxt)
 	{}
 
 	ombstream(context_base const& cntxt = get_default_context())
 		: ombstream{std::make_unique<memory::sink>(mutable_buffer{cntxt.get_context_impl()->buffer_size(),
-																//   cntxt.get_context_impl()->broker()}),
-																  }),
+																  }, cntxt.get_context_impl()->byte_order()),
 					cntxt}
 	{}
 

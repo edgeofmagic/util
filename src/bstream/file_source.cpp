@@ -29,12 +29,18 @@
 using namespace logicmill;
 using namespace bstream;
 
-file::source::source(size_type buffer_size)
-	: m_buf{buffer_size}, m_filename{}, m_is_open{false}, m_flags{O_RDONLY}, m_fd{-1}, m_size{0}
+file::source::source(size_type buffer_size, byte_order order)
+	: base{order}, m_buf{buffer_size}, m_filename{}, m_is_open{false}, m_flags{O_RDONLY}, m_fd{-1}, m_size{0}
 {}
 
-file::source::source(std::string const& filename, std::error_code& err, int flag_overrides, size_type buffer_size)
-	: m_buf{buffer_size},
+file::source::source(
+		std::string const& filename,
+		std::error_code&   err,
+		int                flag_overrides,
+		size_type          buffer_size,
+		byte_order         order)
+	: base{order},
+	  m_buf{buffer_size},
 	  m_filename{filename},
 	  m_is_open{false},
 	  m_flags{O_RDONLY | flag_overrides},
@@ -44,8 +50,9 @@ file::source::source(std::string const& filename, std::error_code& err, int flag
 	really_open(err);
 }
 
-file::source::source(std::string const& filename, int flag_overrides, size_type buffer_size)
-	: m_buf{buffer_size},
+file::source::source(std::string const& filename, int flag_overrides, size_type buffer_size, byte_order order)
+	: base{order},
+	  m_buf{buffer_size},
 	  m_filename{filename},
 	  m_is_open{false},
 	  m_flags{O_RDONLY | flag_overrides},

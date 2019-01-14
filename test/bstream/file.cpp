@@ -50,7 +50,7 @@ TEST_CASE("logicmill::bstream::file::source [ smoke ] { source seek read }")
 	SUBCASE("create test file")
 	{
 		std::error_code err;
-		file::sink      snk{"test_output/file_rand_0", open_mode::truncate, err, 16};
+		file::sink      snk{"test_output/file_rand_0", open_mode::truncate, 16, err};
 		CHECK(!err);
 
 		snk.putn(data, sizeof(data), err);
@@ -109,7 +109,7 @@ TEST_CASE("logicmill::bstream::file::sink [ smoke ] { sink seek write }")
 	SUBCASE("create hole")
 	{
 		std::error_code err;
-		file::sink      snk{"test_output/file_rand_1", open_mode::truncate, err, 16};
+		file::sink      snk{"test_output/file_rand_1", open_mode::truncate, 16, err};
 		CHECK(!err);
 
 		snk.putn(data, 16, err);
@@ -163,7 +163,7 @@ TEST_CASE("logicmill::bstream::file::sink [ smoke ] { sink seek write }")
 	SUBCASE("fill hole in reverse")
 	{
 		std::error_code err;
-		file::sink      snk{"test_output/file_rand_1", open_mode::truncate, err, 16};
+		file::sink      snk{"test_output/file_rand_1", open_mode::truncate, 16, err};
 		CHECK(!err);
 
 		CHECK(snk.size() == 0);

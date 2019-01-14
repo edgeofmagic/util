@@ -90,8 +90,8 @@ public:
 	ibstream(std::unique_ptr<bstream::source> strmbuf, context_base const& cntxt = get_default_context())
 		: m_context{cntxt.get_context_impl()},
 		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
-		  m_strmbuf{std::move(strmbuf)},
-		  m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
+		  m_strmbuf{std::move(strmbuf)}
+		//   m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
 	{}
 
 	bstream::source&
@@ -201,14 +201,14 @@ public:
 	typename std::enable_if<std::is_arithmetic<U>::value && (sizeof(U) > 1), U>::type
 	get_num()
 	{
-		return m_strmbuf->get_num<U>(m_reverse_order);
+		return m_strmbuf->get_num<U>();
 	}
 
 	template<class U>
 	typename std::enable_if<std::is_arithmetic<U>::value && (sizeof(U) > 1), U>::type
 	get_num(std::error_code& err)
 	{
-		return m_strmbuf->get_num<U>(m_reverse_order, err);
+		return m_strmbuf->get_num<U>(err);
 	}
 
 	shared_buffer
@@ -247,12 +247,12 @@ public:
 		return m_strmbuf->getn(dst, nbytes, err);
 	}
 
-	bend::order
-	byte_order() const
-	{
-		return m_reverse_order ? ((bend::order::native == bend::order::little) ? bend::order::big : bend::order::little)
-							   : (bend::order::native);
-	}
+	// bend::order
+	// byte_order() const
+	// {
+	// 	return m_reverse_order ? ((bend::order::native == bend::order::little) ? bend::order::big : bend::order::little)
+	// 						   : (bend::order::native);
+	// }
 
 	template<class T>
 	typename std::enable_if_t<is_ibstream_constructible<T>::value, T>
@@ -709,7 +709,6 @@ protected:
 	std::shared_ptr<const context_impl_base> m_context;
 	std::unique_ptr<ptr_deduper>             m_ptr_deduper;
 	std::unique_ptr<bstream::source>         m_strmbuf;
-	const bool                               m_reverse_order;
 };
 
 template<class T>

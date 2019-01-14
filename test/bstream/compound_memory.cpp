@@ -153,7 +153,7 @@ TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffe
 
 	snk.position(28);
 	std::uint64_t n{0xDEADBEEFCAFEBABEULL};
-	snk.put_num(n, true, err);
+	snk.put_num(n, err);
 	CHECK(!err);
 	CHECK(snk.size() == 80);
 	CHECK(snk.position() == 36);
@@ -269,8 +269,9 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic const_b
 	CHECK(src.position() == 31);
 	CHECK(probe.current_segment() == 0);
 
-	auto s = src.get_num<short>(false, err);
-	CHECK(s == 0x0100);
+	auto s = src.get_num<short>(err);
+	// CHECK(s == 0x0100);
+	CHECK(s == 0x0001);
 	CHECK(src.position() == 33);
 	CHECK(probe.current_segment() == 1);
 }
@@ -368,8 +369,8 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic shared_
 	CHECK(src.position() == 31);
 	CHECK(probe.current_segment() == 0);
 
-	auto s = src.get_num<short>(false, err);
-	CHECK(s == 0x0100);
+	auto s = src.get_num<short>(err);
+	CHECK(s == 0x0001);
 	CHECK(src.position() == 33);
 	CHECK(probe.current_segment() == 1);
 

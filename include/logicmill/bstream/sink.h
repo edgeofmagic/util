@@ -142,7 +142,7 @@ class sink
 public:
 	friend class detail::sink_test_probe;
 
-	sink(byte_type* data, size_type size);
+	sink(byte_type* data, size_type size, byte_order order = byte_order::big_endian);
 
 	sink(sink const&) = delete;
 	sink&
@@ -155,7 +155,7 @@ public:
 	virtual ~sink() {}
 
 protected:
-	sink();
+	sink(byte_order order = byte_order::big_endian);
 
 	sink(sink&& rhs);
 
@@ -206,7 +206,7 @@ public:
 
 	template<class U>
 	typename std::enable_if_t<std::is_arithmetic<U>::value && (sizeof(U) == 2)>
-	put_num(U value, bool reverse)
+	put_num(U value)
 	{
 		constexpr std::size_t usize = sizeof(U);
 		using ctype                 = typename detail::canonical_type<usize>::type;
@@ -229,7 +229,7 @@ public:
 			}
 			m_dirty   = true;
 
-			if (reverse)
+			if (m_reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[1];
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[0];
@@ -243,14 +243,14 @@ public:
 		else
 		{
 			ctype cval
-					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize);
 		}
 	}
 
 	template<class U>
 	typename std::enable_if_t<std::is_arithmetic<U>::value && (sizeof(U) == 2)>
-	put_num(U value, bool reverse, std::error_code& err)
+	put_num(U value, std::error_code& err)
 	{
 		err.clear();
 		constexpr std::size_t usize = sizeof(U);
@@ -272,7 +272,7 @@ public:
 			}
 			m_dirty   = true;
 
-			if (reverse)
+			if (m_reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[1];
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[0];
@@ -286,7 +286,7 @@ public:
 		else
 		{
 			ctype cval
-					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
 
@@ -296,7 +296,7 @@ public:
 
 	template<class U>
 	typename std::enable_if_t<std::is_arithmetic<U>::value && (sizeof(U) == 4)>
-	put_num(U value, bool reverse)
+	put_num(U value)
 	{
 		constexpr std::size_t usize = sizeof(U);
 		using ctype                 = typename detail::canonical_type<usize>::type;
@@ -319,7 +319,7 @@ public:
 			}
 			m_dirty   = true;
 
-			if (reverse)
+			if (m_reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[3];
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[2];
@@ -337,14 +337,14 @@ public:
 		else
 		{
 			ctype cval
-					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize);
 		}
 	}
 
 	template<class U>
 	typename std::enable_if_t<std::is_arithmetic<U>::value && (sizeof(U) == 4)>
-	put_num(U value, bool reverse, std::error_code& err)
+	put_num(U value, std::error_code& err)
 	{
 		err.clear();
 		constexpr std::size_t usize = sizeof(U);
@@ -366,7 +366,7 @@ public:
 			}
 			m_dirty   = true;
 
-			if (reverse)
+			if (m_reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[3];
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[2];
@@ -384,7 +384,7 @@ public:
 		else
 		{
 			ctype cval
-					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
 	exit:
@@ -393,7 +393,7 @@ public:
 
 	template<class U>
 	typename std::enable_if_t<std::is_arithmetic<U>::value && (sizeof(U) == 8)>
-	put_num(U value, bool reverse)
+	put_num(U value)
 	{
 		constexpr std::size_t usize = sizeof(U);
 		using ctype                 = typename detail::canonical_type<usize>::type;
@@ -416,7 +416,7 @@ public:
 			}
 			m_dirty   = true;
 
-			if (reverse)
+			if (m_reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[7];
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[6];
@@ -442,14 +442,14 @@ public:
 		else
 		{
 			ctype cval
-					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize);
 		}
 	}
 
 	template<class U>
 	typename std::enable_if_t<std::is_arithmetic<U>::value && (sizeof(U) == 8)>
-	put_num(U value, bool reverse, std::error_code& err)
+	put_num(U value, std::error_code& err)
 	{
 		err.clear();
 		constexpr std::size_t usize = sizeof(U);
@@ -471,7 +471,7 @@ public:
 			}
 			m_dirty   = true;
 
-			if (reverse)
+			if (m_reverse)
 			{
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[7];
 				*m_next++ = reinterpret_cast<byte_vec&>(value)[6];
@@ -497,7 +497,7 @@ public:
 		else
 		{
 			ctype cval
-					= reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
 	exit:
@@ -618,6 +618,7 @@ protected:
 	byte_type*    m_dirty_start;
 	bool          m_dirty;
 	bool          m_did_jump;
+	bool		m_reverse;
 };
 
 }    // namespace bstream

@@ -56,8 +56,8 @@ public:
 	friend class detail::sink_test_probe;
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	sink(size_type size, _Alloc&& alloc)
-		: base{},
+	sink(size_type size, _Alloc&& alloc, byte_order order=byte_order::big_endian)
+		: base{order},
 		  m_segment_capacity{size},
 		  m_current{0},
 		  m_bufs{},
@@ -68,8 +68,8 @@ public:
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	sink(_Alloc&& alloc)
-	: base{},
+	sink(_Alloc&& alloc, byte_order order=byte_order::big_endian)
+	: base{order},
 	m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
 	m_current{0},
 	m_bufs{},
@@ -79,8 +79,8 @@ public:
 		reset_ptrs();
 	}
 
-	sink(size_type size)
-		: base{},
+	sink(size_type size, byte_order order=byte_order::big_endian)
+		: base{order},
 		  m_segment_capacity{size},
 		  m_current{0},
 		  m_bufs{},
@@ -90,8 +90,8 @@ public:
 		reset_ptrs();
 	}
 
-	sink()
-		: base{},
+	sink(byte_order order=byte_order::big_endian)
+		: base{order},
 		  m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
 		  m_current{0},
 		  m_bufs{},

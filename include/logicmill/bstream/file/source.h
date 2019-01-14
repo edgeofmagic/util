@@ -50,16 +50,19 @@ public:
 
 	friend class file::detail::source_test_probe;
 
-	source(size_type buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
+	source(size_type  buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
+		   byte_order order       = byte_order::big_endian);
 
 	source(std::string const& filename,
 		   std::error_code&   err,
 		   int                flag_overrides = 0,
-		   size_type          buffer_size    = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
+		   size_type          buffer_size    = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
+		   byte_order         order          = byte_order::big_endian);
 
 	source(std::string const& filename,
 		   int                flag_overrides = 0,
-		   size_type          buffer_size    = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE);
+		   size_type          buffer_size    = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
+		   byte_order         order          = byte_order::big_endian);
 
 	void
 	open(std::string const& filename, std::error_code& err, int flag_overrides = 0);

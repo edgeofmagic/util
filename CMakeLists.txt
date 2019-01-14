@@ -57,7 +57,6 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/stdlib/unordered_set.h
 	include/logicmill/bstream/stdlib/vector.h
 	include/logicmill/bstream/utils/memory.h
-#	include/logicmill/bstream/utils/preprocessor.h
 	include/logicmill/async/loop.h
 	include/logicmill/async/timer.h
 	include/logicmill/async/address.h
@@ -142,7 +141,6 @@ set(LOGICMILL_TEST_SRCS
 	test/async/tcp.cpp
 	test/async/udp.cpp
  	test/async/event_flow.cpp
-#	test/async/socket_behavior.cpp
 	test/armi/basic.cpp
 	test/laps/layers.cpp
 	test/util/shareable.cpp

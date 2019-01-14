@@ -209,8 +209,8 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
 	std::uint32_t flags{0};
-	snk.put_num(blen, true);
-	snk.put_num(flags, true);
+	snk.put_num(blen);
+	snk.put_num(flags);
 	bstream::mutable_buffer mbuf{snk.release_buffer()};
 	std::cout << "mbuf size: " << mbuf.size() << std::endl;
 	mbuf.dump(std::cout);
@@ -248,8 +248,8 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { split header }")
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
 	std::uint32_t flags{0};
-	hdr1.put_num(blen, true);
-	hdr2.put_num(flags, true);
+	hdr1.put_num(blen);
+	hdr2.put_num(flags);
 	bstream::mutable_buffer mbuf1{hdr1.release_buffer()};
 	bstream::mutable_buffer mbuf2{hdr2.release_buffer()};
 
@@ -287,14 +287,14 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer 
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b1.size())};
 	std::uint32_t flags{7};
-	snk.put_num(blen, true);
-	snk.put_num(flags, true);
+	snk.put_num(blen);
+	snk.put_num(flags);
 	snk.putn(b1);
 
 	blen = static_cast<std::uint32_t>(b2.size());
 	flags = 21;
-	snk.put_num(blen, true);
-	snk.put_num(flags, true);
+	snk.put_num(blen);
+	snk.put_num(flags);
 	snk.putn(b2);
 
 	std::deque<bstream::const_buffer> bufs;

@@ -91,8 +91,8 @@ public:
 	obstream(std::unique_ptr<bstream::sink> strmbuf, context_base const& cntxt = get_default_context())
 		: m_context{cntxt.get_context_impl()},
 		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
-		  m_strmbuf{std::move(strmbuf)},
-		  m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
+		  m_strmbuf{std::move(strmbuf)}
+		//   m_reverse_order{is_reverse(cntxt.get_context_impl()->byte_order())}
 	{}
 
 	// obstream(std::unique_ptr<bstream::sink> strmbuf, std::shared_ptr<const context_impl_base> context_impl)
@@ -185,7 +185,7 @@ public:
 		constexpr std::size_t usize = sizeof(U);
 		using ctype                 = typename detail::canonical_type<usize>::type;
 
-		m_strmbuf->put_num(value, m_reverse_order);
+		m_strmbuf->put_num(value);
 
 		return *this;
 	}
@@ -194,7 +194,7 @@ public:
 	typename std::enable_if<std::is_arithmetic<U>::value && (sizeof(U) > 1), obstream&>::type
 	put_num(U value, std::error_code& err)
 	{
-		m_strmbuf->put_num(value, m_reverse_order, err);
+		m_strmbuf->put_num(value, err);
 		return *this;
 	}
 
@@ -487,7 +487,7 @@ protected:
 	std::shared_ptr<const context_impl_base> m_context;
 	std::unique_ptr<ptr_deduper>             m_ptr_deduper;
 	std::unique_ptr<bstream::sink>           m_strmbuf;
-	const bool                               m_reverse_order;
+	// const bool                               m_reverse_order;
 };
 
 template<class T>

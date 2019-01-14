@@ -238,12 +238,9 @@ using shared_frame_in_connector
 using shared_frame_out_connector = flow::complement<shared_frame_in_connector>::type;
 
 using stream_duplex_top         = flow::surface<mutable_data_in_connector, const_data_out_connector>;
-// using stream_duplex_bottom      = flow::complement<stream_duplex_top>::type;
-using stream_duplex_bottom      = flow::surface<mutable_data_out_connector, const_data_in_connector>;
+using stream_duplex_bottom      = flow::complement<stream_duplex_top>::type;
 using frame_duplex_top          = flow::surface<mutable_frame_in_connector, shared_frame_out_connector>;
-// using frame_duplex_bottom       = flow::complement<frame_duplex_top>::type; 
-// causes failing template recursion of complement<>, see binds_with<>
-using frame_duplex_bottom       = flow::surface<mutable_frame_out_connector, shared_frame_in_connector>;
+using frame_duplex_bottom       = flow::complement<frame_duplex_top>::type; 
 
 }    // namespace laps
 }    // namespace logicmill

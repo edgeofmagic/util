@@ -288,7 +288,7 @@ position_type
 file::sink::truncate(std::error_code& err)
 {
 	err.clear();
-	position_type result = bstream::npos;
+	position_type result = npos;
 
 	flush(err);
 	if (err)

@@ -27,7 +27,7 @@
 
 #include <algorithm>
 #include <deque>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/error.h>
 #include <logicmill/bstream/source.h>
 #include <logicmill/bstream/types.h>
@@ -584,7 +584,7 @@ source<shared_buffer>::get_shared_slice(size_type n, std::error_code& err)
 
 	if (n <= m_end - m_next)
 	{
-		result = shared_buffer{m_bufs[m_current], static_cast<bstream::position_type>(m_next - m_base), n, err};
+		result = shared_buffer{m_bufs[m_current], static_cast<position_type>(m_next - m_base), n, err};
 		if (!err)
 		{
 			gbump(n);
@@ -624,7 +624,7 @@ source<shared_buffer>::get_shared_slice(size_type n)
 
 		if (n <= m_end - m_next)
 		{
-			result = shared_buffer{m_bufs[m_current], static_cast<bstream::position_type>(m_next - m_base), n};
+			result = shared_buffer{m_bufs[m_current], static_cast<position_type>(m_next - m_base), n};
 			gbump(n);
 		}
 		else

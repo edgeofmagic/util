@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_SOURCE_H
 
 #include <boost/endian/conversion.hpp>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/types.h>
 
 namespace bend = boost::endian;

@@ -25,7 +25,7 @@
 #include <doctest.h>
 #include <iostream>
 #include <logicmill/async/loop.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/laps/channel_anchor.h>
 #include <logicmill/laps/driver.h>
 #include <logicmill/laps/framer.h>
@@ -57,15 +57,15 @@ TEST_CASE("logicmill::laps::channel_anchor [ smoke ] { stackable connect read wr
 
                 std::error_code read_err;
                 chan->start_read(
-                        read_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+                        read_err, [&](channel::ptr const& cp, const_buffer&& buf, std::error_code err) {
                             CHECK(!err);
                             CHECK(buf.as_string() == "first test payload");
 
                             std::error_code write_err;
                             cp->write(
-                                    bstream::mutable_buffer{"reply to first payload"},
+                                    mutable_buffer{"reply to first payload"},
                                     write_err,
-                                    [&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
+                                    [&](channel::ptr const& chan, mutable_buffer&& buf, std::error_code err) {
                                         CHECK(!err);
                                         CHECK(buf.as_string() == "reply to first payload");
                                         acceptor_write_handler_did_execute = true;
@@ -96,13 +96,13 @@ TEST_CASE("logicmill::laps::channel_anchor [ smoke ] { stackable connect read wr
 			stackp->top().on_error(
 					[=](std::error_code err) { std::cout << "error event in driver: " << err.message() << std::endl; });
 
-			stackp->top().start_read([&](std::deque<bstream::const_buffer>&& bufs) {
+			stackp->top().start_read([&](std::deque<const_buffer>&& bufs) {
 				CHECK(bufs.front().as_string() == "reply to first payload");
 				driver_read_handler = true;
 			});
 
-			std::deque<bstream::mutable_buffer> bufs;
-			bufs.emplace_back(bstream::mutable_buffer{"first test payload"});
+			std::deque<mutable_buffer> bufs;
+			bufs.emplace_back(mutable_buffer{"first test payload"});
 			stackp->top().write(std::move(bufs));
 
 			CHECK(!err);
@@ -205,18 +205,18 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 	
 	std::string payload{"here is some buffer content, should be long enought to avoid short string optimization"};
 	bstream::memory::sink snk{8};
-	bstream::mutable_buffer b{payload};
+	mutable_buffer b{payload};
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
 	std::uint32_t flags{0};
 	snk.put_num(blen);
 	snk.put_num(flags);
-	bstream::mutable_buffer mbuf{snk.release_buffer()};
+	mutable_buffer mbuf{snk.release_buffer()};
 	std::cout << "mbuf size: " << mbuf.size() << std::endl;
 	mbuf.dump(std::cout);
-	std::deque<bstream::const_buffer> bufs;
+	std::deque<const_buffer> bufs;
 	bufs.emplace_back(std::move(mbuf));
-	bufs.emplace_back(bstream::const_buffer{std::move(b)});
+	bufs.emplace_back(const_buffer{std::move(b)});
 
 	driver.emit<laps::const_data_event>(std::move(bufs));
 
@@ -244,19 +244,19 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { split header }")
 	std::string payload{"here is some buffer content, should be long enought to avoid short string optimization"};
 	bstream::memory::sink hdr1{8};
 	bstream::memory::sink hdr2{8};
-	bstream::mutable_buffer b{payload};
+	mutable_buffer b{payload};
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
 	std::uint32_t flags{0};
 	hdr1.put_num(blen);
 	hdr2.put_num(flags);
-	bstream::mutable_buffer mbuf1{hdr1.release_buffer()};
-	bstream::mutable_buffer mbuf2{hdr2.release_buffer()};
+	mutable_buffer mbuf1{hdr1.release_buffer()};
+	mutable_buffer mbuf2{hdr2.release_buffer()};
 
-	std::deque<bstream::const_buffer> bufs;
+	std::deque<const_buffer> bufs;
 	bufs.emplace_back(std::move(mbuf1));
 	bufs.emplace_back(std::move(mbuf2));
-	bufs.emplace_back(bstream::const_buffer{std::move(b)});
+	bufs.emplace_back(const_buffer{std::move(b)});
 
 	driver.emit<laps::const_data_event>(std::move(bufs));
 
@@ -278,10 +278,10 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer 
 						.get_binding<sink<laps::const_data_event>>());
 	
 	std::string payload1{"here is some buffer content, should be long enough to avoid short string optimization"};
-	bstream::mutable_buffer b1{payload1};
+	mutable_buffer b1{payload1};
 
 	std::string payload2{"here is some more buffer content, with a somewhat different length"};
-	bstream::mutable_buffer b2{payload2};
+	mutable_buffer b2{payload2};
 
 	bstream::memory::sink snk{1024};
 
@@ -297,7 +297,7 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer 
 	snk.put_num(flags);
 	snk.putn(b2);
 
-	std::deque<bstream::const_buffer> bufs;
+	std::deque<const_buffer> bufs;
 	bufs.emplace_back(snk.release_buffer());
 
 	driver.emit<laps::const_data_event>(std::move(bufs));

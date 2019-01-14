@@ -33,7 +33,7 @@
 #include <uv.h>
 
 using logicmill::async::ip::endpoint;
-using logicmill::bstream::mutable_buffer;
+using logicmill::mutable_buffer;
 using logicmill::async::transceiver;
 using logicmill::async::options;
 

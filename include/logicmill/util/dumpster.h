@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_UTIL_DUMPSTER_H
-#define LOGICMILL_BSTREAM_UTIL_DUMPSTER_H
+#ifndef LOGICMILL_UTIL_DUMPSTER_H
+#define LOGICMILL_UTIL_DUMPSTER_H
 
 #include <cstdint>
 #include <iomanip>
@@ -31,8 +31,6 @@
 #include <vector>
 
 namespace logicmill
-{
-namespace bstream
 {
 namespace utils
 {
@@ -201,7 +199,6 @@ private:
 };
 
 }    // namespace utils
-}    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_UTIL_DUMPSTER_H
+#endif    // LOGICMILL_UTIL_DUMPSTER_H

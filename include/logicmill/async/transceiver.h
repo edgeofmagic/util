@@ -29,7 +29,7 @@
 #include <deque>
 #include <functional>
 #include <logicmill/async/endpoint.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/util/shared_ptr.h>
 #include <memory>
 #include <system_error>
@@ -52,19 +52,19 @@ public:
 
 	using receive_handler = std::function<void(
 			transceiver::ptr const& chan,
-			bstream::const_buffer&& buf,
+			const_buffer&& buf,
 			ip::endpoint const&     ep,
 			std::error_code         err)>;
 
 	using send_buffer_handler = std::function<void(
 			transceiver::ptr const&   trans,
-			bstream::mutable_buffer&& buf,
+			mutable_buffer&& buf,
 			ip::endpoint const&       ep,
 			std::error_code           err)>;
 
 	using send_buffers_handler = std::function<void(
 			transceiver::ptr const&               trans,
-			std::deque<bstream::mutable_buffer>&& bufs,
+			std::deque<mutable_buffer>&& bufs,
 			ip::endpoint const&                   ep,
 			std::error_code                       err)>;
 
@@ -85,26 +85,26 @@ public:
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, send_buffer_handler>::value>
-	emit(bstream::mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
+	emit(mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
 	{
 		really_send(std::move(buf), dest, err, std::forward<Handler>(handler));
 	}
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, send_buffers_handler>::value>
-	emit(std::deque<bstream::mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
+	emit(std::deque<mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
 	{
 		really_send(std::move(bufs), dest, err, std::forward<Handler>(handler));
 	}
 
 	void
-	emit(bstream::mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err)
+	emit(mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err)
 	{
 		really_send(std::move(buf), dest, err, nullptr);
 	}
 
 	void
-	write(std::deque<bstream::mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err)
+	write(std::deque<mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err)
 	{
 		really_send(std::move(bufs), dest, err, nullptr);
 	}
@@ -140,7 +140,7 @@ protected:
 
 	virtual void
 	really_send(
-			bstream::mutable_buffer&& buf,
+			mutable_buffer&& buf,
 			ip::endpoint const&       dest,
 			std::error_code&          err,
 			send_buffer_handler&&     handler)
@@ -148,7 +148,7 @@ protected:
 
 	virtual void
 	really_send(
-			bstream::mutable_buffer&&  buf,
+			mutable_buffer&&  buf,
 			ip::endpoint const&        dest,
 			std::error_code&           err,
 			send_buffer_handler const& handler)
@@ -156,7 +156,7 @@ protected:
 
 	virtual void
 	really_send(
-			std::deque<bstream::mutable_buffer>&& bufs,
+			std::deque<mutable_buffer>&& bufs,
 			ip::endpoint const&                   dest,
 			std::error_code&                      err,
 			send_buffers_handler&&                handler)
@@ -164,7 +164,7 @@ protected:
 
 	virtual void
 	really_send(
-			std::deque<bstream::mutable_buffer>&& bufs,
+			std::deque<mutable_buffer>&& bufs,
 			ip::endpoint const&                   dest,
 			std::error_code&                      err,
 			send_buffers_handler const&           handler)

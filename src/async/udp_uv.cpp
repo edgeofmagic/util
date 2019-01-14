@@ -73,11 +73,11 @@ udp_transceiver_uv::on_receive(
 	{
 		if (buf->base)
 		{
-			delete [] reinterpret_cast<bstream::byte_type*>(buf->base);
+			delete [] reinterpret_cast<byte_type*>(buf->base);
 		}
 		transceiver_ptr->m_receive_handler(
 				transceiver_ptr,
-				bstream::const_buffer{},
+				const_buffer{},
 				async::ip::endpoint{*reinterpret_cast<const sockaddr_storage*>(addr)},
 				map_uv_error(nread));
 	}
@@ -85,13 +85,13 @@ udp_transceiver_uv::on_receive(
 	{
 		if (buf->base)
 		{
-			delete [] reinterpret_cast<bstream::byte_type*>(buf->base);
+			delete [] reinterpret_cast<byte_type*>(buf->base);
 		}
 		if (addr)
 		{
 			transceiver_ptr->m_receive_handler(
 					transceiver_ptr,
-					bstream::const_buffer{},
+					const_buffer{},
 					async::ip::endpoint{*reinterpret_cast<const sockaddr_storage*>(addr)},
 					std::error_code{});
 		}
@@ -100,9 +100,9 @@ udp_transceiver_uv::on_receive(
 	{
 		transceiver_ptr->m_receive_handler(
 				transceiver_ptr,
-				bstream::const_buffer{reinterpret_cast<bstream::byte_type*>(buf->base),
-									  static_cast<bstream::size_type>(nread),
-									  std::default_delete<bstream::byte_type[]>{}},
+				const_buffer{reinterpret_cast<byte_type*>(buf->base),
+									  static_cast<size_type>(nread),
+									  std::default_delete<byte_type[]>{}},
 				async::ip::endpoint{*reinterpret_cast<const sockaddr_storage*>(addr)},
 				std::error_code{});
 	}
@@ -111,9 +111,9 @@ udp_transceiver_uv::on_receive(
 void
 udp_transceiver_uv::on_allocate(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
-	// static bstream::buffer::memory_broker::ptr broker = bstream::buffer::default_broker::get();
-	// buf->base = reinterpret_cast<char*>(std::allocator<bstream::byte_type>{}.allocate(suggested_size));
-	buf->base = reinterpret_cast<char*>(new bstream::byte_type[suggested_size]);
+	// static buffer::memory_broker::ptr broker = buffer::default_broker::get();
+	// buf->base = reinterpret_cast<char*>(std::allocator<byte_type>{}.allocate(suggested_size));
+	buf->base = reinterpret_cast<char*>(new byte_type[suggested_size]);
 	buf->len  = suggested_size;
 }
 
@@ -193,7 +193,7 @@ udp_transceiver_uv::stop_receive()
 
 void
 udp_transceiver_uv::really_send(
-		bstream::mutable_buffer&&          buf,
+		mutable_buffer&&          buf,
 		endpoint const&                    dest,
 		std::error_code&                   err,
 		transceiver::send_buffer_handler&& handler)
@@ -209,7 +209,7 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		bstream::mutable_buffer&&               buf,
+		mutable_buffer&&               buf,
 		endpoint const&                         dest,
 		std::error_code&                        err,
 		transceiver::send_buffer_handler const& handler)
@@ -225,7 +225,7 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		std::deque<bstream::mutable_buffer>&& bufs,
+		std::deque<mutable_buffer>&& bufs,
 		endpoint const&                       dest,
 		std::error_code&                      err,
 		transceiver::send_buffers_handler&&   handler)
@@ -241,7 +241,7 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		std::deque<bstream::mutable_buffer>&&    bufs,
+		std::deque<mutable_buffer>&&    bufs,
 		endpoint const&                          dest,
 		std::error_code&                         err,
 		transceiver::send_buffers_handler const& handler)

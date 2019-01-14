@@ -22,91 +22,42 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_TYPES_H
-#define LOGICMILL_BSTREAM_TYPES_H
+#ifndef LOGICMILL_TYPES_H
+#define LOGICMILL_TYPES_H
 
 #include <cstdint>
 #include <limits>
-#include <system_error>
-#include <boost/endian/conversion.hpp>
-#include <logicmill/types.h>
 
 namespace logicmill
 {
-namespace bstream
-{
 
-using poly_tag_type = int;
+/** \brief The type used to represent a single byte in a stream or buffer.
+ */
+using byte_type = std::uint8_t;
 
-static constexpr poly_tag_type invalid_tag = -1;
+/** \brief The type used to represent the size or capacity of a stream or buffer.
+ */
+using size_type = std::size_t;
 
-enum class seek_anchor
-{
-	begin,
-	current,
-	end
-};
+/** \brief The type used to represent the absolute position of a byte in 
+ * in a stream or buffer.
+ */
+using position_type = std::uint64_t;
 
-enum class open_mode
-{
-	truncate,
-	append,
-	at_end,
-	at_begin,
-};
+/** \brief The type used to represent the a relative offset from an 
+ * absolute position in a stream or buffer.
+ */
+using offset_type = std::int64_t;
 
-enum class byte_order
-{
-	big_endian,
-	little_endian
-};
+/** \brief The type used to represent a checksum value calculated for
+ * a buffer.
+ */
+using checksum_type = std::uint32_t;
 
-constexpr bool is_reverse(byte_order order)
-{
-	return boost::endian::order::native
-		   != ((order == byte_order::big_endian) ? boost::endian::order::big : boost::endian::order::little);
-}
+/** \brief A value representing an invalid size.
+ */
+static constexpr size_type npos = std::numeric_limits<size_type>::max();
 
-struct as_shared_buffer
-{};
-struct as_const_buffer
-{};
-struct as_mutable_buffer
-{};
-
-namespace detail
-{
-
-template<int N>
-struct canonical_type;
-
-template<>
-struct canonical_type<1>
-{
-	using type = std::uint8_t;
-};
-
-template<>
-struct canonical_type<2>
-{
-	using type = std::uint16_t;
-};
-
-template<>
-struct canonical_type<4>
-{
-	using type = std::uint32_t;
-};
-
-template<>
-struct canonical_type<8>
-{
-	using type = std::uint64_t;
-};
-
-}    // namespace detail
-
-}    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_TYPES_H
+#endif    // LOGICMILL_TYPES_H

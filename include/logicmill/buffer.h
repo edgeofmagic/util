@@ -22,15 +22,15 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_BUFFER_H
-#define LOGICMILL_BSTREAM_BUFFER_H
+#ifndef LOGICMILL_BUFFER_H
+#define LOGICMILL_BUFFER_H
 
-#include <assert.h>
+#include <cassert>
 #include <cstdint>
 #include <functional>
 #include <iostream>
 #include <limits>
-#include <logicmill/bstream/types.h>
+#include <logicmill/types.h>
 #include <logicmill/util/macros.h>
 #include <logicmill/util/shared_ptr.h>
 #include <system_error>
@@ -101,8 +101,6 @@
 #endif
 
 namespace logicmill
-{
-namespace bstream
 {
 
 template<class T>
@@ -2005,7 +2003,6 @@ private:
 
 #endif
 
-}    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_BUFFER_H
+#endif    // LOGICMILL_BUFFER_H

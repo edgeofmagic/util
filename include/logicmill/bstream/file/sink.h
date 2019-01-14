@@ -25,7 +25,7 @@
 #ifndef LOGICMILL_BSTREAM_FILE_SINK_H
 #define LOGICMILL_BSTREAM_FILE_SINK_H
 
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/sink.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE

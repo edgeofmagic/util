@@ -25,7 +25,7 @@
 #include "test_probes/compound_memory.h"
 #include "common.h"
 #include <doctest.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/error.h>
 
 using namespace logicmill;
@@ -240,7 +240,7 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic const_b
 			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x05, 0x06,
 	};
 
-	std::deque<bstream::const_buffer> bufs;
+	std::deque<const_buffer> bufs;
 
 	bufs.emplace_back(const_buffer{&data_0[0], sizeof(data_0)});
 	bufs.emplace_back(const_buffer{&data_1[0], sizeof(data_1)});
@@ -250,8 +250,8 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic const_b
 	bufs.emplace_back(const_buffer{&data_5[0], sizeof(data_5)});
 	bufs.emplace_back(const_buffer{&data_6[0], sizeof(data_6)});
 
-	compound_memory::source<bstream::const_buffer> src{bufs};
-	compound_memory::detail::source_test_probe<bstream::const_buffer> probe{src};
+	compound_memory::source<const_buffer> src{bufs};
+	compound_memory::detail::source_test_probe<const_buffer> probe{src};
 
 	std::error_code err;
 	CHECK(src.size() == 64);
@@ -340,7 +340,7 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic shared_
 			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x05, 0x06,
 	};
 
-	std::deque<bstream::shared_buffer> bufs;
+	std::deque<shared_buffer> bufs;
 
 	bufs.emplace_back(shared_buffer{&data_0[0], sizeof(data_0)});
 	bufs.emplace_back(shared_buffer{&data_1[0], sizeof(data_1)});
@@ -350,8 +350,8 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic shared_
 	bufs.emplace_back(shared_buffer{&data_5[0], sizeof(data_5)});
 	bufs.emplace_back(shared_buffer{&data_6[0], sizeof(data_6)});
 
-	compound_memory::source<bstream::shared_buffer> src{bufs};
-	compound_memory::detail::source_test_probe<bstream::shared_buffer> probe{src};
+	compound_memory::source<shared_buffer> src{bufs};
+	compound_memory::detail::source_test_probe<shared_buffer> probe{src};
 
 	std::error_code err;
 	CHECK(src.size() == 64);

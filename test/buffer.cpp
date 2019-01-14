@@ -22,12 +22,11 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <doctest.h>
 #include <iostream>
 
 using namespace logicmill;
-using namespace bstream;
 
 // using fbroker = buffer::functor_broker< buffer::default_allocator, buffer::default_reallocator, buffer::default_deallocator >;
 
@@ -35,7 +34,7 @@ using namespace bstream;
 
 #if 0
 
-TEST_CASE( "logicmill::bstream::buffer::memory_broker [ smoke ]" )
+TEST_CASE( "logicmill::buffer::memory_broker [ smoke ]" )
 {
 
 	SUBCASE( "default_broker" ) 
@@ -200,7 +199,7 @@ TEST_CASE( "logicmill::bstream::buffer::memory_broker [ smoke ]" )
 	SUBCASE( "create_broker with null_delete" ) 
 	{
 		auto blk = new byte_type[ 32 ];
-		auto bp = buffer::create_broker( bstream::null_delete<bstream::byte_type[]>{} );
+		auto bp = buffer::create_broker( bstream::null_delete<byte_type[]>{} );
 		CHECK( bp );
 		CHECK( ! bp->can_allocate() );
 		CHECK( ! bp->can_reallocate() );
@@ -210,7 +209,7 @@ TEST_CASE( "logicmill::bstream::buffer::memory_broker [ smoke ]" )
 }
 #endif
 
-TEST_CASE( "logicmill::bstream::mutable_buffer [ smoke ] { basic functionality }" )
+TEST_CASE( "logicmill::mutable_buffer [ smoke ] { basic functionality }" )
 {
 	mutable_buffer mbuf{ 16 };
 	CHECK( mbuf.size() == 0 );
@@ -248,7 +247,7 @@ TEST_CASE( "logicmill::bstream::mutable_buffer [ smoke ] { basic functionality }
 	// CHECK( mbuf.capacity() == 0 );
 	// CHECK( mbuf.size() == 0 );
 
-	mbuf = mutable_buffer{ std::allocator<bstream::byte_type>{} };
+	mbuf = mutable_buffer{ std::allocator<byte_type>{} };
 
 	CHECK( mbuf.is_expandable() ); 
  
@@ -263,7 +262,7 @@ TEST_CASE( "logicmill::bstream::mutable_buffer [ smoke ] { basic functionality }
 
 }
 
-TEST_CASE( "logicmill::bstream::mutable_buffer logicmill::bstream::const_buffer [ smoke ] { move mutable to const }" )
+TEST_CASE( "logicmill::mutable_buffer logicmill::const_buffer [ smoke ] { move mutable to const }" )
 {
 	std::string contents{ "abcdefghijklmnopqrstuvwxyz" };
 	mutable_buffer mbuf{ contents.size() };
@@ -293,7 +292,7 @@ TEST_CASE( "logicmill::bstream::mutable_buffer logicmill::bstream::const_buffer 
 
 #if 0
 
-TEST_CASE( "logicmill::bstream::mutable_buffer [ smoke ] { no_realloc_broker }" )
+TEST_CASE( "logicmill::mutable_buffer [ smoke ] { no_realloc_broker }" )
 {
 	mutable_buffer mbuf{ 128, buffer::no_realloc_broker::get() };
 	CHECK( mbuf.data() != nullptr );
@@ -333,19 +332,19 @@ TEST_CASE( "logicmill::bstream::mutable_buffer [ smoke ] { no_realloc_broker }" 
 
 #endif
 
-TEST_CASE( "logicmill::bstream::mutable_buffer [ smoke ] { null_delete }" )
+TEST_CASE( "logicmill::mutable_buffer [ smoke ] { null_delete }" )
 {
 	byte_type blk[32];
-	mutable_buffer mbuf{ &blk, 32, bstream::null_delete<byte_type[]>{} }; // sanitizer will go nuts if stack gets deallocated
+	mutable_buffer mbuf{ &blk, 32, null_delete<byte_type[]>{} }; // sanitizer will go nuts if stack gets deallocated
 }
 
-TEST_CASE( "logicmill::bstream::const_buffer [ smoke ] { dealloc only broker }" )
+TEST_CASE( "logicmill::const_buffer [ smoke ] { dealloc only broker }" )
 {
 	std::string contents{ "some buffer contents" };
-	// bstream::buffer::memory_broker::ptr broker = bstream::buffer::default_broker::get();
-	auto block = new bstream::byte_type[1024];
+	// buffer::memory_broker::ptr broker = buffer::default_broker::get();
+	auto block = new byte_type[1024];
 	memcpy( block, contents.data(), contents.size() );
-	const_buffer cbuf{ block, contents.size(), std::default_delete<bstream::byte_type[]>{} };
+	const_buffer cbuf{ block, contents.size(), std::default_delete<byte_type[]>{} };
 }
 
 

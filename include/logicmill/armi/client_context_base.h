@@ -104,7 +104,7 @@ protected:
 	}
 
 	void
-	on_read(bstream::const_buffer&& buf, std::error_code& err)
+	on_read(const_buffer&& buf, std::error_code& err)
 	{
 		bstream::imbstream is{std::move(buf), m_stream_context};
 		invoke_handler(is);

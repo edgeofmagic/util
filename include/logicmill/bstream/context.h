@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_CONTEXT_H
 
 #include <boost/endian/conversion.hpp>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/error.h>
 #include <logicmill/bstream/error_category_context.h>
 #include <logicmill/bstream/ibstream_traits.h>

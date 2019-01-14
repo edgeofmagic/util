@@ -47,13 +47,13 @@ public:
 		: bstream::detail::source_test_probe{target}, m_target{target}
 	{}
 
-	bstream::size_type
+	size_type
 	current_segment() const
 	{
 		return m_target.m_current;
 	}
 
-	std::vector<bstream::size_type> const&
+	std::vector<size_type> const&
 	offsets() const
 	{
 		return m_target.m_offsets;
@@ -68,7 +68,7 @@ class sink_test_probe : public bstream::detail::sink_test_probe
 public:
 	sink_test_probe(compound_memory::sink& target) : bstream::detail::sink_test_probe{target}, m_target{target} {}
 
-	bstream::size_type current_segnemt() const
+	size_type current_segnemt() const
 	{
 		return m_target.m_current;
 	}

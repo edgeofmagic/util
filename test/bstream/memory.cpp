@@ -25,7 +25,7 @@
 #include "test_probes/memory.h"
 #include "common.h"
 #include <doctest.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/error.h>
 
 using namespace logicmill;
@@ -64,7 +64,7 @@ TEST_CASE("logicmill::bstream::memory::sink [ smoke ] { basic functionality }")
 			0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	};
 
-	mutable_buffer mbuf{buf, sizeof(buf), bstream::null_delete<byte_type[]>{}};
+	mutable_buffer mbuf{buf, sizeof(buf), null_delete<byte_type[]>{}};
 
 	memory::sink snk{std::move(mbuf)};
 

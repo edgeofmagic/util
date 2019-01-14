@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_OBSTREAM_H
 
 #include <boost/endian/conversion.hpp>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/context.h>
 #include <logicmill/bstream/obstream_traits.h>
 #include <logicmill/bstream/sink.h>
@@ -274,14 +274,14 @@ public:
 	}
 
 	obstream&
-	write_blob_body(logicmill::bstream::buffer const& blob)
+	write_blob_body(logicmill::buffer const& blob)
 	{
 		putn(blob.data(), blob.size());
 		return *this;
 	}
 
 	obstream&
-	write_blob_body(logicmill::bstream::buffer const& blob, std::error_code& err)
+	write_blob_body(logicmill::buffer const& blob, std::error_code& err)
 	{
 		putn(blob.data(), blob.size(), err);
 		return *this;
@@ -309,7 +309,7 @@ public:
 	}
 
 	obstream&
-	write_blob(logicmill::bstream::buffer const& buf)
+	write_blob(logicmill::buffer const& buf)
 	{
 		write_blob_header(buf.size());
 		write_blob_body(buf);
@@ -317,7 +317,7 @@ public:
 	}
 
 	obstream&
-	write_blob(logicmill::bstream::buffer const& buf, std::error_code& err)
+	write_blob(logicmill::buffer const& buf, std::error_code& err)
 	{
 		write_blob_header(buf.size(), err);
 		if (err)
@@ -687,10 +687,10 @@ struct serializer<std::string_view>
 };
 
 template<>
-struct serializer<logicmill::bstream::string_alias>
+struct serializer<logicmill::string_alias>
 {
 	static obstream&
-	put(obstream& os, logicmill::bstream::string_alias const& value)
+	put(obstream& os, logicmill::string_alias const& value)
 	{
 		return serializer<std::string_view>::put(os, value.view());
 	}
@@ -768,10 +768,10 @@ struct serializer<T, typename std::enable_if_t<std::is_enum<T>::value>>
 };
 
 template<>
-struct serializer<logicmill::bstream::buffer>
+struct serializer<logicmill::buffer>
 {
 	static obstream&
-	put(obstream& os, logicmill::bstream::buffer const& val)
+	put(obstream& os, logicmill::buffer const& val)
 	{
 		os.write_blob(val);
 		return os;

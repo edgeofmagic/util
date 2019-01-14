@@ -25,7 +25,7 @@
 #include <doctest.h>
 #include <iostream>
 #include <logicmill/async/loop.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/async/tcp.h>
 
 using namespace logicmill;
@@ -186,15 +186,15 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 
                 std::error_code read_err;
                 chan->start_read(
-                        read_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+                        read_err, [&](channel::ptr const& cp, const_buffer&& buf, std::error_code err) {
                             CHECK(!err);
                             CHECK(buf.as_string() == "first test payload");
 
                             std::error_code write_err;
                             cp->write(
-                                    bstream::mutable_buffer{"reply to first payload"},
+                                    mutable_buffer{"reply to first payload"},
                                     write_err,
-                                    [&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
+                                    [&](channel::ptr const& chan, mutable_buffer&& buf, std::error_code err) {
                                         CHECK(!err);
                                         CHECK(buf.as_string() == "reply to first payload");
                                         acceptor_write_handler_did_execute = true;
@@ -215,7 +215,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 		lp->connect_channel(async::options{connect_ep}, err, [&](channel::ptr const& chan, std::error_code err) {
 			CHECK(!err);
 
-			chan->start_read(err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+			chan->start_read(err, [&](channel::ptr const& cp, const_buffer&& buf, std::error_code err) {
 				CHECK(!err);
 				CHECK(buf.as_string() == "reply to first payload");
 				channel_read_handler_did_execute = true;
@@ -223,11 +223,11 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 
 			CHECK(!err);
 
-			bstream::mutable_buffer mbuf{"first test payload"};
+			mutable_buffer mbuf{"first test payload"};
 			chan->write(
 					std::move(mbuf),
 					err,
-					[&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
+					[&](channel::ptr const& chan, mutable_buffer&& buf, std::error_code err) {
 						CHECK(!err);
 						CHECK(buf.as_string() == "first test payload");
 						channel_write_handler_did_execute = true;
@@ -288,20 +288,20 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write multi-b
                 CHECK(!err);
                 std::error_code read_err;
                 chan->start_read(
-                        read_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+                        read_err, [&](channel::ptr const& cp, const_buffer&& buf, std::error_code err) {
                             CHECK(!err);
                             auto sv = buf.as_string();
                             CHECK(sv == "payload part 1, payload part 2");
 
-                            std::deque<bstream::mutable_buffer> reply;
-                            reply.emplace_back(bstream::mutable_buffer{"reply part 1, "});
-                            reply.emplace_back(bstream::mutable_buffer{"reply part 2"});
+                            std::deque<mutable_buffer> reply;
+                            reply.emplace_back(mutable_buffer{"reply part 1, "});
+                            reply.emplace_back(mutable_buffer{"reply part 2"});
                             std::error_code write_err;
                             cp->write(
                                     std::move(reply),
                                     write_err,
                                     [&](channel::ptr const&                   chan,
-                                        std::deque<bstream::mutable_buffer>&& bufs,
+                                        std::deque<mutable_buffer>&& bufs,
                                         std::error_code                       err) {
                                         CHECK(!err);
                                         CHECK(bufs[0].as_string() == "reply part 1, ");
@@ -324,20 +324,20 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write multi-b
 			CHECK(!err);
 
 			std::error_code rwerr;
-			chan->start_read(rwerr, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+			chan->start_read(rwerr, [&](channel::ptr const& cp, const_buffer&& buf, std::error_code err) {
 				CHECK(!err);
 				CHECK(buf.as_string() == "reply part 1, reply part 2");
 				channel_read_handler_did_execute = true;
 			});
 			CHECK(!rwerr);
 
-			std::deque<bstream::mutable_buffer> mbufs;
-			mbufs.emplace_back(bstream::mutable_buffer{"payload part 1, "});
-			mbufs.emplace_back(bstream::mutable_buffer{"payload part 2"});
+			std::deque<mutable_buffer> mbufs;
+			mbufs.emplace_back(mutable_buffer{"payload part 1, "});
+			mbufs.emplace_back(mutable_buffer{"payload part 2"});
 			chan->write(
 					std::move(mbufs),
 					rwerr,
-					[&](channel::ptr const& chan, std::deque<bstream::mutable_buffer>&& bufs, std::error_code err) {
+					[&](channel::ptr const& chan, std::deque<mutable_buffer>&& bufs, std::error_code err) {
 						CHECK(!err);
 						CHECK(bufs[0].as_string() == "payload part 1, ");
 						CHECK(bufs[1].as_string() == "payload part 2");
@@ -402,16 +402,16 @@ TEST_CASE("logicmill::async::tcp_framing_acceptor [ smoke ] { framing connect re
 
 				std::error_code read_err;
 				chan->start_read(
-						read_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+						read_err, [&](channel::ptr const& cp, const_buffer&& buf, std::error_code err) {
 							CHECK(!err);
 							CHECK(buf.as_string() == "first test payload, padded to contain more than 32 characters");
 
 							std::error_code write_err;
 							cp->write(
-									bstream::mutable_buffer{
+									mutable_buffer{
 											"reply to first payload, also padded to contain more than 32 characters"},
 									write_err,
-									[&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
+									[&](channel::ptr const& chan, mutable_buffer&& buf, std::error_code err) {
 										CHECK(!err);
 										CHECK(buf.as_string()
 											  == "reply to first payload, also padded to contain more than 32 "
@@ -436,7 +436,7 @@ TEST_CASE("logicmill::async::tcp_framing_acceptor [ smoke ] { framing connect re
 			CHECK(!err);
 
 			std::error_code rw_err;
-			chan->start_read(rw_err, [&](channel::ptr const& cp, bstream::const_buffer&& buf, std::error_code err) {
+			chan->start_read(rw_err, [&](channel::ptr const& cp, const_buffer&& buf, std::error_code err) {
 				CHECK(!err);
 				CHECK(buf.as_string() == "reply to first payload, also padded to contain more than 32 characters");
 				channel_read_handler_did_execute = true;
@@ -444,11 +444,11 @@ TEST_CASE("logicmill::async::tcp_framing_acceptor [ smoke ] { framing connect re
 
 			CHECK(!rw_err);
 
-			bstream::mutable_buffer mbuf{"first test payload, padded to contain more than 32 characters"};
+			mutable_buffer mbuf{"first test payload, padded to contain more than 32 characters"};
 			chan->write(
 					std::move(mbuf),
 					rw_err,
-					[&](channel::ptr const& chan, bstream::mutable_buffer&& buf, std::error_code err) {
+					[&](channel::ptr const& chan, mutable_buffer&& buf, std::error_code err) {
 						CHECK(!err);
 						CHECK(buf.as_string() == "first test payload, padded to contain more than 32 characters");
 						channel_write_handler_did_execute = true;

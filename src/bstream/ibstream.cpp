@@ -547,7 +547,7 @@ ibstream::read_blob_header(std::error_code& ec)
 	return result;
 }
 
-logicmill::bstream::shared_buffer
+logicmill::shared_buffer
 ibstream::read_blob_shared(std::error_code& ec)
 {
 	auto nbytes = read_blob_header(ec);
@@ -561,7 +561,7 @@ ibstream::read_blob_shared(std::error_code& ec)
 	}
 }
 
-logicmill::bstream::const_buffer
+logicmill::const_buffer
 ibstream::read_blob(std::error_code& ec)
 {
 	auto nbytes = read_blob_header(ec);

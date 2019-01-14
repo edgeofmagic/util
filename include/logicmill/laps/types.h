@@ -27,7 +27,7 @@
 
 #include <deque>
 #include <logicmill/async/event_flow.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/compound_memory/source.h>
 #include <memory>
 
@@ -57,9 +57,9 @@ enum class control_state
 	start
 };
 
-using mbuf_sequence = std::deque<bstream::mutable_buffer>;
-using cbuf_sequence = std::deque<bstream::const_buffer>;
-using sbuf_sequence = std::deque<bstream::shared_buffer>;
+using mbuf_sequence = std::deque<mutable_buffer>;
+using cbuf_sequence = std::deque<const_buffer>;
+using sbuf_sequence = std::deque<shared_buffer>;
 
 inline sbuf_sequence
 make_sbuf_sequence(cbuf_sequence&& cseq)
@@ -111,7 +111,7 @@ protected:
 class mutable_frame : public frame
 {
 public:
-	using buffer_type = bstream::mutable_buffer;
+	using buffer_type = mutable_buffer;
 	using sequence_type = std::deque<buffer_type>;
 
 	mutable_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)} 
@@ -149,7 +149,7 @@ private:
 class shared_frame : public frame
 {
 public:
-	using buffer_type = bstream::shared_buffer;
+	using buffer_type = shared_buffer;
 	using sequence_type = std::deque<buffer_type>;
 
 	shared_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)} 
@@ -160,9 +160,9 @@ public:
 		}
 	}
 
-	shared_frame(flags_type flags, std::deque<bstream::const_buffer>&& bufs) : frame{0, flags}, m_bufs{}
+	shared_frame(flags_type flags, std::deque<const_buffer>&& bufs) : frame{0, flags}, m_bufs{}
 	{
-		using iter_type = std::deque<bstream::const_buffer>::iterator;
+		using iter_type = std::deque<const_buffer>::iterator;
 		for (auto it = bufs.begin(); it != bufs.end(); ++it)
 		{
 			// std::move_iterator<iter_type> move_it{it};
@@ -172,9 +172,9 @@ public:
 		bufs.clear();
 	}
 
-	shared_frame(flags_type flags, std::deque<bstream::mutable_buffer>&& bufs) : frame{0, flags}, m_bufs{}
+	shared_frame(flags_type flags, std::deque<mutable_buffer>&& bufs) : frame{0, flags}, m_bufs{}
 	{
-		using iter_type = std::deque<bstream::mutable_buffer>::iterator;
+		using iter_type = std::deque<mutable_buffer>::iterator;
 		for (auto it = bufs.begin(); it != bufs.end(); ++it)
 		{
 			// std::move_iterator<iter_type> move_it{it};

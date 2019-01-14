@@ -69,7 +69,7 @@ position_type
 obmultibuf::really_seek(seek_anchor where, offset_type offset, std::error_code& err)
 {
 	err.clear();
-	position_type result = bstream::npos;
+	position_type result = npos;
 
 	if (dirty)
 	{
@@ -103,7 +103,7 @@ obmultibuf::really_seek(seek_anchor where, offset_type offset, std::error_code& 
 	if (result < 0)
 	{
 		err    = make_error_code(std::errc::invalid_argument);
-		result = bstream::npos;
+		result = npos;
 	}
 	else if (
 			result >= m_pbase_offset

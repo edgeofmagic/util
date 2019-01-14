@@ -317,7 +317,7 @@ source::underflow()
 position_type
 source::new_position(offset_type offset, seek_anchor where) const
 {
-	position_type result = bstream::npos;
+	position_type result = npos;
 
 	switch (where)
 	{
@@ -352,7 +352,7 @@ source::position(offset_type offset, seek_anchor where, std::error_code& err)
 	if (result < 0 || result > (really_get_size()))
 	{
 		err    = make_error_code(std::errc::invalid_seek);
-		result = bstream::npos;
+		result = npos;
 		goto exit;
 	}
 

@@ -37,7 +37,6 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/stdlib.h
 	include/logicmill/bstream/typecode.h
 	include/logicmill/bstream/types.h
-	include/logicmill/bstream/buffer.h
 	include/logicmill/bstream/source.h
 	include/logicmill/bstream/sink.h
 	include/logicmill/bstream/file/source.h
@@ -63,6 +62,7 @@ set(LOGICMILL_SRCS
 	include/logicmill/async/error.h
 	include/logicmill/async/event_flow.h
 	include/logicmill/async/channel.h
+	include/logicmill/buffer.h
 
 	include/logicmill/armi/client_context.h
 	include/logicmill/armi/client_context_base.h
@@ -92,11 +92,17 @@ set(LOGICMILL_SRCS
 	include/logicmill/laps/driver.h
 	include/logicmill/laps/types.h
 
+	include/logicmill/util/allocator.h
+	include/logicmill/util/dumpster.h
+	include/logicmill/util/macros.h
+	include/logicmill/util/preprocessor.h
+	include/logicmill/util/shareable.h
+	include/logicmill/util/shared_ptr.h
+
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
 	src/bstream/ibstream.cpp
 	src/bstream/obstream.cpp
-	src/bstream/buffer.cpp
 	src/bstream/source.cpp
 	src/bstream/sink.cpp
 	src/bstream/file_source.cpp
@@ -121,7 +127,8 @@ set(LOGICMILL_SRCS
 	src/armi/interface_stub_base.cpp
 	src/armi/server_context_base.cpp
 
-	src/fs_impl.cpp)
+	src/fs_impl.cpp
+	src/buffer.cpp)
 
 set(LOGICMILL_TEST_SRCS
 	test/bstream/abstract_source.cpp

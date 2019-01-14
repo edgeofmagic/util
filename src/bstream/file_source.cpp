@@ -163,7 +163,7 @@ file::source::really_open(std::error_code& err)
 	if (seek_result < 0)
 	{
 		err    = std::error_code{errno, std::generic_category()};
-		m_size = bstream::npos;
+		m_size = npos;
 		goto exit;
 	}
 	else
@@ -217,14 +217,14 @@ position_type
 file::source::really_seek(position_type pos, std::error_code& err)
 {
 	err.clear();
-	position_type result = bstream::npos;
+	position_type result = npos;
 
 	result = ::lseek(m_fd, pos, SEEK_SET);
 
 	if (result < 0)
 	{
 		err    = std::error_code{errno, std::generic_category()};
-		result = bstream::npos;
+		result = npos;
 		goto exit;
 	}
 

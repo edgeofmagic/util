@@ -1,9 +1,9 @@
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <boost/crc.hpp>
-#include <logicmill/bstream/utils/dumpster.h>
+#include <logicmill/util/dumpster.h>
 
 using namespace logicmill;
-using namespace bstream;
+// using namespace bstream;
 
 // const buffer::allocation_manager buffer::default_manager{ 
 // 	buffer::default_allocator{},

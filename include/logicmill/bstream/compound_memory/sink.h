@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
 
 #include <deque>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/sink.h>
 
 #ifndef LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE

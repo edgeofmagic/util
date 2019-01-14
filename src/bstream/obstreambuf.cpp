@@ -379,7 +379,7 @@ obstreambuf::size() const
 position_type
 obstreambuf::new_position(offset_type offset, seek_anchor where) const
 {
-	position_type result = bstream::npos;
+	position_type result = npos;
 
 	switch (where)
 	{

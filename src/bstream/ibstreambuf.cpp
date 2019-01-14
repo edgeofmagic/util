@@ -31,7 +31,7 @@ using namespace bstream;
 position_type
 ibstreambuf::new_position(offset_type offset, seek_anchor where) const
 {
-	position_type result = bstream::npos;
+	position_type result = npos;
 
 	switch (where)
 	{
@@ -66,7 +66,7 @@ ibstreambuf::position(offset_type offset, seek_anchor where, std::error_code& er
 	if (result < 0 || result > (m_end_position))
 	{
 		err    = make_error_code(std::errc::invalid_seek);
-		result = bstream::npos;
+		result = npos;
 		goto exit;
 	}
 

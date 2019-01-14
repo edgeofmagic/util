@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_OBMULTIBUF_H
 
 #include <logicmill/bstream/obstreambuf.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_OBMULTIBUF_SIZE
 #define LOGICMILL_BSTREAM_DEFAULT_OBMULTIBUF_SIZE  65536UL

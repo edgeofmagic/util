@@ -25,7 +25,7 @@
 #ifndef LOGICMILL_BSTREAM_MEMORY_SOURCE_H
 #define LOGICMILL_BSTREAM_MEMORY_SOURCE_H
 
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/source.h>
 #include <logicmill/bstream/types.h>
 

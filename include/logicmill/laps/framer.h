@@ -82,7 +82,7 @@ namespace laps
 			bottom(top* tp) : m_top{tp}, m_header_is_valid{false} {}
 
 			void
-			on(const_data_event, std::deque<bstream::const_buffer>&& bufs)
+			on(const_data_event, std::deque<const_buffer>&& bufs)
 			{
 				// std::cout << "bufs size is : " << bufs.size() << "[" << bufs[0].size() << ", " << bufs[1].size() << "]" << std::endl;
 				// bufs[0].dump(std::cout);
@@ -135,7 +135,7 @@ namespace laps
 
 		private:
 			top*                                                     m_top;
-			bstream::compound_memory::source<bstream::shared_buffer> m_source;
+			bstream::compound_memory::source<shared_buffer> m_source;
 			frame::frame_size_type                                   m_frame_size;
 			frame::flags_type                                        m_flags;
 			bool                                                     m_header_is_valid;
@@ -169,12 +169,12 @@ namespace laps
 
 void
 logicmill::laps::framer::top::on(mutable_frame_event, mutable_frame&& frm)
-// logicmill::laps::framer::top::on(mutable_frame_event, frame_header header, std::deque<bstream::mutable_buffer>&& bufs)
+// logicmill::laps::framer::top::on(mutable_frame_event, frame_header header, std::deque<mutable_buffer>&& bufs)
 {
 	bstream::memory::sink header_sink{header_size};
 	header_sink.put_num(frm.size());
 	header_sink.put_num(frm.flags());
-	std::deque<bstream::mutable_buffer> bufs = frm.release_bufs();
+	std::deque<mutable_buffer> bufs = frm.release_bufs();
 	bufs.emplace_front(header_sink.release_buffer());
 	m_bottom->emit<mutable_data_event>(std::move(bufs));
 }

@@ -24,7 +24,7 @@
 
 #include <logicmill/bstream/source.h>
 #include <logicmill/bstream/sink.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 #include <logicmill/bstream/error.h>
 #include <doctest.h>
 #include "common.h"

@@ -351,7 +351,7 @@ bstream::sink::filln(const byte_type fill_byte, size_type n)
 position_type
 bstream::sink::new_position(offset_type offset, seek_anchor where) const
 {
-	position_type result = bstream::npos;
+	position_type result = npos;
 
 	switch (where)
 	{

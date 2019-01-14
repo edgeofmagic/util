@@ -25,7 +25,7 @@
 #include <doctest.h>
 #include <iostream>
 #include <logicmill/async/loop.h>
-#include <logicmill/bstream/buffer.h>
+#include <logicmill/buffer.h>
 
 #define END_LOOP(loop_ptr, delay_ms)                                                                                   \
 	{                                                                                                                  \
@@ -69,7 +69,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { basic functionality }")
 	auto recvr = lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(),7002}}, err);
 	CHECK(!err);
 
-	recvr->start_receive(err, [&](async::transceiver::ptr transp, bstream::const_buffer&& buf, async::ip::endpoint const& ep, std::error_code err)
+	recvr->start_receive(err, [&](async::transceiver::ptr transp, const_buffer&& buf, async::ip::endpoint const& ep, std::error_code err)
 	{
 		std::cout << "in receiver handler, buffer: " << buf.to_string() << std::endl;
 		std::cout << "received from " << ep.to_string() << std::endl;
@@ -78,7 +78,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { basic functionality }")
 	async::transceiver::ptr trans = lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(),0}}, err);
 	CHECK(!err);
 
-	bstream::mutable_buffer msg("hello there");
+	mutable_buffer msg("hello there");
 	CHECK(!err);
 
 	DELAYED_ACTION_BEGIN(lp)
@@ -114,7 +114,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { error on redundant receive }")
 			async::options{async::ip::endpoint{async::ip::address::v4_any(), 7002}},
 			err,
 			[&](async::transceiver::ptr    transp,
-				bstream::const_buffer&&    buf,
+				const_buffer&&    buf,
 				async::ip::endpoint const& ep,
 				std::error_code            err) {
 				first_receive_handler_did_execute = true;
@@ -127,7 +127,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { error on redundant receive }")
 	recvr->start_receive(
 			err,
 			[&](async::transceiver::ptr    transp,
-				bstream::const_buffer&&    buf,
+				const_buffer&&    buf,
 				async::ip::endpoint const& ep,
 				std::error_code            err) {
 				second_receive_handler_did_execute = true;
@@ -138,7 +138,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { error on redundant receive }")
 	async::transceiver::ptr trans = lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(),0}}, err);
 	CHECK(!err);
 
-	bstream::mutable_buffer msg("hello there");
+	mutable_buffer msg("hello there");
 	CHECK(!err);
 
 	DELAYED_ACTION_BEGIN(lp)
@@ -165,8 +165,8 @@ TEST_CASE("logicmill::async::udp [ smoke ] { max datagram size }")
 	bool receive_handler_did_execute{false};
 	bool send_timer_did_execute{false};
 
-	bstream::mutable_buffer big{async::transceiver::payload_size_limit};
-	big.fill(static_cast<bstream::byte_type>('Z'));
+	mutable_buffer big{async::transceiver::payload_size_limit};
+	big.fill(static_cast<byte_type>('Z'));
 	big.size(async::transceiver::payload_size_limit);
 
 	std::error_code     err;
@@ -178,7 +178,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { max datagram size }")
 			async::options{async::ip::endpoint{async::ip::address::v4_any(), 7002}},
 			err,
 			[&](async::transceiver::ptr    transp,
-				bstream::const_buffer&&    buf,
+				const_buffer&&    buf,
 				async::ip::endpoint const& ep,
 				std::error_code            err) {
 				CHECK(!err);
@@ -189,7 +189,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { max datagram size }")
 					bool same = true;
 					for (std::size_t i = 0; i < async::transceiver::payload_size_limit; ++i)
 					{
-						if (buf.data()[i] != static_cast<bstream::byte_type>('Z'))
+						if (buf.data()[i] != static_cast<byte_type>('Z'))
 						{
 							same = false;
 							break;
@@ -208,7 +208,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { max datagram size }")
 	DELAYED_ACTION_BEGIN(lp)
 	{
 		trans->emit(std::move(big), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err,
-		[&](transceiver::ptr const& trans, bstream::mutable_buffer&& buf, async::ip::endpoint const& ep, std::error_code err)
+		[&](transceiver::ptr const& trans, mutable_buffer&& buf, async::ip::endpoint const& ep, std::error_code err)
 		{
 			CHECK(!err);
 			std::cout << "error in emit handler, " << err.message() << std::endl;

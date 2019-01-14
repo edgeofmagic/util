@@ -42,9 +42,9 @@ class channel_anchor : public flow::stackable<stream_duplex_top, channel_anchor>
 public:
 	using base = flow::stackable<stream_duplex_top, channel_anchor>;
 
-	using emitter<const_data_event>::send;
-	using emitter<control_event>::send;
-	using emitter<error_event>::send;
+	using emitter<const_data_event>::emit;
+	using emitter<control_event>::emit;
+	using emitter<error_event>::emit;
 	using base::get_surface;
 
 	static constexpr std::size_t default_queue_limit = 1UL << 24;    // 16 Mb
@@ -79,10 +79,10 @@ public:
 	dispatch_error(std::error_code err)
 	{
 		std::error_code loop_error;
-		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { send<error_event>(err); });
-		if (loop_error)    // probably screwed beyond repair; try non-dispatched send as last ditch effort
+		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { emit<error_event>(err); });
+		if (loop_error)    // probably screwed beyond repair; try non-dispatched emit as last ditch effort
 		{
-			send<error_event>(loop_error);
+			emit<error_event>(loop_error);
 		}
 	}
 
@@ -90,10 +90,10 @@ public:
 	dispatch_start()
 	{
 		std::error_code loop_error;
-		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { send<control_event>(control_state::start); });
-		if (loop_error)    // probably screwed beyond repair; try non-dispatched send error as last ditch effort
+		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { emit<control_event>(control_state::start); });
+		if (loop_error)    // probably screwed beyond repair; try non-dispatched emit error as last ditch effort
 		{
-			send<error_event>(loop_error);
+			emit<error_event>(loop_error);
 		}
 	}
 
@@ -101,10 +101,10 @@ public:
 	dispatch_stop()
 	{
 		std::error_code loop_error;
-		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { send<control_event>(control_state::stop); });
-		if (loop_error)    // probably screwed beyond repair; try non-dispatched send error as last ditch effort
+		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { emit<control_event>(control_state::stop); });
+		if (loop_error)    // probably screwed beyond repair; try non-dispatched emit error as last ditch effort
 		{
-			send<error_event>(loop_error);
+			emit<error_event>(loop_error);
 		}
 	}
 
@@ -157,7 +157,7 @@ public:
 		{
 			m_write_queue_full = true;
 			m_local_write_queue.emplace_back(std::move(bufs));
-			send<control_event>(control_state::stop);
+			emit<control_event>(control_state::stop);
 		}
 		else
 		{
@@ -181,7 +181,7 @@ public:
 					err, [=](async::channel::ptr const& chan, bstream::const_buffer&& buf, std::error_code err) {
 						std::deque<bstream::const_buffer> bufs;
 						bufs.emplace_back(std::move(buf));
-						send<const_data_event>(std::move(bufs));
+						emit<const_data_event>(std::move(bufs));
 					});
 		}
 		else    // if (cstate == control_state::stop)

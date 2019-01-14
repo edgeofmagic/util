@@ -218,7 +218,7 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 	bufs.emplace_back(std::move(mbuf));
 	bufs.emplace_back(bstream::const_buffer{std::move(b)});
 
-	driver.send<laps::const_data_event>(std::move(bufs));
+	driver.emit<laps::const_data_event>(std::move(bufs));
 
 	CHECK(ftop.size() == blen);
 	CHECK(ftop.flags() == 0);
@@ -226,7 +226,7 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 	CHECK(ftop.bufs()[0].to_string() == payload);
 
 
-	// driver.send<laps::const_data_event>();
+	// driver.emit<laps::const_data_event>();
 }
 
 
@@ -258,7 +258,7 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { split header }")
 	bufs.emplace_back(std::move(mbuf2));
 	bufs.emplace_back(bstream::const_buffer{std::move(b)});
 
-	driver.send<laps::const_data_event>(std::move(bufs));
+	driver.emit<laps::const_data_event>(std::move(bufs));
 
 	CHECK(ftop.size() == blen);
 	CHECK(ftop.flags() == 0);
@@ -300,7 +300,7 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer 
 	std::deque<bstream::const_buffer> bufs;
 	bufs.emplace_back(snk.release_buffer());
 
-	driver.send<laps::const_data_event>(std::move(bufs));
+	driver.emit<laps::const_data_event>(std::move(bufs));
 
 	CHECK(ftop.size() == payload2.size());
 	CHECK(ftop.flags() == 21);

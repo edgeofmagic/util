@@ -50,9 +50,9 @@ namespace laps
 		{
 		public:
 			using base = flow::stackable<frame_duplex_top, top>;
-			using flow::emitter<shared_frame_event>::send;
-			using flow::emitter<control_event>::send;
-			using flow::emitter<error_event>::send;
+			using flow::emitter<shared_frame_event>::emit;
+			using flow::emitter<control_event>::emit;
+			using flow::emitter<error_event>::emit;
 			using base::get_surface;
 
 			top(bottom* bp) : m_bottom{bp} {}
@@ -74,9 +74,9 @@ namespace laps
 		{
 		public:
 			using base = flow::stackable<stream_duplex_bottom, bottom>;
-			using emitter<mutable_data_event>::send;
-			using emitter<control_event>::send;
-			using emitter<error_event>::send;
+			using emitter<mutable_data_event>::emit;
+			using emitter<control_event>::emit;
+			using emitter<error_event>::emit;
 			using base::get_surface;
 
 			bottom(top* tp) : m_top{tp}, m_header_is_valid{false} {}
@@ -95,7 +95,7 @@ namespace laps
 						if (m_source.remaining() >= m_frame_size)
 						{
 							// shared_frame frm{m_flags, m_source.get_segmented_slice(m_frame_size)};
-							m_top->send<shared_frame_event>(shared_frame{m_flags, m_source.get_segmented_slice(m_frame_size)});
+							m_top->emit<shared_frame_event>(shared_frame{m_flags, m_source.get_segmented_slice(m_frame_size)});
 							m_header_is_valid = false;
 						}
 						else
@@ -123,13 +123,13 @@ namespace laps
 			void
 			on(control_event, control_state s)
 			{
-				m_top->send<control_event>(s);
+				m_top->emit<control_event>(s);
 			}
 
 			void
 			on(error_event, std::error_code err)
 			{
-				m_top->send<error_event>(err);
+				m_top->emit<error_event>(err);
 			}
 
 
@@ -176,19 +176,19 @@ logicmill::laps::framer::top::on(mutable_frame_event, mutable_frame&& frm)
 	header_sink.put_num(frm.flags());
 	std::deque<bstream::mutable_buffer> bufs = frm.release_bufs();
 	bufs.emplace_front(header_sink.release_buffer());
-	m_bottom->send<mutable_data_event>(std::move(bufs));
+	m_bottom->emit<mutable_data_event>(std::move(bufs));
 }
 
 void
 logicmill::laps::framer::top::on(control_event, control_state state)
 {
-	m_bottom->send<control_event>(state);
+	m_bottom->emit<control_event>(state);
 }
 
 void
 logicmill::laps::framer::top::on(error_event, std::error_code err)
 {
-	m_bottom->send<error_event>(err);
+	m_bottom->emit<error_event>(err);
 }
 
 #endif    // LOGICMILL_LAPS_FRAMER_H

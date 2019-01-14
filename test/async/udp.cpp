@@ -83,7 +83,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { basic functionality }")
 
 	DELAYED_ACTION_BEGIN(lp)
 	{
-		trans->send(std::move(msg), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err);
+		trans->emit(std::move(msg), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err);
 		CHECK(!err);
 		std::cout << "sending buffer on UDP socket" << std::endl;
 		send_timer_did_execute = true;
@@ -143,7 +143,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { error on redundant receive }")
 
 	DELAYED_ACTION_BEGIN(lp)
 	{
-		trans->send(std::move(msg), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err);
+		trans->emit(std::move(msg), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err);
 		CHECK(!err);
 		send_timer_did_execute = true;
 	}
@@ -207,12 +207,12 @@ TEST_CASE("logicmill::async::udp [ smoke ] { max datagram size }")
 
 	DELAYED_ACTION_BEGIN(lp)
 	{
-		trans->send(std::move(big), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err,
+		trans->emit(std::move(big), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err,
 		[&](transceiver::ptr const& trans, bstream::mutable_buffer&& buf, async::ip::endpoint const& ep, std::error_code err)
 		{
 			CHECK(!err);
-			std::cout << "error in send handler, " << err.message() << std::endl;
-			std::cout << "send handler called, buf size is " << buf.size() << std::endl;
+			std::cout << "error in emit handler, " << err.message() << std::endl;
+			std::cout << "emit handler called, buf size is " << buf.size() << std::endl;
 		});
 		CHECK(!err);
 		send_timer_did_execute = true;

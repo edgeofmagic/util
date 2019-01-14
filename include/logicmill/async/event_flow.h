@@ -116,13 +116,13 @@ Example:
 		}
 	};
 
-	// to send the event:
+	// to emit the event:
 
 	killer oswald;
 	victim jfk;
 
 	oswald.fit(jfk);
-	oswald.send<kill_action>("magic bullet");
+	oswald.emit<kill_action>("magic bullet");
 
 	// generates output "got killed: magic bullet"
 
@@ -153,7 +153,7 @@ in the fit() member function on a source:
 
 	// any kill_action events emitted by oswald will be received by jfk
 
-	oswald.send<kill_action>("magic bullet"); // note the definition of kill_action above
+	oswald.emit<kill_action>("magic bullet"); // note the definition of kill_action above
 
  Connectors and Connectables
 
@@ -240,7 +240,7 @@ Implementing a source is trivial; one simply derives from the emitter of the ass
 	{};
 
 	beeper my_pager;
-	my_pager.send<beep_event>(10);
+	my_pager.emit<beep_event>(10);
 
 A sink implementation class must support an event handler of the form
 void on( <event_type>, <event_type_args>...) :
@@ -267,14 +267,14 @@ itself (the template employs CRTP techniques).
 	};
 
 For each source type in the connector's parameter list, the connectable must include a
-using-declaration to introduce the base class send methods into the derived class to 
+using-declaration to introduce the base class emit methods into the derived class to 
 avoid ambiguous references:
 
 	class phone : public connectable<annoyance, phone>
 	{
 	public:
-		using emitter<beep_event>::send;
-		using emitter<ring_event>::send;
+		using emitter<beep_event>::emit;
+		using emitter<ring_event>::emit;
 		...
 	};
 
@@ -494,7 +494,7 @@ public:
 
 	template<class Evt, class... Params>
 	typename std::enable_if_t<std::is_same<Evt, event_type>::value>
-	send(Params&&... params)
+	emit(Params&&... params)
 	{
 		if (m_sink)
 		{

@@ -38,9 +38,9 @@ class driver : public flow::stackable<stream_duplex_bottom, driver>
 {
 public:
 	using base = flow::stackable<stream_duplex_bottom, driver>;
-	using emitter<mutable_data_event>::send;
-	using emitter<control_event>::send;
-	using emitter<error_event>::send;
+	using emitter<mutable_data_event>::emit;
+	using emitter<control_event>::emit;
+	using emitter<error_event>::emit;
 
 	using base::get_surface;
 
@@ -80,7 +80,7 @@ public:
 	void
 	write(std::deque<bstream::mutable_buffer>&& bufs)
 	{
-		send<mutable_data_event>(std::move(bufs));
+		emit<mutable_data_event>(std::move(bufs));
 	}
 
 	template<class T>
@@ -95,7 +95,7 @@ public:
 	start_read(T&& handler)
 	{
 		m_read_handler = std::forward<T>(handler);
-		send<control_event>(control_state::start);
+		emit<control_event>(control_state::start);
 	}
 
 	template<class T>
@@ -115,7 +115,7 @@ public:
 	void
 	stop_read()
 	{
-		send<control_event>(control_state::stop);
+		emit<control_event>(control_state::stop);
 	}
 
 	void

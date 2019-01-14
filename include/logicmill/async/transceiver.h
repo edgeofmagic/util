@@ -85,20 +85,20 @@ public:
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, send_buffer_handler>::value>
-	send(bstream::mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
+	emit(bstream::mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
 	{
 		really_send(std::move(buf), dest, err, std::forward<Handler>(handler));
 	}
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, send_buffers_handler>::value>
-	send(std::deque<bstream::mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
+	emit(std::deque<bstream::mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
 	{
 		really_send(std::move(bufs), dest, err, std::forward<Handler>(handler));
 	}
 
 	void
-	send(bstream::mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err)
+	emit(bstream::mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err)
 	{
 		really_send(std::move(buf), dest, err, nullptr);
 	}

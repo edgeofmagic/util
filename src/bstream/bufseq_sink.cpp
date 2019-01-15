@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/compound_memory/sink.h>
+#include <logicmill/bstream/bufseq/sink.h>
 
 using namespace logicmill;
 using namespace bstream;
 
 void
-compound_memory::sink::really_overflow(size_type n, std::error_code& err)
+bufseq::sink::really_overflow(size_type n, std::error_code& err)
 {
 	err.clear();
 	if (m_base == nullptr)
@@ -58,13 +58,13 @@ compound_memory::sink::really_overflow(size_type n, std::error_code& err)
 }
 
 bool
-compound_memory::sink::is_valid_position(position_type pos) const
+bufseq::sink::is_valid_position(position_type pos) const
 {
 	return pos >= 0;
 }
 
-compound_memory::sink&
-compound_memory::sink::clear() noexcept
+bufseq::sink&
+bufseq::sink::clear() noexcept
 {
 	reset_high_water_mark();
 	m_bufs.resize(1);
@@ -76,8 +76,8 @@ compound_memory::sink::clear() noexcept
 	return *this;
 }
 
-compound_memory::sink::buffers&
-compound_memory::sink::get_buffers()
+bufseq::sink::buffers&
+bufseq::sink::get_buffers()
 {
 	if (m_dirty)
 	{
@@ -88,7 +88,7 @@ compound_memory::sink::get_buffers()
 }
 
 void
-compound_memory::sink::set_size()
+bufseq::sink::set_size()
 {
 	auto hwm = get_high_watermark();
 	if (hwm == 0)
@@ -116,8 +116,8 @@ compound_memory::sink::set_size()
 }
 
 
-compound_memory::sink::buffers
-compound_memory::sink::release_buffers()
+bufseq::sink::buffers
+bufseq::sink::release_buffers()
 {
 	if (m_dirty)
 	{
@@ -136,7 +136,7 @@ compound_memory::sink::release_buffers()
 }
 
 void
-compound_memory::sink::really_jump(std::error_code& err)
+bufseq::sink::really_jump(std::error_code& err)
 {
 	err.clear();
 	assert(m_did_jump);
@@ -172,7 +172,7 @@ exit:
 }
 
 void
-compound_memory::sink::locate(position_type pos, std::error_code& err)
+bufseq::sink::locate(position_type pos, std::error_code& err)
 {
 	err.clear();
 	assert(pos <= get_high_watermark());

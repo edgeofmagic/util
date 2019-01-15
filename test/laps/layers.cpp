@@ -212,7 +212,7 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 															 .get_binding<sink<laps::const_data_event>>());
 
 	std::string payload{"here is some buffer content, should be long enought to avoid short string optimization"};
-	bstream::memory::sink snk{8};
+	bstream::buffer::sink snk{8};
 	util::mutable_buffer  b{payload};
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
@@ -249,8 +249,8 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { split header }")
 															 .get_binding<sink<laps::const_data_event>>());
 
 	std::string payload{"here is some buffer content, should be long enought to avoid short string optimization"};
-	bstream::memory::sink hdr1{8};
-	bstream::memory::sink hdr2{8};
+	bstream::buffer::sink hdr1{8};
+	bstream::buffer::sink hdr2{8};
 	util::mutable_buffer  b{payload};
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
@@ -289,7 +289,7 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer 
 	std::string          payload2{"here is some more buffer content, with a somewhat different length"};
 	util::mutable_buffer b2{payload2};
 
-	bstream::memory::sink snk{1024};
+	bstream::buffer::sink snk{1024};
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b1.size())};
 	std::uint32_t flags{7};

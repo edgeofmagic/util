@@ -26,15 +26,15 @@
 #define LOGICMILL_TEST_BSTREAM_TEST_PROBES_MEMORY_H
 
 #include "base.h"
-#include <logicmill/bstream/memory/sink.h>
-#include <logicmill/bstream/memory/source.h>
+#include <logicmill/bstream/buffer/sink.h>
+#include <logicmill/bstream/buffer/source.h>
 
 
 namespace logicmill
 {
 namespace bstream
 {
-namespace memory
+namespace buffer
 {
 namespace detail
 {
@@ -43,7 +43,7 @@ template<class Buffer>
 class source_test_probe : public bstream::detail::source_test_probe
 {
 public:
-	source_test_probe(bstream::memory::source<Buffer>& target)
+	source_test_probe(bstream::buffer::source<Buffer>& target)
 		: bstream::detail::source_test_probe{target}, m_target{target}
 	{}
 
@@ -54,13 +54,13 @@ public:
 	}
 
 private:
-	bstream::memory::source<Buffer>& m_target;
+	bstream::buffer::source<Buffer>& m_target;
 };
 
 class sink_test_probe : public bstream::detail::sink_test_probe
 {
 public:
-	sink_test_probe(memory::sink& target) : bstream::detail::sink_test_probe{target}, m_target{target} {}
+	sink_test_probe(buffer::sink& target) : bstream::detail::sink_test_probe{target}, m_target{target} {}
 
 	util::mutable_buffer&
 	buffer()
@@ -69,11 +69,11 @@ public:
 	}
 
 private:
-	memory::sink& m_target;
+	buffer::sink& m_target;
 };
 
 }    // namespace detail
-}    // namespace memory
+}    // namespace buffer
 }    // namespace bstream
 }    // namespace logicmill
 

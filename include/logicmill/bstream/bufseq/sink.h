@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
-#define LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
+#ifndef LOGICMILL_BSTREAM_BUFSEQ_SINK_H
+#define LOGICMILL_BSTREAM_BUFSEQ_SINK_H
 
 #include <deque>
 #include <logicmill/util/buffer.h>
@@ -37,7 +37,7 @@ namespace logicmill
 {
 namespace bstream
 {
-namespace compound_memory
+namespace bufseq
 {
 
 namespace detail
@@ -157,8 +157,8 @@ protected:
 	std::unique_ptr<util::mutable_buffer_factory> m_factory;
 };
 
-}    // namespace compound_memory
+}    // namespace bufseq
 }    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
+#endif    // LOGICMILL_BSTREAM_BUFSEQ_SINK_H

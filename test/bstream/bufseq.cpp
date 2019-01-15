@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-#include "test_probes/compound_memory.h"
+#include "test_probes/bufseq.h"
 #include "common.h"
 #include <doctest.h>
 #include <logicmill/bstream/error.h>
@@ -31,7 +31,7 @@
 using namespace logicmill;
 using namespace bstream;
 
-TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffer }")
+TEST_CASE("logicmill::bstream::bufseq::sink [ smoke ] { expanding buffer }")
 {
 	byte_type data[] = {
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -45,7 +45,7 @@ TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffe
 			0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
 	};
 
-	compound_memory::sink snk{32};
+	bufseq::sink snk{32};
 	// memory::detail::sink_test_probe probe{ snk };
 
 	std::error_code err;
@@ -108,7 +108,7 @@ TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffe
 	// std::cout << "capacity is " << probe.buffer().capacity() << std::endl;
 }
 
-TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffer with seek }")
+TEST_CASE("logicmill::bstream::bufseq::sink [ smoke ] { expanding buffer with seek }")
 {
 	byte_type data[] = {
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -134,7 +134,7 @@ TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffe
 			0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
 	};
 
-	compound_memory::sink snk{32};
+	bufseq::sink snk{32};
 	// memory::detail::sink_test_probe probe{ snk };
 
 	std::error_code err;
@@ -170,7 +170,7 @@ TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffe
 	// std::cout << "capacity is " << probe.buffer().capacity() << std::endl;
 }
 
-TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic util::const_buffer }")
+TEST_CASE("logicmill::bstream::bufseq::source [ smoke ] { basic util::const_buffer }")
 {
 	byte_type data_0[] = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -246,8 +246,8 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic util::c
 	bufs.emplace_back(util::const_buffer{&data_5[0], sizeof(data_5)});
 	bufs.emplace_back(util::const_buffer{&data_6[0], sizeof(data_6)});
 
-	compound_memory::source<util::const_buffer>                    src{bufs};
-	compound_memory::detail::source_test_probe<util::const_buffer> probe{src};
+	bufseq::source<util::const_buffer>                    src{bufs};
+	bufseq::detail::source_test_probe<util::const_buffer> probe{src};
 
 	std::error_code err;
 	CHECK(src.size() == 64);
@@ -272,7 +272,7 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic util::c
 	CHECK(probe.current_segment() == 1);
 }
 
-TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic shared_buffer }")
+TEST_CASE("logicmill::bstream::bufseq::source [ smoke ] { basic shared_buffer }")
 {
 	byte_type data_0[] = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -346,8 +346,8 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic shared_
 	bufs.emplace_back(util::shared_buffer{&data_5[0], sizeof(data_5)});
 	bufs.emplace_back(util::shared_buffer{&data_6[0], sizeof(data_6)});
 
-	compound_memory::source<util::shared_buffer>                    src{bufs};
-	compound_memory::detail::source_test_probe<util::shared_buffer> probe{src};
+	bufseq::source<util::shared_buffer>                    src{bufs};
+	bufseq::detail::source_test_probe<util::shared_buffer> probe{src};
 
 	std::error_code err;
 	CHECK(src.size() == 64);

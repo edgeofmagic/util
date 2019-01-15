@@ -28,8 +28,8 @@
 #include <boost/endian/conversion.hpp>
 #include <list>
 #include <logicmill/async/event_flow.h>
-#include <logicmill/bstream/compound_memory/source.h>
-#include <logicmill/bstream/memory/sink.h>
+#include <logicmill/bstream/bufseq/source.h>
+#include <logicmill/bstream/buffer/sink.h>
 #include <logicmill/laps/types.h>
 
 namespace logicmill
@@ -136,7 +136,7 @@ private:
 
 	private:
 		top*                                                  m_top;
-		bstream::compound_memory::source<util::shared_buffer> m_source;
+		bstream::bufseq::source<util::shared_buffer> m_source;
 		frame::frame_size_type                                m_frame_size;
 		frame::flags_type                                     m_flags;
 		bool                                                  m_header_is_valid;
@@ -172,7 +172,7 @@ void
 logicmill::laps::framer::top::on(mutable_frame_event, mutable_frame&& frm)
 // logicmill::laps::framer::top::on(mutable_frame_event, frame_header header, std::deque<util::mutable_buffer>&& bufs)
 {
-	bstream::memory::sink header_sink{header_size};
+	bstream::buffer::sink header_sink{header_size};
 	header_sink.put_num(frm.size());
 	header_sink.put_num(frm.flags());
 	std::deque<util::mutable_buffer> bufs = frm.release_bufs();

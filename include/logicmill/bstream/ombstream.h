@@ -25,9 +25,8 @@
 #ifndef LOGICMILL_BSTREAM_OMBSTREAM_H
 #define LOGICMILL_BSTREAM_OMBSTREAM_H
 
-#include <logicmill/bstream/memory/sink.h>
+#include <logicmill/bstream/buffer/sink.h>
 #include <logicmill/bstream/obstream.h>
-#include <logicmill/bstream/utils/memory.h>
 
 namespace logicmill
 {
@@ -41,20 +40,20 @@ public:
 	ombstream(ombstream const&) = delete;
 	ombstream(ombstream&&)      = delete;
 
-	ombstream(std::unique_ptr<memory::sink> strmbuf, context_base const& cntxt = get_default_context())
+	ombstream(std::unique_ptr<buffer::sink> strmbuf, context_base const& cntxt = get_default_context())
 		: obstream{std::move(strmbuf), cntxt}
 	{}
 
 	ombstream(util::mutable_buffer&& buf, context_base const& cntxt = get_default_context())
-		: obstream{std::make_unique<memory::sink>(std::move(buf), cntxt.get_context_impl()->byte_order()), cntxt}
+		: obstream{std::make_unique<buffer::sink>(std::move(buf), cntxt.get_context_impl()->byte_order()), cntxt}
 	{}
 
 	ombstream(size_type size, context_base const& cntxt = get_default_context())
-		: ombstream(std::make_unique<memory::sink>(size, cntxt.get_context_impl()->byte_order()), cntxt)
+		: ombstream(std::make_unique<buffer::sink>(size, cntxt.get_context_impl()->byte_order()), cntxt)
 	{}
 
 	ombstream(context_base const& cntxt = get_default_context())
-		: ombstream{std::make_unique<memory::sink>(
+		: ombstream{std::make_unique<buffer::sink>(
 							util::mutable_buffer{
 									cntxt.get_context_impl()->buffer_size(),
 							},
@@ -92,10 +91,10 @@ public:
 		return get_membuf().release_mutable_buffer();
 	}
 
-	memory::sink&
+	buffer::sink&
 	get_membuf()
 	{
-		return reinterpret_cast<memory::sink&>(*m_strmbuf);
+		return reinterpret_cast<buffer::sink&>(*m_strmbuf);
 	}
 };
 

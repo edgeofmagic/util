@@ -22,19 +22,19 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_TEST_BSTREAM_TEST_PROBES_COMPOUND_MEMORY_H
-#define LOGICMILL_TEST_BSTREAM_TEST_PROBES_COMPOUND_MEMORY_H
+#ifndef LOGICMILL_TEST_BSTREAM_TEST_PROBES_BUFSEQ_H
+#define LOGICMILL_TEST_BSTREAM_TEST_PROBES_BUFSEQ_H
 
 #include "base.h"
-#include <logicmill/bstream/compound_memory/sink.h>
-#include <logicmill/bstream/compound_memory/source.h>
+#include <logicmill/bstream/bufseq/sink.h>
+#include <logicmill/bstream/bufseq/source.h>
 
 
 namespace logicmill
 {
 namespace bstream
 {
-namespace compound_memory
+namespace bufseq
 {
 namespace detail
 {
@@ -43,7 +43,7 @@ template<class Buffer>
 class source_test_probe : public bstream::detail::source_test_probe
 {
 public:
-	source_test_probe(bstream::compound_memory::source<Buffer>& target)
+	source_test_probe(bstream::bufseq::source<Buffer>& target)
 		: bstream::detail::source_test_probe{target}, m_target{target}
 	{}
 
@@ -60,13 +60,13 @@ public:
 	}
 
 private:
-	bstream::compound_memory::source<Buffer>& m_target;
+	bstream::bufseq::source<Buffer>& m_target;
 };
 
 class sink_test_probe : public bstream::detail::sink_test_probe
 {
 public:
-	sink_test_probe(compound_memory::sink& target) : bstream::detail::sink_test_probe{target}, m_target{target} {}
+	sink_test_probe(bufseq::sink& target) : bstream::detail::sink_test_probe{target}, m_target{target} {}
 
 	size_type
 	current_segnemt() const
@@ -75,12 +75,12 @@ public:
 	}
 
 private:
-	compound_memory::sink& m_target;
+	bufseq::sink& m_target;
 };
 
 }    // namespace detail
-}    // namespace compound_memory
+}    // namespace bufseq
 }    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_TEST_BSTREAM_TEST_PROBES_COMPOUND_MEMORY_H
+#endif    // LOGICMILL_TEST_BSTREAM_TEST_PROBES_BUFSEQ_H

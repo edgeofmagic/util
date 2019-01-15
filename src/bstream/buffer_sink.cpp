@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/memory/sink.h>
+#include <logicmill/bstream/buffer/sink.h>
 
 using namespace logicmill;
 using namespace bstream;
 
 void
-memory::sink::really_overflow(size_type n, std::error_code& err)
+buffer::sink::really_overflow(size_type n, std::error_code& err)
 {
 	err.clear();
 	assert(std::less_equal<byte_type*>()(m_next, m_end));
@@ -44,7 +44,7 @@ memory::sink::really_overflow(size_type n, std::error_code& err)
 }
 
 void
-memory::sink::resize(size_type size, std::error_code& err)
+buffer::sink::resize(size_type size, std::error_code& err)
 {
 	err.clear();
 	size_type cushioned_size = (size * 3) / 2;
@@ -69,7 +69,7 @@ exit:
 }
 
 bool
-memory::sink::is_valid_position(position_type pos) const
+buffer::sink::is_valid_position(position_type pos) const
 {
 	bool result = false;
 	if (m_buf.is_expandable())
@@ -83,8 +83,8 @@ memory::sink::is_valid_position(position_type pos) const
 	return result;
 }
 
-memory::sink&
-memory::sink::clear() noexcept
+buffer::sink&
+buffer::sink::clear() noexcept
 {
 	reset_ptrs();
 	reset_high_water_mark();
@@ -94,7 +94,7 @@ memory::sink::clear() noexcept
 }
 
 util::const_buffer
-memory::sink::get_buffer()
+buffer::sink::get_buffer()
 {
 	if (m_dirty)
 	{
@@ -105,7 +105,7 @@ memory::sink::get_buffer()
 }
 
 util::mutable_buffer&
-memory::sink::get_buffer_ref()
+buffer::sink::get_buffer_ref()
 {
 	if (m_dirty)
 	{
@@ -116,7 +116,7 @@ memory::sink::get_buffer_ref()
 }
 
 util::const_buffer
-memory::sink::release_buffer()
+buffer::sink::release_buffer()
 {
 	if (m_dirty)
 	{
@@ -131,7 +131,7 @@ memory::sink::release_buffer()
 }
 
 util::mutable_buffer
-memory::sink::release_mutable_buffer()
+buffer::sink::release_mutable_buffer()
 {
 	if (m_dirty)
 	{

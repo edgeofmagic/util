@@ -28,7 +28,7 @@
 #include <fstream>
 #include <logicmill/bstream/file/source.h>
 #include <logicmill/bstream/ibstream.h>
-#include <logicmill/bstream/utils/memory.h>
+#include <logicmill/bstream/memory.h>
 #include <system_error>
 
 namespace logicmill
@@ -105,7 +105,7 @@ public:
 	std::unique_ptr<file::source>
 	release_filebuf()
 	{
-		return bstream::utils::static_unique_ptr_cast<file::source>(release_streambuf());
+		return bstream::static_unique_ptr_cast<file::source>(release_streambuf());
 	}
 };
 

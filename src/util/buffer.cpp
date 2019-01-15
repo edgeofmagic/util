@@ -32,7 +32,7 @@ buffer::checksum(size_type offset, size_type length) const
 void
 buffer::dump(std::ostream& os) const
 {
-	utils::dumpster{}.dump(os, m_data, m_size);
+	util::dumpster{}.dump(os, m_data, m_size);
 }
 
 mutable_buffer::mutable_buffer(const_buffer&& cbuf)

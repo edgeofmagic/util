@@ -26,8 +26,7 @@
 #define LOGICMILL_BSTREAM_IMBSTREAM_H
 
 #include <logicmill/bstream/ibstream.h>
-#include <logicmill/bstream/memory/source.h>
-#include <logicmill/bstream/utils/memory.h>
+#include <logicmill/bstream/buffer/source.h>
 
 namespace logicmill
 {
@@ -41,7 +40,7 @@ public:
 	imbstream(imbstream const&) = delete;
 	imbstream(imbstream&&)      = delete;
 
-	using source_type = memory::source<util::shared_buffer>;
+	using source_type = buffer::source<util::shared_buffer>;
 
 	imbstream(std::unique_ptr<source_type> strmbuf, context_base const& cntxt = get_default_context())
 		: ibstream{std::move(strmbuf), cntxt}

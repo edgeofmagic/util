@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_UTILS_MEMORY_H
-#define LOGICMILL_BSTREAM_UTILS_MEMORY_H
+#ifndef LOGICMILL_BSTREAM_MEMORY_H
+#define LOGICMILL_BSTREAM_MEMORY_H
 
 #include <memory>
 
@@ -31,9 +31,6 @@ namespace logicmill
 {
 namespace bstream
 {
-namespace utils
-{
-
 template<class Derived, class Base>
 typename std::enable_if_t<std::is_move_constructible<Derived>::value, std::unique_ptr<Derived>>
 static_unique_ptr_cast(std::unique_ptr<Base>&& p)
@@ -73,8 +70,7 @@ dynamic_unique_ptr_cast( std::unique_ptr< Base, Deleter >&& p )
 }
 */
 
-}    // namespace utils
 }    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_UTILS_MEMORY_H
+#endif    // LOGICMILL_BSTREAM_MEMORY_H

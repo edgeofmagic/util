@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_MEMORY_SINK_H
-#define LOGICMILL_BSTREAM_MEMORY_SINK_H
+#ifndef LOGICMILL_BSTREAM_BUFFER_SINK_H
+#define LOGICMILL_BSTREAM_BUFFER_SINK_H
 
 #include <logicmill/util/buffer.h>
 #include <logicmill/bstream/sink.h>
@@ -36,7 +36,7 @@ namespace logicmill
 {
 namespace bstream
 {
-namespace memory
+namespace buffer
 {
 
 namespace detail
@@ -115,8 +115,8 @@ protected:
 	util::mutable_buffer m_buf;
 };
 
-}    // namespace memory
+}    // namespace buffer
 }    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_MEMORY_SINK_H
+#endif    // LOGICMILL_BSTREAM_BUFFER_SINK_H

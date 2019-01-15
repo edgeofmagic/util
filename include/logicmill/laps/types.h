@@ -27,7 +27,7 @@
 
 #include <deque>
 #include <logicmill/async/event_flow.h>
-#include <logicmill/bstream/compound_memory/source.h>
+#include <logicmill/bstream/bufseq/source.h>
 #include <logicmill/util/buffer.h>
 #include <memory>
 
@@ -134,10 +134,10 @@ public:
 		return std::move(m_bufs);
 	}
 
-	bstream::compound_memory::source<buffer_type>
+	bstream::bufseq::source<buffer_type>
 	make_source()
 	{
-		return bstream::compound_memory::source<buffer_type>{std::move(m_bufs)};
+		return bstream::bufseq::source<buffer_type>{std::move(m_bufs)};
 	}
 
 private:
@@ -196,10 +196,10 @@ public:
 		return std::move(m_bufs);
 	}
 
-	bstream::compound_memory::source<buffer_type>
+	bstream::bufseq::source<buffer_type>
 	make_source() const
 	{
-		return bstream::compound_memory::source<buffer_type>{std::move(m_bufs)};
+		return bstream::bufseq::source<buffer_type>{std::move(m_bufs)};
 	}
 
 private:

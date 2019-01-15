@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_MEMORY_SOURCE_H
-#define LOGICMILL_BSTREAM_MEMORY_SOURCE_H
+#ifndef LOGICMILL_BSTREAM_BUFFER_SOURCE_H
+#define LOGICMILL_BSTREAM_BUFFER_SOURCE_H
 
 #include <logicmill/util/buffer.h>
 #include <logicmill/bstream/source.h>
@@ -33,7 +33,7 @@ namespace logicmill
 {
 namespace bstream
 {
-namespace memory
+namespace buffer
 {
 
 namespace detail
@@ -242,8 +242,8 @@ source<util::shared_buffer>::get_slice(size_type n)
 	return result;
 }
 
-}    // namespace memory
+}    // namespace buffer
 }    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_MEMORY_SOURCE_H
+#endif    // LOGICMILL_BSTREAM_BUFFER_SOURCE_H

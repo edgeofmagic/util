@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BSTREAM_COMPOUND_MEMORY_SOURCE_H
-#define LOGICMILL_BSTREAM_COMPOUND_MEMORY_SOURCE_H
+#ifndef LOGICMILL_BSTREAM_BUFSEQ_SOURCE_H
+#define LOGICMILL_BSTREAM_BUFSEQ_SOURCE_H
 
 #include <algorithm>
 #include <deque>
@@ -37,7 +37,7 @@ namespace logicmill
 {
 namespace bstream
 {
-namespace compound_memory
+namespace bufseq
 {
 
 namespace detail
@@ -1091,8 +1091,8 @@ source<util::mutable_buffer>::append(util::shared_buffer const& buf)
 }
 
 
-}    // namespace compound_memory
+}    // namespace bufseq
 }    // namespace bstream
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BSTREAM_COMPOUND_MEMORY_SOURCE_H
+#endif    // LOGICMILL_BSTREAM_BUFSEQ_SOURCE_H

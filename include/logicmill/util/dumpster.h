@@ -32,7 +32,7 @@
 
 namespace logicmill
 {
-namespace utils
+namespace util
 {
 
 template<class CharT, class Traits = std::char_traits<CharT>>
@@ -198,7 +198,7 @@ private:
 	std::size_t m_dump_limit;
 };
 
-}    // namespace utils
+}    // namespace util
 }    // namespace logicmill
 
 #endif    // LOGICMILL_UTIL_DUMPSTER_H

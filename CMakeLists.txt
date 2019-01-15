@@ -41,9 +41,9 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/sink.h
 	include/logicmill/bstream/file/source.h
 	include/logicmill/bstream/file/sink.h
-	include/logicmill/bstream/memory/source.h
-	include/logicmill/bstream/memory/sink.h
-	include/logicmill/bstream/compound_memory/sink.h
+	include/logicmill/bstream/buffer/source.h
+	include/logicmill/bstream/buffer/sink.h
+	include/logicmill/bstream/bufseq/sink.h
 	include/logicmill/bstream/stdlib/chrono.h
 	include/logicmill/bstream/stdlib/deque.h
 	include/logicmill/bstream/stdlib/forward_list.h
@@ -55,7 +55,7 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/stdlib/unordered_map.h
 	include/logicmill/bstream/stdlib/unordered_set.h
 	include/logicmill/bstream/stdlib/vector.h
-	include/logicmill/bstream/utils/memory.h
+	include/logicmill/bstream/memory.h
 	include/logicmill/async/loop.h
 	include/logicmill/async/timer.h
 	include/logicmill/async/address.h
@@ -107,8 +107,8 @@ set(LOGICMILL_SRCS
 	src/bstream/sink.cpp
 	src/bstream/file_source.cpp
 	src/bstream/file_sink.cpp
-	src/bstream/memory_sink.cpp
-	src/bstream/compound_memory_sink.cpp
+	src/bstream/buffer_sink.cpp
+	src/bstream/bufseq_sink.cpp
 	src/async/loop_uv.h
 	src/async/loop_uv.cpp
 	src/async/timer_uv.h
@@ -135,7 +135,7 @@ set(LOGICMILL_TEST_SRCS
 	test/bstream/abstract_source.cpp
 	test/bstream/file.cpp
 	test/bstream/memory.cpp
-	test/bstream/compound_memory.cpp
+	test/bstream/bufseq.cpp
 	test/bstream/fbstream.cpp
 	test/bstream/test0.cpp
 	test/bstream/test1.cpp

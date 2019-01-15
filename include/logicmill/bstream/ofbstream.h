@@ -28,7 +28,7 @@
 #include <fstream>
 #include <logicmill/bstream/file/sink.h>
 #include <logicmill/bstream/obstream.h>
-#include <logicmill/bstream/utils/memory.h>
+#include <logicmill/bstream/memory.h>
 #include <system_error>
 
 namespace logicmill
@@ -169,7 +169,7 @@ public:
 	std::unique_ptr<file::sink>
 	release_filebuf()
 	{
-		return bstream::utils::static_unique_ptr_cast<file::sink>(release_streambuf());
+		return bstream::static_unique_ptr_cast<file::sink>(release_streambuf());
 	}
 
 	position_type

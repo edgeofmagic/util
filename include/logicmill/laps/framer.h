@@ -37,131 +37,132 @@ namespace logicmill
 namespace laps
 {
 
-	class framer
+class framer
+{
+public:
+	static constexpr std::size_t header_size   = sizeof(std::uint32_t) * 2;
+	static constexpr bool        reverse_order = boost::endian::order::native != boost::endian::order::big;
+
+private:
+	class bottom;
+
+	class top : public flow::stackable<frame_duplex_top, top>
 	{
 	public:
-		static constexpr std::size_t header_size   = sizeof(std::uint32_t) * 2;
-		static constexpr bool        reverse_order = boost::endian::order::native != boost::endian::order::big;
+		using base = flow::stackable<frame_duplex_top, top>;
+		using flow::emitter<shared_frame_event>::emit;
+		using flow::emitter<control_event>::emit;
+		using flow::emitter<error_event>::emit;
+		using base::get_surface;
+
+		top(bottom* bp) : m_bottom{bp} {}
+
+		void
+		on(mutable_frame_event, mutable_frame&& frm);
+
+		void
+		on(control_event, control_state state);
+
+		void
+		on(error_event, std::error_code err);
 
 	private:
-		class bottom;
+		bottom* m_bottom;
+	};
 
-		class top : public flow::stackable<frame_duplex_top, top>
+	class bottom : public flow::stackable<stream_duplex_bottom, bottom>
+	{
+	public:
+		using base = flow::stackable<stream_duplex_bottom, bottom>;
+		using emitter<mutable_data_event>::emit;
+		using emitter<control_event>::emit;
+		using emitter<error_event>::emit;
+		using base::get_surface;
+
+		bottom(top* tp) : m_top{tp}, m_header_is_valid{false} {}
+
+		void
+		on(const_data_event, std::deque<util::const_buffer>&& bufs)
 		{
-		public:
-			using base = flow::stackable<frame_duplex_top, top>;
-			using flow::emitter<shared_frame_event>::emit;
-			using flow::emitter<control_event>::emit;
-			using flow::emitter<error_event>::emit;
-			using base::get_surface;
-
-			top(bottom* bp) : m_bottom{bp} {}
-
-			void
-			on(mutable_frame_event, mutable_frame&& frm);
-
-			void
-			on(control_event, control_state state);
-
-			void
-			on(error_event, std::error_code err);
-
-		private:
-			bottom* m_bottom;
-		};
-
-		class bottom : public flow::stackable<stream_duplex_bottom, bottom>
-		{
-		public:
-			using base = flow::stackable<stream_duplex_bottom, bottom>;
-			using emitter<mutable_data_event>::emit;
-			using emitter<control_event>::emit;
-			using emitter<error_event>::emit;
-			using base::get_surface;
-
-			bottom(top* tp) : m_top{tp}, m_header_is_valid{false} {}
-
-			void
-			on(const_data_event, std::deque<const_buffer>&& bufs)
+			// std::cout << "bufs size is : " << bufs.size() << "[" << bufs[0].size() << ", " << bufs[1].size() << "]" << std::endl;
+			// bufs[0].dump(std::cout);
+			// bufs[1].dump(std::cout);
+			m_source.append(std::move(bufs));
+			while (true)
 			{
-				// std::cout << "bufs size is : " << bufs.size() << "[" << bufs[0].size() << ", " << bufs[1].size() << "]" << std::endl;
-				// bufs[0].dump(std::cout);
-				// bufs[1].dump(std::cout);
-				m_source.append(std::move(bufs));
-				while (true)
+				if (m_header_is_valid)
 				{
-					if (m_header_is_valid)
+					if (m_source.remaining() >= m_frame_size)
 					{
-						if (m_source.remaining() >= m_frame_size)
-						{
-							// shared_frame frm{m_flags, m_source.get_segmented_slice(m_frame_size)};
-							m_top->emit<shared_frame_event>(shared_frame{m_flags, m_source.get_segmented_slice(m_frame_size)});
-							m_header_is_valid = false;
-						}
-						else
-						{
-							break;
-						}
+						// shared_frame frm{m_flags, m_source.get_segmented_slice(m_frame_size)};
+						m_top->emit<shared_frame_event>(
+								shared_frame{m_flags, m_source.get_segmented_slice(m_frame_size)});
+						m_header_is_valid = false;
 					}
 					else
 					{
-						if (m_source.remaining() >= header_size)
-						{
-							m_frame_size     = m_source.get_num<std::uint32_t>();
-							m_flags    = m_source.get_num<std::uint32_t>();
-							m_header_is_valid = true;
-						}
-						else
-						{
-							break;
-						}
+						break;
 					}
 				}
-				m_source.trim();
+				else
+				{
+					if (m_source.remaining() >= header_size)
+					{
+						m_frame_size      = m_source.get_num<std::uint32_t>();
+						m_flags           = m_source.get_num<std::uint32_t>();
+						m_header_is_valid = true;
+					}
+					else
+					{
+						break;
+					}
+				}
 			}
-
-			void
-			on(control_event, control_state s)
-			{
-				m_top->emit<control_event>(s);
-			}
-
-			void
-			on(error_event, std::error_code err)
-			{
-				m_top->emit<error_event>(err);
-			}
-
-
-		private:
-			top*                                                     m_top;
-			bstream::compound_memory::source<shared_buffer> m_source;
-			frame::frame_size_type                                   m_frame_size;
-			frame::flags_type                                        m_flags;
-			bool                                                     m_header_is_valid;
-		};
-
-	public:
-		framer() : m_top{&m_bottom}, m_bottom{&m_top} {}
-
-		stream_duplex_bottom&
-		get_bottom()
-		{
-			return m_bottom.get_surface<stream_duplex_bottom>();
+			m_source.trim();
 		}
 
-		frame_duplex_top&
-		get_top()
+		void
+		on(control_event, control_state s)
 		{
-			return m_top.get_surface<frame_duplex_top>();
+			m_top->emit<control_event>(s);
 		}
 
-		framer(framer&& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
-		framer(framer const& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
+		void
+		on(error_event, std::error_code err)
+		{
+			m_top->emit<error_event>(err);
+		}
+
 
 	private:
-		top    m_top;
-		bottom m_bottom;
+		top*                                                  m_top;
+		bstream::compound_memory::source<util::shared_buffer> m_source;
+		frame::frame_size_type                                m_frame_size;
+		frame::flags_type                                     m_flags;
+		bool                                                  m_header_is_valid;
+	};
+
+public:
+	framer() : m_top{&m_bottom}, m_bottom{&m_top} {}
+
+	stream_duplex_bottom&
+	get_bottom()
+	{
+		return m_bottom.get_surface<stream_duplex_bottom>();
+	}
+
+	frame_duplex_top&
+	get_top()
+	{
+		return m_top.get_surface<frame_duplex_top>();
+	}
+
+	framer(framer&& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
+	framer(framer const& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
+
+private:
+	top    m_top;
+	bottom m_bottom;
 };
 
 }    // namespace laps
@@ -169,12 +170,12 @@ namespace laps
 
 void
 logicmill::laps::framer::top::on(mutable_frame_event, mutable_frame&& frm)
-// logicmill::laps::framer::top::on(mutable_frame_event, frame_header header, std::deque<mutable_buffer>&& bufs)
+// logicmill::laps::framer::top::on(mutable_frame_event, frame_header header, std::deque<util::mutable_buffer>&& bufs)
 {
 	bstream::memory::sink header_sink{header_size};
 	header_sink.put_num(frm.size());
 	header_sink.put_num(frm.flags());
-	std::deque<mutable_buffer> bufs = frm.release_bufs();
+	std::deque<util::mutable_buffer> bufs = frm.release_bufs();
 	bufs.emplace_front(header_sink.release_buffer());
 	m_bottom->emit<mutable_data_event>(std::move(bufs));
 }

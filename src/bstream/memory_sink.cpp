@@ -93,7 +93,7 @@ memory::sink::clear() noexcept
 	return *this;
 }
 
-const_buffer
+util::const_buffer
 memory::sink::get_buffer()
 {
 	if (m_dirty)
@@ -101,10 +101,10 @@ memory::sink::get_buffer()
 		flush();
 	}
 	m_buf.size(get_high_watermark());
-	return const_buffer{m_buf};
+	return util::const_buffer{m_buf};
 }
 
-mutable_buffer&
+util::mutable_buffer&
 memory::sink::get_buffer_ref()
 {
 	if (m_dirty)
@@ -115,7 +115,7 @@ memory::sink::get_buffer_ref()
 	return m_buf;
 }
 
-const_buffer
+util::const_buffer
 memory::sink::release_buffer()
 {
 	if (m_dirty)
@@ -127,10 +127,10 @@ memory::sink::release_buffer()
 	m_did_jump = false;
 	m_dirty    = false;
 	set_ptrs(nullptr, nullptr, nullptr);
-	return const_buffer{std::move(m_buf)};
+	return util::const_buffer{std::move(m_buf)};
 }
 
-mutable_buffer
+util::mutable_buffer
 memory::sink::release_mutable_buffer()
 {
 	if (m_dirty)

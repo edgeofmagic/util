@@ -26,7 +26,7 @@
 #define LOGICMILL_BSTREAM_COMPOUND_MEMORY_SINK_H
 
 #include <deque>
-#include <logicmill/buffer.h>
+#include <logicmill/util/buffer.h>
 #include <logicmill/bstream/sink.h>
 
 #ifndef LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE
@@ -51,7 +51,7 @@ public:
 	using base = bstream::sink;
 	using default_alloc = std::allocator<byte_type>;
 
-	using buffers = std::deque<mutable_buffer>;
+	using buffers = std::deque<util::mutable_buffer>;
 
 	friend class detail::sink_test_probe;
 
@@ -61,7 +61,7 @@ public:
 		  m_segment_capacity{size},
 		  m_current{0},
 		  m_bufs{},
-		  m_factory{std::make_unique<mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
+		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
 	{
 		m_bufs.emplace_back(m_factory->create(size));
 		reset_ptrs();
@@ -73,7 +73,7 @@ public:
 	m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
 	m_current{0},
 	m_bufs{},
-	m_factory{std::make_unique<mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
+	m_factory{std::make_unique<util::mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
 	{
 		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
 		reset_ptrs();
@@ -84,7 +84,7 @@ public:
 		  m_segment_capacity{size},
 		  m_current{0},
 		  m_bufs{},
-		  m_factory{std::make_unique<mutable_buffer_alloc_factory<default_alloc>>()}
+		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<default_alloc>>()}
 	{
 		m_bufs.emplace_back(m_factory->create(size));
 		reset_ptrs();
@@ -95,7 +95,7 @@ public:
 		  m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
 		  m_current{0},
 		  m_bufs{},
-		  m_factory{std::make_unique<mutable_buffer_alloc_factory<default_alloc>>()}
+		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<default_alloc>>()}
 	{
 		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
 		reset_ptrs();
@@ -154,7 +154,7 @@ protected:
 	size_type                               m_segment_capacity;    // capacity of individual buffers
 	size_type                               m_current;             // index of current buffer
 	buffers                                 m_bufs;
-	std::unique_ptr<mutable_buffer_factory> m_factory;
+	std::unique_ptr<util::mutable_buffer_factory> m_factory;
 };
 
 }    // namespace compound_memory

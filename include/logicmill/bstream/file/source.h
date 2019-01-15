@@ -109,7 +109,7 @@ protected:
 	void
 	really_open(std::error_code& err);
 
-	mutable_buffer m_buf;
+	util::mutable_buffer m_buf;
 	std::string    m_filename;
 	bool           m_is_open;
 	int            m_flags;

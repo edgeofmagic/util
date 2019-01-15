@@ -73,11 +73,11 @@ udp_transceiver_uv::on_receive(
 	{
 		if (buf->base)
 		{
-			delete [] reinterpret_cast<byte_type*>(buf->base);
+			delete[] reinterpret_cast<byte_type*>(buf->base);
 		}
 		transceiver_ptr->m_receive_handler(
 				transceiver_ptr,
-				const_buffer{},
+				util::const_buffer{},
 				async::ip::endpoint{*reinterpret_cast<const sockaddr_storage*>(addr)},
 				map_uv_error(nread));
 	}
@@ -85,13 +85,13 @@ udp_transceiver_uv::on_receive(
 	{
 		if (buf->base)
 		{
-			delete [] reinterpret_cast<byte_type*>(buf->base);
+			delete[] reinterpret_cast<byte_type*>(buf->base);
 		}
 		if (addr)
 		{
 			transceiver_ptr->m_receive_handler(
 					transceiver_ptr,
-					const_buffer{},
+					util::const_buffer{},
 					async::ip::endpoint{*reinterpret_cast<const sockaddr_storage*>(addr)},
 					std::error_code{});
 		}
@@ -100,9 +100,9 @@ udp_transceiver_uv::on_receive(
 	{
 		transceiver_ptr->m_receive_handler(
 				transceiver_ptr,
-				const_buffer{reinterpret_cast<byte_type*>(buf->base),
-									  static_cast<size_type>(nread),
-									  std::default_delete<byte_type[]>{}},
+				util::const_buffer{reinterpret_cast<byte_type*>(buf->base),
+								   static_cast<size_type>(nread),
+								   std::default_delete<byte_type[]>{}},
 				async::ip::endpoint{*reinterpret_cast<const sockaddr_storage*>(addr)},
 				std::error_code{});
 	}
@@ -193,7 +193,7 @@ udp_transceiver_uv::stop_receive()
 
 void
 udp_transceiver_uv::really_send(
-		mutable_buffer&&          buf,
+		util::mutable_buffer&&             buf,
 		endpoint const&                    dest,
 		std::error_code&                   err,
 		transceiver::send_buffer_handler&& handler)
@@ -209,7 +209,7 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		mutable_buffer&&               buf,
+		mutable_buffer&&                        buf,
 		endpoint const&                         dest,
 		std::error_code&                        err,
 		transceiver::send_buffer_handler const& handler)
@@ -225,10 +225,10 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		std::deque<mutable_buffer>&& bufs,
-		endpoint const&                       dest,
-		std::error_code&                      err,
-		transceiver::send_buffers_handler&&   handler)
+		std::deque<mutable_buffer>&&        bufs,
+		endpoint const&                     dest,
+		std::error_code&                    err,
+		transceiver::send_buffers_handler&& handler)
 {
 	err.clear();
 	auto request = new udp_send_bufs_req_uv{std::move(bufs), dest, std::move(handler)};
@@ -241,7 +241,7 @@ udp_transceiver_uv::really_send(
 
 void
 udp_transceiver_uv::really_send(
-		std::deque<mutable_buffer>&&    bufs,
+		std::deque<mutable_buffer>&&             bufs,
 		endpoint const&                          dest,
 		std::error_code&                         err,
 		transceiver::send_buffers_handler const& handler)

@@ -25,10 +25,10 @@
 #include <doctest.h>
 #include <iostream>
 #include <logicmill/async/loop.h>
-#include <logicmill/buffer.h>
 #include <logicmill/laps/channel_anchor.h>
 #include <logicmill/laps/driver.h>
 #include <logicmill/laps/framer.h>
+#include <logicmill/util/buffer.h>
 
 using namespace logicmill;
 using namespace async;
@@ -56,23 +56,22 @@ TEST_CASE("logicmill::laps::channel_anchor [ smoke ] { stackable connect read wr
                 CHECK(!err);
 
                 std::error_code read_err;
-                chan->start_read(
-                        read_err, [&](channel::ptr const& cp, const_buffer&& buf, std::error_code err) {
-                            CHECK(!err);
-                            CHECK(buf.as_string() == "first test payload");
+                chan->start_read(read_err, [&](channel::ptr const& cp, util::const_buffer&& buf, std::error_code err) {
+                    CHECK(!err);
+                    CHECK(buf.as_string() == "first test payload");
 
-                            std::error_code write_err;
-                            cp->write(
-                                    mutable_buffer{"reply to first payload"},
-                                    write_err,
-                                    [&](channel::ptr const& chan, mutable_buffer&& buf, std::error_code err) {
-                                        CHECK(!err);
-                                        CHECK(buf.as_string() == "reply to first payload");
-                                        acceptor_write_handler_did_execute = true;
-                                    });
-                            CHECK(!write_err);
-                            acceptor_read_handler_did_execute = true;
-                        });
+                    std::error_code write_err;
+                    cp->write(
+                            util::mutable_buffer{"reply to first payload"},
+                            write_err,
+                            [&](channel::ptr const& chan, util::mutable_buffer&& buf, std::error_code err) {
+                                CHECK(!err);
+                                CHECK(buf.as_string() == "reply to first payload");
+                                acceptor_write_handler_did_execute = true;
+                            });
+                    CHECK(!write_err);
+                    acceptor_read_handler_did_execute = true;
+                });
                 CHECK(!read_err);
                 acceptor_connection_handler_did_execute = true;
             });
@@ -96,13 +95,13 @@ TEST_CASE("logicmill::laps::channel_anchor [ smoke ] { stackable connect read wr
 			stackp->top().on_error(
 					[=](std::error_code err) { std::cout << "error event in driver: " << err.message() << std::endl; });
 
-			stackp->top().start_read([&](std::deque<const_buffer>&& bufs) {
+			stackp->top().start_read([&](std::deque<util::const_buffer>&& bufs) {
 				CHECK(bufs.front().as_string() == "reply to first payload");
 				driver_read_handler = true;
 			});
 
-			std::deque<mutable_buffer> bufs;
-			bufs.emplace_back(mutable_buffer{"first test payload"});
+			std::deque<util::mutable_buffer> bufs;
+			bufs.emplace_back(util::mutable_buffer{"first test payload"});
 			stackp->top().write(std::move(bufs));
 
 			CHECK(!err);
@@ -143,80 +142,89 @@ TEST_CASE("logicmill::laps::channel_anchor [ smoke ] { stackable connect read wr
 namespace framer_test
 {
 
-	class frame_top_catcher : public stackable<laps::frame_duplex_bottom, frame_top_catcher>
+class frame_top_catcher : public stackable<laps::frame_duplex_bottom, frame_top_catcher>
+{
+public:
+	frame_top_catcher() : m_size{0}, m_flags{0}, m_event_count{0} {}
+
+	void
+	on(laps::shared_frame_event, laps::shared_frame&& frm)
 	{
-	public:
 
-		frame_top_catcher() : m_size{0}, m_flags{0}, m_event_count{0} {}
+		m_size  = frm.size();
+		m_flags = frm.flags();
+		std::cout << "received event " << m_event_count << ": " << frm.size() << ", " << frm.bufs().size() << ": "
+				  << frm.bufs()[0].to_string() << std::endl;
+		m_bufs  = frm.release_bufs();
+		m_size  = frm.size();
+		m_flags = frm.flags();
+		++m_event_count;
+	}
 
-		void on(laps::shared_frame_event, laps::shared_frame&& frm)
-		{
+	void
+	on(laps::control_event, laps::control_state s)
+	{}
 
-			m_size = frm.size();
-			m_flags = frm.flags();
-			std::cout << "received event " << m_event_count << ": " << frm.size() << ", " << frm.bufs().size() << ": " << frm.bufs()[0].to_string() << std::endl;
-			m_bufs = frm.release_bufs();
-			m_size = frm.size();
-			m_flags = frm.flags();
-			++m_event_count;
-		}
+	void
+	on(laps::error_event, std::error_code err)
+	{}
 
-		void on(laps::control_event, laps::control_state s) {}
+	laps::frame::frame_size_type
+	size() const
+	{
+		return m_size;
+	}
 
-		void on(laps::error_event, std::error_code err) {}
+	laps::frame::flags_type
+	flags() const
+	{
+		return m_flags;
+	}
 
-		laps::frame::frame_size_type size() const
-		{
-			return m_size;
-		}
+	laps::sbuf_sequence const&
+	bufs() const
+	{
+		return m_bufs;
+	}
 
-		laps::frame::flags_type flags() const
-		{
-			return m_flags;
-		}
+	int
+	event_count() const
+	{
+		return m_event_count;
+	}
 
-		laps::sbuf_sequence const& bufs() const
-		{
-			return m_bufs;
-		}
-
-		int event_count() const
-		{
-			return m_event_count;
-		}
-
-	private:
-		laps::frame::frame_size_type m_size;
-		laps::frame::flags_type m_flags;
-		laps::sbuf_sequence m_bufs;
-		int m_event_count;
-	};
-}
+private:
+	laps::frame::frame_size_type m_size;
+	laps::frame::flags_type      m_flags;
+	laps::sbuf_sequence          m_bufs;
+	int                          m_event_count;
+};
+}    // namespace framer_test
 
 TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 {
-	laps::framer frmr;
+	laps::framer                   frmr;
 	framer_test::frame_top_catcher ftop;
 	frmr.get_top().stack(ftop.get_surface<laps::frame_duplex_bottom>());
 	emitter<laps::const_data_event> driver;
 	driver.get_source<laps::const_data_event>().bind(frmr.get_bottom()
-						.get_connector<laps::const_data_in_connector>()
-						.get_binding<sink<laps::const_data_event>>());
-	
+															 .get_connector<laps::const_data_in_connector>()
+															 .get_binding<sink<laps::const_data_event>>());
+
 	std::string payload{"here is some buffer content, should be long enought to avoid short string optimization"};
 	bstream::memory::sink snk{8};
-	mutable_buffer b{payload};
+	util::mutable_buffer  b{payload};
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
 	std::uint32_t flags{0};
 	snk.put_num(blen);
 	snk.put_num(flags);
-	mutable_buffer mbuf{snk.release_buffer()};
+	util::mutable_buffer mbuf{snk.release_buffer()};
 	std::cout << "mbuf size: " << mbuf.size() << std::endl;
 	mbuf.dump(std::cout);
-	std::deque<const_buffer> bufs;
+	std::deque<util::const_buffer> bufs;
 	bufs.emplace_back(std::move(mbuf));
-	bufs.emplace_back(const_buffer{std::move(b)});
+	bufs.emplace_back(util::const_buffer{std::move(b)});
 
 	driver.emit<laps::const_data_event>(std::move(bufs));
 
@@ -230,33 +238,32 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { framer existence }")
 }
 
 
-
 TEST_CASE("logicmill::laps::framer [ smoke ] { split header }")
 {
-	laps::framer frmr;
+	laps::framer                   frmr;
 	framer_test::frame_top_catcher ftop;
 	frmr.get_top().stack(ftop.get_surface<laps::frame_duplex_bottom>());
 	emitter<laps::const_data_event> driver;
 	driver.get_source<laps::const_data_event>().bind(frmr.get_bottom()
-						.get_connector<laps::const_data_in_connector>()
-						.get_binding<sink<laps::const_data_event>>());
-	
+															 .get_connector<laps::const_data_in_connector>()
+															 .get_binding<sink<laps::const_data_event>>());
+
 	std::string payload{"here is some buffer content, should be long enought to avoid short string optimization"};
 	bstream::memory::sink hdr1{8};
 	bstream::memory::sink hdr2{8};
-	mutable_buffer b{payload};
+	util::mutable_buffer  b{payload};
 
 	std::uint32_t blen{static_cast<std::uint32_t>(b.size())};
 	std::uint32_t flags{0};
 	hdr1.put_num(blen);
 	hdr2.put_num(flags);
-	mutable_buffer mbuf1{hdr1.release_buffer()};
-	mutable_buffer mbuf2{hdr2.release_buffer()};
+	util::mutable_buffer mbuf1{hdr1.release_buffer()};
+	util::mutable_buffer mbuf2{hdr2.release_buffer()};
 
-	std::deque<const_buffer> bufs;
+	std::deque<util::const_buffer> bufs;
 	bufs.emplace_back(std::move(mbuf1));
 	bufs.emplace_back(std::move(mbuf2));
-	bufs.emplace_back(const_buffer{std::move(b)});
+	bufs.emplace_back(util::const_buffer{std::move(b)});
 
 	driver.emit<laps::const_data_event>(std::move(bufs));
 
@@ -264,24 +271,23 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { split header }")
 	CHECK(ftop.flags() == 0);
 	CHECK(ftop.bufs().size() == 1);
 	CHECK(ftop.bufs()[0].to_string() == payload);
-
 }
 
 TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer }")
 {
-	laps::framer frmr;
+	laps::framer                   frmr;
 	framer_test::frame_top_catcher ftop;
 	frmr.get_top().stack(ftop.get_surface<laps::frame_duplex_bottom>());
 	emitter<laps::const_data_event> driver;
 	driver.get_source<laps::const_data_event>().bind(frmr.get_bottom()
-						.get_connector<laps::const_data_in_connector>()
-						.get_binding<sink<laps::const_data_event>>());
-	
-	std::string payload1{"here is some buffer content, should be long enough to avoid short string optimization"};
-	mutable_buffer b1{payload1};
+															 .get_connector<laps::const_data_in_connector>()
+															 .get_binding<sink<laps::const_data_event>>());
 
-	std::string payload2{"here is some more buffer content, with a somewhat different length"};
-	mutable_buffer b2{payload2};
+	std::string payload1{"here is some buffer content, should be long enough to avoid short string optimization"};
+	util::mutable_buffer b1{payload1};
+
+	std::string          payload2{"here is some more buffer content, with a somewhat different length"};
+	util::mutable_buffer b2{payload2};
 
 	bstream::memory::sink snk{1024};
 
@@ -291,13 +297,13 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer 
 	snk.put_num(flags);
 	snk.putn(b1);
 
-	blen = static_cast<std::uint32_t>(b2.size());
+	blen  = static_cast<std::uint32_t>(b2.size());
 	flags = 21;
 	snk.put_num(blen);
 	snk.put_num(flags);
 	snk.putn(b2);
 
-	std::deque<const_buffer> bufs;
+	std::deque<util::const_buffer> bufs;
 	bufs.emplace_back(snk.release_buffer());
 
 	driver.emit<laps::const_data_event>(std::move(bufs));
@@ -306,5 +312,4 @@ TEST_CASE("logicmill::laps::framer [ smoke ] { multiple frames in single buffer 
 	CHECK(ftop.flags() == 21);
 	CHECK(ftop.bufs()[0].to_string() == payload2);
 	CHECK(ftop.event_count() == 2);
-
 }

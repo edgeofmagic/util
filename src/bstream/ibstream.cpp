@@ -28,13 +28,13 @@
 using namespace logicmill;
 using namespace bstream;
 
-const_buffer
+util::const_buffer
 ibstream::get_msgpack_obj_buf()
 {
 	// allocate bufwriter at most once
 	if (!m_bufwriter)
 	{
-		m_bufwriter = std::make_unique<bufwriter>(16 * 1024);    // whatever...
+		m_bufwriter = std::make_unique<util::bufwriter>(16 * 1024);    // whatever...
 	}
 
 	m_bufwriter->reset();
@@ -43,7 +43,7 @@ ibstream::get_msgpack_obj_buf()
 }
 
 void
-ibstream::ingest(bufwriter& os)
+ibstream::ingest(util::bufwriter& os)
 {
 	auto tcode = get();
 	os.put(tcode);
@@ -547,13 +547,13 @@ ibstream::read_blob_header(std::error_code& ec)
 	return result;
 }
 
-logicmill::shared_buffer
+util::shared_buffer
 ibstream::read_blob_shared(std::error_code& ec)
 {
 	auto nbytes = read_blob_header(ec);
 	if (ec)
 	{
-		return shared_buffer{};
+		return util::shared_buffer{};
 	}
 	else
 	{
@@ -561,13 +561,13 @@ ibstream::read_blob_shared(std::error_code& ec)
 	}
 }
 
-logicmill::const_buffer
+util::const_buffer
 ibstream::read_blob(std::error_code& ec)
 {
 	auto nbytes = read_blob_header(ec);
 	if (ec)
 	{
-		return const_buffer{};
+		return util::const_buffer{};
 	}
 	else
 	{

@@ -25,8 +25,8 @@
 #include "test_probes/compound_memory.h"
 #include "common.h"
 #include <doctest.h>
-#include <logicmill/buffer.h>
 #include <logicmill/bstream/error.h>
+#include <logicmill/util/buffer.h>
 
 using namespace logicmill;
 using namespace bstream;
@@ -170,7 +170,7 @@ TEST_CASE("logicmill::bstream::compound_memory::sink [ smoke ] { expanding buffe
 	// std::cout << "capacity is " << probe.buffer().capacity() << std::endl;
 }
 
-TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic const_buffer }")
+TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic util::const_buffer }")
 {
 	byte_type data_0[] = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -208,10 +208,7 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic const_b
 	};
 
 	byte_type data_3[] = {
-			0x03,
-			0x03,
-			0x03,
-			0x03,
+			0x03, 0x03, 0x03, 0x03,
 			// 0x04,
 			// 0x04,
 			// 0x05,
@@ -219,14 +216,13 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic const_b
 	};
 
 	byte_type data_4[] = {
-			0x04,
-			0x04,
+			0x04, 0x04,
 			// 0x05,
 			// 0x06
 	};
 
 	byte_type data_5[] = {
-			0x05, // 0x06,
+			0x05,    // 0x06,
 	};
 
 	byte_type data_6[] = {
@@ -240,23 +236,23 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic const_b
 			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x05, 0x06,
 	};
 
-	std::deque<const_buffer> bufs;
+	std::deque<util::const_buffer> bufs;
 
-	bufs.emplace_back(const_buffer{&data_0[0], sizeof(data_0)});
-	bufs.emplace_back(const_buffer{&data_1[0], sizeof(data_1)});
-	bufs.emplace_back(const_buffer{&data_2[0], sizeof(data_2)});
-	bufs.emplace_back(const_buffer{&data_3[0], sizeof(data_3)});
-	bufs.emplace_back(const_buffer{&data_4[0], sizeof(data_4)});
-	bufs.emplace_back(const_buffer{&data_5[0], sizeof(data_5)});
-	bufs.emplace_back(const_buffer{&data_6[0], sizeof(data_6)});
+	bufs.emplace_back(util::const_buffer{&data_0[0], sizeof(data_0)});
+	bufs.emplace_back(util::const_buffer{&data_1[0], sizeof(data_1)});
+	bufs.emplace_back(util::const_buffer{&data_2[0], sizeof(data_2)});
+	bufs.emplace_back(util::const_buffer{&data_3[0], sizeof(data_3)});
+	bufs.emplace_back(util::const_buffer{&data_4[0], sizeof(data_4)});
+	bufs.emplace_back(util::const_buffer{&data_5[0], sizeof(data_5)});
+	bufs.emplace_back(util::const_buffer{&data_6[0], sizeof(data_6)});
 
-	compound_memory::source<const_buffer> src{bufs};
-	compound_memory::detail::source_test_probe<const_buffer> probe{src};
+	compound_memory::source<util::const_buffer>                    src{bufs};
+	compound_memory::detail::source_test_probe<util::const_buffer> probe{src};
 
 	std::error_code err;
 	CHECK(src.size() == 64);
 
-	const_buffer got = src.get_slice(64, err);
+	util::const_buffer got = src.get_slice(64, err);
 	CHECK(!err);
 	CHECK(src.position() == 64);
 	CHECK(probe.current_segment() == 6);
@@ -340,23 +336,23 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic shared_
 			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x05, 0x06,
 	};
 
-	std::deque<shared_buffer> bufs;
+	std::deque<util::shared_buffer> bufs;
 
-	bufs.emplace_back(shared_buffer{&data_0[0], sizeof(data_0)});
-	bufs.emplace_back(shared_buffer{&data_1[0], sizeof(data_1)});
-	bufs.emplace_back(shared_buffer{&data_2[0], sizeof(data_2)});
-	bufs.emplace_back(shared_buffer{&data_3[0], sizeof(data_3)});
-	bufs.emplace_back(shared_buffer{&data_4[0], sizeof(data_4)});
-	bufs.emplace_back(shared_buffer{&data_5[0], sizeof(data_5)});
-	bufs.emplace_back(shared_buffer{&data_6[0], sizeof(data_6)});
+	bufs.emplace_back(util::shared_buffer{&data_0[0], sizeof(data_0)});
+	bufs.emplace_back(util::shared_buffer{&data_1[0], sizeof(data_1)});
+	bufs.emplace_back(util::shared_buffer{&data_2[0], sizeof(data_2)});
+	bufs.emplace_back(util::shared_buffer{&data_3[0], sizeof(data_3)});
+	bufs.emplace_back(util::shared_buffer{&data_4[0], sizeof(data_4)});
+	bufs.emplace_back(util::shared_buffer{&data_5[0], sizeof(data_5)});
+	bufs.emplace_back(util::shared_buffer{&data_6[0], sizeof(data_6)});
 
-	compound_memory::source<shared_buffer> src{bufs};
-	compound_memory::detail::source_test_probe<shared_buffer> probe{src};
+	compound_memory::source<util::shared_buffer>                    src{bufs};
+	compound_memory::detail::source_test_probe<util::shared_buffer> probe{src};
 
 	std::error_code err;
 	CHECK(src.size() == 64);
 
-	const_buffer got = src.get_slice(64, err);
+	util::const_buffer got = src.get_slice(64, err);
 	CHECK(!err);
 	CHECK(src.position() == 64);
 	CHECK(probe.current_segment() == 6);
@@ -393,5 +389,4 @@ TEST_CASE("logicmill::bstream::compound_memory::source [ smoke ] { basic shared_
 	CHECK(sb2.data() == src.get_buffers_ref()[6].data());
 	CHECK(sb2.size() == 1);
 	CHECK(sb2.data()[0] == expected[63]);
-
 }

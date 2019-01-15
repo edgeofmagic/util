@@ -138,78 +138,78 @@ source::peek()
 	return *m_next;
 }
 
-shared_buffer
+util::shared_buffer
 source::get_shared_slice(size_type n, std::error_code& err)
 {
 	err.clear();
 	if (n < 1)
 	{
-		return shared_buffer{};
+		return util::shared_buffer{};
 	}
 
-	mutable_buffer buf{n};
-	auto           got = getn(buf.data(), n, err);
+	util::mutable_buffer buf{n};
+	auto                 got = getn(buf.data(), n, err);
 	if (err)
 	{
-		return shared_buffer{};
+		return util::shared_buffer{};
 	}
 	else
 	{
 		assert(n == got);
 		buf.size(got);
-		return shared_buffer{std::move(buf)};
+		return util::shared_buffer{std::move(buf)};
 	}
 }
 
-shared_buffer
+util::shared_buffer
 source::get_shared_slice(size_type n)
 {
 	if (n < 1)
 	{
-		return shared_buffer{};
+		return util::shared_buffer{};
 	}
 
-	mutable_buffer buf{n};
-	auto           got = getn(buf.data(), n);
+	util::mutable_buffer buf{n};
+	auto                 got = getn(buf.data(), n);
 	buf.size(got);
-	return shared_buffer{std::move(buf)};
+	return util::shared_buffer{std::move(buf)};
 }
 
-const_buffer
+util::const_buffer
 source::get_slice(size_type n, std::error_code& err)
 {
 	err.clear();
 	if (n < 1)
 	{
-		return const_buffer{};
+		return util::const_buffer{};
 	}
 
-	mutable_buffer buf{n};
-	auto           got = getn(buf.data(), n, err);
+	util::mutable_buffer buf{n};
+	auto                 got = getn(buf.data(), n, err);
 	if (err)
 	{
-		return const_buffer{};
+		return util::const_buffer{};
 	}
 	else
 	{
 		assert(n == got);
 		buf.size(got);
-		return const_buffer{std::move(buf)};
+		return util::const_buffer{std::move(buf)};
 	}
 }
 
-const_buffer
+util::const_buffer
 source::get_slice(size_type n)
 {
 	if (n < 1)
 	{
-		return const_buffer{};
+		return util::const_buffer{};
 	}
 
-	mutable_buffer buf{n};
-	auto           got = getn(buf.data(), n);
+	util::mutable_buffer buf{n};
+	auto                 got = getn(buf.data(), n);
 	buf.size(got);
-	return const_buffer{std::move(buf)};
+	return util::const_buffer{std::move(buf)};
 }
 
 size_type

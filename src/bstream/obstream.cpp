@@ -136,7 +136,7 @@ obstream::write_blob_header(std::uint32_t size, std::error_code& err)
 }
 
 obstream&
-obstream::write_ext(std::uint8_t ext_type, buffer const& buf)
+obstream::write_ext(std::uint8_t ext_type, util::buffer const& buf)
 {
 	auto size = buf.size();
 	auto bufp = buf.data();
@@ -180,7 +180,7 @@ obstream::write_ext(std::uint8_t ext_type, buffer const& buf)
 }
 
 obstream&
-obstream::write_ext(std::uint8_t ext_type, buffer const& buf, std::error_code& err)
+obstream::write_ext(std::uint8_t ext_type, util::buffer const& buf, std::error_code& err)
 {
 	err.clear();
 	try

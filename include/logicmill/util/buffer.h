@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_BUFFER_H
-#define LOGICMILL_BUFFER_H
+#ifndef LOGICMILL_UTIL_BUFFER_H
+#define LOGICMILL_UTIL_BUFFER_H
 
 #include <cassert>
 #include <cstdint>
@@ -101,6 +101,8 @@
 #endif
 
 namespace logicmill
+{
+namespace util
 {
 
 template<class T>
@@ -2003,6 +2005,7 @@ private:
 
 #endif
 
+}    // namespace util
 }    // namespace logicmill
 
-#endif    // LOGICMILL_BUFFER_H
+#endif    // LOGICMILL_UTIL_BUFFER_H

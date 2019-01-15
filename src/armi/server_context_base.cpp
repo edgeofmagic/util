@@ -59,8 +59,7 @@ server_context_base::really_bind(async::options const& opts, std::error_code& er
 				{
 					m_open_channels.insert(chan);
 					chan->start_read(
-							err,
-							[=](async::channel::ptr const& chan, const_buffer&& buf, std::error_code err) {
+							err, [=](async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err) {
 								if (err)
 								{
 									if (m_on_channel_error)
@@ -83,7 +82,7 @@ server_context_base::really_bind(async::options const& opts, std::error_code& er
 }
 
 void
-server_context_base::send_reply(async::channel::ptr const& chan, mutable_buffer&& buf)
+server_context_base::send_reply(async::channel::ptr const& chan, util::mutable_buffer&& buf)
 {
 	std::error_code err;
 	assert(chan);
@@ -96,7 +95,7 @@ server_context_base::send_reply(async::channel::ptr const& chan, mutable_buffer&
 		chan->write(
 				std::move(buf),
 				err,
-				[=](async::channel::ptr const& chan, mutable_buffer&& buf, std::error_code err) {
+				[=](async::channel::ptr const& chan, util::mutable_buffer&& buf, std::error_code err) {
 					if (err && m_on_channel_error)
 					{
 						m_on_channel_error(chan, err);

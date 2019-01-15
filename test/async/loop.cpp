@@ -59,21 +59,18 @@ TEST_CASE("logicmill::async::loop [ smoke ] { dispatch }")
 	async::loop::ptr lp = async::loop::create();
 	std::error_code  err;
 
-	bool first_dispatch_called = false;
+	bool first_dispatch_called  = false;
 	bool second_dispatch_called = false;
 
-	lp->dispatch(err, [&](async::loop::ptr const& loop_ptr)
-	{
+	lp->dispatch(err, [&](async::loop::ptr const& loop_ptr) {
 		first_dispatch_called = true;
-		loop_ptr->dispatch(err, [&](async::loop::ptr const& loop_ptr)
-		{
+		loop_ptr->dispatch(err, [&](async::loop::ptr const& loop_ptr) {
 			second_dispatch_called = true;
-			auto loop_exit_timer = loop_ptr->create_timer(err, [](async::timer::ptr tp)
-			{
-				std::error_code err;
-				tp->loop()->stop(err);
-				CHECK(!err);
-			});
+			auto loop_exit_timer   = loop_ptr->create_timer(err, [](async::timer::ptr tp) {
+                std::error_code err;
+                tp->loop()->stop(err);
+                CHECK(!err);
+            });
 			CHECK(!err);
 			loop_exit_timer->start(std::chrono::milliseconds{500}, err);
 			CHECK(!err);
@@ -94,7 +91,6 @@ TEST_CASE("logicmill::async::loop [ smoke ] { nullptr handler }")
 	lp->dispatch(err, nullptr);
 	CHECK(err);
 	CHECK(err == std::errc::invalid_argument);
-
 }
 
 
@@ -103,8 +99,7 @@ TEST_CASE("logicmill::async::loop [ smoke ] { basic }")
 	async::loop::ptr lp = async::loop::create();
 	std::error_code  err;
 
-	lp->dispatch(err, [](async::loop::ptr const& loop_ptr)
-	{
+	lp->dispatch(err, [](async::loop::ptr const& loop_ptr) {
 		std::error_code err;
 		loop_ptr->stop(err);
 		CHECK(!err);
@@ -124,8 +119,7 @@ TEST_CASE("logicmill::async::loop [ smoke ] { default loop }")
 	bool first_visited{false};
 	bool second_visited{false};
 
-	lp->dispatch(err, [&](async::loop::ptr const& loop_ptr)
-	{
+	lp->dispatch(err, [&](async::loop::ptr const& loop_ptr) {
 		first_visited = true;
 		std::error_code err;
 		loop_ptr->stop(err);
@@ -135,8 +129,7 @@ TEST_CASE("logicmill::async::loop [ smoke ] { default loop }")
 	lp->run(err);
 	CHECK(!err);
 
-	lp->dispatch(err, [&](async::loop::ptr const& lp)
-	{
+	lp->dispatch(err, [&](async::loop::ptr const& lp) {
 		second_visited = true;
 		std::error_code err;
 		lp->stop(err);
@@ -153,7 +146,7 @@ TEST_CASE("logicmill::async::loop [ smoke ] { default loop }")
 TEST_CASE("logicmill::async::loop::timer [ smoke ] { basic }")
 {
 	async::loop::ptr lp = async::loop::create();
-	std::error_code err;
+	std::error_code  err;
 
 	{
 		auto tp = lp->create_timer(err, [&](async::timer::ptr timer_ptr) {
@@ -177,7 +170,7 @@ TEST_CASE("logicmill::async::loop::timer [ smoke ] { basic }")
 TEST_CASE("logicmill::async::loop::timer [ smoke ] { close before expire }")
 {
 	async::loop::ptr lp = async::loop::create();
-	std::error_code err;
+	std::error_code  err;
 	auto tp0 = lp->create_timer(err, [](async::timer::ptr timer_ptr) { std::cout << "timer 0 expired" << std::endl; });
 	CHECK(!err);
 
@@ -202,7 +195,7 @@ TEST_CASE("logicmill::async::loop::timer [ smoke ] { close before expire }")
 TEST_CASE("logicmill::async::loop::timer [ smoke ] { stop before expire }")
 {
 	async::loop::ptr lp = async::loop::create();
-	std::error_code err;
+	std::error_code  err;
 	auto tp0 = lp->create_timer(err, [](async::timer::ptr timer_ptr) { std::cout << "timer 0 expired" << std::endl; });
 	CHECK(!err);
 
@@ -316,41 +309,40 @@ TEST_CASE("logicmill::async::resolver [ smoke ] { cancellation loop close }")
 		std::error_code err;
 
 		async::loop::ptr lp = async::loop::create();
-		lp->resolve("gorblesnapper.org",
-					err,
-					[&](std::string const&               hostname,
-						std::deque<async::ip::address>&& addresses,
-						std::error_code           err) {
-						auto                      current = std::chrono::system_clock::now();
-						std::chrono::microseconds elapsed
-								= std::chrono::duration_cast<std::chrono::microseconds>(current - start);
-						std::cout << "resolver handler called for hostname " << hostname << std::endl;
-						std::cout << "elapsed time is " << elapsed.count() << " usec" << std::endl;
-						std::cout << "status is " << err.message() << std::endl;
-						if (!err)
+		lp->resolve(
+				"gorblesnapper.org",
+				err,
+				[&](std::string const& hostname, std::deque<async::ip::address>&& addresses, std::error_code err) {
+					auto                      current = std::chrono::system_clock::now();
+					std::chrono::microseconds elapsed
+							= std::chrono::duration_cast<std::chrono::microseconds>(current - start);
+					std::cout << "resolver handler called for hostname " << hostname << std::endl;
+					std::cout << "elapsed time is " << elapsed.count() << " usec" << std::endl;
+					std::cout << "status is " << err.message() << std::endl;
+					if (!err)
+					{
+						for (auto& addr : addresses)
 						{
-							for (auto& addr : addresses)
-							{
-								std::cout << addr.to_string() << std::endl;
-							}
+							std::cout << addr.to_string() << std::endl;
 						}
-						std::cout.flush();
-					});
+					}
+					std::cout.flush();
+				});
 
-		async::timer::ptr tp
-				= lp->create_timer(err,
-								   [&](async::timer::ptr timer_ptr)    // mutable
-								   {
-									   auto                      current = std::chrono::system_clock::now();
-									   std::chrono::microseconds elapsed
-											   = std::chrono::duration_cast<std::chrono::microseconds>(current - start);
-									   std::cout << "stopping loop" << std::endl;
-									   std::cout << "elapsed time is " << elapsed.count() << " usec" << std::endl;
-									   std::cout.flush();
-									   std::error_code ec;
-									   timer_ptr->loop()->stop(ec);
-									   CHECK(!ec);
-								   });
+		async::timer::ptr tp = lp->create_timer(
+				err,
+				[&](async::timer::ptr timer_ptr)    // mutable
+				{
+					auto                      current = std::chrono::system_clock::now();
+					std::chrono::microseconds elapsed
+							= std::chrono::duration_cast<std::chrono::microseconds>(current - start);
+					std::cout << "stopping loop" << std::endl;
+					std::cout << "elapsed time is " << elapsed.count() << " usec" << std::endl;
+					std::cout.flush();
+					std::error_code ec;
+					timer_ptr->loop()->stop(ec);
+					CHECK(!ec);
+				});
 		REQUIRE(!err);
 		tp->start(std::chrono::milliseconds{1}, err);
 		REQUIRE(!err);

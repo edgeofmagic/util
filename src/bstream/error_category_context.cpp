@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/bstream/error_category_context.h>
 #include <logicmill/bstream/error.h>
+#include <logicmill/bstream/error_category_context.h>
 
 #include <iostream>
 
@@ -40,54 +40,54 @@ error_category_context::default_categories()
 };
 
 
-error_category_context::error_category_context( category_init_list init_list )
+error_category_context::error_category_context(category_init_list init_list)
 {
 	auto& def_categories = default_categories();
-	m_category_vector.reserve( init_list.size() + def_categories.size() );
-	m_category_vector.insert(m_category_vector.end(), def_categories.begin(), def_categories.end() );
-	m_category_vector.insert(m_category_vector.end(), init_list.begin(), init_list.end() );
+	m_category_vector.reserve(init_list.size() + def_categories.size());
+	m_category_vector.insert(m_category_vector.end(), def_categories.begin(), def_categories.end());
+	m_category_vector.insert(m_category_vector.end(), init_list.begin(), init_list.end());
 
-	for ( auto i = 0u; i < m_category_vector.size(); ++i )
+	for (auto i = 0u; i < m_category_vector.size(); ++i)
 	{
-		m_category_map.emplace( m_category_vector[ i ], i );
+		m_category_map.emplace(m_category_vector[i], i);
 	}
 }
 
 error_category_context::error_category_context()
 {
 	auto& def_categories = default_categories();
-	m_category_vector.reserve( def_categories.size() );
-	m_category_vector.insert(m_category_vector.end(), def_categories.begin(), def_categories.end() );
+	m_category_vector.reserve(def_categories.size());
+	m_category_vector.insert(m_category_vector.end(), def_categories.begin(), def_categories.end());
 
-	for ( auto i = 0u; i < m_category_vector.size(); ++i )
+	for (auto i = 0u; i < m_category_vector.size(); ++i)
 	{
-		m_category_map.emplace( m_category_vector[ i ], i );
+		m_category_map.emplace(m_category_vector[i], i);
 	}
 }
 
 std::error_category const&
-error_category_context::category_from_index( index_type index ) const
+error_category_context::category_from_index(index_type index) const
 {
-	if ( index < 0  || static_cast< std::size_t >( index ) >= m_category_vector.size() )
+	if (index < 0 || static_cast<std::size_t>(index) >= m_category_vector.size())
 	{
-		throw std::system_error( make_error_code( bstream::errc::invalid_err_category ) );
+		throw std::system_error(make_error_code(bstream::errc::invalid_err_category));
 	}
 	else
 	{
-		return *( m_category_vector[ index ] );
+		return *(m_category_vector[index]);
 	}
 }
 
 error_category_context::index_type
-error_category_context::index_of_category( std::error_category const& category ) const
+error_category_context::index_of_category(std::error_category const& category) const
 {
-	auto it = m_category_map.find( &category );
-	if ( it != m_category_map.end() )
+	auto it = m_category_map.find(&category);
+	if (it != m_category_map.end())
 	{
 		return it->second;
 	}
 	else
 	{
-		throw std::system_error( make_error_code( bstream::errc::invalid_err_category ) );
+		throw std::system_error(make_error_code(bstream::errc::invalid_err_category));
 	}
 }

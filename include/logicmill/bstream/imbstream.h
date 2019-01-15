@@ -41,17 +41,17 @@ public:
 	imbstream(imbstream const&) = delete;
 	imbstream(imbstream&&)      = delete;
 
-	using source_type = memory::source<shared_buffer>;
+	using source_type = memory::source<util::shared_buffer>;
 
 	imbstream(std::unique_ptr<source_type> strmbuf, context_base const& cntxt = get_default_context())
 		: ibstream{std::move(strmbuf), cntxt}
 	{}
 
-	imbstream(buffer const& buf, context_base const& cntxt = get_default_context())
+	imbstream(util::buffer const& buf, context_base const& cntxt = get_default_context())
 		: ibstream(std::make_unique<source_type>(buf), cntxt)
 	{}
 
-	imbstream(buffer&& buf, context_base const& cntxt = get_default_context())
+	imbstream(util::buffer&& buf, context_base const& cntxt = get_default_context())
 		: ibstream{std::make_unique<source_type>(std::move(buf)), cntxt}
 	{}
 
@@ -70,48 +70,48 @@ public:
 	}
 
 	void
-	use(mutable_buffer&& buf)
+	use(util::mutable_buffer&& buf)
 	{
 		ibstream::use(std::make_unique<source_type>(std::move(buf)));
 		reset();
 	}
 
 	void
-	use(const_buffer&& buf)
+	use(util::const_buffer&& buf)
 	{
 		ibstream::use(std::make_unique<source_type>(std::move(buf)));
 		reset();
 	}
 
 	void
-	use(const_buffer const& buf)
+	use(util::const_buffer const& buf)
 	{
 		ibstream::use(std::make_unique<source_type>(buf));
 		reset();
 	}
 
 	void
-	use(mutable_buffer&& buf, std::error_code& err)
+	use(util::mutable_buffer&& buf, std::error_code& err)
 	{
 		ibstream::use(std::make_unique<source_type>(std::move(buf)));
 		reset(err);
 	}
 
 	void
-	use(const_buffer&& buf, std::error_code& err)
+	use(util::const_buffer&& buf, std::error_code& err)
 	{
 		ibstream::use(std::make_unique<source_type>(std::move(buf)));
 		reset(err);
 	}
 
 	void
-	use(const_buffer const& buf, std::error_code& err)
+	use(util::const_buffer const& buf, std::error_code& err)
 	{
 		ibstream::use(std::make_unique<source_type>(buf));
 		reset(err);
 	}
 
-	const_buffer
+	util::const_buffer
 	get_buffer()
 	{
 		return get_membuf().get_buffer();

@@ -28,7 +28,7 @@
 #include <chrono>
 #include <deque>
 #include <functional>
-#include <logicmill/buffer.h>
+#include <logicmill/util/buffer.h>
 #include <logicmill/async/endpoint.h>
 #include <logicmill/util/shared_ptr.h>
 #include <memory>
@@ -47,13 +47,13 @@ public:
 	using ptr = util::shared_ptr<channel>;
 
 	using read_handler
-			= std::function<void(channel::ptr const& chan, const_buffer&& buf, std::error_code err)>;
+			= std::function<void(channel::ptr const& chan, util::const_buffer&& buf, std::error_code err)>;
 
 	using write_buffer_handler
-			= std::function<void(channel::ptr const& chan, mutable_buffer&& buf, std::error_code err)>;
+			= std::function<void(channel::ptr const& chan, util::mutable_buffer&& buf, std::error_code err)>;
 
 	using write_buffers_handler = std::function<
-			void(channel::ptr const& chan, std::deque<mutable_buffer>&& bufs, std::error_code err)>;
+			void(channel::ptr const& chan, std::deque<util::mutable_buffer>&& bufs, std::error_code err)>;
 
 	using connect_handler = std::function<void(channel::ptr const& chan, std::error_code err)>;
 
@@ -76,26 +76,26 @@ public:
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, write_buffer_handler>::value>
-	write(mutable_buffer&& buf, std::error_code& err, Handler&& handler)
+	write(util::mutable_buffer&& buf, std::error_code& err, Handler&& handler)
 	{
 		really_write(std::move(buf), err, std::forward<Handler>(handler));
 	}
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, write_buffers_handler>::value>
-	write(std::deque<mutable_buffer>&& bufs, std::error_code& err, Handler&& handler)
+	write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err, Handler&& handler)
 	{
 		really_write(std::move(bufs), err, std::forward<Handler>(handler));
 	}
 
 	void
-	write(mutable_buffer&& buf, std::error_code& err)
+	write(util::mutable_buffer&& buf, std::error_code& err)
 	{
 		really_write(std::move(buf), err, nullptr);
 	}
 
 	void
-	write(std::deque<mutable_buffer>&& bufs, std::error_code& err)
+	write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err)
 	{
 		really_write(std::move(bufs), err, nullptr);
 	}
@@ -127,16 +127,16 @@ public:
 
 protected:
 	virtual void
-	really_write(mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler) = 0;
+	really_write(util::mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler) = 0;
 
 	virtual void
-	really_write(mutable_buffer&& buf, std::error_code& err, write_buffer_handler const& handler) = 0;
+	really_write(util::mutable_buffer&& buf, std::error_code& err, write_buffer_handler const& handler) = 0;
 
 	virtual void
-	really_write(std::deque<mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler&& handler) = 0;
+	really_write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler&& handler) = 0;
 
 	virtual void
-	really_write(std::deque<mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler const& handler) = 0;
+	really_write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler const& handler) = 0;
 
 	virtual bool
 	really_close(close_handler&& handler) = 0;

@@ -25,7 +25,7 @@
 #ifndef LOGICMILL_BSTREAM_FILE_SINK_H
 #define LOGICMILL_BSTREAM_FILE_SINK_H
 
-#include <logicmill/buffer.h>
+#include <logicmill/util/buffer.h>
 #include <logicmill/bstream/sink.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE
@@ -205,7 +205,7 @@ private:
 	static int
 	to_flags(open_mode mode);
 
-	mutable_buffer m_buf;
+	util::mutable_buffer m_buf;
 	std::string    m_filename;
 	bool           m_is_open;
 	open_mode      m_mode;

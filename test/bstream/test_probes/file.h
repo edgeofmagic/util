@@ -44,7 +44,7 @@ class source_test_probe : public bstream::detail::source_test_probe
 public:
 	source_test_probe(bstream::file::source& target) : bstream::detail::source_test_probe{target}, m_target{target} {}
 
-	mutable_buffer&
+	util::mutable_buffer&
 	buffer()
 	{
 		return m_target.m_buf;
@@ -71,7 +71,7 @@ class sink_test_probe : public bstream::detail::sink_test_probe
 public:
 	sink_test_probe(bstream::file::sink& target) : bstream::detail::sink_test_probe{target}, m_target{target} {}
 
-	mutable_buffer&
+	util::mutable_buffer&
 	buffer()
 	{
 		return m_target.m_buf;

@@ -36,7 +36,7 @@
 			goto _label_;                                                                                              \
 		}                                                                                                              \
 	}                                                                                                                  \
-/**/
+	/**/
 
 #define UV_ERROR_THROW(_uv_err_)                                                                                       \
 	{                                                                                                                  \
@@ -45,7 +45,7 @@
 			throw std::system_error{map_uv_error(_uv_err_)};                                                           \
 		}                                                                                                              \
 	}                                                                                                                  \
-/**/
+	/**/
 
 inline std::error_code const&
 map_uv_error(int uv_code)

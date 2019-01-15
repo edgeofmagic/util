@@ -29,7 +29,7 @@
 #include <deque>
 #include <functional>
 #include <logicmill/async/endpoint.h>
-#include <logicmill/buffer.h>
+#include <logicmill/util/buffer.h>
 #include <logicmill/util/shared_ptr.h>
 #include <memory>
 #include <system_error>
@@ -50,23 +50,20 @@ class transceiver
 public:
 	using ptr = util::shared_ptr<transceiver>;
 
-	using receive_handler = std::function<void(
-			transceiver::ptr const& chan,
-			const_buffer&& buf,
+	using receive_handler = std::function<
+			void(transceiver::ptr const& chan, util::const_buffer&& buf, ip::endpoint const& ep, std::error_code err)>;
+
+	using send_buffer_handler = std::function<void(
+			transceiver::ptr const& trans,
+			util::mutable_buffer&&  buf,
 			ip::endpoint const&     ep,
 			std::error_code         err)>;
 
-	using send_buffer_handler = std::function<void(
-			transceiver::ptr const&   trans,
-			mutable_buffer&& buf,
-			ip::endpoint const&       ep,
-			std::error_code           err)>;
-
 	using send_buffers_handler = std::function<void(
-			transceiver::ptr const&               trans,
-			std::deque<mutable_buffer>&& bufs,
-			ip::endpoint const&                   ep,
-			std::error_code                       err)>;
+			transceiver::ptr const&            trans,
+			std::deque<util::mutable_buffer>&& bufs,
+			ip::endpoint const&                ep,
+			std::error_code                    err)>;
 
 	using close_handler = std::function<void(transceiver::ptr const& chan)>;
 
@@ -85,26 +82,26 @@ public:
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, send_buffer_handler>::value>
-	emit(mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
+	emit(util::mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
 	{
 		really_send(std::move(buf), dest, err, std::forward<Handler>(handler));
 	}
 
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, send_buffers_handler>::value>
-	emit(std::deque<mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
+	emit(std::deque<util::mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
 	{
 		really_send(std::move(bufs), dest, err, std::forward<Handler>(handler));
 	}
 
 	void
-	emit(mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err)
+	emit(util::mutable_buffer&& buf, ip::endpoint const& dest, std::error_code& err)
 	{
 		really_send(std::move(buf), dest, err, nullptr);
 	}
 
 	void
-	write(std::deque<mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err)
+	write(std::deque<util::mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err)
 	{
 		really_send(std::move(bufs), dest, err, nullptr);
 	}
@@ -140,15 +137,15 @@ protected:
 
 	virtual void
 	really_send(
-			mutable_buffer&& buf,
-			ip::endpoint const&       dest,
-			std::error_code&          err,
-			send_buffer_handler&&     handler)
+			util::mutable_buffer&& buf,
+			ip::endpoint const&    dest,
+			std::error_code&       err,
+			send_buffer_handler&&  handler)
 			= 0;
 
 	virtual void
 	really_send(
-			mutable_buffer&&  buf,
+			util::mutable_buffer&&     buf,
 			ip::endpoint const&        dest,
 			std::error_code&           err,
 			send_buffer_handler const& handler)
@@ -156,18 +153,18 @@ protected:
 
 	virtual void
 	really_send(
-			std::deque<mutable_buffer>&& bufs,
-			ip::endpoint const&                   dest,
-			std::error_code&                      err,
-			send_buffers_handler&&                handler)
+			std::deque<util::mutable_buffer>&& bufs,
+			ip::endpoint const&                dest,
+			std::error_code&                   err,
+			send_buffers_handler&&             handler)
 			= 0;
 
 	virtual void
 	really_send(
-			std::deque<mutable_buffer>&& bufs,
-			ip::endpoint const&                   dest,
-			std::error_code&                      err,
-			send_buffers_handler const&           handler)
+			std::deque<util::mutable_buffer>&& bufs,
+			ip::endpoint const&                dest,
+			std::error_code&                   err,
+			send_buffers_handler const&        handler)
 			= 0;
 
 	virtual bool

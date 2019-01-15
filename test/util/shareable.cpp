@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/util/shareable.h>
-#include <logicmill/util/allocator.h>
 #include <doctest.h>
 #include <iostream>
+#include <logicmill/util/allocator.h>
+#include <logicmill/util/shareable.h>
 
 using namespace logicmill;
 using namespace util;
@@ -35,13 +35,15 @@ namespace shareable_test
 
 static bool free_mem_called{false};
 
-void* get_mem(unsigned long bytes)
+void*
+get_mem(unsigned long bytes)
 {
 	// std::cout << "get_mem: " << bytes << std::endl;
 	return ::malloc(bytes);
 }
 
-void free_mem(void* p, unsigned long bytes)
+void
+free_mem(void* p, unsigned long bytes)
 {
 	// std::cout << "free_mem: " << bytes << std::endl;
 	free_mem_called = true;
@@ -59,16 +61,17 @@ protected:
 	using base = handle<std::string>;
 
 public:
-
 	template<class... Args>
-	sstr(Args... args) : base{std::forward<Args>(args)...}, m_view{*base::get_ptr()} {}
+	sstr(Args... args) : base{std::forward<Args>(args)...}, m_view{*base::get_ptr()}
+	{}
 
-	sstr(sstr const& rhs) : base{ static_cast<base const&>(rhs)}, m_view{rhs.m_view} {}
+	sstr(sstr const& rhs) : base{static_cast<base const&>(rhs)}, m_view{rhs.m_view} {}
 
 	sstr(sstr&& rhs) : base{std::move(static_cast<base&&>(rhs))}, m_view{rhs.m_view} {}
 
 	template<class... Args>
-	static sstr create(Args&&... args)
+	static sstr
+	create(Args&&... args)
 	{
 		return sstr{std::forward<Args>(args)...};
 	}
@@ -79,19 +82,22 @@ public:
 		return m_view;
 	}
 
-	sstr& operator=(sstr const& rhs)
+	sstr&
+	operator=(sstr const& rhs)
 	{
 		base::assign(rhs);
 		return *this;
 	}
 
-	sstr& operator=(sstr&& rhs)
+	sstr&
+	operator=(sstr&& rhs)
 	{
 		base::assign(std::move(rhs));
 		return *this;
 	}
 
-	std::size_t use_count() const
+	std::size_t
+	use_count() const
 	{
 		return base::get_refcount();
 	}
@@ -100,38 +106,39 @@ private:
 	std::string_view m_view;
 };
 
-class foo 
+class foo
 {
 public:
-
 	foo(int i, std::string const& s) : m_ival{i}, m_sval{s} {}
 
 	foo(foo const& f) : m_ival{f.m_ival}, m_sval{f.m_sval} {}
 
 	foo(foo&& f) : m_ival{f.m_ival}, m_sval{std::move(f.m_sval)} {}
 
-	int num() const
+	int
+	num() const
 	{
 		return m_ival;
 	}
 
-	std::string const& str() const
+	std::string const&
+	str() const
 	{
 		return m_sval;
 	}
 
 private:
-	int m_ival;
+	int         m_ival;
 	std::string m_sval;
- };
+};
 
 class bar : public foo
 {
 public:
-
 	bar(int i, std::string const& s, double d) : foo{i, s}, m_fpnum{d} {}
 
-	double dnum() const
+	double
+	dnum() const
 	{
 		return m_fpnum;
 	}
@@ -144,7 +151,6 @@ private:
 class foov
 {
 public:
-
 	virtual ~foov() {}
 
 	foov(int i, std::string const& s) : m_ival{i}, m_sval{s} {}
@@ -153,28 +159,30 @@ public:
 
 	foov(foov&& f) : m_ival{f.m_ival}, m_sval{std::move(f.m_sval)} {}
 
-	int num() const
+	int
+	num() const
 	{
 		return m_ival;
 	}
 
-	std::string const& str() const
+	std::string const&
+	str() const
 	{
 		return m_sval;
 	}
 
 private:
-	int m_ival;
+	int         m_ival;
 	std::string m_sval;
- };
+};
 
 class barv : public foov
 {
 public:
-
 	barv(int i, std::string const& s, double d) : foov{i, s}, m_fpnum{d} {}
 
-	double dnum() const
+	double
+	dnum() const
 	{
 		return m_fpnum;
 	}
@@ -185,7 +193,8 @@ private:
 
 struct int_malloc
 {
-	int* operator()() const
+	int*
+	operator()() const
 	{
 		return static_cast<int*>(::malloc(sizeof(int)));
 	}
@@ -195,7 +204,8 @@ static int int_free_call_count{0};
 
 struct int_free
 {
-	void operator()(int* p) const
+	void
+	operator()(int* p) const
 	{
 		++int_free_call_count;
 		::free(p);
@@ -204,7 +214,7 @@ struct int_free
 
 }    // namespace shareable_test
 
-TEST_CASE( "logicmill::util::shareable [ smoke ]" )
+TEST_CASE("logicmill::util::shareable [ smoke ]")
 {
 	auto p = phandle<std::string>::create("hello");
 	CHECK(*p == "hello");
@@ -214,7 +224,7 @@ TEST_CASE( "logicmill::util::shareable [ smoke ]" )
 	CHECK(p == p_copy);
 }
 
-TEST_CASE( "logicmill::util::shareable [ smoke ] { non-pointer handle }" )
+TEST_CASE("logicmill::util::shareable [ smoke ] { non-pointer handle }")
 {
 	auto ss = shareable_test::sstr::create("hello");
 	CHECK(ss.view() == "hello");
@@ -223,10 +233,10 @@ TEST_CASE( "logicmill::util::shareable [ smoke ] { non-pointer handle }" )
 	CHECK(ss.view() == ss_copy.view());
 }
 
-TEST_CASE( "logicmill::util::shareable [ smoke ] { phandle with deleter }" )
+TEST_CASE("logicmill::util::shareable [ smoke ] { phandle with deleter }")
 {
 	using sintp = phandle<std::string, shareable_test::string_alloc>;
-	sintp p = sintp::create("zoot");
+	sintp p     = sintp::create("zoot");
 	CHECK(*p == "zoot");
 	CHECK(bool(p));
 	p.reset();
@@ -234,10 +244,10 @@ TEST_CASE( "logicmill::util::shareable [ smoke ] { phandle with deleter }" )
 	CHECK(shareable_test::free_mem_called);
 }
 
-TEST_CASE( "logicmill::util::shareable [ smoke ] { phandle with class }" )
+TEST_CASE("logicmill::util::shareable [ smoke ] { phandle with class }")
 {
 	using foop = phandle<shareable_test::foo>;
-	foop p = foop::create(27, "zoot");
+	foop p     = foop::create(27, "zoot");
 	CHECK(p->str() == "zoot");
 	CHECK(p->num() == 27);
 	CHECK(bool(p));

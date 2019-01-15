@@ -25,7 +25,7 @@
 #include <doctest.h>
 #include <iostream>
 #include <logicmill/async/loop.h>
-#include <logicmill/buffer.h>
+#include <logicmill/util/buffer.h>
 
 #define END_LOOP(loop_ptr, delay_ms)                                                                                   \
 	{                                                                                                                  \
@@ -42,16 +42,16 @@
 
 
 #define DELAYED_ACTION_BEGIN(_loop_ptr)                                                                                \
-{                                                                                                                      \
-	std::error_code _err;                                                                                              \
-	auto _action_timer = _loop_ptr->create_timer(_err, [&](async::timer::ptr tp)                                       \
+	{                                                                                                                  \
+		std::error_code _err;                                                                                          \
+	auto _action_timer = _loop_ptr->create_timer(_err, [&](async::timer::ptr tp)
 
 #define DELAYED_ACTION_END(_delay_ms)                                                                                  \
 	);                                                                                                                 \
 	CHECK(!_err);                                                                                                      \
 	_action_timer->start(std::chrono::milliseconds{_delay_ms}, _err);                                                  \
 	CHECK(!_err);                                                                                                      \
-}
+	}
 
 using namespace logicmill;
 using namespace async;
@@ -61,29 +61,34 @@ TEST_CASE("logicmill::async::udp [ smoke ] { basic functionality }")
 	bool acceptor_handler_did_execute{false};
 	bool send_timer_did_execute{false};
 
-	std::error_code     err;
-	auto                lp = loop::create();
+	std::error_code err;
+	auto            lp = loop::create();
 
 	END_LOOP(lp, 2000);
 
-	auto recvr = lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(),7002}}, err);
+	auto recvr = lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(), 7002}}, err);
 	CHECK(!err);
 
-	recvr->start_receive(err, [&](async::transceiver::ptr transp, const_buffer&& buf, async::ip::endpoint const& ep, std::error_code err)
-	{
-		std::cout << "in receiver handler, buffer: " << buf.to_string() << std::endl;
-		std::cout << "received from " << ep.to_string() << std::endl;
-	});
+	recvr->start_receive(
+			err,
+			[&](async::transceiver::ptr    transp,
+				util::const_buffer&&       buf,
+				async::ip::endpoint const& ep,
+				std::error_code            err) {
+				std::cout << "in receiver handler, buffer: " << buf.to_string() << std::endl;
+				std::cout << "received from " << ep.to_string() << std::endl;
+			});
 
-	async::transceiver::ptr trans = lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(),0}}, err);
+	async::transceiver::ptr trans
+			= lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(), 0}}, err);
 	CHECK(!err);
 
-	mutable_buffer msg("hello there");
+	util::mutable_buffer msg("hello there");
 	CHECK(!err);
 
 	DELAYED_ACTION_BEGIN(lp)
 	{
-		trans->emit(std::move(msg), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err);
+		trans->emit(std::move(msg), async::ip::endpoint{async::ip::address::v4_loopback(), 7002}, err);
 		CHECK(!err);
 		std::cout << "sending buffer on UDP socket" << std::endl;
 		send_timer_did_execute = true;
@@ -105,8 +110,8 @@ TEST_CASE("logicmill::async::udp [ smoke ] { error on redundant receive }")
 	bool second_receive_handler_did_execute{false};
 	bool send_timer_did_execute{false};
 
-	std::error_code     err;
-	auto                lp = loop::create();
+	std::error_code err;
+	auto            lp = loop::create();
 
 	END_LOOP(lp, 2000);
 
@@ -114,7 +119,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { error on redundant receive }")
 			async::options{async::ip::endpoint{async::ip::address::v4_any(), 7002}},
 			err,
 			[&](async::transceiver::ptr    transp,
-				const_buffer&&    buf,
+				util::const_buffer&&       buf,
 				async::ip::endpoint const& ep,
 				std::error_code            err) {
 				first_receive_handler_did_execute = true;
@@ -127,23 +132,22 @@ TEST_CASE("logicmill::async::udp [ smoke ] { error on redundant receive }")
 	recvr->start_receive(
 			err,
 			[&](async::transceiver::ptr    transp,
-				const_buffer&&    buf,
+				util::const_buffer&&       buf,
 				async::ip::endpoint const& ep,
-				std::error_code            err) {
-				second_receive_handler_did_execute = true;
-			});
+				std::error_code            err) { second_receive_handler_did_execute = true; });
 	CHECK(err);
 	CHECK(err == std::errc::connection_already_in_progress);
 
-	async::transceiver::ptr trans = lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(),0}}, err);
+	async::transceiver::ptr trans
+			= lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(), 0}}, err);
 	CHECK(!err);
 
-	mutable_buffer msg("hello there");
+	util::mutable_buffer msg("hello there");
 	CHECK(!err);
 
 	DELAYED_ACTION_BEGIN(lp)
 	{
-		trans->emit(std::move(msg), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err);
+		trans->emit(std::move(msg), async::ip::endpoint{async::ip::address::v4_loopback(), 7002}, err);
 		CHECK(!err);
 		send_timer_did_execute = true;
 	}
@@ -165,12 +169,12 @@ TEST_CASE("logicmill::async::udp [ smoke ] { max datagram size }")
 	bool receive_handler_did_execute{false};
 	bool send_timer_did_execute{false};
 
-	mutable_buffer big{async::transceiver::payload_size_limit};
+	util::mutable_buffer big{async::transceiver::payload_size_limit};
 	big.fill(static_cast<byte_type>('Z'));
 	big.size(async::transceiver::payload_size_limit);
 
-	std::error_code     err;
-	auto                lp = loop::create();
+	std::error_code err;
+	auto            lp = loop::create();
 
 	END_LOOP(lp, 2000);
 
@@ -178,7 +182,7 @@ TEST_CASE("logicmill::async::udp [ smoke ] { max datagram size }")
 			async::options{async::ip::endpoint{async::ip::address::v4_any(), 7002}},
 			err,
 			[&](async::transceiver::ptr    transp,
-				const_buffer&&    buf,
+				util::const_buffer&&       buf,
 				async::ip::endpoint const& ep,
 				std::error_code            err) {
 				CHECK(!err);
@@ -202,18 +206,24 @@ TEST_CASE("logicmill::async::udp [ smoke ] { max datagram size }")
 			});
 	CHECK(!err);
 
-	async::transceiver::ptr trans = lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(),0}}, err);
+	async::transceiver::ptr trans
+			= lp->create_transceiver(async::options{async::ip::endpoint{async::ip::address::v4_any(), 0}}, err);
 	CHECK(!err);
 
 	DELAYED_ACTION_BEGIN(lp)
 	{
-		trans->emit(std::move(big), async::ip::endpoint{async::ip::address::v4_loopback(),7002}, err,
-		[&](transceiver::ptr const& trans, mutable_buffer&& buf, async::ip::endpoint const& ep, std::error_code err)
-		{
-			CHECK(!err);
-			std::cout << "error in emit handler, " << err.message() << std::endl;
-			std::cout << "emit handler called, buf size is " << buf.size() << std::endl;
-		});
+		trans->emit(
+				std::move(big),
+				async::ip::endpoint{async::ip::address::v4_loopback(), 7002},
+				err,
+				[&](transceiver::ptr const&    trans,
+					util::mutable_buffer&&     buf,
+					async::ip::endpoint const& ep,
+					std::error_code            err) {
+					CHECK(!err);
+					std::cout << "error in emit handler, " << err.message() << std::endl;
+					std::cout << "emit handler called, buf size is " << buf.size() << std::endl;
+				});
 		CHECK(!err);
 		send_timer_did_execute = true;
 	}

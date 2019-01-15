@@ -25,8 +25,8 @@
 #include "test_probes/memory.h"
 #include "common.h"
 #include <doctest.h>
-#include <logicmill/buffer.h>
 #include <logicmill/bstream/error.h>
+#include <logicmill/util/buffer.h>
 
 using namespace logicmill;
 using namespace bstream;
@@ -64,7 +64,7 @@ TEST_CASE("logicmill::bstream::memory::sink [ smoke ] { basic functionality }")
 			0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	};
 
-	mutable_buffer mbuf{buf, sizeof(buf), null_delete<byte_type[]>{}};
+	util::mutable_buffer mbuf{buf, sizeof(buf), util::null_delete<byte_type[]>{}};
 
 	memory::sink snk{std::move(mbuf)};
 
@@ -204,10 +204,10 @@ TEST_CASE("logicmill::bstream::memory::source [ smoke ] { basic functionality }"
 			0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
 	};
 
-	const_buffer                 buf{data, sizeof(data)};
-	memory::source<const_buffer> src{buf};
+	util::const_buffer                 buf{data, sizeof(data)};
+	memory::source<util::const_buffer> src{buf};
 
-	bstream::memory::detail::source_test_probe<const_buffer> probe{src};
+	bstream::memory::detail::source_test_probe<util::const_buffer> probe{src};
 
 	std::error_code err;
 
@@ -222,12 +222,12 @@ TEST_CASE("logicmill::bstream::memory::source [ smoke ] { basic functionality }"
 		CHECK(probe.pos() == i + 1);
 	}
 
-	const_buffer cbuf = src.get_slice(8, err);
+	util::const_buffer cbuf = src.get_slice(8, err);
 	CHECK(!err);
 	CHECK(probe.pos() == 16);
 	CHECK(MATCH_BUFFER(cbuf, &data[8]));
 
-	shared_buffer sbuf = src.get_shared_slice(8, err);
+	util::shared_buffer sbuf = src.get_shared_slice(8, err);
 	CHECK(!err);
 	CHECK(probe.pos() == 24);
 

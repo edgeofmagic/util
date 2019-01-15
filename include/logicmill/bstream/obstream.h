@@ -26,11 +26,11 @@
 #define LOGICMILL_BSTREAM_OBSTREAM_H
 
 #include <boost/endian/conversion.hpp>
-#include <logicmill/buffer.h>
 #include <logicmill/bstream/context.h>
 #include <logicmill/bstream/obstream_traits.h>
 #include <logicmill/bstream/sink.h>
 #include <logicmill/bstream/typecode.h>
+#include <logicmill/util/buffer.h>
 #include <unordered_map>
 #include <vector>
 
@@ -92,7 +92,7 @@ public:
 		: m_context{cntxt.get_context_impl()},
 		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
 		  m_strmbuf{std::move(strmbuf)}
-		//   m_reverse_order{is_reverse(cntxt.get_context_impl()->byte_order())}
+	//   m_reverse_order{is_reverse(cntxt.get_context_impl()->byte_order())}
 	{}
 
 	// obstream(std::unique_ptr<bstream::sink> strmbuf, std::shared_ptr<const context_impl_base> context_impl)
@@ -137,14 +137,14 @@ public:
 	}
 
 	obstream&
-	putn(buffer const& buf)
+	putn(util::buffer const& buf)
 	{
 		m_strmbuf->putn(buf.data(), buf.size());
 		return *this;
 	}
 
 	obstream&
-	putn(buffer const& buf, std::error_code& err)
+	putn(util::buffer const& buf, std::error_code& err)
 	{
 		m_strmbuf->putn(buf.data(), buf.size(), err);
 		return *this;
@@ -274,14 +274,14 @@ public:
 	}
 
 	obstream&
-	write_blob_body(logicmill::buffer const& blob)
+	write_blob_body(util::buffer const& blob)
 	{
 		putn(blob.data(), blob.size());
 		return *this;
 	}
 
 	obstream&
-	write_blob_body(logicmill::buffer const& blob, std::error_code& err)
+	write_blob_body(util::buffer const& blob, std::error_code& err)
 	{
 		putn(blob.data(), blob.size(), err);
 		return *this;
@@ -309,7 +309,7 @@ public:
 	}
 
 	obstream&
-	write_blob(logicmill::buffer const& buf)
+	write_blob(util::buffer const& buf)
 	{
 		write_blob_header(buf.size());
 		write_blob_body(buf);
@@ -317,7 +317,7 @@ public:
 	}
 
 	obstream&
-	write_blob(logicmill::buffer const& buf, std::error_code& err)
+	write_blob(util::buffer const& buf, std::error_code& err)
 	{
 		write_blob_header(buf.size(), err);
 		if (err)
@@ -370,10 +370,10 @@ public:
 	}
 
 	obstream&
-	write_ext(std::uint8_t ext_type, buffer const& buf);
+	write_ext(std::uint8_t ext_type, util::buffer const& buf);
 
 	obstream&
-	write_ext(std::uint8_t ext_type, buffer const& buf, std::error_code& err);
+	write_ext(std::uint8_t ext_type, util::buffer const& buf, std::error_code& err);
 
 	obstream&
 	write_ext(std::uint8_t ext_type, std::vector<std::uint8_t> const& vec);
@@ -687,10 +687,10 @@ struct serializer<std::string_view>
 };
 
 template<>
-struct serializer<logicmill::string_alias>
+struct serializer<util::string_alias>
 {
 	static obstream&
-	put(obstream& os, logicmill::string_alias const& value)
+	put(obstream& os, util::string_alias const& value)
 	{
 		return serializer<std::string_view>::put(os, value.view());
 	}
@@ -768,10 +768,10 @@ struct serializer<T, typename std::enable_if_t<std::is_enum<T>::value>>
 };
 
 template<>
-struct serializer<logicmill::buffer>
+struct serializer<util::buffer>
 {
 	static obstream&
-	put(obstream& os, logicmill::buffer const& val)
+	put(obstream& os, util::buffer const& val)
 	{
 		os.write_blob(val);
 		return os;
@@ -813,10 +813,12 @@ struct base_serializer<
 };
 
 template<class Derived, class Base>
-struct base_serializer<Derived,
-					   Base,
-					   typename std::enable_if_t<!has_serialize_impl_method<Base>::value
-												 && !has_serialize_method<Base>::value && has_serializer<Base>::value>>
+struct base_serializer<
+		Derived,
+		Base,
+		typename std::enable_if_t<
+				!has_serialize_impl_method<Base>::value && !has_serialize_method<Base>::value
+				&& has_serializer<Base>::value>>
 {
 	static obstream&
 	put(obstream& os, Derived const& v)

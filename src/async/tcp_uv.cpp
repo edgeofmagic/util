@@ -121,18 +121,18 @@ tcp_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const uv_buf_
 	{
 		if (buf->base)
 		{
-			delete [] reinterpret_cast<byte_type*>(buf->base);
+			delete[] reinterpret_cast<byte_type*>(buf->base);
 		}
 		err = map_uv_error(nread);
-		channel_ptr->m_read_handler(channel_ptr, const_buffer{}, err);
+		channel_ptr->m_read_handler(channel_ptr, util::const_buffer{}, err);
 	}
 	else if (nread > 0)
 	{
 		channel_ptr->m_read_handler(
 				channel_ptr,
-				const_buffer{reinterpret_cast<byte_type*>(buf->base),
-									  static_cast<size_type>(nread),
-									  std::default_delete<byte_type[]>{}},
+				util::const_buffer{reinterpret_cast<byte_type*>(buf->base),
+								   static_cast<size_type>(nread),
+								   std::default_delete<byte_type[]>{}},
 				err);
 	}
 }
@@ -215,7 +215,7 @@ tcp_channel_uv::stop_read()
 
 void
 tcp_channel_uv::really_write(
-		mutable_buffer&&              buf,
+		util::mutable_buffer&&                 buf,
 		std::error_code&                       err,
 		async::channel::write_buffer_handler&& handler)
 {
@@ -230,7 +230,7 @@ tcp_channel_uv::really_write(
 
 void
 tcp_channel_uv::really_write(
-		mutable_buffer&&                   buf,
+		util::mutable_buffer&&                      buf,
 		std::error_code&                            err,
 		async::channel::write_buffer_handler const& handler)
 {
@@ -245,7 +245,7 @@ tcp_channel_uv::really_write(
 
 void
 tcp_channel_uv::really_write(
-		std::deque<mutable_buffer>&&   bufs,
+		std::deque<util::mutable_buffer>&&      bufs,
 		std::error_code&                        err,
 		async::channel::write_buffers_handler&& handler)
 {
@@ -260,7 +260,7 @@ tcp_channel_uv::really_write(
 
 void
 tcp_channel_uv::really_write(
-		std::deque<mutable_buffer>&&        bufs,
+		std::deque<util::mutable_buffer>&&           bufs,
 		std::error_code&                             err,
 		async::channel::write_buffers_handler const& handler)
 {
@@ -305,23 +305,23 @@ tcp_framed_channel_uv::on_read(uv_stream_t* stream_handle, ssize_t nread, const 
 	{
 		if (buf->base)
 		{
-			delete [] reinterpret_cast<byte_type*>(buf->base);
+			delete[] reinterpret_cast<byte_type*>(buf->base);
 		}
 		err = map_uv_error(nread);
-		channel_ptr->m_read_handler(channel_ptr, const_buffer{}, err);
+		channel_ptr->m_read_handler(channel_ptr, util::const_buffer{}, err);
 	}
 	else if (nread > 0)
 	{
 		channel_ptr->read_to_frame(
 				channel_ptr,
-				const_buffer{reinterpret_cast<byte_type*>(buf->base),
-									  static_cast<size_type>(nread),
-									  std::default_delete<byte_type[]>{}});
+				util::const_buffer{reinterpret_cast<byte_type*>(buf->base),
+								   static_cast<size_type>(nread),
+								   std::default_delete<byte_type[]>{}});
 	}
 }
 
 void
-tcp_framed_channel_uv::read_to_frame(ptr channel_ptr, const_buffer&& buf)
+tcp_framed_channel_uv::read_to_frame(ptr channel_ptr, util::const_buffer&& buf)
 {
 	assert((is_frame_size_valid() && (m_payload_buffer.size() < m_frame_size)) || (!is_frame_size_valid()));
 
@@ -343,7 +343,7 @@ tcp_framed_channel_uv::read_to_frame(ptr channel_ptr, const_buffer&& buf)
 			{
 				nbytes_to_move = buf.size();
 			}
-			mutable_buffer hbuf{&m_header_buf, 8};
+			util::mutable_buffer hbuf{&m_header_buf, 8};
 			::memcpy(&m_header_buf[m_header_byte_count], buf.data() + current_buffer_position, nbytes_to_move);
 			m_header_byte_count += nbytes_to_move;
 			current_buffer_position += nbytes_to_move;
@@ -422,7 +422,7 @@ public:
 	{}
 
 	void
-	operator()(async::channel::ptr const& chan, std::deque<mutable_buffer>&& bufs, std::error_code err)
+	operator()(async::channel::ptr const& chan, std::deque<util::mutable_buffer>&& bufs, std::error_code err)
 	{
 		if (m_handler)
 		{
@@ -437,12 +437,12 @@ private:
 
 void
 tcp_framed_channel_uv::really_write(
-		mutable_buffer&&              buf,
+		util::mutable_buffer&&                 buf,
 		std::error_code&                       err,
 		async::channel::write_buffer_handler&& handler)
 {
 	err.clear();
-	std::deque<mutable_buffer> frame_bufs;
+	std::deque<util::mutable_buffer> frame_bufs;
 	frame_bufs.emplace_back(pack_frame_header(buf.size()));
 	frame_bufs.emplace_back(std::move(buf));
 
@@ -457,12 +457,12 @@ tcp_framed_channel_uv::really_write(
 
 void
 tcp_framed_channel_uv::really_write(
-		mutable_buffer&&                   buf,
+		util::mutable_buffer&&                      buf,
 		std::error_code&                            err,
 		async::channel::write_buffer_handler const& handler)
 {
 	err.clear();
-	std::deque<mutable_buffer> frame_bufs;
+	std::deque<util::mutable_buffer> frame_bufs;
 	frame_bufs.emplace_back(pack_frame_header(buf.size()));
 	frame_bufs.emplace_back(std::move(buf));
 
@@ -477,7 +477,7 @@ tcp_framed_channel_uv::really_write(
 
 void
 tcp_framed_channel_uv::really_write(
-		std::deque<mutable_buffer>&&   bufs,
+		std::deque<util::mutable_buffer>&&      bufs,
 		std::error_code&                        err,
 		async::channel::write_buffers_handler&& handler)
 {
@@ -498,7 +498,7 @@ tcp_framed_channel_uv::really_write(
 
 void
 tcp_framed_channel_uv::really_write(
-		std::deque<mutable_buffer>&&        bufs,
+		std::deque<util::mutable_buffer>&&           bufs,
 		std::error_code&                             err,
 		async::channel::write_buffers_handler const& handler)
 {

@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/util/shared_ptr.h>
-#include <logicmill/util/allocator.h>
 #include <doctest.h>
 #include <iostream>
+#include <logicmill/util/allocator.h>
+#include <logicmill/util/shared_ptr.h>
 
 using namespace logicmill;
 using namespace util;
@@ -35,13 +35,15 @@ namespace shared_ptr_test
 
 static bool free_mem_called{false};
 
-void* get_mem(unsigned long bytes)
+void*
+get_mem(unsigned long bytes)
 {
 	std::cout << "get_mem: " << bytes << std::endl;
 	return ::malloc(bytes);
 }
 
-void free_mem(void* p, unsigned long bytes)
+void
+free_mem(void* p, unsigned long bytes)
 {
 	std::cout << "free_mem: " << bytes << std::endl;
 	free_mem_called = true;
@@ -50,38 +52,39 @@ void free_mem(void* p, unsigned long bytes)
 
 UTIL_ALLOCATOR_POLICY(malloc_policy, get_mem, free_mem);
 
-class foo 
+class foo
 {
 public:
-
 	foo(int i, std::string const& s) : m_ival{i}, m_sval{s} {}
 
 	foo(foo const& f) : m_ival{f.m_ival}, m_sval{f.m_sval} {}
 
 	foo(foo&& f) : m_ival{f.m_ival}, m_sval{std::move(f.m_sval)} {}
 
-	int num() const
+	int
+	num() const
 	{
 		return m_ival;
 	}
 
-	std::string const& str() const
+	std::string const&
+	str() const
 	{
 		return m_sval;
 	}
 
 private:
-	int m_ival;
+	int         m_ival;
 	std::string m_sval;
- };
+};
 
 class bar : public foo
 {
 public:
-
 	bar(int i, std::string const& s, double d) : foo{i, s}, m_fpnum{d} {}
 
-	double dnum() const
+	double
+	dnum() const
 	{
 		return m_fpnum;
 	}
@@ -94,7 +97,6 @@ private:
 class foov
 {
 public:
-
 	virtual ~foov() {}
 
 	foov(int i, std::string const& s) : m_ival{i}, m_sval{s} {}
@@ -103,28 +105,30 @@ public:
 
 	foov(foov&& f) : m_ival{f.m_ival}, m_sval{std::move(f.m_sval)} {}
 
-	int num() const
+	int
+	num() const
 	{
 		return m_ival;
 	}
 
-	std::string const& str() const
+	std::string const&
+	str() const
 	{
 		return m_sval;
 	}
 
 private:
-	int m_ival;
+	int         m_ival;
 	std::string m_sval;
- };
+};
 
 class barv : public foov
 {
 public:
-
 	barv(int i, std::string const& s, double d) : foov{i, s}, m_fpnum{d} {}
 
-	double dnum() const
+	double
+	dnum() const
 	{
 		return m_fpnum;
 	}
@@ -135,7 +139,8 @@ private:
 
 struct int_malloc
 {
-	int* operator()() const
+	int*
+	operator()() const
 	{
 		return static_cast<int*>(::malloc(sizeof(int)));
 	}
@@ -145,7 +150,8 @@ static int int_free_call_count{0};
 
 struct int_free
 {
-	void operator()(int* p) const
+	void
+	operator()(int* p) const
 	{
 		++int_free_call_count;
 		::free(p);
@@ -330,8 +336,8 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr dynamic_poin
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter }")
 {
-	int* ip = shared_ptr_test::int_malloc{}();
-	*ip = 27;
+	int* ip                 = shared_ptr_test::int_malloc{}();
+	*ip                     = 27;
 	util::shared_ptr<int> p = util::shared_ptr<int>{ip, shared_ptr_test::int_free{}};
 	util::shared_ptr<int> p_copy{p};
 	CHECK(p.use_count() == 2);
@@ -348,7 +354,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocate }")
 {
-	using zallocator = util::allocator<std::string, shared_ptr_test::malloc_policy<std::string>>;
+	using zallocator                 = util::allocator<std::string, shared_ptr_test::malloc_policy<std::string>>;
 	util::shared_ptr<std::string> sp = util::allocate_shared<std::string>(zallocator{}, "zoot");
 	util::shared_ptr<std::string> sp_copy{sp};
 	CHECK(sp.use_count() == 2);
@@ -361,7 +367,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocat
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocate_shared }")
 {
-	using zallocator = util::allocator<std::string, shared_ptr_test::malloc_policy<std::string>>;
+	using zallocator                 = util::allocator<std::string, shared_ptr_test::malloc_policy<std::string>>;
 	util::shared_ptr<std::string> sp = util::allocate_shared<std::string>(zallocator{}, "zoot");
 	util::shared_ptr<std::string> sp_copy{sp};
 	CHECK(sp.use_count() == 2);
@@ -375,10 +381,10 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocat
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter and allocator }")
 {
 	shared_ptr_test::int_free_call_count = 0;
-	using zallocator = util::allocator<int, shared_ptr_test::malloc_policy<int>>;
-	int* ip = shared_ptr_test::int_malloc{}();
-	*ip = 27;
-	util::shared_ptr<int> p = util::shared_ptr<int>{ip, shared_ptr_test::int_free{}, zallocator{}};
+	using zallocator                     = util::allocator<int, shared_ptr_test::malloc_policy<int>>;
+	int* ip                              = shared_ptr_test::int_malloc{}();
+	*ip                                  = 27;
+	util::shared_ptr<int> p              = util::shared_ptr<int>{ip, shared_ptr_test::int_free{}, zallocator{}};
 	util::shared_ptr<int> p_copy{p};
 	CHECK(p.use_count() == 2);
 	CHECK(p_copy == p);
@@ -392,14 +398,19 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 
 	std::cout << "size of shared_ptr is " << sizeof(util::shared_ptr<int>) << std::endl;
 	std::cout << "size of std::string is " << sizeof(std::string) << std::endl;
-	std::cout << "size of ptr_ctrl_blk is " << sizeof(util::detail::ptr_ctrl_blk<std::string, std::default_delete<std::string>, std::allocator<std::string>>) << std::endl;
-	std::cout << "size of value_control_block is " << sizeof(util::detail::value_ctrl_blk<std::string, std::allocator<std::string>>) << std::endl;
+	std::cout
+			<< "size of ptr_ctrl_blk is "
+			<< sizeof(util::detail::
+							  ptr_ctrl_blk<std::string, std::default_delete<std::string>, std::allocator<std::string>>)
+			<< std::endl;
+	std::cout << "size of value_control_block is "
+			  << sizeof(util::detail::value_ctrl_blk<std::string, std::allocator<std::string>>) << std::endl;
 	std::cout << "size of control_blk is " << sizeof(util::detail::ctrl_blk) << std::endl;
 }
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct from unique_ptr }")
 {
-	std::unique_ptr<std::string> ups{new std::string{"zoot"}};
+	std::unique_ptr<std::string>  ups{new std::string{"zoot"}};
 	util::shared_ptr<std::string> sps{std::move(ups)};
 	CHECK(*sps == "zoot");
 	CHECK(ups.get() == nullptr);
@@ -407,7 +418,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct fr
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { weak_ptr construct from shared_ptr }")
 {
-	auto sp0 = util::make_shared<std::string>("zoot");
+	auto                        sp0 = util::make_shared<std::string>("zoot");
 	util::weak_ptr<std::string> wp{sp0};
 	CHECK(wp.weak_count() == 2);
 	CHECK(wp.use_count() == 1);
@@ -436,11 +447,9 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { weak_ptr construct from share
 		util::shared_ptr<std::string> sp3{wp};
 		CHECK(false);
 	}
-	catch(std::bad_weak_ptr const& e)
+	catch (std::bad_weak_ptr const& e)
 	{
 		caught = true;
 	}
 	CHECK(caught);
 }
-
-

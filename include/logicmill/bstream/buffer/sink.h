@@ -36,7 +36,7 @@ namespace logicmill
 {
 namespace bstream
 {
-namespace memory
+namespace buffer
 {
 
 namespace detail
@@ -115,7 +115,7 @@ protected:
 	util::mutable_buffer m_buf;
 };
 
-}    // namespace memory
+}    // namespace buffer
 }    // namespace bstream
 }    // namespace logicmill
 

@@ -62,7 +62,6 @@ set(LOGICMILL_SRCS
 	include/logicmill/async/error.h
 	include/logicmill/async/event_flow.h
 	include/logicmill/async/channel.h
-	include/logicmill/buffer.h
 
 	include/logicmill/armi/client_context.h
 	include/logicmill/armi/client_context_base.h
@@ -98,6 +97,7 @@ set(LOGICMILL_SRCS
 	include/logicmill/util/preprocessor.h
 	include/logicmill/util/shareable.h
 	include/logicmill/util/shared_ptr.h
+	include/logicmill/util/buffer.h
 
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
@@ -127,8 +127,9 @@ set(LOGICMILL_SRCS
 	src/armi/interface_stub_base.cpp
 	src/armi/server_context_base.cpp
 
-	src/fs_impl.cpp
-	src/buffer.cpp)
+	src/util/buffer.cpp
+
+	src/fs_impl.cpp)
 
 set(LOGICMILL_TEST_SRCS
 	test/bstream/abstract_source.cpp

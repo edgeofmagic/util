@@ -117,7 +117,8 @@ bstream::sink::put(byte_type byte, std::error_code& err)
 	if (m_did_jump)
 	{
 		really_jump(err);
-		if (err) goto exit;
+		if (err)
+			goto exit;
 	}
 	if (m_base == nullptr || m_next >= m_end)
 	{
@@ -172,7 +173,8 @@ bstream::sink::putn(const byte_type* src, size_type n, std::error_code& err)
 	if (m_did_jump)
 	{
 		really_jump(err);
-		if (err) goto exit;
+		if (err)
+			goto exit;
 	}
 
 	if (n <= static_cast<size_type>(m_end - m_next))    // optimize for common case ( no overflow )
@@ -276,7 +278,8 @@ bstream::sink::filln(const byte_type fill_byte, size_type n, std::error_code& er
 	if (m_did_jump)
 	{
 		really_jump(err);
-		if (err) goto exit;
+		if (err)
+			goto exit;
 	}
 
 	really_fill(fill_byte, n);
@@ -473,7 +476,7 @@ bstream::sink::really_jump(std::error_code& err)
 	err.clear();
 	assert(m_did_jump);
 	assert(is_valid_position(m_jump_to));
-	assert(!m_dirty); // previously flushed
+	assert(!m_dirty);    // previously flushed
 
 	auto hwm = get_high_watermark();
 

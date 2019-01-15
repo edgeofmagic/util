@@ -39,7 +39,12 @@ file::sink::sink(sink&& rhs)
 	  m_fd{rhs.m_fd}
 {}
 
-file::sink::sink(std::string const& filename, open_mode mode, size_type buffer_size, byte_order order, std::error_code& err)
+file::sink::sink(
+		std::string const& filename,
+		open_mode          mode,
+		size_type          buffer_size,
+		byte_order         order,
+		std::error_code&   err)
 	: base{order},
 	  m_buf{buffer_size},
 	  m_filename{filename},
@@ -101,10 +106,6 @@ file::sink::sink(std::string const& filename, open_mode mode, size_type buffer_s
 		throw std::system_error{err};
 	}
 }
-
-
-
-
 
 
 file::sink::sink(open_mode mode, size_type buffer_size, byte_order order)

@@ -44,7 +44,7 @@ public:
 
 	using base::get_surface;
 
-	using read_handler    = std::function<void(std::deque<const_buffer>&&)>;
+	using read_handler    = std::function<void(std::deque<util::const_buffer>&&)>;
 	using control_handler = std::function<void(control_state)>;
 	using error_handler   = std::function<void(std::error_code)>;
 
@@ -78,7 +78,7 @@ public:
 	}
 
 	void
-	write(std::deque<mutable_buffer>&& bufs)
+	write(std::deque<util::mutable_buffer>&& bufs)
 	{
 		emit<mutable_data_event>(std::move(bufs));
 	}
@@ -119,7 +119,7 @@ public:
 	}
 
 	void
-	on(const_data_event, std::deque<const_buffer>&& bufs)
+	on(const_data_event, std::deque<util::const_buffer>&& bufs)
 	{
 		m_read_handler(std::move(bufs));
 	}
@@ -142,7 +142,7 @@ private:
 	error_handler   m_error_handler;
 };
 
-}    // namespace async
+}    // namespace laps
 }    // namespace logicmill
 
 #endif    // LOGICMILL_LAPS_DRIVER_H

@@ -86,7 +86,7 @@ private:
 			{
 				m_client_context.channel(chan);
 				m_client_context.channel()->start_read(
-						err, [=](async::channel::ptr const& chan, const_buffer&& buf, std::error_code err) {
+						err, [=](async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err) {
 							if (err)
 							{
 								m_client_context.really_close(err);

@@ -26,8 +26,8 @@
 #define LOGICMILL_BSTREAM_SOURCE_H
 
 #include <boost/endian/conversion.hpp>
-#include <logicmill/buffer.h>
 #include <logicmill/bstream/types.h>
+#include <logicmill/util/buffer.h>
 
 namespace bend = boost::endian;
 
@@ -52,7 +52,7 @@ public:
 	{}
 
 	source(source const&) = delete;
-	
+
 	source&
 	operator=(source&&)
 			= delete;
@@ -91,16 +91,16 @@ public:
 	byte_type
 	peek();
 
-	virtual shared_buffer
+	virtual util::shared_buffer
 	get_shared_slice(size_type n, std::error_code& err);
 
-	virtual shared_buffer
+	virtual util::shared_buffer
 	get_shared_slice(size_type n);
 
-	virtual const_buffer
+	virtual util::const_buffer
 	get_slice(size_type n, std::error_code& err);
 
-	virtual const_buffer
+	virtual util::const_buffer
 	get_slice(size_type n);
 
 	size_type
@@ -438,7 +438,7 @@ protected:
 	const byte_type* m_base;
 	const byte_type* m_next;
 	const byte_type* m_end;
-	bool m_reverse;
+	bool             m_reverse;
 };
 
 }    // namespace bstream

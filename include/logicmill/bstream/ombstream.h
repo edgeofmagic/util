@@ -45,7 +45,7 @@ public:
 		: obstream{std::move(strmbuf), cntxt}
 	{}
 
-	ombstream(mutable_buffer&& buf, context_base const& cntxt = get_default_context())
+	ombstream(util::mutable_buffer&& buf, context_base const& cntxt = get_default_context())
 		: obstream{std::make_unique<memory::sink>(std::move(buf), cntxt.get_context_impl()->byte_order()), cntxt}
 	{}
 
@@ -54,24 +54,27 @@ public:
 	{}
 
 	ombstream(context_base const& cntxt = get_default_context())
-		: ombstream{std::make_unique<memory::sink>(mutable_buffer{cntxt.get_context_impl()->buffer_size(),
-																  }, cntxt.get_context_impl()->byte_order()),
+		: ombstream{std::make_unique<memory::sink>(
+							util::mutable_buffer{
+									cntxt.get_context_impl()->buffer_size(),
+							},
+							cntxt.get_context_impl()->byte_order()),
 					cntxt}
 	{}
 
-	const_buffer
+	util::const_buffer
 	get_buffer()
 	{
 		return get_membuf().get_buffer();
 	}
 
-	mutable_buffer&
+	util::mutable_buffer&
 	get_buffer_ref()
 	{
 		return get_membuf().get_buffer_ref();
 	}
 
-	const_buffer
+	util::const_buffer
 	release_buffer()
 	{
 		return get_membuf().release_buffer();
@@ -83,7 +86,7 @@ public:
 		get_membuf().clear();
 	}
 
-	mutable_buffer
+	util::mutable_buffer
 	release_mutable_buffer()
 	{
 		return get_membuf().release_mutable_buffer();

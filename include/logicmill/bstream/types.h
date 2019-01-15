@@ -25,11 +25,11 @@
 #ifndef LOGICMILL_BSTREAM_TYPES_H
 #define LOGICMILL_BSTREAM_TYPES_H
 
+#include <boost/endian/conversion.hpp>
 #include <cstdint>
 #include <limits>
-#include <system_error>
-#include <boost/endian/conversion.hpp>
 #include <logicmill/types.h>
+#include <system_error>
 
 namespace logicmill
 {
@@ -61,7 +61,8 @@ enum class byte_order
 	little_endian
 };
 
-constexpr bool is_reverse(byte_order order)
+constexpr bool
+is_reverse(byte_order order)
 {
 	return boost::endian::order::native
 		   != ((order == byte_order::big_endian) ? boost::endian::order::big : boost::endian::order::little);

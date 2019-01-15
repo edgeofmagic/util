@@ -73,7 +73,7 @@ public:
 	}
 
 	void
-	send_reply(async::channel::ptr const& chan, mutable_buffer&& buf);
+	send_reply(async::channel::ptr const& chan, util::mutable_buffer&& buf);
 
 	std::shared_ptr<void>
 	get_impl(std::size_t index)

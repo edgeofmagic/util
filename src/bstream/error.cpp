@@ -29,27 +29,27 @@ using namespace logicmill;
 class bstream_category_impl : public std::error_category
 {
 public:
-	virtual const char* 
+	virtual const char*
 	name() const noexcept override;
 
-	virtual std::string 
-	message( int ev ) const noexcept override;
+	virtual std::string
+	message(int ev) const noexcept override;
 
 	virtual std::error_condition
 	default_error_condition(int ev) const noexcept override;
 };
 
-const char* 
+const char*
 bstream_category_impl::name() const noexcept
 {
-    return "bstream";
+	return "bstream";
 }
 
-std::string 
-bstream_category_impl::message(int ev ) const noexcept
+std::string
+bstream_category_impl::message(int ev) const noexcept
 {
-    switch ( static_cast< bstream::errc > (ev ) )
-    {
+	switch (static_cast<bstream::errc>(ev))
+	{
 		case bstream::errc::ok:
 			return "success";
 		case bstream::errc::read_past_end_of_stream:
@@ -141,13 +141,13 @@ bstream_category_impl::message(int ev ) const noexcept
 
 		default:
 			return "unknown bstream error";
-    }
+	}
 }
 
 std::error_condition
 bstream_category_impl::default_error_condition(int ev) const noexcept
 {
-	switch ( static_cast< bstream::errc > ( ev ) )
+	switch (static_cast<bstream::errc>(ev))
 	{
 		case bstream::errc::expected_nil:
 		case bstream::errc::invalid_header_for_shared_ptr:
@@ -180,7 +180,7 @@ bstream_category_impl::default_error_condition(int ev) const noexcept
 		case bstream::errc::num_deser_type_error_uint64:
 		case bstream::errc::val_deser_type_error_string:
 		case bstream::errc::val_deser_type_error_string_view:
-			return std::error_condition( static_cast< int >( bstream::errc::type_error ), *this );
+			return std::error_condition(static_cast<int>(bstream::errc::type_error), *this);
 
 		default:
 			return std::error_condition(ev, *this);
@@ -190,20 +190,18 @@ bstream_category_impl::default_error_condition(int ev) const noexcept
 std::error_category const&
 bstream::error_category() noexcept
 {
-    static bstream_category_impl instance;
-    return instance;
+	static bstream_category_impl instance;
+	return instance;
 }
 
-std::error_condition 
-bstream::make_error_condition( errc e )
+std::error_condition
+bstream::make_error_condition(errc e)
 {
-    return std::error_condition( static_cast< int >( e ), bstream::error_category() );
+	return std::error_condition(static_cast<int>(e), bstream::error_category());
 }
 
-std::error_code 
-bstream::make_error_code( errc e )
+std::error_code
+bstream::make_error_code(errc e)
 {
-    return std::error_code( static_cast< int >( e ), bstream::error_category() );
+	return std::error_code(static_cast<int>(e), bstream::error_category());
 }
-
-

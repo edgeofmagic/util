@@ -28,7 +28,7 @@ using namespace logicmill;
 using namespace bstream;
 
 void
-compound_memory::sink::really_overflow( size_type n, std::error_code& err )
+compound_memory::sink::really_overflow(size_type n, std::error_code& err)
 {
 	err.clear();
 	if (m_base == nullptr)
@@ -37,17 +37,17 @@ compound_memory::sink::really_overflow( size_type n, std::error_code& err )
 		assert(m_current == 0);
 		assert(get_high_watermark() == 0);
 		assert(m_did_jump = false);
-    	assert(m_dirty = false);
+		assert(m_dirty = false);
 		assert(m_base_offset = 0);
-		// m_bufs.emplace_back( mutable_buffer{ m_segment_capacity, m_broker } );
-		m_bufs.emplace_back( m_factory->create(m_segment_capacity) );
-        reset_ptrs();
+		// m_bufs.emplace_back( util::mutable_buffer{ m_segment_capacity, m_broker } );
+		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
+		reset_ptrs();
 	}
-	assert( ppos() == ( m_current + 1 ) * m_segment_capacity );
-	m_bufs[ m_current ].size( m_segment_capacity );
-	if ( m_current == m_bufs.size() - 1 ) // last buffer in deque, extend deque
+	assert(ppos() == (m_current + 1) * m_segment_capacity);
+	m_bufs[m_current].size(m_segment_capacity);
+	if (m_current == m_bufs.size() - 1)    // last buffer in deque, extend deque
 	{
-		m_bufs.emplace_back( m_factory->create(m_segment_capacity) );
+		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
 	}
 	else
 	{
@@ -58,28 +58,28 @@ compound_memory::sink::really_overflow( size_type n, std::error_code& err )
 }
 
 bool
-compound_memory::sink::is_valid_position( position_type pos ) const
+compound_memory::sink::is_valid_position(position_type pos) const
 {
-    return pos >= 0;
+	return pos >= 0;
 }
 
-compound_memory::sink& 
+compound_memory::sink&
 compound_memory::sink::clear() noexcept
 {
 	reset_high_water_mark();
-	m_bufs.resize( 1 );
+	m_bufs.resize(1);
 	m_current = 0;
-	m_bufs[ m_current ].size( 0 );
+	m_bufs[m_current].size(0);
 	reset_ptrs();
 	m_did_jump = false;
-	m_dirty = false;
+	m_dirty    = false;
 	return *this;
 }
 
 compound_memory::sink::buffers&
 compound_memory::sink::get_buffers()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
@@ -91,27 +91,27 @@ void
 compound_memory::sink::set_size()
 {
 	auto hwm = get_high_watermark();
-	if ( hwm == 0 )
+	if (hwm == 0)
 	{
-		assert( m_bufs.size() == 1 );
-		assert( m_current == 0 );
-		m_bufs[ m_current ].size( 0 );
+		assert(m_bufs.size() == 1);
+		assert(m_current == 0);
+		m_bufs[m_current].size(0);
 	}
 	else
 	{
 		auto hwm_segment = hwm / m_segment_capacity;
 		auto hwm_seg_pos = hwm % m_segment_capacity;
-		if ( hwm_seg_pos == 0 )
+		if (hwm_seg_pos == 0)
 		{
-			assert( hwm_segment > 0 );
+			assert(hwm_segment > 0);
 			// set ptrs to end of previous buffer; will immediately overflow
 			--hwm_segment;
 			hwm_seg_pos = m_segment_capacity;
 		}
-		assert( hwm_segment == m_bufs.size() - 1 );
-		assert( hwm_seg_pos > 0 && hwm_seg_pos <= m_segment_capacity );
+		assert(hwm_segment == m_bufs.size() - 1);
+		assert(hwm_seg_pos > 0 && hwm_seg_pos <= m_segment_capacity);
 
-		m_bufs[ hwm_segment ].size( hwm_seg_pos );
+		m_bufs[hwm_segment].size(hwm_seg_pos);
 	}
 }
 
@@ -119,88 +119,90 @@ compound_memory::sink::set_size()
 compound_memory::sink::buffers
 compound_memory::sink::release_buffers()
 {
-	if ( m_dirty )
+	if (m_dirty)
 	{
 		flush();
 	}
 
 	set_size();
 
-    reset_high_water_mark();
-	m_did_jump = false;
-    m_dirty = false;
+	reset_high_water_mark();
+	m_did_jump    = false;
+	m_dirty       = false;
 	m_base_offset = 0;
-	m_current = 0;
-    set_ptrs( nullptr, nullptr, nullptr );
-    return std::move( m_bufs );
+	m_current     = 0;
+	set_ptrs(nullptr, nullptr, nullptr);
+	return std::move(m_bufs);
 }
 
 void
-compound_memory::sink::really_jump( std::error_code& err )
+compound_memory::sink::really_jump(std::error_code& err)
 {
 	err.clear();
-	assert( m_did_jump );
-	assert( is_valid_position( m_jump_to ) );
-	assert( ! m_dirty );
+	assert(m_did_jump);
+	assert(is_valid_position(m_jump_to));
+	assert(!m_dirty);
 
 	auto hwm = get_high_watermark();
 
-    if ( hwm < m_jump_to )
-    {
+	if (hwm < m_jump_to)
+	{
 		auto gap = m_jump_to - hwm;
 
-		if ( ppos() != hwm )
+		if (ppos() != hwm)
 		{
-			locate( hwm, err );
-			if ( err ) goto exit;
+			locate(hwm, err);
+			if (err)
+				goto exit;
 		}
 
-		really_fill( 0, gap );
-    }
-    else
-    {
-		locate( m_jump_to, err );
-		if ( err ) goto exit;
-    }
+		really_fill(0, gap);
+	}
+	else
+	{
+		locate(m_jump_to, err);
+		if (err)
+			goto exit;
+	}
 
-	assert( ppos() == m_jump_to );
+	assert(ppos() == m_jump_to);
 
 exit:
 	m_did_jump = false;
 }
 
 void
-compound_memory::sink::locate( position_type pos, std::error_code& err )
+compound_memory::sink::locate(position_type pos, std::error_code& err)
 {
 	err.clear();
-	assert( pos <= get_high_watermark() );
-	if ( pos == 0 )
+	assert(pos <= get_high_watermark());
+	if (pos == 0)
 	{
-		assert( m_bufs.size() == 1 );
+		assert(m_bufs.size() == 1);
 		m_current = 0;
 		reset_ptrs();
 	}
 	else
 	{
 		auto new_current = pos / m_segment_capacity;
-		auto seg_pos = pos % m_segment_capacity;
-		if ( seg_pos == 0 )
+		auto seg_pos     = pos % m_segment_capacity;
+		if (seg_pos == 0)
 		{
-			assert( new_current > 0 );
+			assert(new_current > 0);
 			// set ptrs to end of previous buffer; will immediately overflow
 			--new_current;
 			seg_pos = m_segment_capacity;
 		}
-		if ( new_current >= m_bufs.size() )
+		if (new_current >= m_bufs.size())
 		{
-			err = make_error_code( std::errc::invalid_argument );
+			err = make_error_code(std::errc::invalid_argument);
 		}
 		else
 		{
-			m_current = new_current;
+			m_current     = new_current;
 			m_base_offset = m_current * m_segment_capacity;
-			auto new_base = m_bufs[ m_current ].data();
-			set_ptrs( new_base, new_base + seg_pos, new_base + m_segment_capacity );
+			auto new_base = m_bufs[m_current].data();
+			set_ptrs(new_base, new_base + seg_pos, new_base + m_segment_capacity);
 		}
 	}
 }

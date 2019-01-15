@@ -62,7 +62,7 @@ class sink_test_probe : public bstream::detail::sink_test_probe
 public:
 	sink_test_probe(memory::sink& target) : bstream::detail::sink_test_probe{target}, m_target{target} {}
 
-	mutable_buffer&
+	util::mutable_buffer&
 	buffer()
 	{
 		return m_target.m_buf;

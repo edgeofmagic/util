@@ -91,7 +91,7 @@ public:
 		: m_context{cntxt.get_context_impl()},
 		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
 		  m_strmbuf{std::move(strmbuf)}
-		//   m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
+	//   m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
 	{}
 
 	bstream::source&
@@ -211,25 +211,25 @@ public:
 		return m_strmbuf->get_num<U>(err);
 	}
 
-	shared_buffer
+	util::shared_buffer
 	get_shared_slice(size_type nbytes)
 	{
 		return m_strmbuf->get_shared_slice(nbytes);
 	}
 
-	shared_buffer
+	util::shared_buffer
 	get_shared_slice(size_type nbytes, std::error_code& err)
 	{
 		return m_strmbuf->get_shared_slice(nbytes, err);
 	}
 
-	const_buffer
+	util::const_buffer
 	get_slice(size_type nbytes)
 	{
 		return m_strmbuf->get_slice(nbytes);
 	}
 
-	const_buffer
+	util::const_buffer
 	get_slice(size_type nbytes, std::error_code& err)
 	{
 		return m_strmbuf->get_slice(nbytes, err);
@@ -449,48 +449,48 @@ public:
 	std::size_t
 	read_blob_header(std::error_code& ec);
 
-	logicmill::shared_buffer
+	util::shared_buffer
 	read_blob_body_shared(std::size_t nbytes)
 	{
 		return get_shared_slice(nbytes);
 	}
 
-	logicmill::shared_buffer
+	util::shared_buffer
 	read_blob_body_shared(std::size_t nbytes, std::error_code& ec)
 	{
 		return get_shared_slice(nbytes, ec);
 	}
 
-	logicmill::const_buffer
+	util::const_buffer
 	read_blob_body(std::size_t nbytes)
 	{
 		return get_slice(nbytes);
 	}
 
-	logicmill::const_buffer
+	util::const_buffer
 	read_blob_body(std::size_t nbytes, std::error_code& ec)
 	{
 		return get_slice(nbytes, ec);
 	}
 
-	logicmill::shared_buffer
+	util::shared_buffer
 	read_blob_shared()
 	{
 		auto nbytes = read_blob_header();
 		return read_blob_body_shared(nbytes);
 	}
 
-	logicmill::shared_buffer
+	util::shared_buffer
 	read_blob_shared(std::error_code& ec);
 
-	logicmill::const_buffer
+	util::const_buffer
 	read_blob(as_const_buffer tag)
 	{
 		auto nbytes = read_blob_header();
 		return read_blob_body(nbytes);
 	}
 
-	logicmill::const_buffer
+	util::const_buffer
 	read_blob(std::error_code& ec);
 
 	std::size_t
@@ -499,25 +499,25 @@ public:
 	std::size_t
 	read_ext_header(std::uint8_t& ext_type, std::error_code& ec);
 
-	logicmill::shared_buffer
+	util::shared_buffer
 	read_ext_body_shared(std::size_t nbytes)
 	{
 		return get_shared_slice(nbytes);
 	}
 
-	logicmill::shared_buffer
+	util::shared_buffer
 	read_ext_body_shared(std::size_t nbytes, std::error_code& ec)
 	{
 		return get_shared_slice(nbytes, ec);
 	}
 
-	logicmill::const_buffer
+	util::const_buffer
 	read_ext_body(std::size_t nbytes)
 	{
 		return get_slice(nbytes);
 	}
 
-	logicmill::const_buffer
+	util::const_buffer
 	read_ext_body(std::size_t nbytes, std::error_code& ec)
 	{
 		return get_slice(nbytes, ec);
@@ -560,10 +560,10 @@ public:
 		position(0, err);
 	}
 
-	const_buffer
+	util::const_buffer
 	get_msgpack_obj_buf();
 
-	const_buffer
+	util::const_buffer
 	get_msgpack_obj_buf(std::error_code& ec)
 	{
 		ec.clear();
@@ -574,7 +574,7 @@ public:
 		catch (std::system_error const& e)
 		{
 			ec = e.code();
-			return const_buffer{};
+			return util::const_buffer{};
 		}
 	}
 
@@ -703,9 +703,9 @@ protected:
 	read_error_code();
 
 	void
-	ingest(bufwriter& os);
+	ingest(util::bufwriter& os);
 
-	std::unique_ptr<bufwriter>               m_bufwriter = nullptr;
+	std::unique_ptr<util::bufwriter>         m_bufwriter = nullptr;
 	std::shared_ptr<const context_impl_base> m_context;
 	std::unique_ptr<ptr_deduper>             m_ptr_deduper;
 	std::unique_ptr<bstream::source>         m_strmbuf;
@@ -1163,21 +1163,21 @@ struct value_deserializer<std::string>
 };
 
 template<>
-struct value_deserializer<logicmill::string_alias>
+struct value_deserializer<util::string_alias>
 {
-	logicmill::string_alias
+	util::string_alias
 	operator()(ibstream& is) const
 	{
 		return get(is);
 	}
 
-	static logicmill::string_alias
+	static util::string_alias
 	get(ibstream& is, std::size_t length)
 	{
-		return logicmill::string_alias{is.get_shared_slice(length)};
+		return util::string_alias{is.get_shared_slice(length)};
 	}
 
-	static logicmill::string_alias
+	static util::string_alias
 	get(ibstream& is)
 	{
 		auto tcode = is.get();
@@ -1578,15 +1578,15 @@ struct value_deserializer<std::unique_ptr<T>>
 };
 
 template<>
-struct value_deserializer<logicmill::const_buffer>
+struct value_deserializer<util::const_buffer>
 {
-	logicmill::const_buffer
+	util::const_buffer
 	operator()(ibstream& is) const
 	{
 		return get(is);
 	}
 
-	static logicmill::const_buffer
+	static util::const_buffer
 	get(ibstream& is)
 	{
 		return is.read_blob(as_const_buffer{});
@@ -1594,15 +1594,15 @@ struct value_deserializer<logicmill::const_buffer>
 };
 
 template<>
-struct value_deserializer<logicmill::shared_buffer>
+struct value_deserializer<util::shared_buffer>
 {
-	logicmill::shared_buffer
+	util::shared_buffer
 	operator()(ibstream& is) const
 	{
 		return get(is);
 	}
 
-	static logicmill::shared_buffer
+	static util::shared_buffer
 	get(ibstream& is)
 	{
 		return is.read_blob_shared();

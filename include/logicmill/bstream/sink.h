@@ -26,8 +26,8 @@
 #define LOGICMILL_BSTREAM_SINK_H
 
 #include <boost/endian/conversion.hpp>
-#include <logicmill/buffer.h>
 #include <logicmill/bstream/types.h>
+#include <logicmill/util/buffer.h>
 #include <system_error>
 
 namespace bend = boost::endian;
@@ -179,13 +179,13 @@ public:
 	putn(const byte_type* src, size_type n);
 
 	void
-	putn(buffer const& buf)
+	putn(util::buffer const& buf)
 	{
 		putn(buf.data(), buf.size());
 	}
 
 	void
-	putn(buffer const& buf, std::error_code& err)
+	putn(util::buffer const& buf, std::error_code& err)
 	{
 		putn(buf.data(), buf.size(), err);
 	}
@@ -227,7 +227,7 @@ public:
 			{
 				m_dirty_start = m_next;
 			}
-			m_dirty   = true;
+			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -242,8 +242,8 @@ public:
 		}
 		else
 		{
-			ctype cval
-					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+			ctype cval = m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value))
+								   : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize);
 		}
 	}
@@ -261,7 +261,8 @@ public:
 		if (m_did_jump)
 		{
 			really_jump(err);
-			if (err) goto exit;
+			if (err)
+				goto exit;
 		}
 
 		if ((m_end - m_next) >= usize)
@@ -270,7 +271,7 @@ public:
 			{
 				m_dirty_start = m_next;
 			}
-			m_dirty   = true;
+			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -285,8 +286,8 @@ public:
 		}
 		else
 		{
-			ctype cval
-					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+			ctype cval = m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value))
+								   : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
 
@@ -317,7 +318,7 @@ public:
 			{
 				m_dirty_start = m_next;
 			}
-			m_dirty   = true;
+			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -336,8 +337,8 @@ public:
 		}
 		else
 		{
-			ctype cval
-					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+			ctype cval = m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value))
+								   : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize);
 		}
 	}
@@ -355,7 +356,8 @@ public:
 		if (m_did_jump)
 		{
 			really_jump(err);
-			if (err) goto exit;
+			if (err)
+				goto exit;
 		}
 
 		if ((m_end - m_next) >= usize)
@@ -364,7 +366,7 @@ public:
 			{
 				m_dirty_start = m_next;
 			}
-			m_dirty   = true;
+			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -383,8 +385,8 @@ public:
 		}
 		else
 		{
-			ctype cval
-					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+			ctype cval = m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value))
+								   : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
 	exit:
@@ -414,7 +416,7 @@ public:
 			{
 				m_dirty_start = m_next;
 			}
-			m_dirty   = true;
+			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -441,8 +443,8 @@ public:
 		}
 		else
 		{
-			ctype cval
-					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+			ctype cval = m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value))
+								   : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize);
 		}
 	}
@@ -460,7 +462,8 @@ public:
 		if (m_did_jump)
 		{
 			really_jump(err);
-			if (err) goto exit;
+			if (err)
+				goto exit;
 		}
 
 		if ((m_end - m_next) >= usize)
@@ -469,7 +472,7 @@ public:
 			{
 				m_dirty_start = m_next;
 			}
-			m_dirty   = true;
+			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -496,8 +499,8 @@ public:
 		}
 		else
 		{
-			ctype cval
-					= m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value)) : reinterpret_cast<ctype&>(value);
+			ctype cval = m_reverse ? bend::endian_reverse(reinterpret_cast<ctype&>(value))
+								   : reinterpret_cast<ctype&>(value);
 			putn(reinterpret_cast<byte_type*>(&cval), usize, err);
 		}
 	exit:
@@ -618,7 +621,7 @@ protected:
 	byte_type*    m_dirty_start;
 	bool          m_dirty;
 	bool          m_did_jump;
-	bool		m_reverse;
+	bool          m_reverse;
 };
 
 }    // namespace bstream

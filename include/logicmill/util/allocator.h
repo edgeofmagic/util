@@ -33,15 +33,16 @@
 #include <cstddef>
 #include <new>
 
-#define UTIL_ALLOCATOR_ALIAS(_alias_name_, _policy_name_, ...) \
-using _alias_name_ = logicmill::util::allocator< __VA_ARGS__ , _policy_name_ < __VA_ARGS__ > >;
+#define UTIL_ALLOCATOR_ALIAS(_alias_name_, _policy_name_, ...)                                                         \
+	using _alias_name_ = logicmill::util::allocator<__VA_ARGS__, _policy_name_<__VA_ARGS__>>;
+/**/
 
-#define UTIL_ALLOCATOR_POLICY(_policy_name_, _alloc_func_name_, _free_func_name_)                                           \
+#define UTIL_ALLOCATOR_POLICY(_policy_name_, _alloc_func_name_, _free_func_name_)                                      \
 	template<typename T>                                                                                               \
 	class _policy_name_                                                                                                \
 	{                                                                                                                  \
 	public:                                                                                                            \
-		UTIL_ALLOCATOR_TRAITS(T)                                                                                            \
+		UTIL_ALLOCATOR_TRAITS(T)                                                                                       \
 		template<class U>                                                                                              \
 		struct rebind                                                                                                  \
 		{                                                                                                              \
@@ -85,7 +86,7 @@ using _alias_name_ = logicmill::util::allocator< __VA_ARGS__ , _policy_name_ < _
 	}
 /**/
 
-#define UTIL_ALLOCATOR_TRAITS(T)                                                                                            \
+#define UTIL_ALLOCATOR_TRAITS(T)                                                                                       \
 	using type            = T;                                                                                         \
 	using value_type      = type;                                                                                      \
 	using pointer         = value_type*;                                                                               \
@@ -182,7 +183,7 @@ public:
 		{
 			throw std::bad_alloc();
 		}
-    	return static_cast<pointer>(::operator new(count * sizeof(type), ::std::nothrow));
+		return static_cast<pointer>(::operator new(count * sizeof(type), ::std::nothrow));
 	}
 
 	// Delete memory
@@ -200,7 +201,7 @@ public:
 	}
 };
 
-#define UTIL_FORWARD_ALLOCATOR_TRAITS(C)                                                                                    \
+#define UTIL_FORWARD_ALLOCATOR_TRAITS(C)                                                                               \
 	using value_type      = typename C::value_type;                                                                    \
 	using pointer         = typename C::pointer;                                                                       \
 	using const_pointer   = typename C::const_pointer;                                                                 \
@@ -269,21 +270,23 @@ operator!=(allocator<T, PolicyT, TraitsT> const& left, OtherAllocator const& rig
 }
 
 // Specialize for the heap policy
-template<typename T, typename TraitsT,
-         typename U, typename TraitsU>
-bool operator==(allocator<T, heap_allocator_policy<T>, TraitsT> const& left,
-                allocator<U, heap_allocator_policy<U>, TraitsU> const& right)
+template<typename T, typename TraitsT, typename U, typename TraitsU>
+bool
+operator==(
+		allocator<T, heap_allocator_policy<T>, TraitsT> const& left,
+		allocator<U, heap_allocator_policy<U>, TraitsU> const& right)
 {
-   return true;
+	return true;
 }
 
 // Also implement inequality
-template<typename T, typename TraitsT,
-         typename U, typename TraitsU>
-bool operator!=(allocator<T, heap_allocator_policy<T>, TraitsT> const& left,
-                allocator<U, heap_allocator_policy<U>, TraitsU> const& right)
+template<typename T, typename TraitsT, typename U, typename TraitsU>
+bool
+operator!=(
+		allocator<T, heap_allocator_policy<T>, TraitsT> const& left,
+		allocator<U, heap_allocator_policy<U>, TraitsU> const& right)
 {
-   return !(left == right);
+	return !(left == right);
 }
 
 }    // namespace util

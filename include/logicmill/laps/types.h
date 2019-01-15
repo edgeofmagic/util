@@ -27,8 +27,8 @@
 
 #include <deque>
 #include <logicmill/async/event_flow.h>
-#include <logicmill/buffer.h>
 #include <logicmill/bstream/compound_memory/source.h>
+#include <logicmill/util/buffer.h>
 #include <memory>
 
 namespace logicmill
@@ -57,9 +57,9 @@ enum class control_state
 	start
 };
 
-using mbuf_sequence = std::deque<mutable_buffer>;
-using cbuf_sequence = std::deque<const_buffer>;
-using sbuf_sequence = std::deque<shared_buffer>;
+using mbuf_sequence = std::deque<util::mutable_buffer>;
+using cbuf_sequence = std::deque<util::const_buffer>;
+using sbuf_sequence = std::deque<util::shared_buffer>;
 
 inline sbuf_sequence
 make_sbuf_sequence(cbuf_sequence&& cseq)
@@ -96,25 +96,23 @@ public:
 	}
 
 protected:
-
-	frame() : m_size{0}, m_flags{0}
-	{}
+	frame() : m_size{0}, m_flags{0} {}
 
 	frame(frame const& rhs) : m_size{rhs.m_size}, m_flags{rhs.m_flags} {}
 
 	frame(frame_size_type size, flags_type flags) : m_size{size}, m_flags{flags} {}
 
-	frame_size_type    m_size;
-	flags_type         m_flags;
+	frame_size_type m_size;
+	flags_type      m_flags;
 };
 
 class mutable_frame : public frame
 {
 public:
-	using buffer_type = mutable_buffer;
+	using buffer_type   = util::mutable_buffer;
 	using sequence_type = std::deque<buffer_type>;
 
-	mutable_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)} 
+	mutable_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)}
 	{
 		for (auto& buf : m_bufs)
 		{
@@ -149,10 +147,10 @@ private:
 class shared_frame : public frame
 {
 public:
-	using buffer_type = shared_buffer;
+	using buffer_type   = util::shared_buffer;
 	using sequence_type = std::deque<buffer_type>;
 
-	shared_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)} 
+	shared_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)}
 	{
 		for (auto& buf : m_bufs)
 		{
@@ -160,9 +158,9 @@ public:
 		}
 	}
 
-	shared_frame(flags_type flags, std::deque<const_buffer>&& bufs) : frame{0, flags}, m_bufs{}
+	shared_frame(flags_type flags, std::deque<util::const_buffer>&& bufs) : frame{0, flags}, m_bufs{}
 	{
-		using iter_type = std::deque<const_buffer>::iterator;
+		using iter_type = std::deque<util::const_buffer>::iterator;
 		for (auto it = bufs.begin(); it != bufs.end(); ++it)
 		{
 			// std::move_iterator<iter_type> move_it{it};
@@ -172,9 +170,9 @@ public:
 		bufs.clear();
 	}
 
-	shared_frame(flags_type flags, std::deque<mutable_buffer>&& bufs) : frame{0, flags}, m_bufs{}
+	shared_frame(flags_type flags, std::deque<util::mutable_buffer>&& bufs) : frame{0, flags}, m_bufs{}
 	{
-		using iter_type = std::deque<mutable_buffer>::iterator;
+		using iter_type = std::deque<util::mutable_buffer>::iterator;
 		for (auto it = bufs.begin(); it != bufs.end(); ++it)
 		{
 			// std::move_iterator<iter_type> move_it{it};
@@ -210,12 +208,12 @@ private:
 
 
 template<class Payload>
-using frame_event = flow::event<event_type, event_type::frame, Payload>;
+using frame_event         = flow::event<event_type, event_type::frame, Payload>;
 using mutable_frame_event = frame_event<mutable_frame&&>;
 using shared_frame_event  = frame_event<shared_frame&&>;
 
-using control_event      = flow::event<event_type, event_type::control, control_state>;
-using error_event        = flow::event<event_type, event_type::error, std::error_code>;
+using control_event = flow::event<event_type, event_type::control, control_state>;
+using error_event   = flow::event<event_type, event_type::error, std::error_code>;
 
 using mutable_data_in_connector
 		= flow::connector<flow::sink<mutable_data_event>, flow::source<control_event>, flow::source<error_event>>;
@@ -237,10 +235,10 @@ using shared_frame_in_connector
 		= flow::connector<flow::sink<shared_frame_event>, flow::source<control_event>, flow::source<error_event>>;
 using shared_frame_out_connector = flow::complement<shared_frame_in_connector>::type;
 
-using stream_duplex_top         = flow::surface<mutable_data_in_connector, const_data_out_connector>;
-using stream_duplex_bottom      = flow::complement<stream_duplex_top>::type;
-using frame_duplex_top          = flow::surface<mutable_frame_in_connector, shared_frame_out_connector>;
-using frame_duplex_bottom       = flow::complement<frame_duplex_top>::type; 
+using stream_duplex_top    = flow::surface<mutable_data_in_connector, const_data_out_connector>;
+using stream_duplex_bottom = flow::complement<stream_duplex_top>::type;
+using frame_duplex_top     = flow::surface<mutable_frame_in_connector, shared_frame_out_connector>;
+using frame_duplex_bottom  = flow::complement<frame_duplex_top>::type;
 
 }    // namespace laps
 }    // namespace logicmill

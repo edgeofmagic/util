@@ -98,6 +98,7 @@ set(LOGICMILL_SRCS
 	include/logicmill/util/shareable.h
 	include/logicmill/util/shared_ptr.h
 	include/logicmill/util/buffer.h
+	include/logicmill/util/promise.h
 
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
@@ -128,7 +129,7 @@ set(LOGICMILL_SRCS
 	src/armi/server_context_base.cpp
 
 	src/util/buffer.cpp
-
+	
 	src/fs_impl.cpp)
 
 set(LOGICMILL_TEST_SRCS
@@ -154,6 +155,7 @@ set(LOGICMILL_TEST_SRCS
 	test/util/shareable.cpp
 	test/util/allocators.cpp
 	test/util/shared_ptr.cpp
+	test/util/promise.cpp
 	test/test_main.cpp)
 
 add_library(logicmill ${LOGICMILL_SRCS})

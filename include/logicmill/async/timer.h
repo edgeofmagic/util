@@ -41,7 +41,7 @@ class loop;
 class timer
 {
 public:
-	using ptr     = util::shared_ptr<timer>;
+	using ptr     = SHARED_PTR_TYPE<timer>;
 	using handler = std::function<void(timer::ptr)>;
 
 	virtual ~timer() {}

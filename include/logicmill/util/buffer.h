@@ -35,14 +35,16 @@
 #include <logicmill/util/shared_ptr.h>
 #include <system_error>
 
+#if 0
 #define USE_STD_SHARED_PTR 0
 
 #if (USE_STD_SHARED_PTR)
 #define SHARED_PTR_TYPE std::shared_ptr
 #define MAKE_SHARED std::make_shared
 #else
-#define SHARED_PTR_TYPE util::shared_ptr
+#define SHARED_PTR_TYPE SHARED_PTR_TYPE
 #define MAKE_SHARED util::make_shared
+#endif
 #endif
 
 #ifndef NDEBUG
@@ -128,8 +130,9 @@ class const_buffer;
  * An instance of buffer represents and manages a contiguous region of memory, as a 2-tuple consisting of 
  * a pointer to the beginning of the region and the size of the region in bytes. These
  * are accessible through the member functions data() and size(). The buffer class is abstract; instances 
- * cannot be constructed directly. It serves are a base class for two concrete derived classes&mdash;mutable_buffer
- * and const_buffer, and declares constructs that are common to both derived classes.
+ * cannot be constructed directly. It serves are a base class for two concrete derived classes&mdash;mutable_buffer,
+ * const_buffer, and shared_buffer&mdash;and declares constructs that are common to both derived classes.
+ * 
  */
 class buffer
 {
@@ -449,6 +452,9 @@ protected:
 public:
 	friend class const_buffer;
 
+	/** \brief Destructor.
+	 * 
+	 */
 	~buffer()
 	{
 		m_data = nullptr;
@@ -505,6 +511,13 @@ public:
 		return result;
 	}
 
+	/** \brief Test for inequality with another buffer.
+	 * 
+	 * Negation of bool operator==(buffer const&).
+	 * 
+	 * \param rhs the buffer to be compared with this instance
+	 * \return true if the buffers are not equal, false otherwise
+	 */
 	bool
 	operator!=(buffer const& rhs) const
 	{
@@ -544,7 +557,7 @@ public:
 		return std::string_view(reinterpret_cast<char*>(m_data), m_size);
 	}
 
-	/** Test this buffer for size() == 0
+	/** \brief Test this buffer for size() == 0
 	 * 
 	 * \return true if size() == 0, false otherwise
 	 */
@@ -554,21 +567,46 @@ public:
 		return m_size == 0;
 	}
 
+	/** \brief Calculate the CRC32 value for the contents of this buffer.
+	 * 
+	 * \return CRC32 value of buffer contents.
+	 */
 	checksum_type
 	checksum() const
 	{
 		return checksum(0, size());
 	}
 
+	/** \brief Calculate the CRC32 value for the specified number of bytes in this buffer.
+	 * 
+	 * Calculate the CRC32 value for the first \e n bytes in this buffer, where n == min(size(), length).
+	 * 
+	 * \param length the number of bytes used to calculate the checksum value.
+	 * \return CRC32 value of specied buffer contents.
+	 */
 	checksum_type
 	checksum(size_type length) const
 	{
 		return checksum(0, std::min(length, size()));
 	}
 
+	/** \brief Calculate the CRC32 value for the specified sub-region of this buffer.
+	 * 
+	 * Calculate the CRC32 value for a sub-region of this buffer, begnning with byte
+	 * at the specified \e offset from the beginning of the buffer, including \e n bytes,
+	 * where n == min(length, size() - offset). If offset >= size(), the result is zero. 
+	 * 
+	 * \param length the number of bytes used to calculate the checksum value.
+	 * \return CRC32 value of specied buffer contents.
+	 */
 	checksum_type
 	checksum(size_type offset, size_type length) const;
 
+	/** \brief Generate a hex/ASCII dump of the buffer contents on
+	 * the specified output stream.
+	 * 
+	 * \param os ostream instance on which the dump will be generated.
+	 */
 	void
 	dump(std::ostream& os) const;
 
@@ -619,8 +657,17 @@ protected:
  * As a general pattern, the code that allocates a mutable_buffer and deposits values into its memory region should be 
  * thought of as the <i>producer</i>. The producer is responsible for determining the appropriate value of size (based on how much
  * of the buffer's capacity was modified), and setting the value of size before passing the buffer to a consumer, or converting
- * it to a const_buffer for consumption.
+ * it to a const_buffer or shared_buffer for consumption.
  * 
+ * Valid instances of mutable_buffer hold a unique reference to an internal allocation object (an instance of 
+ * the protected member class \e region) that owns either an allocator or a deleter (depending on how it was constructed).
+ * If the region owns an allocator, it will be used to allocate and deallocate memory resources for the buffer as needed.
+ * The internal allocation object may be moved to other instances of buffer types, via move constructors of move assignment
+ * operators. If so, the allocator is moved with the associated memory resources; it is not owned by the buffer instance.
+ * 
+ * If an instance of mutable_buffer is created with a deleter (rather than an allocator), that deleter will similarly
+ * be associated with the internal allocation object and memory resources. The deleter will be invoked to deallocate
+ * memory resources at the appropriate time.
  */
 class mutable_buffer : public buffer
 {
@@ -640,17 +687,26 @@ public:
 
 	/** \brief Default constructor.
 	 * 
-	 * The constructed instance owns a copy of the default memory_broker, and no allocated memory region, such that
-	 * data() == nullptr, capacity() == 0, size() == 0.
+	 * The constructed instance has no allocated memory, such that
+	 * data() == nullptr, capacity() == 0, size() == 0. The internal allocation
+	 * object owns an instance of std::allocator<byte_type>, which will be used for subsequent
+	 * allocation or deallocation operations.
 	 */
 	mutable_buffer() : m_region{std::make_unique<alloc_region<default_alloc>>()}, m_capacity{0}
 	{
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
-	/** \brief Construct with the specified memory_broker.
+	/** \brief Construct with the specified allocator.
 	 * 
-	 * \param broker a shared pointer to the memory_broker to be used by the allocation
+	 * The provided allocator is associated with an internal allocation object (an instance
+	 * of the protected member class \e region). Initially, no buffer space is allocated for the
+	 * created instance (i.e., data() == nullptr, size() == 0, capacity() == 0). Subsequent calls
+	 * to expand(size_type) will use the allocator to obtain memory resources, and to deallocate
+	 * memory sources at the appropriate time.
+	 * 
+	 * \param alloc an instance of a class that satisfies the requirements for allocators, 
+	 * in particular, an allocator with value_type logicmill::byte_type.
 	 */
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	mutable_buffer(_Alloc&& alloc)
@@ -659,6 +715,15 @@ public:
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
+	/** \brief Construct with the specified capacity.
+	 * 
+	 * An instance of the default allocator (std::allocator<byte_type>) is 
+	 * associated with an internal allocation object (an instance
+	 * of the protected member class \e region). The allocator is used to allocate a region of the
+	 * specified capacity. The value of size() is set to zero.
+	 * 
+	 * \param capacity the number of bytes in the initial allocation.
+	 */
 	mutable_buffer(size_type capacity)
 		: m_region{std::make_unique<alloc_region<default_alloc>>(capacity)}, m_capacity{capacity}
 	{
@@ -667,6 +732,16 @@ public:
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
+	/** \brief Construct with the specified allocator and capacity.
+	 * 
+	 * The provided allocator is associated with an internal allocation object (an instance
+	 * of the protected member class \e region). The allocator is used to allocate a region of the
+	 * specified capacity. The value of size() is set to zero.
+	 * 
+	 * \param alloc an instance of a class that satisfies the requirements for allocators, 
+	 * in particular, an allocator with value_type logicmill::byte_type.
+	 * \param capacity the number of bytes in the initial allocation.
+	 */
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	mutable_buffer(size_type capacity, _Alloc&& alloc)
 		: m_region{std::make_unique<alloc_region<_Alloc>>(capacity, std::forward<_Alloc>(alloc))}, m_capacity{capacity}
@@ -676,21 +751,28 @@ public:
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
-	/** \brief Construct with the provided memory region and specified deallocator callable object.
+	/** \brief Construct with the provided memory region and specified deleter.
 	 * 
 	 * This constructor form is useful in cases where memory regions are imported from other
-	 * facilities that manage their own buffers. If a deallocator function is provided, it will be
-	 * invoked when the mutable_buffer instance is destroyed. The constructed buffer, in effect, adopts
+	 * facilities that manage their own buffers. If a deleter is provided, it will be
+	 * invoked when the internal allocation is destroyed. The constructed buffer, in effect, adopts
 	 * the provided memory region (specified by arguments of the data and cap parameters). In such cases, 
-	 * the specified deallocator 
+	 * the specified deleter 
 	 * would typically be used to notify the facility that originally allocated the memory region that 
 	 * the memory region is no longer referenced by the mutable_buffer, and may be deallocated.
-	 * The data() and capacity() of the resulting instance reflect the arguments of the data and cap
+	 * The data() and capacity() of the resulting instance reflect the arguments of the \e data and \e capacity
 	 * parameters; size() will be zero.
 	 * 
-	 * \param data a pointer to the memory region to be referenced by the constucted instance
-	 * \param cap the size of the region
-	 * \param dealloc_f a callable object convertible to type deallocator, to be invoked when this instance is destroyed
+	 * The deleter must be a callable object that is convertible to the type std::function<void(byte_type*)>,
+	 * which will deallocate the object appropriately when invoked.
+	 * 
+	 * The internal allocation object is incapable of allocation new memory resources. If expand()
+	 * is invoked on the contructed instance of mutable_buffer (or any instance of mutable_buffer that
+	 * comes to posses the allocation object), an error condition will result (see expand() for details).
+	 * 
+	 * \param data a pointer to the memory region to be referenced by the constucted instance.
+	 * \param capacity the size of the region, in bytes.
+	 * \param del a callable deleter object.
 	 */
 	template<class _Del>
 	mutable_buffer(void* data, size_type capacity, _Del&& del)
@@ -749,6 +831,19 @@ public:
 
 	mutable_buffer(mutable_buffer const&) = delete;
 
+
+	/** Move constructor.
+	 * 
+	 * The ownership of the internal allocation object is transferred from the argument to the constructed
+	 * instance. The values of data(), size(), and capacity() for the constructed instance are identitical
+	 * to the corresponding values for \e rhs prior to construction. After construction, the state of rhs
+	 * is such that data() == nullptr, size == 0, and capacity == 0. Also, since rhs has no internal allocation
+	 * object (and thus, no allocator), an invocation of expand() will fail. It may subsequently come into 
+	 * possession of a valid allocation object via move assignment.
+	 * 
+	 * \param rhs an instance of mutable_buffer, the contents of which are moved to the constructed instance.
+	 * 
+	 */
 	mutable_buffer(mutable_buffer&& rhs) : m_region{std::move(rhs.m_region)}, m_capacity{rhs.m_capacity}
 	{
 		m_data = rhs.m_data;
@@ -779,6 +874,17 @@ private:
 	}
 
 public:
+
+	/** Construct (by move) from another instance of mutable_buffer, as a sub-region of the moved instance.
+	 * 
+	 * The constucted instance has values such that data() == rhs.data() + offset, size() == length, 
+	 * and capacity() == rhs.capacity() - offset. If (offset + length) > rhs.size(), an exception of 
+	 * type std::system_error is thrown, with an encapsulated error code value std::errc::invalid_argument.
+	 * 
+	 * \param rhs an instance of mutable buffer whose internal allocation object is moved to the constructed instance.
+	 * \param offset the offset of the value of data() in the constructed instance from rhs.data().
+	 * \param length the size of the constructed instance.
+	 */
 	mutable_buffer(mutable_buffer&& rhs, size_type offset, size_type length) : m_region{std::move(rhs.m_region)}
 	{
 		std::error_code err;
@@ -790,6 +896,17 @@ public:
 		}
 	}
 
+	/** Construct (by move) from another instance of mutable_buffer, as a sub-region of the moved instance.
+	 * 
+	 * The constucted instance has values such that data() == rhs.data() + offset, size() == length, 
+	 * and capacity() == rhs.capacity() - offset. If (offset + length) > rhs.size(),
+	 * the \e err parameter is side-effected with the value std::errc::invalid_argument.
+	 * 
+	 * \param rhs an instance of mutable buffer whose internal allocation object is moved to the constructed instance.
+	 * \param offset the offset of the value of data() in the constructed instance from rhs.data().
+	 * \param length the size of the constructed instance.
+	 * \param err reference to a std::error_code, side-effected to reflect any error condition occurring during construction.
+	 */
 	mutable_buffer(mutable_buffer&& rhs, size_type offset, size_type length, std::error_code& err)
 		: m_region{std::move(rhs.m_region)}
 	{

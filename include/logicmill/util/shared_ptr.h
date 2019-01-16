@@ -30,6 +30,20 @@
 #include <functional>
 #include <memory>
 
+
+#define USE_STD_SHARED_PTR 0
+
+#if (USE_STD_SHARED_PTR)
+#define SHARED_PTR_TYPE std::shared_ptr
+#define MAKE_SHARED std::make_shared
+#define DYNAMIC_POINTER_CAST std::dynamic_pointer_cast
+#else
+#define SHARED_PTR_TYPE logicmill::util::shared_ptr
+#define MAKE_SHARED logicmill::util::make_shared
+#define DYNAMIC_POINTER_CAST logicmill::util::dynamic_pointer_cast
+#endif
+
+
 namespace logicmill
 {
 namespace util

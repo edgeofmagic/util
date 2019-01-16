@@ -119,8 +119,14 @@ private:
 	virtual timer::ptr
 	really_create_timer(std::error_code& err, timer::handler&& handler) override;
 
-	virtual void
+	virtual int
 	run(std::error_code& err) override;
+
+	virtual int
+	run_once(std::error_code& err) override;
+
+	virtual int
+	run_nowait(std::error_code& err) override;
 
 	virtual void
 	stop(std::error_code& err) override;
@@ -155,7 +161,7 @@ private:
 	virtual transceiver::ptr
 	really_create_transceiver(options const& opt, std::error_code& err) override;
 
-	logicmill::util::shared_ptr<udp_transceiver_uv>
+	SHARED_PTR_TYPE<udp_transceiver_uv>
 	setup_transceiver(options const& opts, std::error_code& err);
 
 	virtual void

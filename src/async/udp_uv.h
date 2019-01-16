@@ -63,7 +63,7 @@ public:
 private:
 	~udp_send_buf_req_uv() {}
 
-	static logicmill::util::shared_ptr<udp_transceiver_uv>
+	static SHARED_PTR_TYPE<udp_transceiver_uv>
 	get_transceiver_shared_ptr(uv_udp_send_t* req);
 
 	static void
@@ -116,7 +116,7 @@ private:
 		}
 	}
 
-	static logicmill::util::shared_ptr<udp_transceiver_uv>
+	static SHARED_PTR_TYPE<udp_transceiver_uv>
 	get_transceiver_shared_ptr(uv_udp_send_t* req);
 
 	static void
@@ -132,7 +132,7 @@ private:
 class udp_transceiver_uv : public transceiver
 {
 public:
-	using ptr = logicmill::util::shared_ptr<udp_transceiver_uv>;
+	using ptr = SHARED_PTR_TYPE<udp_transceiver_uv>;
 
 	void
 	init(uv_loop_t* lp, ptr const& self, std::error_code& err);
@@ -189,7 +189,7 @@ protected:
 	{
 		if (m_close_handler)
 		{
-			m_close_handler(logicmill::util::dynamic_pointer_cast<udp_transceiver_uv>(m_data.m_self_ptr));
+			m_close_handler(DYNAMIC_POINTER_CAST<udp_transceiver_uv>(m_data.m_self_ptr));
 			m_close_handler = nullptr;
 		}
 		m_receive_handler = nullptr;

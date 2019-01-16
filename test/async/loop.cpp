@@ -349,6 +349,7 @@ TEST_CASE("logicmill::async::resolver [ smoke ] { cancellation loop close }")
 		lp->run(err);
 		CHECK(!err);
 		lp->close(err);
+		std::cout << "error on loop close: " << err.message() << std::endl; 
 		CHECK(!err);
 		std::cout << "loop run completed" << std::endl;
 		std::cout << "outstanding loop refcount after run: " << lp.use_count() << std::endl;

@@ -97,7 +97,7 @@ loop_uv::really_create_timer(std::error_code& err, timer::handler const& handler
 		err = make_error_code(async::errc::loop_closed);
 		goto exit;
 	}
-	result = util::make_shared<timer_uv>(m_uv_loop, err, handler);
+	result = MAKE_SHARED<timer_uv>(m_uv_loop, err, handler);
 	result->init(result);
 	if (err)
 		goto exit;
@@ -124,7 +124,7 @@ loop_uv::really_create_timer(std::error_code& err, timer::handler&& handler)
 		goto exit;
 	}
 
-	result = util::make_shared<timer_uv>(m_uv_loop, err, std::move(handler));
+	result = MAKE_SHARED<timer_uv>(m_uv_loop, err, std::move(handler));
 	result->init(result);
 	if (err)
 		goto exit;
@@ -133,10 +133,11 @@ exit:
 	return result;
 }
 
-void
+int
 loop_uv::run(std::error_code& err)
 {
 	err.clear();
+	int result = 0;
 	if (!m_uv_loop)
 	{
 		err = make_error_code(async::errc::loop_closed);
@@ -144,12 +145,52 @@ loop_uv::run(std::error_code& err)
 	}
 
 	{
-		auto status = uv_run(m_uv_loop, UV_RUN_DEFAULT);
-		UV_ERROR_CHECK(status, err, exit);
+		result = uv_run(m_uv_loop, UV_RUN_DEFAULT);
+		// UV_ERROR_CHECK(status, err, exit);
 	}
 
 exit:
-	return;
+	return result;
+}
+
+int
+loop_uv::run_once(std::error_code& err)
+{
+	err.clear();
+	int result = 0;
+	if (!m_uv_loop)
+	{
+		err = make_error_code(async::errc::loop_closed);
+		goto exit;
+	}
+
+	{
+		result = uv_run(m_uv_loop, UV_RUN_ONCE);
+		// UV_ERROR_CHECK(status, err, exit);
+	}
+
+exit:
+	return result;
+}
+
+int
+loop_uv::run_nowait(std::error_code& err)
+{
+	err.clear();
+	int result = 0;
+	if (!m_uv_loop)
+	{
+		err = make_error_code(async::errc::loop_closed);
+		goto exit;
+	}
+
+	{
+		result = uv_run(m_uv_loop, UV_RUN_NOWAIT);
+		// UV_ERROR_CHECK(status, err, exit);
+	}
+
+exit:
+	return result;
 }
 
 void
@@ -207,7 +248,7 @@ loop_uv::on_walk(uv_handle_t* handle, void*)
 			break;
 			default:
 			{
-				// std::cout << "closing loop handles, unexpected handle type: " << handle_type << std::endl;
+				std::cout << "closing loop handles, unexpected handle type: " << handle_type << std::endl;
 			}
 			break;
 		}
@@ -252,7 +293,7 @@ acceptor::ptr
 loop_uv::really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler)
 {
 	err.clear();
-	util::shared_ptr<tcp_acceptor_uv> acceptor;
+	SHARED_PTR_TYPE<tcp_acceptor_uv> acceptor;
 
 	if (!handler)
 	{
@@ -266,7 +307,7 @@ loop_uv::really_create_acceptor(options const& opt, std::error_code& err, accept
 		goto exit;
 	}
 
-	acceptor = util::make_shared<tcp_acceptor_uv>(opt.endpoint(), std::move(handler));
+	acceptor = MAKE_SHARED<tcp_acceptor_uv>(opt.endpoint(), std::move(handler));
 	acceptor->init(m_uv_loop, acceptor, opt, err);
 exit:
 	return acceptor;
@@ -276,7 +317,7 @@ acceptor::ptr
 loop_uv::really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler const& handler)
 {
 	err.clear();
-	util::shared_ptr<tcp_acceptor_uv> acceptor;
+	SHARED_PTR_TYPE<tcp_acceptor_uv> acceptor;
 
 	if (!handler)
 	{
@@ -290,7 +331,7 @@ loop_uv::really_create_acceptor(options const& opt, std::error_code& err, accept
 		goto exit;
 	}
 
-	acceptor = util::make_shared<tcp_acceptor_uv>(opt.endpoint(), handler);
+	acceptor = MAKE_SHARED<tcp_acceptor_uv>(opt.endpoint(), handler);
 	acceptor->init(m_uv_loop, acceptor, opt, err);
 exit:
 	return acceptor;
@@ -300,7 +341,7 @@ channel::ptr
 loop_uv::really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler)
 {
 	err.clear();
-	util::shared_ptr<tcp_channel_uv> cp;
+	SHARED_PTR_TYPE<tcp_channel_uv> cp;
 
 	if (!handler)
 	{
@@ -316,11 +357,11 @@ loop_uv::really_connect_channel(options const& opt, std::error_code& err, channe
 
 	if (opt.framing())
 	{
-		cp = util::make_shared<tcp_framed_channel_uv>();
+		cp = MAKE_SHARED<tcp_framed_channel_uv>();
 	}
 	else
 	{
-		cp = util::make_shared<tcp_channel_uv>();
+		cp = MAKE_SHARED<tcp_channel_uv>();
 	}
 	cp->init(m_uv_loop, cp, err);
 	if (err)
@@ -334,7 +375,7 @@ channel::ptr
 loop_uv::really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler)
 {
 	err.clear();
-	util::shared_ptr<tcp_channel_uv> cp;
+	SHARED_PTR_TYPE<tcp_channel_uv> cp;
 
 	if (!handler)
 	{
@@ -350,11 +391,11 @@ loop_uv::really_connect_channel(options const& opt, std::error_code& err, channe
 
 	if (opt.framing())
 	{
-		cp = util::make_shared<tcp_framed_channel_uv>();
+		cp = MAKE_SHARED<tcp_framed_channel_uv>();
 	}
 	else
 	{
-		cp = util::make_shared<tcp_channel_uv>();
+		cp = MAKE_SHARED<tcp_channel_uv>();
 	}
 	cp->init(m_uv_loop, cp, err);
 	if (err)
@@ -376,7 +417,7 @@ loop_uv::setup_transceiver(options const& opts, std::error_code& err)
 		goto exit;
 	}
 
-	tp = util::make_shared<udp_transceiver_uv>();
+	tp = MAKE_SHARED<udp_transceiver_uv>();
 
 	tp->init(m_uv_loop, tp, err);
 	if (err)
@@ -419,7 +460,7 @@ loop_uv::really_create_transceiver(
 		transceiver::receive_handler const& handler)
 {
 	err.clear();
-	util::shared_ptr<udp_transceiver_uv> tp;
+	SHARED_PTR_TYPE<udp_transceiver_uv> tp;
 
 	if (!handler)
 	{
@@ -441,7 +482,7 @@ transceiver::ptr
 loop_uv::really_create_transceiver(options const& opts, std::error_code& err)
 {
 	err.clear();
-	util::shared_ptr<udp_transceiver_uv> tp;
+	SHARED_PTR_TYPE<udp_transceiver_uv> tp;
 
 	tp = setup_transceiver(opts, err);
 	if (err)
@@ -513,24 +554,29 @@ loop_data::get_loop_ptr()
 loop_uv::ptr
 loop_uv::create_from_default()
 {
-	static std::weak_ptr<loop_uv> default_loop;
-	if (default_loop.expired())
-	{
-		auto default_loop_shared = std::make_shared<loop_uv>(use_default_loop{});
-		default_loop_shared->init(default_loop_shared);
-		default_loop = default_loop_shared;
-		return default_loop_shared;
-	}
-	else
-	{
-		return default_loop.lock();
-	}
+	std::shared_ptr<loop_uv> default_loop =
+		std::make_shared<loop_uv>(use_default_loop{});
+	default_loop->init(default_loop);
+	return default_loop;
+	// static std::weak_ptr<loop_uv> default_loop;
+	// if (default_loop.expired())
+	// {
+	// 	auto default_loop_shared = std::make_shared<loop_uv>(use_default_loop{});
+	// 	default_loop_shared->init(default_loop_shared);
+	// 	default_loop = default_loop_shared;
+	// 	return default_loop_shared;
+	// }
+	// else
+	// {
+	// 	return default_loop.lock();
+	// }
 }
 
 loop::ptr
 loop::get_default()
 {
-	return loop_uv::create_from_default();
+	static std::shared_ptr<loop_uv> default_loop = loop_uv::create_from_default();
+	return default_loop;
 }
 
 loop::ptr

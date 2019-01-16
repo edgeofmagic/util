@@ -39,13 +39,13 @@ namespace async
 class tcp_channel : public channel
 {
 public:
-	using ptr = util::shared_ptr<tcp_channel>;
+	using ptr = SHARED_PTR_TYPE<tcp_channel>;
 };
 
 class tcp_acceptor : public acceptor
 {
 public:
-	using ptr = util::shared_ptr<tcp_acceptor>;
+	using ptr = SHARED_PTR_TYPE<tcp_acceptor>;
 };
 
 }    // namespace async

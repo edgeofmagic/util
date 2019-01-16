@@ -44,7 +44,7 @@ class loop;
 class channel
 {
 public:
-	using ptr = util::shared_ptr<channel>;
+	using ptr = SHARED_PTR_TYPE<channel>;
 
 	using read_handler
 			= std::function<void(channel::ptr const& chan, util::const_buffer&& buf, std::error_code err)>;
@@ -154,7 +154,7 @@ protected:
 class acceptor
 {
 public:
-	using ptr = util::shared_ptr<acceptor>;
+	using ptr = SHARED_PTR_TYPE<acceptor>;
 	using connection_handler
 			= std::function<void(acceptor::ptr const& sp, channel::ptr const& chan, std::error_code err)>;
 	using close_handler = std::function<void(acceptor::ptr const& lp)>;

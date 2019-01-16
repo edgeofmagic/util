@@ -50,6 +50,12 @@ public:
 
 	using dispatch_handler = std::function<void(loop::ptr const&)>;
 
+	using dispatch_void_handler = std::function<void()>;
+
+	using scheduled_handler = std::function<void(loop::ptr const&)>;
+
+	using scheduled_void_handler = std::function<void()>;
+
 	static loop::ptr
 	create();
 
@@ -58,8 +64,14 @@ public:
 
 	virtual ~loop() {}
 
-	virtual void
+	virtual int
 	run(std::error_code& err) =0;
+
+	virtual int
+	run_once(std::error_code& err) =0;
+
+	virtual int
+	run_nowait(std::error_code& err) =0;
 
 	virtual void
 	stop(std::error_code& err) = 0;

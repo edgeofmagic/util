@@ -33,13 +33,13 @@ class timer_uv;
 
 struct timer_handle_data
 {
-	logicmill::util::shared_ptr<timer_uv> m_impl_ptr;
+	SHARED_PTR_TYPE<timer_uv> m_impl_ptr;
 };
 
 class timer_uv : public logicmill::async::timer
 {
 public:
-	using ptr = logicmill::util::shared_ptr<timer_uv>;
+	using ptr = SHARED_PTR_TYPE<timer_uv>;
 
 	timer_uv(uv_loop_t* lp, std::error_code& err, logicmill::async::timer::handler const& handler);
 

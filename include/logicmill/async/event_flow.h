@@ -892,6 +892,12 @@ public:
 		return std::get<sizeof...(Args) - 1>(m_tuple);
 	}
 
+	typename traits::nth_element<0, Args...>&
+	bottom()
+	{
+		return std::get<0>(m_tuple);
+	}
+
 private:
 	std::tuple<Args...> m_tuple;
 };

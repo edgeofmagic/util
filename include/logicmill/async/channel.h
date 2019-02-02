@@ -68,6 +68,18 @@ public:
 		really_start_read(err, std::forward<Handler>(handler));
 	}
 
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, read_handler>::value>
+	start_read(Handler&& handler)
+	{
+		std::error_code err;
+		really_start_read(err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
 	virtual void
 	stop_read() = 0;
 
@@ -82,10 +94,34 @@ public:
 	}
 
 	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, write_buffer_handler>::value>
+	write(util::mutable_buffer&& buf, Handler&& handler)
+	{
+		std::error_code err;
+		really_write(std::move(buf), err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, write_buffers_handler>::value>
 	write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err, Handler&& handler)
 	{
 		really_write(std::move(bufs), err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, write_buffers_handler>::value>
+	write(std::deque<util::mutable_buffer>&& bufs, Handler&& handler)
+	{
+		std::error_code err;
+		really_write(std::move(bufs), err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
 	}
 
 	void
@@ -95,9 +131,31 @@ public:
 	}
 
 	void
+	write(util::mutable_buffer&& buf)
+	{
+		std::error_code err;
+		really_write(std::move(buf), err, nullptr);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	void
 	write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err)
 	{
 		really_write(std::move(bufs), err, nullptr);
+	}
+
+	void
+	write(std::deque<util::mutable_buffer>&& bufs)
+	{
+		std::error_code err;
+		really_write(std::move(bufs), err, nullptr);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
 	}
 
 	template<class H>
@@ -120,7 +178,13 @@ public:
 	get_endpoint(std::error_code& err) = 0;
 
 	virtual ip::endpoint
+	get_endpoint() = 0;
+
+	virtual ip::endpoint
 	get_peer_endpoint(std::error_code& err) = 0;
+
+	virtual ip::endpoint
+	get_peer_endpoint() = 0;
 
 	virtual std::size_t
 	get_queue_size() const = 0;
@@ -176,6 +240,9 @@ public:
 
 	virtual ip::endpoint
 	get_endpoint(std::error_code& err) = 0;
+
+	virtual ip::endpoint
+	get_endpoint() = 0;
 
 	virtual std::shared_ptr<loop>
 	loop() = 0;

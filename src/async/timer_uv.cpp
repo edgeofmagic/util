@@ -53,6 +53,20 @@ exit:
 }
 
 void
+timer_uv::start(std::chrono::milliseconds timeout)
+{
+	int status = 0;
+
+	if (is_active())
+	{
+		throw std::system_error{make_error_code(std::errc::operation_in_progress)};
+	}
+
+	status = uv_timer_start(&m_uv_timer, on_timer_expire, timeout.count(), 0);
+	UV_ERROR_THROW(status);
+}
+
+void
 timer_uv::stop(std::error_code& err)
 {
 	err.clear();
@@ -65,6 +79,16 @@ timer_uv::stop(std::error_code& err)
 
 exit:
 	return;
+}
+
+void
+timer_uv::stop()
+{
+	if (is_active())
+	{
+		auto status = uv_timer_stop(&m_uv_timer);
+		UV_ERROR_THROW(status);
+	}
 }
 
 std::shared_ptr<logicmill::async::loop>

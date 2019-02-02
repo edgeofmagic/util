@@ -80,6 +80,8 @@ public:
 	using ptr  = std::shared_ptr<loop_uv>;
 	using wptr = std::weak_ptr<loop_uv>;
 
+	using void_handler = std::function<void()>;
+
 	struct use_default_loop
 	{};
 
@@ -118,6 +120,12 @@ private:
 
 	virtual timer::ptr
 	really_create_timer(std::error_code& err, timer::handler&& handler) override;
+
+	virtual timer::ptr
+	really_create_timer_void(std::error_code& err, timer::void_handler const& handler) override;
+
+	virtual timer::ptr
+	really_create_timer_void(std::error_code& err, timer::void_handler&& handler) override;
 
 	virtual int
 	run(std::error_code& err) override;
@@ -176,21 +184,39 @@ private:
 	virtual void
 	really_dispatch(std::error_code& err, loop::dispatch_handler&& handler) override;
 
+	virtual void
+	really_dispatch_void(std::error_code& err, loop::dispatch_void_handler const& handler) override;
+
+	virtual void
+	really_dispatch_void(std::error_code& err, loop::dispatch_void_handler&& handler) override;
+
+	virtual void
+	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_handler&& handler) override;
+
+	virtual void
+	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_handler const& handler) override;
+
+	virtual void
+	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_void_handler&& handler) override;
+
+	virtual void
+	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_void_handler const& handler) override;
+
 	bool
-	try_dispatch_front(ptr const& lp);
+	try_dispatch_front();
 
 	static void
 	on_async(uv_async_t* handle);
 
 	void
-	drain_dispatch_queue(ptr const& lp)
+	drain_dispatch_queue()
 	{
-		while (try_dispatch_front(lp))
+		while (try_dispatch_front())
 			;
 	}
 
 	uv_async_t                         m_async_handle;
-	std::deque<loop::dispatch_handler> m_dispatch_queue;
+	std::deque<void_handler>           m_dispatch_queue;
 	std::recursive_mutex               m_dispatch_queue_mutex;
 	uv_loop_t*                         m_uv_loop;
 	loop_data                          m_data;

@@ -43,6 +43,7 @@ class timer
 public:
 	using ptr     = SHARED_PTR_TYPE<timer>;
 	using handler = std::function<void(timer::ptr)>;
+	using void_handler = std::function<void()>;
 
 	virtual ~timer() {}
 
@@ -50,7 +51,13 @@ public:
 	start(std::chrono::milliseconds timeout, std::error_code& err) = 0;
 
 	virtual void
+	start(std::chrono::milliseconds timeout) = 0;
+
+	virtual void
 	stop(std::error_code& err) = 0;
+
+	virtual void
+	stop() = 0;
 
 	virtual void
 	close() = 0;

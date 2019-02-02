@@ -80,17 +80,121 @@ public:
 	close(std::error_code& err) = 0;
 
 	template<class Handler>
-	typename std::enable_if_t<std::is_convertible<Handler, dispatch_handler>::value>
+	typename std::enable_if_t<
+			std::is_convertible_v<Handler, dispatch_handler> && !std::is_same_v<Handler, std::nullptr_t>>
 	dispatch(std::error_code& err, Handler&& handler)
 	{
 		really_dispatch(err, std::forward<Handler>(handler));
 	}
 
 	template<class Handler>
-	typename std::enable_if_t<std::is_convertible<Handler, timer::handler>::value, timer::ptr>
+	typename std::enable_if_t<
+			std::is_convertible_v<Handler, dispatch_handler> && !std::is_same_v<Handler, std::nullptr_t>>
+	dispatch(Handler&& handler)
+	{
+		std::error_code err;
+		really_dispatch(err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible_v<Handler, dispatch_void_handler>  && !std::is_same_v<Handler, std::nullptr_t>>
+	dispatch(std::error_code& err, Handler&& handler)
+	{
+		really_dispatch_void(err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible_v<Handler, dispatch_void_handler>  && !std::is_same_v<Handler, std::nullptr_t>>
+	dispatch(Handler&& handler)
+	{
+		std::error_code err;
+		really_dispatch_void(err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<
+			std::is_convertible_v<Handler, scheduled_handler> && !std::is_same_v<Handler, std::nullptr_t>>
+	schedule(std::chrono::milliseconds timeout, std::error_code& err, Handler&& handler)
+	{
+		really_schedule(timeout, err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<
+			std::is_convertible_v<Handler, scheduled_handler> && !std::is_same_v<Handler, std::nullptr_t>>
+	schedule(std::chrono::milliseconds timeout, Handler&& handler)
+	{
+		std::error_code err;
+		really_schedule(timeout, err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible_v<Handler, scheduled_void_handler>  && !std::is_same_v<Handler, std::nullptr_t>>
+	schedule(std::chrono::milliseconds timeout, std::error_code& err, Handler&& handler)
+	{
+		really_schedule_void(timeout, err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible_v<Handler, scheduled_void_handler>  && !std::is_same_v<Handler, std::nullptr_t>>
+	schedule(std::chrono::milliseconds timeout, Handler&& handler)
+	{
+		std::error_code err;
+		really_schedule_void(timeout, err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible_v<Handler, timer::handler>, timer::ptr>
 	create_timer(std::error_code& err, Handler&& handler)
 	{
 		return really_create_timer(err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible_v<Handler, timer::handler>, timer::ptr>
+	create_timer(Handler&& handler)
+	{
+		std::error_code err;
+		return really_create_timer(err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible_v<Handler, timer::void_handler>, timer::ptr>
+	create_timer(std::error_code& err, Handler&& handler)
+	{
+		return really_create_timer_void(err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible_v<Handler, timer::void_handler>, timer::ptr>
+	create_timer(Handler&& handler)
+	{
+		std::error_code err;
+		return really_create_timer_void(err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
 	}
 
 	template<class Handler>
@@ -101,16 +205,51 @@ public:
 	}
 
 	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, acceptor::connection_handler>::value, acceptor::ptr>
+	create_acceptor(options const& opts, Handler&& handler)
+	{
+		std::error_code err;
+		return really_create_acceptor(opts, err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, channel::connect_handler>::value, channel::ptr>
 	connect_channel(options const& opts, std::error_code& err, Handler&& handler)
 	{
 		return really_connect_channel(opts, err, std::forward<Handler>(handler));
 	}
 
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, channel::connect_handler>::value, channel::ptr>
+	connect_channel(options const& opts, Handler&& handler)
+	{
+		std::error_code err;
+		return really_connect_channel(opts, err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
 	transceiver::ptr
 	create_transceiver(options const& opts, std::error_code& err)
 	{
 		return really_create_transceiver(opts, err);
+	}
+
+	transceiver::ptr
+	create_transceiver(options const& opts)
+	{
+		std::error_code err;
+		return really_create_transceiver(opts, err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
 	}
 
 	template<class Handler>
@@ -121,10 +260,34 @@ public:
 	}
 
 	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, transceiver::receive_handler>::value, transceiver::ptr>
+	create_transceiver(options const& opts, Handler&& handler)
+	{
+		std::error_code err;
+		return really_create_transceiver(opts, err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, resolve_handler>::value>
 	resolve(std::string const& hostname, std::error_code& err, Handler&& handler)
 	{
 		really_resolve(hostname, err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, resolve_handler>::value>
+	resolve(std::string const& hostname, Handler&& handler)
+	{
+		std::error_code err;
+		really_resolve(hostname, err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
 	}
 
 protected:
@@ -134,11 +297,35 @@ protected:
 	virtual timer::ptr
 	really_create_timer(std::error_code& err, timer::handler&& handler) = 0;
 
+	virtual timer::ptr
+	really_create_timer_void(std::error_code& err, timer::void_handler const& handler) = 0;
+
+	virtual timer::ptr
+	really_create_timer_void(std::error_code& err, timer::void_handler&& handler) = 0;
+
 	virtual void
 	really_dispatch(std::error_code& err, dispatch_handler&& handler) = 0;
 
 	virtual void
 	really_dispatch(std::error_code& err, dispatch_handler const& handler) = 0;
+
+	virtual void
+	really_dispatch_void(std::error_code& err, dispatch_void_handler&& handler) = 0;
+
+	virtual void
+	really_dispatch_void(std::error_code& err, dispatch_void_handler const& handler) = 0;
+
+	virtual void
+	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, scheduled_handler&& handler) = 0;
+
+	virtual void
+	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, scheduled_handler const& handler) = 0;
+
+	virtual void
+	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, scheduled_void_handler&& handler) = 0;
+
+	virtual void
+	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, scheduled_void_handler const& handler) = 0;
 
 	virtual acceptor::ptr
 	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler) = 0;

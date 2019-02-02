@@ -76,6 +76,18 @@ public:
 		really_start_receive(err, std::forward<Handler>(handler));
 	}
 
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, transceiver::receive_handler>::value>
+	start_receive(Handler&& handler)
+	{
+		std::error_code err;
+		really_start_receive(err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
 	virtual void
 	stop_receive()
 			= 0;
@@ -88,10 +100,34 @@ public:
 	}
 
 	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, send_buffer_handler>::value>
+	emit(util::mutable_buffer&& buf, ip::endpoint const& dest, Handler&& handler)
+	{
+		std::error_code err;
+		really_send(std::move(buf), dest, err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, send_buffers_handler>::value>
 	emit(std::deque<util::mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err, Handler&& handler)
 	{
 		really_send(std::move(bufs), dest, err, std::forward<Handler>(handler));
+	}
+
+	template<class Handler>
+	typename std::enable_if_t<std::is_convertible<Handler, send_buffers_handler>::value>
+	emit(std::deque<util::mutable_buffer>&& bufs, ip::endpoint const& dest, Handler&& handler)
+	{
+		std::error_code err;
+		really_send(std::move(bufs), dest, err, std::forward<Handler>(handler));
+		if (err)
+		{
+			throw std::system_error{err};
+		}
 	}
 
 	void
@@ -101,9 +137,31 @@ public:
 	}
 
 	void
+	emit(util::mutable_buffer&& buf, ip::endpoint const& dest)
+	{
+		std::error_code err;
+		really_send(std::move(buf), dest, err, nullptr);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	void
 	write(std::deque<util::mutable_buffer>&& bufs, ip::endpoint const& dest, std::error_code& err)
 	{
 		really_send(std::move(bufs), dest, err, nullptr);
+	}
+
+	void
+	write(std::deque<util::mutable_buffer>&& bufs, ip::endpoint const& dest)
+	{
+		std::error_code err;
+		really_send(std::move(bufs), dest, err, nullptr);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
 	}
 
 	template<class H>

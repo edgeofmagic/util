@@ -49,6 +49,10 @@ public:
 
 	static constexpr std::size_t default_queue_limit = 1UL << 24;    // 16 Mb
 
+	channel_anchor(std::size_t write_queue_limit = default_queue_limit)
+		: m_channel{nullptr}, m_loop{nullptr}, m_write_queue_full{false}, m_write_queue_limit{write_queue_limit}
+	{}
+
 	channel_anchor(async::channel::ptr chan, std::size_t write_queue_limit = default_queue_limit)
 		: m_channel{chan}, m_loop{m_channel->loop()}, m_write_queue_full{false}, m_write_queue_limit{write_queue_limit}
 	{}
@@ -68,6 +72,23 @@ public:
 		  m_write_queue_full{rhs.m_write_queue_full},
 		  m_write_queue_limit{rhs.m_write_queue_limit}
 	{}
+
+	void connect(async::loop::ptr lp, async::options const& opts)
+	{
+		m_loop = lp;
+		m_loop->connect_channel(opts, [=] (async::channel::ptr cp, std::error_code err)
+		{
+			if (err)
+			{
+				emit<error_event>(err);
+			}
+			else
+			{
+				m_channel = cp;
+				emit<control_event>(control_state::start);
+			}
+		});
+	}
 
 	stream_duplex_top&
 	get_top()

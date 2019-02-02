@@ -336,7 +336,21 @@ public:
 	}
 
 	virtual endpoint
+	get_endpoint() override
+	{
+		std::error_code err;
+		return really_get_endpoint(err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	virtual endpoint
 	get_peer_endpoint(std::error_code& err) override;
+
+	virtual endpoint
+	get_peer_endpoint() override;
 
 	virtual std::size_t
 	get_queue_size() const override
@@ -516,6 +530,17 @@ public:
 	get_endpoint(std::error_code& err) override
 	{
 		return really_get_endpoint(err);
+	}
+
+	virtual endpoint
+	get_endpoint() override
+	{
+		std::error_code err;
+		return really_get_endpoint(err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
 	}
 
 private:

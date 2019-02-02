@@ -58,7 +58,13 @@ private:
 	start(std::chrono::milliseconds timeout, std::error_code& err) override;
 
 	virtual void
+	start(std::chrono::milliseconds timeout) override;
+
+	virtual void
 	stop(std::error_code& err) override;
+
+	virtual void
+	stop() override;
 
 	virtual void
 	close() override;

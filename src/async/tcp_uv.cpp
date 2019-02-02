@@ -292,6 +292,19 @@ tcp_channel_uv::get_peer_endpoint(std::error_code& err)
 	return result;
 }
 
+endpoint
+tcp_channel_uv::get_peer_endpoint()
+{
+	sockaddr_storage saddr;
+	int              sockaddr_size{sizeof(sockaddr_storage)};
+	auto stat = uv_tcp_getpeername(&m_tcp_handle, reinterpret_cast<sockaddr*>(&saddr), &sockaddr_size);
+	if (stat < 0)
+	{
+		throw std::system_error{map_uv_error(stat)};
+	}
+	return endpoint{saddr};
+}
+
 
 // tcp_framed_channel_uv
 

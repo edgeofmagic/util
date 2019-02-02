@@ -133,6 +133,65 @@ exit:
 	return result;
 }
 
+timer::ptr
+loop_uv::really_create_timer_void(std::error_code& err, timer::void_handler const& handler)
+{
+	err.clear();
+	timer_uv::ptr result;
+
+	if (!handler)
+	{
+		err = make_error_code(std::errc::invalid_argument);
+		goto exit;
+	}
+
+	if (!m_uv_loop)
+	{
+		err = make_error_code(async::errc::loop_closed);
+		goto exit;
+	}
+	result = MAKE_SHARED<timer_uv>(m_uv_loop, err, [=](logicmill::async::timer::ptr)
+	{
+		handler();
+	});
+	result->init(result);
+	if (err)
+		goto exit;
+
+exit:
+	return result;
+}
+
+timer::ptr
+loop_uv::really_create_timer_void(std::error_code& err, timer::void_handler&& handler)
+{
+	err.clear();
+	timer_uv::ptr result;
+
+	if (!handler)
+	{
+		err = make_error_code(std::errc::invalid_argument);
+		goto exit;
+	}
+
+	if (!m_uv_loop)
+	{
+		err = make_error_code(async::errc::loop_closed);
+		goto exit;
+	}
+	// result = MAKE_SHARED<timer_uv>(m_uv_loop, err, std::move(handler));
+	result = MAKE_SHARED<timer_uv>(m_uv_loop, err, [=,handler{std::move(handler)}](logicmill::async::timer::ptr)
+	{
+		handler();
+	});
+	result->init(result);
+	if (err)
+		goto exit;
+
+exit:
+	return result;
+}
+
 int
 loop_uv::run(std::error_code& err)
 {
@@ -605,7 +664,11 @@ loop_uv::really_dispatch(std::error_code& err, loop::dispatch_handler const& han
 
 	{
 		std::lock_guard<std::recursive_mutex> guard(m_dispatch_queue_mutex);
-		m_dispatch_queue.emplace_back(handler);
+		m_dispatch_queue.emplace_back([=]()
+		{
+			handler(m_data.get_loop_ptr());
+		});
+		// m_dispatch_queue.emplace_back(handler);
 	}
 
 	{
@@ -638,6 +701,75 @@ loop_uv::really_dispatch(std::error_code& err, loop::dispatch_handler&& handler)
 
 	{
 		std::lock_guard<std::recursive_mutex> guard(m_dispatch_queue_mutex);
+		m_dispatch_queue.emplace_back([=,handler{std::move(handler)}]()
+		{
+			handler(m_data.get_loop_ptr());
+		});
+		// m_dispatch_queue.emplace_back(std::move(handler));
+	}
+
+	{
+		auto stat = uv_async_send(&m_async_handle);
+		if (stat < 0)
+		{
+			err = map_uv_error(stat);
+		}
+	}
+exit:
+	return;
+}
+
+void
+loop_uv::really_dispatch_void(std::error_code& err, loop::dispatch_void_handler const& handler)
+{
+	err.clear();
+	if (!handler)
+	{
+		err = make_error_code(std::errc::invalid_argument);
+		goto exit;
+	}
+
+	if (!m_uv_loop)
+	{
+		err = make_error_code(async::errc::loop_closed);
+		goto exit;
+	}
+
+	{
+		std::lock_guard<std::recursive_mutex> guard(m_dispatch_queue_mutex);
+		m_dispatch_queue.emplace_back(handler);
+	}
+
+	{
+		auto stat = uv_async_send(&m_async_handle);
+		if (stat < 0)
+		{
+			err = map_uv_error(stat);
+			goto exit;
+		}
+	}
+exit:
+	return;
+}
+
+void
+loop_uv::really_dispatch_void(std::error_code& err, loop::dispatch_void_handler&& handler)
+{
+	err.clear();
+	if (!handler)
+	{
+		err = make_error_code(std::errc::invalid_argument);
+		goto exit;
+	}
+
+	if (!m_uv_loop)
+	{
+		err = make_error_code(async::errc::loop_closed);
+		goto exit;
+	}
+
+	{
+		std::lock_guard<std::recursive_mutex> guard(m_dispatch_queue_mutex);
 		m_dispatch_queue.emplace_back(std::move(handler));
 	}
 
@@ -652,12 +784,60 @@ exit:
 	return;
 }
 
+void
+loop_uv::really_schedule(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_handler&& handler)
+{
+	auto tp = really_create_timer(err, [=,handler{std::move(handler)}] (logicmill::async::timer::ptr) {
+		handler(m_data.get_loop_ptr());
+	});
+	if (err) goto exit;
+	tp->start(timeout, err);
+exit:
+	return;
+}
+
+void
+loop_uv::really_schedule(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_handler const& handler)
+{
+	auto tp = really_create_timer(err, [=] (logicmill::async::timer::ptr) {
+		handler(m_data.get_loop_ptr());
+	});
+	if (err) goto exit;
+	tp->start(timeout, err);
+exit:
+	return;
+}
+
+void
+loop_uv::really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_void_handler&& handler)
+{
+	auto tp = really_create_timer(err, [handler{std::move(handler)}] (logicmill::async::timer::ptr) {
+		handler();
+	});
+	if (err) goto exit;
+	tp->start(timeout, err);
+exit:
+	return;
+}
+
+void
+loop_uv::really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_void_handler const& handler)
+{
+	auto tp = really_create_timer(err, [=] (logicmill::async::timer::ptr) {
+		handler();
+	});
+	if (err) goto exit;
+	tp->start(timeout, err);
+exit:
+	return;
+}
+
 bool
-loop_uv::try_dispatch_front(loop_uv::ptr const& lp)
+loop_uv::try_dispatch_front()
 {
 	bool ok = false;
 
-	dispatch_handler handler;
+	void_handler handler;
 
 	{
 		std::lock_guard<std::recursive_mutex> guard(m_dispatch_queue_mutex);
@@ -672,7 +852,7 @@ loop_uv::try_dispatch_front(loop_uv::ptr const& lp)
 
 	if (ok)
 	{
-		handler(lp);
+		handler();
 	}
 
 	return ok;
@@ -685,6 +865,6 @@ loop_uv::on_async(uv_async_t* handle)
 	if (lp)
 	{
 		assert(&lp->m_async_handle == handle);
-		lp->drain_dispatch_queue(lp);
+		lp->drain_dispatch_queue();
 	}
 }

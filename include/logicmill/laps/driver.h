@@ -34,16 +34,16 @@ namespace logicmill
 namespace laps
 {
 
-class driver : public flow::stackable<stream_duplex_bottom, driver>
+class driver : public flow::stackable<stream_duplex_bottom, driver>, public face<driver, driver>
 {
 public:
-	using base = flow::stackable<stream_duplex_bottom, driver>;
+	using connector_base = flow::stackable<stream_duplex_bottom, driver>;
+	using base = face<driver, driver>;
 	using emitter<mutable_data_event>::emit;
 	using emitter<mutable_buffer_event>::emit;
 	using emitter<control_event>::emit;
 	using emitter<error_event>::emit;
-
-	using base::get_surface;
+	using connector_base::get_surface;
 
 	using read_handler    = std::function<void(util::const_buffer&&)>;
 	using control_handler = std::function<void(control_state)>;
@@ -56,10 +56,11 @@ public:
 		return get_surface<stream_duplex_bottom>();
 	}
 
-	driver() : base{}, m_is_writable{false}, m_read_active{false} {}
+	driver() : connector_base{}, base{this} {}
 
 	driver(driver&& rhs)
-		: base{},
+		: connector_base{},
+		base{this},
 		  m_read_handler{std::move(rhs.m_read_handler)},
 		  m_error_handler{std::move(rhs.m_error_handler)},
 		  m_start_handler{std::move(rhs.m_start_handler)},
@@ -67,7 +68,8 @@ public:
 	{}
 
 	driver(driver const& rhs)
-		: base{},
+		: connector_base{},
+		base{this},
 		  m_read_handler{rhs.m_read_handler},
 		  m_error_handler{rhs.m_error_handler},
 		  m_start_handler{rhs.m_start_handler},
@@ -86,7 +88,7 @@ public:
 	write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err)
 	{
 		err.clear();
-		if (!m_is_writable)
+		if (!is_writable())
 		{
 			err = make_error_code(laps::errc::not_writable);
 			goto exit;
@@ -99,7 +101,7 @@ public:
 	void
 	write(std::deque<util::mutable_buffer>&& bufs)
 	{
-		if (!m_is_writable)
+		if (!is_writable())
 		{
 			throw std::system_error{make_error_code(laps::errc::not_writable)};
 		}
@@ -110,7 +112,7 @@ public:
 	write(util::mutable_buffer&& buf, std::error_code& err)
 	{
 		err.clear();
-		if (!m_is_writable)
+		if (!is_writable())
 		{
 			err = make_error_code(laps::errc::not_writable);
 			goto exit;
@@ -123,17 +125,11 @@ public:
 	void
 	write(util::mutable_buffer&& buf)
 	{
-		if (!m_is_writable)
+		if (!is_writable())
 		{
 			throw std::system_error{make_error_code(laps::errc::not_writable)};
 		}
 		emit<mutable_buffer_event>(std::move(buf));
-	}
-
-	bool
-	is_writable() const
-	{
-		return m_is_writable;
 	}
 
 	// template<class T>
@@ -148,14 +144,13 @@ public:
 	start_read(T&& handler, std::error_code& err)
 	{
 		err.clear();
-		if (m_read_active)
+		if (is_reading())
 		{
 			err = make_error_code(laps::errc::already_reading);
 			goto exit;
 		}
 		m_read_handler = std::forward<T>(handler);
-		m_read_active = true;
-		emit<control_event>(control_state::start);
+		propagate_start();
 	exit:
 		return;
 	}
@@ -164,20 +159,19 @@ public:
 	std::enable_if_t<std::is_convertible<T, read_handler>::value>
 	start_read(T&& handler)
 	{
-		if (m_read_active)
+		if (is_reading())
 		{
 			throw std::system_error{make_error_code(laps::errc::already_reading)};
 		}
 		m_read_handler = std::forward<T>(handler);
-		m_read_active = true;
-		emit<control_event>(control_state::start);
+		propagate_start();
 	}
 
 	void
 	resume_read(std::error_code& err)
 	{
 		err.clear();
-		if (m_read_active)
+		if (is_reading())
 		{
 			err = make_error_code(laps::errc::already_reading);
 			goto exit;
@@ -187,8 +181,7 @@ public:
 			err = make_error_code(laps::errc::cannot_resume_read);
 			goto exit;
 		}
-		m_read_active = true;
-		emit<control_event>(control_state::start);
+		propagate_start();
 	exit:
 		return;
 	}
@@ -196,7 +189,7 @@ public:
 	void
 	resume_read()
 	{
-		if (m_read_active)
+		if (is_reading())
 		{
 			throw std::system_error{make_error_code(laps::errc::already_reading)};
 			goto exit;
@@ -206,8 +199,7 @@ public:
 			throw std::system_error{make_error_code(laps::errc::cannot_resume_read)};
 			goto exit;
 		}
-		m_read_active = true;
-		emit<control_event>(control_state::start);
+		propagate_start();
 	exit:
 		return;
 	}
@@ -216,13 +208,12 @@ public:
 	stop_read(std::error_code& err)
 	{
 		err.clear();
-		if (!m_read_active)
+		if (!is_reading())
 		{
 			err = make_error_code(laps::errc::not_reading);
 			goto exit;
 		}
-		m_read_active = false;
-		emit<control_event>(control_state::stop);
+		propagate_stop();
 	exit:
 		return;
 	}
@@ -230,12 +221,11 @@ public:
 	void
 	stop_read()
 	{
-		if (!m_read_active)
+		if (!is_reading())
 		{
 			throw std::system_error{make_error_code(laps::errc::not_reading)};
 		}
-		m_read_active = false;
-		emit<control_event>(control_state::stop);
+		propagate_stop();
 	}
 
 	template<class T>
@@ -262,7 +252,7 @@ public:
 	void
 	on(const_buffer_event, util::const_buffer&& buf)
 	{
-		assert(m_read_active);
+		assert(is_reading());
 		assert(m_read_handler);
 		m_read_handler(std::move(buf));
 	}
@@ -272,20 +262,24 @@ public:
 	{
 		if (cstate == control_state::start)
 		{
-			assert(!m_is_writable);
-			m_is_writable = true;
-			if (m_start_handler)
+			if (!is_writable())
 			{
-				m_start_handler();
+				set_writable(true);
+				if (m_start_handler)
+				{
+					m_start_handler();
+				}
 			}
 		}
 		else if (cstate == control_state::stop)
 		{
-			assert(m_is_writable);
-			m_is_writable = false;
-			if (m_stop_handler)
+			if (is_writable())
 			{
-				m_stop_handler();
+				set_writable(false);
+				if (m_stop_handler)
+				{
+					m_stop_handler();
+				}
 			}
 		}
 		else
@@ -308,8 +302,6 @@ private:
 	error_handler   m_error_handler;
 	void_handler	m_start_handler;
 	void_handler	m_stop_handler;
-	bool			m_is_writable;
-	bool			m_read_active;
 };
 
 }    // namespace laps

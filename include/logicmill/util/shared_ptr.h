@@ -31,7 +31,7 @@
 #include <memory>
 
 
-#define USE_STD_SHARED_PTR 1
+#define USE_STD_SHARED_PTR 0
 
 #if (USE_STD_SHARED_PTR)
 #define SHARED_PTR_TYPE std::shared_ptr

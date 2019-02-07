@@ -28,8 +28,8 @@
 #include <boost/endian/conversion.hpp>
 #include <list>
 #include <logicmill/async/event_flow.h>
-#include <logicmill/bstream/bufseq/source.h>
 #include <logicmill/bstream/buffer/sink.h>
+#include <logicmill/bstream/bufseq/source.h>
 #include <logicmill/laps/types.h>
 
 namespace logicmill
@@ -44,18 +44,20 @@ public:
 	static constexpr bool        reverse_order = boost::endian::order::native != boost::endian::order::big;
 
 private:
-	class bottom;
+	friend class top;
+	friend class bottom;
 
-	class top : public flow::stackable<frame_duplex_top, top>
+	class top : public flow::stackable<frame_duplex_top, top>, public face<framer, top>
 	{
 	public:
-		using base = flow::stackable<frame_duplex_top, top>;
+		using connector_base = flow::stackable<frame_duplex_top, top>;
+		using base           = face<framer, top>;
 		using flow::emitter<shared_frame_event>::emit;
 		using flow::emitter<control_event>::emit;
 		using flow::emitter<error_event>::emit;
-		using base::get_surface;
+		using connector_base::get_surface;
 
-		top(bottom* bp) : m_bottom{bp} {}
+		top(framer* owner) : base{owner} {}
 
 		void
 		on(mutable_frame_event, mutable_frame&& frm);
@@ -65,29 +67,24 @@ private:
 
 		void
 		on(error_event, std::error_code err);
-
-	private:
-		bottom* m_bottom;
 	};
 
-	class bottom : public flow::stackable<stream_duplex_bottom, bottom>
+	class bottom : public flow::stackable<stream_duplex_bottom, bottom>, public face<framer, bottom>
 	{
 	public:
-		using base = flow::stackable<stream_duplex_bottom, bottom>;
+		using connector_base = flow::stackable<stream_duplex_bottom, bottom>;
+		using base           = face<framer, bottom>;
 		using emitter<mutable_data_event>::emit;
 		using emitter<mutable_buffer_event>::emit;
 		using emitter<control_event>::emit;
 		using emitter<error_event>::emit;
-		using base::get_surface;
+		using connector_base::get_surface;
 
-		bottom(top* tp) : m_top{tp}, m_header_is_valid{false} {}
+		bottom(framer* owner) : base{owner}, m_header_is_valid{false} {}
 
 		void
 		on(const_buffer_event, util::const_buffer&& buf)
 		{
-			// std::cout << "bufs size is : " << bufs.size() << "[" << bufs[0].size() << ", " << bufs[1].size() << "]" << std::endl;
-			// bufs[0].dump(std::cout);
-			// bufs[1].dump(std::cout);
 			m_source.append(std::move(buf));
 			while (true)
 			{
@@ -95,8 +92,7 @@ private:
 				{
 					if (m_source.remaining() >= m_frame_size)
 					{
-						// shared_frame frm{m_flags, m_source.get_segmented_slice(m_frame_size)};
-						m_top->emit<shared_frame_event>(
+						owner()->m_top.emit<shared_frame_event>(
 								shared_frame{m_flags, m_source.get_segmented_slice(m_frame_size)});
 						m_header_is_valid = false;
 					}
@@ -125,26 +121,31 @@ private:
 		void
 		on(control_event, control_state s)
 		{
-			m_top->emit<control_event>(s);
+			if (s == control_state::start)
+			{
+				owner()->m_top.propagate_start();
+			}
+			else    // s == control_state::stop
+			{
+				owner()->m_top.propagate_stop();
+			}
 		}
 
 		void
 		on(error_event, std::error_code err)
 		{
-			m_top->emit<error_event>(err);
+			owner()->m_top.emit<error_event>(err);
 		}
 
-
 	private:
-		top*                                                  m_top;
 		bstream::bufseq::source<util::shared_buffer> m_source;
-		frame::frame_size_type                                m_frame_size;
-		frame::flags_type                                     m_flags;
-		bool                                                  m_header_is_valid;
+		frame::frame_size_type                       m_frame_size;
+		frame::flags_type                            m_flags;
+		bool                                         m_header_is_valid;
 	};
 
 public:
-	framer() : m_top{&m_bottom}, m_bottom{&m_top} {}
+	framer() : m_top{this}, m_bottom{this} {}
 
 	stream_duplex_bottom&
 	get_bottom()
@@ -158,8 +159,8 @@ public:
 		return m_top.get_surface<frame_duplex_top>();
 	}
 
-	framer(framer&& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
-	framer(framer const& rhs) : m_top{&m_bottom}, m_bottom{&m_top} {}
+	framer(framer&& rhs) : m_top{this}, m_bottom{this} {}
+	framer(framer const& rhs) : m_top{this}, m_bottom{this} {}
 
 private:
 	top    m_top;
@@ -171,26 +172,25 @@ private:
 
 void
 logicmill::laps::framer::top::on(mutable_frame_event, mutable_frame&& frm)
-// logicmill::laps::framer::top::on(mutable_frame_event, frame_header header, std::deque<util::mutable_buffer>&& bufs)
 {
 	bstream::buffer::sink header_sink{header_size};
 	header_sink.put_num(frm.size());
 	header_sink.put_num(frm.flags());
 	std::deque<util::mutable_buffer> bufs = frm.release_bufs();
 	bufs.emplace_front(header_sink.release_buffer());
-	m_bottom->emit<mutable_data_event>(std::move(bufs));
+	owner()->m_bottom.emit<mutable_data_event>(std::move(bufs));
 }
 
 void
 logicmill::laps::framer::top::on(control_event, control_state state)
 {
-	m_bottom->emit<control_event>(state);
+	owner()->m_bottom.emit<control_event>(state);
 }
 
 void
 logicmill::laps::framer::top::on(error_event, std::error_code err)
 {
-	m_bottom->emit<error_event>(err);
+	owner()->m_bottom.emit<error_event>(err);
 }
 
 #endif    // LOGICMILL_LAPS_FRAMER_H

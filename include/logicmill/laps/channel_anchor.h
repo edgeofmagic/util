@@ -37,56 +37,63 @@ namespace logicmill
 namespace laps
 {
 
-class channel_anchor : public flow::stackable<stream_duplex_top, channel_anchor>
+class channel_anchor : public flow::stackable<stream_duplex_top, channel_anchor>,
+					   public face<channel_anchor, channel_anchor>
 {
 public:
-	using base = flow::stackable<stream_duplex_top, channel_anchor>;
-
+	using connector_base = flow::stackable<stream_duplex_top, channel_anchor>;
 	using emitter<const_buffer_event>::emit;
 	using emitter<control_event>::emit;
 	using emitter<error_event>::emit;
-	using base::get_surface;
+	using connector_base::get_surface;
+	using base = face<channel_anchor, channel_anchor>;
 
 	static constexpr std::size_t default_queue_limit = 1UL << 24;    // 16 Mb
 
 	channel_anchor(std::size_t write_queue_limit = default_queue_limit)
-		: m_channel{nullptr}, m_loop{nullptr}, m_write_queue_full{false}, m_write_queue_limit{write_queue_limit}
+		: connector_base{},
+		  base{this},
+		  m_channel{nullptr},
+		  m_loop{nullptr},
+		  m_write_queue_full{false},
+		  m_write_queue_limit{write_queue_limit}
 	{}
 
 	channel_anchor(async::channel::ptr chan, std::size_t write_queue_limit = default_queue_limit)
-		: m_channel{chan}, m_loop{m_channel->loop()}, m_write_queue_full{false}, m_write_queue_limit{write_queue_limit}
+		: connector_base{},
+		  base{this},
+		  m_channel{chan},
+		  m_loop{m_channel->loop()},
+		  m_write_queue_full{false},
+		  m_write_queue_limit{write_queue_limit}
 	{}
 
 	channel_anchor(channel_anchor&& rhs)
-		: base{},
+		: connector_base{},
+		  base{this},
 		  m_channel{std::move(rhs.m_channel)},
 		  m_loop{std::move(rhs.m_loop)},
 		  m_write_queue_full{rhs.m_write_queue_full},
 		  m_write_queue_limit{rhs.m_write_queue_limit}
 	{}
 
-	channel_anchor(channel_anchor const& rhs)
-		: base{},
-		  m_channel{rhs.m_channel},
-		  m_loop{rhs.m_loop},
-		  m_write_queue_full{rhs.m_write_queue_full},
-		  m_write_queue_limit{rhs.m_write_queue_limit}
-	{}
+	channel_anchor(channel_anchor const& rhs) = delete;
 
-	void connect(async::channel::ptr chan)
+	void
+	connect(async::channel::ptr chan)
 	{
-		m_loop = chan->loop();
+		m_loop    = chan->loop();
 		m_channel = chan;
 		// TODO: add check for connectedness to channel, employ here
 		// for now, assume chan is connected
-		emit<control_event>(control_state::start);
+		propagate_start();
 	}
 
-	void connect(async::loop::ptr lp, async::options const& opts)
+	void
+	connect(async::loop::ptr lp, async::options const& opts)
 	{
 		m_loop = lp;
-		m_loop->connect_channel(opts, [=] (async::channel::ptr cp, std::error_code err)
-		{
+		m_loop->connect_channel(opts, [=](async::channel::ptr cp, std::error_code err) {
 			if (err)
 			{
 				emit<error_event>(err);
@@ -94,7 +101,7 @@ public:
 			else
 			{
 				m_channel = cp;
-				emit<control_event>(control_state::start);
+				propagate_start();
 			}
 		});
 	}
@@ -120,7 +127,7 @@ public:
 	dispatch_start()
 	{
 		std::error_code loop_error;
-		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { emit<control_event>(control_state::start); });
+		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { propagate_start(); });
 		if (loop_error)    // probably screwed beyond repair; try non-dispatched emit error as last ditch effort
 		{
 			emit<error_event>(loop_error);
@@ -131,7 +138,7 @@ public:
 	dispatch_stop()
 	{
 		std::error_code loop_error;
-		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { emit<control_event>(control_state::stop); });
+		m_loop->dispatch(loop_error, [=](async::loop::ptr lp) { propagate_stop(); });
 		if (loop_error)    // probably screwed beyond repair; try non-dispatched emit error as last ditch effort
 		{
 			emit<error_event>(loop_error);
@@ -214,13 +221,12 @@ public:
 		return;
 	}
 
-
 	void
 	on(mutable_data_event, std::deque<util::mutable_buffer>&& bufs)
 	{
 		if (m_write_queue_full)
 		{
-			while(!bufs.empty())
+			while (!bufs.empty())
 			{
 				m_local_write_queue.emplace_back(std::move(bufs.front()));
 				bufs.pop_front();
@@ -229,7 +235,7 @@ public:
 		else if (m_channel->get_queue_size() >= m_write_queue_limit)
 		{
 			m_write_queue_full = true;
-			while(!bufs.empty())
+			while (!bufs.empty())
 			{
 				m_local_write_queue.emplace_back(std::move(bufs.front()));
 				bufs.pop_front();
@@ -298,15 +304,12 @@ public:
 		assert(false);
 	}
 
-
 private:
-	async::channel::ptr                         m_channel;
-	async::loop::ptr                            m_loop;
-	bool                                        m_write_queue_full;
-	std::size_t                                 m_write_queue_limit;
-	std::deque<util::mutable_buffer> 			m_local_write_queue;
-	// bool m_downstack_active;
-	// bool m_upstack_active;
+	async::channel::ptr              m_channel;
+	async::loop::ptr                 m_loop;
+	bool                             m_write_queue_full;
+	std::size_t                      m_write_queue_limit;
+	std::deque<util::mutable_buffer> m_local_write_queue;
 };
 
 }    // namespace laps

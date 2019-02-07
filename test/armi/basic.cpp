@@ -162,11 +162,19 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
+	std::cout << "created loop" << std::endl;
+
 	rfoo::remote context{lp};
+
+	std::cout << "created context" << std::endl;
 
 	context.server().register_impl(std::make_shared<foo::bar>());
 
+	std::cout << "registered impl" << std::endl;
+
 	END_LOOP(lp, 5000);
+
+	std::cout << "set up end loop timer" << std::endl;
 
 	context.server().bind(
 			async::options{endpoint{address::v4_any(), 7001}},
@@ -181,6 +189,8 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 				CHECK(!err);
 			});
 	CHECK(!err);
+
+	std::cout << "started bind" << std::endl;
 
 	auto client_connect_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
 		std::error_code err;
@@ -205,8 +215,12 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 	client_connect_timer->start(std::chrono::milliseconds{2000}, err);
 	CHECK(!err);
 
+	std::cout << "started connect timer" << std::endl;
+
 	lp->run(err);
 	CHECK(!err);
+
+	std::cout << "loop run finished" << std::endl;
 
 	CHECK(client_connect_timer_handler_visited);
 	CHECK(client_connect_handler_visited);

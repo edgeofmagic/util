@@ -76,6 +76,9 @@ using mutable_data_event = data_event<mbuf_sequence&&>;
 using const_data_event   = data_event<cbuf_sequence&&>;
 using shared_data_event  = data_event<sbuf_sequence&&>;
 
+using mutable_buffer_event = data_event<util::mutable_buffer&&>;
+using const_buffer_event   = data_event<util::const_buffer&&>;
+using shared_buffer_event  = data_event<util::shared_buffer&&>;
 
 class frame
 {
@@ -140,9 +143,74 @@ public:
 		return bstream::bufseq::source<buffer_type>{std::move(m_bufs)};
 	}
 
+	util::mutable_buffer
+	merge()
+	{
+		util::mutable_buffer result{m_size};
+		byte_type*           p{result.data()};
+		for (auto& buf : m_bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		return result;
+	}
+
 private:
 	sequence_type m_bufs;
 };
+
+class const_frame : public frame
+{
+public:
+	using buffer_type   = util::const_buffer;
+	using sequence_type = std::deque<buffer_type>;
+
+	const_frame(flags_type flags, sequence_type&& bufs) : frame{0, flags}, m_bufs{std::move(bufs)}
+	{
+		for (auto& buf : m_bufs)
+		{
+			m_size += buf.size();
+		}
+	}
+
+	const_frame(const_frame&& rhs) : frame{rhs}, m_bufs{std::move(rhs.m_bufs)} {}
+
+	sequence_type const&
+	bufs() const
+	{
+		return m_bufs;
+	}
+
+	sequence_type
+	release_bufs()
+	{
+		return std::move(m_bufs);
+	}
+
+	bstream::bufseq::source<buffer_type>
+	make_source()
+	{
+		return bstream::bufseq::source<buffer_type>{std::move(m_bufs)};
+	}
+
+	util::const_buffer
+	merge()
+	{
+		util::mutable_buffer result{m_size};
+		byte_type*           p{result.data()};
+		for (auto& buf : m_bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		return util::const_buffer{std::move(result)};
+	}
+
+private:
+	sequence_type m_bufs;
+};
+
 
 class shared_frame : public frame
 {
@@ -202,6 +270,19 @@ public:
 		return bstream::bufseq::source<buffer_type>{std::move(m_bufs)};
 	}
 
+	util::shared_buffer
+	merge()
+	{
+		util::mutable_buffer result{m_size};
+		byte_type*           p{result.data()};
+		for (auto& buf : m_bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		return util::shared_buffer{std::move(result)};
+	}
+
 private:
 	sequence_type m_bufs;
 };
@@ -215,8 +296,23 @@ using shared_frame_event  = frame_event<shared_frame&&>;
 using control_event = flow::event<event_type, event_type::control, control_state>;
 using error_event   = flow::event<event_type, event_type::error, std::error_code>;
 
-using mutable_data_in_connector
-		= flow::connector<flow::sink<mutable_data_event>, flow::source<control_event>, flow::source<error_event>>;
+using mutable_buffer_in_connector
+		= flow::connector<flow::sink<mutable_buffer_event>, flow::source<control_event>, flow::source<error_event>>;
+using mutable_buffer_out_connector = flow::complement<mutable_buffer_in_connector>::type;
+
+using const_buffer_in_connector
+		= flow::connector<flow::sink<const_buffer_event>, flow::source<control_event>, flow::source<error_event>>;
+using const_buffer_out_connector = flow::complement<const_buffer_in_connector>::type;
+
+using shared_buffer_in_connector
+		= flow::connector<flow::sink<shared_buffer_event>, flow::source<control_event>, flow::source<error_event>>;
+using shared_buffer_out_connector = flow::complement<shared_buffer_in_connector>::type;
+
+using mutable_data_in_connector = flow::connector<
+		flow::sink<mutable_data_event>,
+		flow::sink<mutable_buffer_event>,
+		flow::source<control_event>,
+		flow::source<error_event>>;
 using mutable_data_out_connector = flow::complement<mutable_data_in_connector>::type;
 
 using const_data_in_connector
@@ -235,12 +331,105 @@ using shared_frame_in_connector
 		= flow::connector<flow::sink<shared_frame_event>, flow::source<control_event>, flow::source<error_event>>;
 using shared_frame_out_connector = flow::complement<shared_frame_in_connector>::type;
 
-using stream_duplex_top    = flow::surface<mutable_data_in_connector, const_data_out_connector>;
+using buffer_duplex_top    = flow::surface<mutable_buffer_in_connector, const_buffer_out_connector>;
+using buffer_duplex_bottom = flow::complement<buffer_duplex_top>::type;
+
+using stream_duplex_top    = flow::surface<mutable_data_in_connector, const_buffer_out_connector>;
 using stream_duplex_bottom = flow::complement<stream_duplex_top>::type;
 using frame_duplex_top     = flow::surface<mutable_frame_in_connector, shared_frame_out_connector>;
 using frame_duplex_bottom  = flow::complement<frame_duplex_top>::type;
 
+template<class T, class Derived>
+class face
+{
+public:
+	face(T* owner) : m_owner{owner}, m_is_reading{false}, m_is_writable{false} {}
+
+	void
+	propagate_start()
+	{
+		if (!m_is_reading)
+		{
+			m_is_reading = true;
+			static_cast<Derived*>(this)->template emit<control_event>(control_state::start);
+		}
+	}
+
+	void
+	propagate_stop()
+	{
+		if (m_is_reading)
+		{
+			m_is_reading = false;
+			static_cast<Derived*>(this)->template emit<control_event>(control_state::stop);
+		}
+	}
+
+	bool
+	is_reading() const
+	{
+		return m_is_reading;
+	}
+
+	void
+	set_reading(bool value)
+	{
+		m_is_reading = value;
+	}
+
+	bool
+	is_writable() const
+	{
+		return m_is_writable;
+	}
+
+	void
+	set_writable(bool value)
+	{
+		m_is_writable = value;
+	}
+
+	T*
+	owner()
+	{
+		return m_owner;
+	}
+
+protected:
+	bool m_is_writable;
+	bool m_is_reading;
+	T*   m_owner;
+};
+
+enum class errc
+{
+	ok = 0,
+	not_writable,
+	already_reading,
+	not_reading,
+	cannot_resume_read
+};
+
+std::error_category const&
+error_category() noexcept;
+
+std::error_condition
+make_error_condition(errc e);
+
+std::error_code
+make_error_code(errc e);
+
 }    // namespace laps
 }    // namespace logicmill
+
+
+namespace std
+{
+
+template<>
+struct is_error_condition_enum<logicmill::laps::errc> : public true_type
+{};
+
+}    // namespace std
 
 #endif    // LOGICMILL_LAPS_TYPES_H

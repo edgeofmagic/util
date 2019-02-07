@@ -37,20 +37,23 @@ namespace logicmill
 namespace laps
 {
 
-class framer
+class merging_framer
 {
 public:
+
+	using top_surface_type = 
+
 	static constexpr std::size_t header_size   = sizeof(std::uint32_t) * 2;
 	static constexpr bool        reverse_order = boost::endian::order::native != boost::endian::order::big;
 
 private:
 	class bottom;
 
-	class top : public flow::stackable<frame_duplex_top, top>
+	class top : public flow::stackable<stream_duplex_top, top>
 	{
 	public:
-		using base = flow::stackable<frame_duplex_top, top>;
-		using flow::emitter<shared_frame_event>::emit;
+		using base = flow::stackable<stream_duplex_top, top>;
+		using flow::emitter<const_buffer_event>::emit;
 		using flow::emitter<control_event>::emit;
 		using flow::emitter<error_event>::emit;
 		using base::get_surface;
@@ -58,7 +61,10 @@ private:
 		top(bottom* bp) : m_bottom{bp} {}
 
 		void
-		on(mutable_frame_event, mutable_frame&& frm);
+		on(mutable_data_event, std::deque<util::mutable_buffer>&& frm);
+
+		void
+		on(mutable_buffer_event, util::mutable_buffer&& buf);
 
 		void
 		on(control_event, control_state state);
@@ -75,12 +81,17 @@ private:
 	public:
 		using base = flow::stackable<stream_duplex_bottom, bottom>;
 		using emitter<mutable_data_event>::emit;
-		using emitter<mutable_buffer_event>::emit;
 		using emitter<control_event>::emit;
 		using emitter<error_event>::emit;
 		using base::get_surface;
 
 		bottom(top* tp) : m_top{tp}, m_header_is_valid{false} {}
+
+		void
+		on(const_buffer_event, util::const_buffer&& buf)
+		{
+
+		}
 
 		void
 		on(const_buffer_event, util::const_buffer&& buf)
@@ -96,8 +107,7 @@ private:
 					if (m_source.remaining() >= m_frame_size)
 					{
 						// shared_frame frm{m_flags, m_source.get_segmented_slice(m_frame_size)};
-						m_top->emit<shared_frame_event>(
-								shared_frame{m_flags, m_source.get_segmented_slice(m_frame_size)});
+						m_top->emit<const_buffer_event>(m_source.get_slice(m_frame_size));
 						m_header_is_valid = false;
 					}
 					else
@@ -137,7 +147,8 @@ private:
 
 	private:
 		top*                                                  m_top;
-		bstream::bufseq::source<util::shared_buffer> m_source;
+		bstream::bufseq::source<util::const_buffer> 			m_source;
+		util::mutable_buffer									m_current_frame_buffer;
 		frame::frame_size_type                                m_frame_size;
 		frame::flags_type                                     m_flags;
 		bool                                                  m_header_is_valid;

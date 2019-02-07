@@ -77,7 +77,7 @@ enum class errc
 	unknown_error,                  // UV_UNKNOWN
 	ill_formed_address,
 	loop_closed,
-	timer_closed
+	timer_closed,
 };
 
 std::error_category const&

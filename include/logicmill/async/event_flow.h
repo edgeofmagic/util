@@ -897,6 +897,13 @@ public:
 	{
 		return std::get<0>(m_tuple);
 	}
+	
+	template<std::size_t N>
+	typename traits::nth_element<N, Args...>&
+	layer()
+	{
+		return std::get<N>(m_tuple);
+	}
 
 private:
 	std::tuple<Args...> m_tuple;

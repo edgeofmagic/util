@@ -42,7 +42,7 @@ class channel_anchor : public flow::stackable<stream_duplex_top, channel_anchor>
 public:
 	using base = flow::stackable<stream_duplex_top, channel_anchor>;
 
-	using emitter<const_data_event>::emit;
+	using emitter<const_buffer_event>::emit;
 	using emitter<control_event>::emit;
 	using emitter<error_event>::emit;
 	using base::get_surface;
@@ -72,6 +72,15 @@ public:
 		  m_write_queue_full{rhs.m_write_queue_full},
 		  m_write_queue_limit{rhs.m_write_queue_limit}
 	{}
+
+	void connect(async::channel::ptr chan)
+	{
+		m_loop = chan->loop();
+		m_channel = chan;
+		// TODO: add check for connectedness to channel, employ here
+		// for now, assume chan is connected
+		emit<control_event>(control_state::start);
+	}
 
 	void connect(async::loop::ptr lp, async::options const& opts)
 	{
@@ -146,8 +155,8 @@ public:
 				m_channel->write(
 						std::move(m_local_write_queue.front()),
 						err,
-						[=](async::channel::ptr chan, std::deque<util::mutable_buffer>&& bufs, std::error_code err) {
-							this->on_write_complete(std::move(bufs), err);
+						[=](async::channel::ptr chan, util::mutable_buffer&& buf, std::error_code err) {
+							this->on_write_complete(std::move(buf), err);
 						});
 				if (err)
 				{
@@ -168,16 +177,63 @@ public:
 	}
 
 	void
+	on_write_complete(util::mutable_buffer&& buf, std::error_code err)
+	{
+		if (err)
+		{
+			dispatch_error(err);
+			m_channel->close();
+			goto exit;
+		}
+
+		if (m_write_queue_full)
+		{
+			while (m_channel->get_queue_size() < m_write_queue_limit && !m_local_write_queue.empty())
+			{
+				m_channel->write(
+						std::move(m_local_write_queue.front()),
+						err,
+						[=](async::channel::ptr chan, util::mutable_buffer&& buf, std::error_code err) {
+							this->on_write_complete(std::move(buf), err);
+						});
+				if (err)
+				{
+					dispatch_error(err);
+					m_channel->close();
+					goto exit;
+				}
+			}
+			if (m_channel->get_queue_size() < m_write_queue_limit)
+			{
+				m_write_queue_full = false;
+				dispatch_start();
+			}
+		}
+
+	exit:
+		return;
+	}
+
+
+	void
 	on(mutable_data_event, std::deque<util::mutable_buffer>&& bufs)
 	{
 		if (m_write_queue_full)
 		{
-			m_local_write_queue.emplace_back(std::move(bufs));
+			while(!bufs.empty())
+			{
+				m_local_write_queue.emplace_back(std::move(bufs.front()));
+				bufs.pop_front();
+			}
 		}
 		else if (m_channel->get_queue_size() >= m_write_queue_limit)
 		{
 			m_write_queue_full = true;
-			m_local_write_queue.emplace_back(std::move(bufs));
+			while(!bufs.empty())
+			{
+				m_local_write_queue.emplace_back(std::move(bufs.front()));
+				bufs.pop_front();
+			}
 			emit<control_event>(control_state::stop);
 		}
 		else
@@ -193,6 +249,31 @@ public:
 	}
 
 	void
+	on(mutable_buffer_event, util::mutable_buffer&& buf)
+	{
+		if (m_write_queue_full)
+		{
+			m_local_write_queue.emplace_back(std::move(buf));
+		}
+		else if (m_channel->get_queue_size() >= m_write_queue_limit)
+		{
+			m_write_queue_full = true;
+			m_local_write_queue.emplace_back(std::move(buf));
+			emit<control_event>(control_state::stop);
+		}
+		else
+		{
+			std::error_code err;
+			m_channel->write(
+					std::move(buf),
+					err,
+					[=](async::channel::ptr chan, util::mutable_buffer&& buf, std::error_code err) {
+						this->on_write_complete(std::move(buf), err);
+					});
+		}
+	}
+
+	void
 	on(control_event, control_state cstate)
 	{
 		if (cstate == control_state::start)
@@ -200,9 +281,7 @@ public:
 			std::error_code err;
 			m_channel->start_read(
 					err, [=](async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err) {
-						std::deque<util::const_buffer> bufs;
-						bufs.emplace_back(std::move(buf));
-						emit<const_data_event>(std::move(bufs));
+						emit<const_buffer_event>(std::move(buf));
 					});
 		}
 		else    // if (cstate == control_state::stop)
@@ -225,7 +304,9 @@ private:
 	async::loop::ptr                            m_loop;
 	bool                                        m_write_queue_full;
 	std::size_t                                 m_write_queue_limit;
-	std::list<std::deque<util::mutable_buffer>> m_local_write_queue;
+	std::deque<util::mutable_buffer> 			m_local_write_queue;
+	// bool m_downstack_active;
+	// bool m_upstack_active;
 };
 
 }    // namespace laps

@@ -15,7 +15,11 @@ enable_testing()
 
 add_subdirectory( ext/libuv )
 
-include_directories( include ext/boost ext/libuv/include ext/doctest/include )
+
+# INCLUDE_DIRECTORIES(/Users/dcurtis/botan-install/include/botan-2)
+LINK_DIRECTORIES(/Users/dcurtis/botan-install/lib)
+
+include_directories( include ext/boost ext/libuv/include ext/doctest/include /Users/dcurtis/botan-install/include/botan-2 )
 
 set(LOGICMILL_SRCS
 	include/logicmill/bstream.h
@@ -90,6 +94,8 @@ set(LOGICMILL_SRCS
 	include/logicmill/laps/channel_anchor.h
 	include/logicmill/laps/driver.h
 	include/logicmill/laps/types.h
+	include/logicmill/laps/framer.h
+	include/logicmill/laps/tls.h
 
 	include/logicmill/util/allocator.h
 	include/logicmill/util/dumpster.h
@@ -128,6 +134,9 @@ set(LOGICMILL_SRCS
 	src/armi/interface_stub_base.cpp
 	src/armi/server_context_base.cpp
 
+	src/laps/error.cpp
+	src/laps/tls.cpp
+
 	src/util/buffer.cpp
 	
 	src/fs_impl.cpp)
@@ -152,6 +161,7 @@ set(LOGICMILL_TEST_SRCS
  	test/async/event_flow.cpp
 	test/armi/basic.cpp
 	test/laps/layers.cpp
+	test/laps/tls_layer.cpp
 	test/util/shareable.cpp
 	test/util/allocators.cpp
 	test/util/shared_ptr.cpp
@@ -161,7 +171,7 @@ set(LOGICMILL_TEST_SRCS
 add_library(logicmill ${LOGICMILL_SRCS})
 
 add_executable(logicmill_test ${LOGICMILL_TEST_SRCS})
-target_link_libraries(logicmill_test logicmill uv_a)
+target_link_libraries(logicmill_test logicmill uv_a botan-2)
 
 #add_test(NAME test_bstream COMMAND logicmill_test --test-case=*bstream*)
 #add_test(NAME test_async COMMAND logicmill_test --test-case=*async*)

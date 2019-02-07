@@ -47,7 +47,7 @@ public:
 	using channel_error_handler = std::function<void(async::channel::ptr const& ptr, std::error_code ec)>;
 	using close_handler         = std::function<void()>;
 
-	server_context_base(std::size_t interface_count, async::loop::ptr lp, bstream::context_base const& stream_context);
+	server_context_base(std::size_t interface_count, async::loop::ptr lp, bstream::context_base::ptr stream_context);
 
 	virtual ~server_context_base();
 
@@ -66,7 +66,7 @@ public:
 		return really_close();
 	}
 
-	bstream::context_base&
+	bstream::context_base::ptr
 	stream_context()
 	{
 		return m_stream_context;
@@ -135,7 +135,7 @@ protected:
 	really_bind(async::options const& opts, std::error_code& err);
 
 	async::loop::ptr                                  m_loop;
-	bstream::cloned_context                           m_stream_context;
+	bstream::context_base::ptr                        m_stream_context;
 	async::acceptor::ptr                              m_acceptor;
 	std::vector<std::unique_ptr<interface_stub_base>> m_stubs;
 	std::vector<std::shared_ptr<void>>                m_impl_ptrs;

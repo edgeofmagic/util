@@ -26,11 +26,12 @@
 #define LOGICMILL_BSTREAM_CONTEXT_H
 
 #include <boost/endian/conversion.hpp>
-#include <logicmill/util/buffer.h>
 #include <logicmill/bstream/error.h>
 #include <logicmill/bstream/error_category_context.h>
 #include <logicmill/bstream/ibstream_traits.h>
 #include <logicmill/bstream/types.h>
+#include <logicmill/util/buffer.h>
+#include <logicmill/util/shared_ptr.h>
 #include <typeindex>
 
 namespace logicmill
@@ -40,42 +41,42 @@ namespace bstream
 // TODO: fix configurability of allocator, default size, etc.
 class ibstream;
 
-class context_impl_base : public error_category_context
+class context_base : public error_category_context
 {
 public:
+
+	using ptr = SHARED_PTR_TYPE<context_base>;
+
 	static constexpr bool
 	is_valid_tag(poly_tag_type tag)
 	{
 		return tag != invalid_tag;
 	};
 
-	context_impl_base(
-			bool                       dedup_shared_ptrs,
-			byte_order       order,
-			size_type                  buffer_size = 65536)
-			// buffer::memory_broker::ptr broker      = buffer::default_broker::get())
+	context_base(bool dedup_shared_ptrs, byte_order order, size_type buffer_size = 65536)
+		// buffer::memory_broker::ptr broker      = buffer::default_broker::get())
 		: error_category_context{},
 		  m_dedup_shared_ptrs{dedup_shared_ptrs},
 		  m_byte_order{order},
 		  m_buffer_size{buffer_size}
-		//   m_broker{broker}
+	//   m_broker{broker}
 	{}
 
-	context_impl_base(
+	context_base(
 			error_category_context::category_init_list categories,
 			bool                                       dedup_shared_ptrs,
-			byte_order                       order,
+			byte_order                                 order,
 			size_type                                  buffer_size = 65536)
-			// buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
+		// buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
 
 		: error_category_context{categories},
 		  m_dedup_shared_ptrs{dedup_shared_ptrs},
 		  m_byte_order{order},
 		  m_buffer_size{buffer_size}
-		//   m_broker{broker}
+	//   m_broker{broker}
 	{}
 
-	virtual ~context_impl_base() {}
+	virtual ~context_base() {}
 
 	virtual poly_tag_type
 	get_type_tag(std::type_index index) const = 0;
@@ -149,9 +150,9 @@ public:
 	// }
 
 private:
-	bool       m_dedup_shared_ptrs;
+	bool            m_dedup_shared_ptrs;
 	enum byte_order m_byte_order;
-	size_type  m_buffer_size;
+	size_type       m_buffer_size;
 	// buffer::memory_broker::ptr m_broker;
 };
 
@@ -187,18 +188,21 @@ const std::vector<std::vector<bool>> can_downcast_ptr_table<Args...>::values
 		= {{can_downcast_ptr_row<Args, Args...>::row_values}...};
 
 template<class... Args>
-class context_impl : public context_impl_base
+class context : public context_base
 {
 public:
-	context_impl(bool dedup_shared_ptrs, enum byte_order order)
-		: context_impl_base{dedup_shared_ptrs, order}
+
+	using ptr = SHARED_PTR_TYPE<context>;
+
+	context(bool dedup_shared_ptrs = true, enum byte_order order = byte_order::big_endian)
+		: context_base{dedup_shared_ptrs, order}
 	{}
 
-	context_impl(
-			error_category_context::category_init_list categories,
-			bool                                       dedup_shared_ptrs,
-			enum byte_order                       order)
-		: context_impl_base{categories, dedup_shared_ptrs, order}
+
+	context(error_category_context::category_init_list categories,
+			bool                                       dedup_shared_ptrs = true,
+			enum byte_order                            order             = byte_order::big_endian)
+		: context_base{categories, dedup_shared_ptrs, order}
 	{}
 
 	virtual poly_tag_type
@@ -241,11 +245,11 @@ protected:
 };
 
 template<class... Args>
-const std::unordered_map<std::type_index, poly_tag_type> context_impl<Args...>::m_type_tag_map
+const std::unordered_map<std::type_index, poly_tag_type> context<Args...>::m_type_tag_map
 		= {{typeid(Args), traits::index<Args, Args...>::value}...};
 
 template<class... Args>
-const can_downcast_ptr_table<Args...> context_impl<Args...>::m_downcast_ptr_table;
+const can_downcast_ptr_table<Args...> context<Args...>::m_downcast_ptr_table;
 
 template<class T, class Enable = void>
 struct poly_factory;
@@ -283,7 +287,7 @@ struct poly_factory<T, std::enable_if_t<!std::is_abstract<T>::value && has_ptr_d
 };
 
 template<class... Args>
-const std::vector<poly_raw_factory_func> context_impl<Args...>::m_factories
+const std::vector<poly_raw_factory_func> context<Args...>::m_factories
 		= {[](ibstream& is) { return poly_factory<Args>::get(is); }...};
 
 template<class T, class Enable = void>
@@ -322,9 +326,36 @@ struct poly_shared_factory<T, std::enable_if_t<!std::is_abstract<T>::value && ha
 };
 
 template<class... Args>
-const std::vector<poly_shared_factory_func> context_impl<Args...>::m_shared_factories
+const std::vector<poly_shared_factory_func> context<Args...>::m_shared_factories
 		= {[](ibstream& is) { return poly_shared_factory<Args>::get(is); }...};
 
+
+inline context_base::ptr 
+get_default_context()
+{
+	static context_base::ptr default_context = MAKE_SHARED<context<>>(error_category_context::category_init_list{});
+	// static const context<> default_context{{}};
+	return default_context;
+}
+
+template<class... Args>
+context_base::ptr
+create_context(bool dedup_shared_ptrs = true, enum byte_order order = byte_order::big_endian)
+{
+	return MAKE_SHARED<context<Args...>>(dedup_shared_ptrs, order);
+}
+
+template<class... Args>
+context_base::ptr
+create_context(
+		error_category_context::category_init_list categories,
+		bool                                       dedup_shared_ptrs = true,
+		enum byte_order                            order             = byte_order::big_endian)
+{
+	return MAKE_SHARED<context<Args...>>(categories, dedup_shared_ptrs, order);
+}
+
+#if 0
 class context_base
 {
 public:
@@ -368,7 +399,7 @@ public:
 
 	context(error_category_context::category_init_list categories,
 			bool                                       dedup_shared_ptrs = true,
-			byte_order                       order        = byte_order::big_endian)
+			byte_order                                 order             = byte_order::big_endian)
 		: m_context_impl{std::make_shared<const context_impl<Args...>>(categories, dedup_shared_ptrs, order)}
 	{}
 
@@ -412,6 +443,7 @@ get_default_context()
 	static const context<> default_context{{}};
 	return default_context;
 }
+#endif
 
 }    // namespace bstream
 }    // namespace logicmill

@@ -38,7 +38,7 @@ template<class... Args>
 class client_context_builder : public client_context_base
 {
 public:
-	client_context_builder(async::loop::ptr const& lp, bstream::context_base const& stream_context)
+	client_context_builder(async::loop::ptr const& lp, bstream::context_base::ptr stream_context)
 		: client_context_base{lp, stream_context}
 	{
 		m_proxies.reserve(sizeof...(Args));

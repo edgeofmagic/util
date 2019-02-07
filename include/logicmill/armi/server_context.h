@@ -50,7 +50,7 @@ public:
 
 	server_context(
 			async::loop::ptr const&      lp             = async::loop::get_default(),
-			bstream::context_base const& stream_context = armi::get_default_stream_context())
+			bstream::context_base::ptr stream_context = armi::get_default_stream_context())
 		: base{lp, stream_context}
 	{}
 

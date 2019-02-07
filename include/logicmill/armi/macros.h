@@ -62,8 +62,8 @@
 		using client_context_type = context_type::client_context_type;                                                 \
 		using server_context_type = context_type::server_context_type;                                                 \
 		context_name(                                                                                                  \
-				async::loop::ptr             lp             = async::loop::get_default(),                              \
-				bstream::context_base const& stream_context = armi::get_default_stream_context())                      \
+				async::loop::ptr           lp             = async::loop::get_default(),                                \
+				bstream::context_base::ptr stream_context = armi::get_default_stream_context())                        \
 			: m_context{lp, stream_context}                                                                            \
 		{}                                                                                                             \
 		client_context_type&                                                                                           \

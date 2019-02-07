@@ -33,7 +33,7 @@ using namespace armi;
 server_context_base::server_context_base(
 		std::size_t                  interface_count,
 		async::loop::ptr             lp,
-		bstream::context_base const& stream_context)
+		bstream::context_base::ptr stream_context)
 	: m_loop{lp}, m_stream_context{stream_context}, m_impl_ptrs{interface_count, nullptr}
 {}
 

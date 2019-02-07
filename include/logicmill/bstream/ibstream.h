@@ -87,11 +87,11 @@ public:
 	ibstream(ibstream const&) = delete;
 	ibstream(ibstream&&)      = delete;
 
-	ibstream(std::unique_ptr<bstream::source> strmbuf, context_base const& cntxt = get_default_context())
-		: m_context{cntxt.get_context_impl()},
+	ibstream(std::unique_ptr<bstream::source> strmbuf, context_base::ptr cntxt = get_default_context())
+		: m_context{cntxt},
 		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
 		  m_strmbuf{std::move(strmbuf)}
-	//   m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
+	//   m_reverse_order{cntxt->byte_order() != bend::order::native}
 	{}
 
 	bstream::source&
@@ -705,10 +705,10 @@ protected:
 	void
 	ingest(util::bufwriter& os);
 
-	std::unique_ptr<util::bufwriter>         m_bufwriter = nullptr;
-	std::shared_ptr<const context_impl_base> m_context;
-	std::unique_ptr<ptr_deduper>             m_ptr_deduper;
-	std::unique_ptr<bstream::source>         m_strmbuf;
+	std::unique_ptr<util::bufwriter> m_bufwriter = nullptr;
+	context_base::ptr                m_context;
+	std::unique_ptr<ptr_deduper>     m_ptr_deduper;
+	std::unique_ptr<bstream::source> m_strmbuf;
 };
 
 template<class T>

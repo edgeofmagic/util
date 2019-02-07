@@ -42,15 +42,15 @@ public:
 
 	using source_type = buffer::source<util::shared_buffer>;
 
-	imbstream(std::unique_ptr<source_type> strmbuf, context_base const& cntxt = get_default_context())
+	imbstream(std::unique_ptr<source_type> strmbuf, context_base::ptr cntxt = get_default_context())
 		: ibstream{std::move(strmbuf), cntxt}
 	{}
 
-	imbstream(util::buffer const& buf, context_base const& cntxt = get_default_context())
+	imbstream(util::buffer const& buf, context_base::ptr cntxt = get_default_context())
 		: ibstream(std::make_unique<source_type>(buf), cntxt)
 	{}
 
-	imbstream(util::buffer&& buf, context_base const& cntxt = get_default_context())
+	imbstream(util::buffer&& buf, context_base::ptr cntxt = get_default_context())
 		: ibstream{std::make_unique<source_type>(std::move(buf)), cntxt}
 	{}
 

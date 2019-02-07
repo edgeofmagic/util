@@ -228,7 +228,7 @@ TEST_CASE( "logicmill/smoke/bstream/poly_raw_ptrs_half_erasure" )
 
 TEST_CASE( "logicmill/smoke/bstream/poly_shared_ptrs" )
 {
-	bstream::context< foo, far > cntxt;
+	auto cntxt = bstream::create_context<foo, far>();
 	
 	bstream::ombstream os{ 1024, cntxt };
 	auto foop0 = std::make_shared< foo >( "france is bacon" );
@@ -263,8 +263,8 @@ TEST_CASE( "logicmill/smoke/bstream/poly_shared_ptrs" )
 
 TEST_CASE( "logicmill/smoke/bstream/poly_unique_ptrs" )
 {
-	bstream::context< foo, far > cntxt;
-	
+	auto cntxt = bstream::create_context<foo, far>();
+
 	bstream::ombstream os{ 1024, cntxt };
 	auto foop0 = std::make_unique< foo >( "france is bacon" );
 	os << foop0;

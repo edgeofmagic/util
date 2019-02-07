@@ -28,7 +28,7 @@
 using namespace logicmill;
 using namespace armi;
 
-client_context_base::client_context_base(async::loop::ptr const& lp, bstream::context_base const& cntxt)
+client_context_base::client_context_base(async::loop::ptr const& lp, bstream::context_base::ptr cntxt)
 	: m_loop{lp},
 	  m_stream_context{cntxt},
 	  m_next_request_ordinal{1},

@@ -39,24 +39,24 @@ namespace bstream
 class ifbstream : public ibstream
 {
 public:
-	ifbstream(context_base const& cntxt = get_default_context()) : ibstream{std::make_unique<file::source>(), cntxt} {}
+	ifbstream(context_base::ptr cntxt = get_default_context()) : ibstream{std::make_unique<file::source>(), cntxt} {}
 
 	ifbstream(ifbstream const&) = delete;
 	ifbstream(ifbstream&&)      = delete;
 
-	ifbstream(std::unique_ptr<file::source> fbuf, context_base const& cntxt = get_default_context())
+	ifbstream(std::unique_ptr<file::source> fbuf, context_base::ptr cntxt = get_default_context())
 		: ibstream{std::move(fbuf), cntxt}
 	{}
 
-	ifbstream(file::source&& fbuf, context_base const& cntxt = get_default_context())
+	ifbstream(file::source&& fbuf, context_base::ptr cntxt = get_default_context())
 		: ibstream{std::make_unique<file::source>(std::move(fbuf)), cntxt}
 	{}
 
-	ifbstream(std::string const& filename, context_base const& cntxt = get_default_context())
+	ifbstream(std::string const& filename, context_base::ptr cntxt = get_default_context())
 		: ibstream{std::make_unique<file::source>(filename), cntxt}
 	{}
 
-	ifbstream(std::string const& filename, std::error_code& err, context_base const& cntxt = get_default_context())
+	ifbstream(std::string const& filename, std::error_code& err, context_base::ptr cntxt = get_default_context())
 		: ibstream{std::make_unique<file::source>(filename, err), cntxt}
 	{}
 

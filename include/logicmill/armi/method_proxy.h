@@ -75,7 +75,7 @@ protected:
 		m_context.send_request(req_ord, os, timeout);
 	}
 
-	bstream::context_base const&
+	bstream::context_base::ptr
 	stream_context() const
 	{
 		return m_context.stream_context();

@@ -88,18 +88,18 @@ public:
 		std::unordered_map<std::shared_ptr<void>, saved_ptr_info> m_saved_ptrs;
 	};
 
-	obstream(std::unique_ptr<bstream::sink> strmbuf, context_base const& cntxt = get_default_context())
-		: m_context{cntxt.get_context_impl()},
+	obstream(std::unique_ptr<bstream::sink> strmbuf, context_base::ptr cntxt = get_default_context())
+		: m_context{cntxt},
 		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
 		  m_strmbuf{std::move(strmbuf)}
-	//   m_reverse_order{is_reverse(cntxt.get_context_impl()->byte_order())}
+	//   m_reverse_order{is_reverse(cntxt->byte_order())}
 	{}
 
 	// obstream(std::unique_ptr<bstream::sink> strmbuf, std::shared_ptr<const context_impl_base> context_impl)
 	// 	: m_context{context_impl},
 	// 	  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
 	// 	  m_strmbuf{std::move(strmbuf)},
-	// 	  m_reverse_order{cntxt.get_context_impl()->byte_order() != bend::order::native}
+	// 	  m_reverse_order{cntxt->byte_order() != bend::order::native}
 	// {}
 
 
@@ -484,7 +484,7 @@ protected:
 	static std::size_t
 	blob_header_size(std::size_t blob_size);
 
-	std::shared_ptr<const context_impl_base> m_context;
+	SHARED_PTR_TYPE<context_base> m_context;
 	std::unique_ptr<ptr_deduper>             m_ptr_deduper;
 	std::unique_ptr<bstream::sink>           m_strmbuf;
 	// const bool                               m_reverse_order;

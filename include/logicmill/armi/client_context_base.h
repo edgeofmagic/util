@@ -58,7 +58,7 @@ public:
 		bool                    persist;
 	};
 
-	client_context_base(async::loop::ptr const& lp, bstream::context_base const& cntxt);
+	client_context_base(async::loop::ptr const& lp, bstream::context_base::ptr cntxt);
 
 	template<class T>
 	typename std::enable_if_t<std::is_convertible<T, close_handler>::value, bool>
@@ -116,7 +116,7 @@ private:
 	template<class T>
 	friend class logicmill::armi::method_proxy_base;
 
-	bstream::context_base const&
+	bstream::context_base::ptr
 	stream_context() const
 	{
 		return m_stream_context;
@@ -206,7 +206,7 @@ private:
 	}
 
 	async::loop::ptr                                      m_loop;
-	bstream::cloned_context                               m_stream_context;
+	bstream::context_base::ptr                            m_stream_context;
 	std::uint64_t                                         m_next_request_ordinal;
 	std::unordered_map<std::uint64_t, reply_handler_info> m_reply_handler_map;
 	millisecs                                             m_default_timeout;

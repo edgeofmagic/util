@@ -146,7 +146,7 @@ using async::ip::address;
 
 namespace rfoo
 {
-static const bstream::context<> foo_stream_context({&armi::error_category(), &foo::error_category()});
+static auto foo_stream_context = bstream::create_context<>({&armi::error_category(), &foo::error_category()});
 
 ARMI_CONTEXT(remote, foo::bar, foo::boo);
 ARMI_INTERFACE(remote, foo::bar, increment, freak_out);
@@ -292,7 +292,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 
 TEST_CASE("logicmill::armi [ smoke ] { bad error category }")
 {
-	static const bstream::context<> stream_context({&armi::error_category()});
+	static auto stream_context = bstream::create_context<>({&armi::error_category()});
 
 	bool client_connect_timer_handler_visited{false};
 	bool client_connect_handler_visited{false};

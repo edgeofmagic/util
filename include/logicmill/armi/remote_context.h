@@ -46,7 +46,7 @@ public:
 
 	remote_context(
 			async::loop::ptr             lp             = async::loop::get_default(),
-			bstream::context_base const& stream_context = armi::get_default_stream_context())
+			bstream::context_base::ptr stream_context = armi::get_default_stream_context())
 		: m_loop{lp}, m_stream_context{stream_context}
 	{}
 
@@ -57,7 +57,7 @@ public:
 	}
 
 	void
-	stream_context(bstream::context_base const& stream_context)
+	stream_context(bstream::context_base::ptr stream_context)
 	{
 		m_stream_context = stream_context;
 	}
@@ -68,7 +68,7 @@ public:
 		return m_loop;
 	}
 
-	bstream::context_base const&
+	bstream::context_base::ptr
 	stream_context() const
 	{
 		return m_stream_context;
@@ -96,7 +96,7 @@ public:
 
 private:
 	async::loop::ptr                     m_loop;
-	bstream::cloned_context              m_stream_context;
+	bstream::context_base::ptr           m_stream_context;
 	std::unique_ptr<client_context_type> m_client_context;
 	std::unique_ptr<server_context_type> m_server_context;
 };

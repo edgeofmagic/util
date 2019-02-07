@@ -40,11 +40,17 @@ using fail_reply = std::function<void(std::error_code ec)>;
 
 using millisecs = std::chrono::milliseconds;
 
-inline bstream::context_base const&
+inline bstream::context_base::ptr
 get_default_stream_context()
 {
-	static const bstream::context<> default_context({&armi::error_category()});
+
+	static const bstream::error_category_context::category_init_list clist = {&armi::error_category()};
+	static bstream::context_base::ptr default_context = MAKE_SHARED<bstream::context<>>(clist);
+	// static const context<> default_context{{}};
 	return default_context;
+
+	// static const bstream::context<> default_context({&armi::error_category()});
+	// return default_context;
 }
 
 enum class reply_kind

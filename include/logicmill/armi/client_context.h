@@ -55,7 +55,7 @@ public:
 	template<class T>
 	using proxy_ref = proxy_of<T>&;
 
-	client_context(async::loop::ptr const& lp, bstream::context_base const& cntxt) : base{lp, cntxt} {}
+	client_context(async::loop::ptr const& lp, bstream::context_base::ptr cntxt) : base{lp, cntxt} {}
 
 	template<class T>
 	inline proxy_ref<T>
@@ -64,48 +64,6 @@ public:
 		return dynamic_cast<proxy_of<T>&>(*(base::m_proxies[traits::index_from<T, target_list_carrier>::value]));
 	}
 
-private:
-	class connect_channel_handler
-	{
-	public:
-		template<
-				class Handler,
-				class = typename std::enable_if_t<std::is_convertible<Handler, client_context::connect_handler>::value>>
-		connect_channel_handler(client_context& cntxt, Handler&& handler)
-			: m_client_context{cntxt}, m_handler{std::forward<Handler>(handler)}
-		{}
-
-		void
-		operator()(async::channel::ptr const& chan, std::error_code err)
-		{
-			if (err)
-			{
-				m_client_context.channel().reset();
-			}
-			else
-			{
-				m_client_context.channel(chan);
-				m_client_context.channel()->start_read(
-						err, [=](async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err) {
-							if (err)
-							{
-								m_client_context.really_close(err);
-							}
-							else
-							{
-								assert(chan == m_client_context.channel());
-								m_client_context.on_read(std::move(buf), err);
-							}
-						});
-			}
-			m_handler(m_client_context, err);
-		}
-
-		client_context&                 m_client_context;
-		client_context::connect_handler m_handler;
-	};
-
-public:
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, connect_handler>::value>
 	connect(async::options const& opts, std::error_code& err, Handler&& handler)
@@ -113,7 +71,32 @@ public:
 		logicmill::async::options opts_override{opts};
 		opts_override.framing(true);
 		client_context_base::loop()->connect_channel(
-				opts_override, err, connect_channel_handler{*this, std::forward<Handler>(handler)});
+				opts_override,
+				err,
+				[=, handler{std::forward<Handler>(handler)}](async::channel::ptr const& chan, std::error_code err) {
+					if (err)
+					{
+						this->channel().reset();
+					}
+					else
+					{
+						this->channel(chan);
+						this->channel()->start_read(
+								err,
+								[=](async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err) {
+									if (err)
+									{
+										this->really_close(err);
+									}
+									else
+									{
+										assert(chan == this->channel());
+										this->on_read(std::move(buf), err);
+									}
+								});
+					}
+					handler(*this, err);
+				});
 	}
 };
 

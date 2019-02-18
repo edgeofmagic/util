@@ -33,10 +33,10 @@ using namespace armi;
 void
 fail_proxy::operator()(std::error_code err)
 {
-	bstream::ombstream os{m_context.stream_context()};
+	bstream::ombstream os{m_stream_context};
 	os << m_req_ord;
 	os << reply_kind::fail;
 	os.write_array_header(1);
 	os << err;
-	m_context.send_reply(m_channel, os.release_mutable_buffer());
+	m_channel->send_reply(os.release_mutable_buffer());
 }

@@ -22,57 +22,65 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_CLIENT_CONTEXT_BUILDER_H
-#define LOGICMILL_ARMI_CLIENT_CONTEXT_BUILDER_H
+#ifndef LOGICMILL_ARMI_TRANSPORT_H
+#define LOGICMILL_ARMI_TRANSPORT_H
 
-#include <logicmill/armi/client_context_base.h>
-#include <logicmill/armi/interface_proxy.h>
-#include <memory>
-#include <vector>
+#include <chrono>
+#include <cstdint>
+#include <deque>
+#include <functional>
+// #include <logicmill/armi/client_context_base.h>
+// #include <logicmill/armi/error.h>
+// #include <logicmill/armi/server_context_base.h>
+#include <logicmill/bstream/context.h>
+#include <logicmill/util/buffer.h>
+#include <system_error>
 
 namespace logicmill
 {
 namespace armi
 {
-template<class... Args>
-class client_context_builder : public client_context_base
+namespace transport
+{
+
+class server_channel
 {
 public:
-	client_context_builder( /* transport::client_channel::ptr const& cp, */ bstream::context_base::ptr const& strm_cntxt)
-		: client_context_base{/* cp, */ strm_cntxt}
-	{
-		m_proxies.reserve(sizeof...(Args));
-		append_proxies<Args...>();
-	}
+	using ptr = SHARED_PTR_TYPE<server_channel>;
 
-	template<class T>
-	void
-	append_proxies()
-	{
-		append_proxy<T>();
-	}
+	// virtual void
+	// send_reply(std::deque<util::mutable_buffer>&& req) = 0;
 
-	template<class First_, class... Args_>
-	typename std::enable_if<(sizeof...(Args_) > 0)>::type
-	append_proxies()
-	{
-		append_proxy<First_>();
-		append_proxies<Args_...>();
-	}
-
-	template<class T>
-	void
-	append_proxy()
-	{
-		std::size_t index = m_proxies.size();
-		m_proxies.push_back(std::make_unique<T>(*this, index));
-	}
-
-protected:
-	std::vector<std::unique_ptr<armi::interface_proxy>> m_proxies;
+	virtual void
+	send_reply(util::mutable_buffer&& req)
+			= 0;
 };
 
+class client_channel
+{
+public:
+	using ptr = SHARED_PTR_TYPE<client_channel>;
+
+	using close_handler = std::function<void()>;
+
+	virtual void close(close_handler) = 0;
+
+	virtual void close() = 0;
+
+	virtual void
+	send_request(
+			std::uint64_t             request_id,
+			std::chrono::milliseconds timeout,
+			util::mutable_buffer&&    req,
+			std::error_code&          err)
+			= 0;
+
+	// reply by calling client_context_base::handle_reply(buffer);
+	// timeout should invoke client_context_base::cancel_request(request_id, std::error_code);
+};
+
+}    // namespace transport
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_CLIENT_CONTEXT_BUILDER_H
+#endif    // LOGICMILL_ARMI_TRANSPORT_H

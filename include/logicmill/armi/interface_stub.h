@@ -36,7 +36,7 @@ class interface_stub : public interface_stub_builder
 {
 public:
 	template<class... Args>
-	inline interface_stub(server_context_base& context, std::size_t index, Args... args)
+	interface_stub(server_context_base& context, std::size_t index, Args... args)
 		: interface_stub_builder(context, index, typename make_indices<sizeof...(Args)>::type(), args...)
 	{}
 };

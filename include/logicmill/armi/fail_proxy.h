@@ -26,7 +26,9 @@
 #define LOGICMILL_ARMI_FAIL_PROXY_H
 
 #include <cstdint>
-#include <logicmill/async/channel.h>
+// #include <logicmill/async/channel.h>
+#include <logicmill/armi/server_context_base.h>
+#include <logicmill/armi/transport.h>
 #include <system_error>
 
 namespace logicmill
@@ -38,21 +40,30 @@ class server_context_base;
 class fail_proxy
 {
 public:
-	fail_proxy(server_context_base& context, std::uint64_t req_ord, logicmill::async::channel::ptr const& chan)
-		: m_context{context}, m_req_ord{req_ord}, m_channel{chan}
+	fail_proxy(
+			std::uint64_t                     req_ord,
+			transport::server_channel::ptr const&     chan,
+			bstream::context_base::ptr const& stream_context)
+		: m_req_ord{req_ord}, m_channel{chan}, m_stream_context{stream_context}
 	{}
 
-	inline fail_proxy(fail_proxy const& other)
-		: m_context{other.m_context}, m_req_ord{other.m_req_ord}, m_channel{other.m_channel}
+	fail_proxy(fail_proxy const& other)
+		: m_req_ord{other.m_req_ord}, m_channel{other.m_channel}, m_stream_context{other.m_stream_context}
+	{}
+
+	fail_proxy(fail_proxy&& other)
+		: m_req_ord{other.m_req_ord},
+		  m_channel{std::move(other.m_channel)},
+		  m_stream_context{std::move(other.m_stream_context)} // TODO: don't move after this is fixed (to ref)
 	{}
 
 	void
 	operator()(std::error_code ec);
 
 private:
-	server_context_base& m_context;
-	std::uint64_t        m_req_ord;
-	async::channel::ptr  m_channel;
+	std::uint64_t              m_req_ord;
+	transport::server_channel::ptr     m_channel;
+	bstream::context_base::ptr m_stream_context;
 };
 
 }    // namespace armi

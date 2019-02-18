@@ -45,60 +45,74 @@ public:
 	using server_context_type = logicmill::armi::server_context<stubs>;
 
 	remote_context(
-			async::loop::ptr             lp             = async::loop::get_default(),
-			bstream::context_base::ptr stream_context = armi::get_default_stream_context())
-		: m_loop{lp}, m_stream_context{stream_context}
+			// async::loop::ptr             lp             = async::loop::get_default(),
+			bstream::context_base::ptr const& stream_context = armi::get_default_stream_context())
+		: /* m_loop{lp}, */ m_stream_context{stream_context}
 	{}
 
-	void
-	loop(async::loop::ptr lp)
-	{
-		m_loop = lp;
-	}
+	// void
+	// loop(async::loop::ptr lp)
+	// {
+	// 	m_loop = lp;
+	// }
 
 	void
-	stream_context(bstream::context_base::ptr stream_context)
+	stream_context(bstream::context_base::ptr const& stream_context)
 	{
 		m_stream_context = stream_context;
 	}
 
-	async::loop::ptr
-	loop() const
-	{
-		return m_loop;
-	}
+	// async::loop::ptr
+	// loop() const
+	// {
+	// 	return m_loop;
+	// }
 
-	bstream::context_base::ptr
+	bstream::context_base::ptr const& 
 	stream_context() const
 	{
 		return m_stream_context;
 	}
 
-	client_context_type&
-	client()
+	// client_context_type::ptr
+	SHARED_PTR_TYPE<client_context_type>
+	create_client( /* transport::client_channel::ptr const& cp = nullptr */ )
+	{
+		return MAKE_SHARED<client_context_type>( /* cp, */ m_stream_context);
+	}
+
+	// server_context_type::ptr
+	SHARED_PTR_TYPE<server_context_type>
+	create_server(/* transport::server_channel::ptr const& cp = nullptr */)
+	{
+		return MAKE_SHARED<server_context_type>(/* cp, */ m_stream_context);
+	}
+
+	SHARED_PTR_TYPE<client_context_type> const& 
+	client( /* transport::client_channel::ptr const& cp = nullptr */)
 	{
 		if (!m_client_context)
 		{
-			m_client_context = std::make_unique<client_context_type>(m_loop, m_stream_context);
+			m_client_context = MAKE_SHARED<client_context_type>(/* cp, */ m_stream_context);
 		}
-		return *m_client_context;
+		return m_client_context;
 	}
 
-	server_context_type&
-	server()
+	SHARED_PTR_TYPE<server_context_type> const& 
+	server(/* transport::server_connection::ptr const& cp = nullptr */)
 	{
 		if (!m_server_context)
 		{
-			m_server_context = std::make_unique<server_context_type>(m_loop, m_stream_context);
+			m_server_context = MAKE_SHARED<server_context_type>( /* cp, */ m_stream_context);
 		}
-		return *m_server_context;
+		return m_server_context;
 	}
 
 private:
-	async::loop::ptr                     m_loop;
+	// async::loop::ptr                     m_loop;
 	bstream::context_base::ptr           m_stream_context;
-	std::unique_ptr<client_context_type> m_client_context;
-	std::unique_ptr<server_context_type> m_server_context;
+	SHARED_PTR_TYPE<client_context_type> m_client_context;
+	SHARED_PTR_TYPE<server_context_type> m_server_context;
 };
 
 }    // namespace armi

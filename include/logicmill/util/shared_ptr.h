@@ -35,12 +35,16 @@
 
 #if (USE_STD_SHARED_PTR)
 #define SHARED_PTR_TYPE std::shared_ptr
+#define WEAK_PTR_TYPE std::weak_ptr
 #define MAKE_SHARED std::make_shared
 #define DYNAMIC_POINTER_CAST std::dynamic_pointer_cast
+#define ENABLE_SHARED_FROM_THIS std::enable_shared_from_this
 #else
 #define SHARED_PTR_TYPE logicmill::util::shared_ptr
+#define WEAK_PTR_TYPE logicmill::util::weak_ptr
 #define MAKE_SHARED logicmill::util::make_shared
 #define DYNAMIC_POINTER_CAST logicmill::util::dynamic_pointer_cast
+#define ENABLE_SHARED_FROM_THIS logicmill::util::enable_shared_from_this
 #endif
 
 
@@ -191,7 +195,7 @@ private:
 };
 
 template<class T, class Alloc>
-class value_ctrl_blk : public Alloc, public ctrl_blk
+class value_ctrl_blk : public ctrl_blk, public Alloc
 {
 public:
 	using element_type   = T;
@@ -357,6 +361,9 @@ private:
 template<class U>
 class weak_ptr;
 
+template<class U> 
+class enable_shared_from_this;
+
 template<class T>
 class shared_ptr
 {
@@ -404,7 +411,9 @@ protected:
 		allocator_type alloc{};
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 		new (cblk_ptr) ctrl_blk_type(std::move(alloc), std::forward<Args>(args)...);
-		return shared_ptr{cblk_ptr, cblk_ptr->get_ptr()};
+		shared_ptr result{dynamic_cast<detail::ctrl_blk*>(cblk_ptr), cblk_ptr->get_ptr()};
+		result.enable_weak_this(result.m_state.ptr(), result.m_state.ptr());
+		return result;
 	}
 
 	template<class _Alloc, class... Args>
@@ -417,7 +426,9 @@ protected:
 
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 		new (cblk_ptr) ctrl_blk_type(std::forward<_Alloc>(alloc), std::forward<Args>(args)...);
-		return shared_ptr{cblk_ptr, cblk_ptr->get_ptr()};
+		shared_ptr result{dynamic_cast<detail::ctrl_blk*>(cblk_ptr), cblk_ptr->get_ptr()};
+		result.enable_weak_this(result.m_state.ptr(), result.m_state.ptr());
+		return result;
 	}
 
 	template<class U>
@@ -464,6 +475,7 @@ public:
 		new (cblk_ptr) ctrl_blk_type(ep, deleter_type{alloc, 1}, std::move(alloc));
 		// m_cblk_ptr = cblk_ptr;
 		m_state.ctrl(cblk_ptr);
+		enable_weak_this(ep, ep);
 	}
 
 	template<class _Del>
@@ -479,6 +491,7 @@ public:
 		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), std::move(alloc));
 		// m_cblk_ptr = cblk_ptr;
 		m_state.ctrl(cblk_ptr);
+		enable_weak_this(ep, ep);
 	}
 
 	template<class _Del, class _Alloc>
@@ -493,6 +506,7 @@ public:
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), std::forward<_Alloc>(alloc));
 		m_state.ctrl(cblk_ptr);
+		enable_weak_this(ep, ep);
 	}
 
 	shared_ptr(shared_ptr const& rhs) : m_state{rhs.m_state}
@@ -550,6 +564,7 @@ public:
 			ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 			new (cblk_ptr) ctrl_blk_type(uptr.get(), uptr.get_deleter(), std::move(alloc));
 			m_state.ctrl(cblk_ptr);
+			enable_weak_this(uptr.get(), uptr.get());
 		}
 		uptr.release();
 	}
@@ -579,9 +594,13 @@ public:
 			ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 			new (cblk_ptr) ctrl_blk_type(uptr.get(), std::ref(uptr.get_deleter()), std::move(alloc));
 			m_state.ctrl(cblk_ptr);
+			enable_weak_this(uptr.get(), uptr.get());
 		}
 		uptr.release();
 	}
+
+    template<class U>
+	shared_ptr(shared_ptr<U> const& rhs, element_type* p) noexcept;
 
 	~shared_ptr()
 	{
@@ -711,6 +730,22 @@ public:
 
 private:
 	shared_ptr(detail::ctrl_blk* p, element_type* ep) : m_state{p, ep} {}
+
+    template <class Y, class U>
+        typename std::enable_if_t<std::is_convertible<U*, const enable_shared_from_this<Y>*>::value>
+        enable_weak_this(const enable_shared_from_this<Y>* ep,
+                           U* p) _NOEXCEPT
+        {
+            typedef typename std::remove_cv<Y>::type RawY;
+            if (ep && ep->m_weak_this.expired())
+            {
+                ep->m_weak_this = shared_ptr<RawY>(*this,
+                    const_cast<RawY*>(static_cast<const Y*>(p)));
+            }
+        }
+
+    void enable_weak_this(...) noexcept {}
+
 
 	detail::pstate<element_type> m_state;
 };
@@ -934,6 +969,44 @@ shared_ptr<T>::shared_ptr(
 		throw std::bad_weak_ptr{};
 	}
 }
+
+
+template<class T>
+template<class U>
+shared_ptr<T>::shared_ptr(shared_ptr<U> const& rhs, element_type* p) noexcept
+: m_state{rhs.m_state.ctrl(), p}
+{
+    if (m_state.ctrl())
+			m_state.ctrl()->increment_use_count();
+}
+
+
+template<class T>
+class enable_shared_from_this
+{
+    mutable weak_ptr<T> m_weak_this;
+protected:
+    enable_shared_from_this() noexcept {}
+    enable_shared_from_this(enable_shared_from_this const&) noexcept {}
+    enable_shared_from_this& operator=(enable_shared_from_this const&) noexcept
+        {return *this;}
+    ~enable_shared_from_this() {}
+public:
+    shared_ptr<T> shared_from_this()
+        {return shared_ptr<T>(m_weak_this);}
+    
+    shared_ptr<T const> shared_from_this() const
+        {return shared_ptr<const T>(m_weak_this);}
+
+    weak_ptr<T> weak_from_this() noexcept
+       { return m_weak_this; }
+
+    weak_ptr<const T> weak_from_this() const noexcept
+        { return m_weak_this; }
+
+    template <class U> friend class shared_ptr;
+};
+
 
 }    // namespace util
 }    // namespace logicmill

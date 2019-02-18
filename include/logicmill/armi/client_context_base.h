@@ -27,11 +27,13 @@
 
 #include <chrono>
 #include <logicmill/armi/reply_handler_base.h>
+#include <logicmill/armi/transport.h>
 #include <logicmill/armi/types.h>
-#include <logicmill/async/channel.h>
-#include <logicmill/async/loop.h>
+// #include <logicmill/async/channel.h>
+// #include <logicmill/async/loop.h>
 #include <logicmill/bstream/imbstream.h>
 #include <logicmill/bstream/ombstream.h>
+#include <memory>
 #include <unordered_map>
 
 namespace logicmill
@@ -44,70 +46,95 @@ class interface_proxy;
 template<class T>
 class method_proxy_base;
 
-class client_context_base
+class client_context_base : public ENABLE_SHARED_FROM_THIS<client_context_base>
 {
 public:
-	using connect_handler         = std::function<void(std::error_code err)>;
-	using request_timeout_handler = std::function<void(std::error_code err)>;
+	using ptr                     = SHARED_PTR_TYPE<client_context_base>;
+	using wptr                    = WEAK_PTR_TYPE<client_context_base>;
+	// using connect_handler         = std::function<void(std::error_code err)>;
+	// using request_timeout_handler = std::function<void(std::error_code err)>;
 	using close_handler           = std::function<void()>;
+	using transport_error_handler = std::function<void(std::error_code err)>;
 
-	struct reply_handler_info
+
+	client_context_base(bstream::context_base::ptr const& stream_context);
+
+	void
+	use(transport::client_channel::ptr const& transp)
 	{
-		reply_handler_info(reply_handler_base::ptr&& hndlr, bool prst) : handler{std::move(hndlr)}, persist{prst} {}
-		reply_handler_base::ptr handler;
-		bool                    persist;
-	};
-
-	client_context_base(async::loop::ptr const& lp, bstream::context_base::ptr cntxt);
-
-	template<class T>
-	typename std::enable_if_t<std::is_convertible<T, close_handler>::value, bool>
-	close(T&& handler)
-	{
-		m_on_close = std::forward<T>(handler);
-		return really_close();
+		if (m_channel)
+		{
+			cancel_all_requests(make_error_code(armi::errc::transport_closed));
+			m_channel->close(nullptr);
+		}
+		m_channel = transp;
 	}
 
-	bool
+	template<class T>
+	typename std::enable_if_t<std::is_convertible<T, close_handler>::value>
+	close(T&& handler)
+	{
+		if (!m_is_closing)
+		{
+			m_is_closing = true;
+			cancel_all_requests(make_error_code(armi::errc::context_closed));
+			if (m_channel)
+			{
+				m_channel->close(std::forward<T>(handler));
+			}
+			m_channel.reset();
+		}
+	}
+
+	void
 	close()
 	{
-		m_on_close = nullptr;
-		return really_close();
+		if (!m_is_closing)
+		{
+			m_is_closing = true;
+			cancel_all_requests(make_error_code(armi::errc::context_closed));
+			if (m_channel)
+			{
+				m_channel->close();
+			}
+			m_channel.reset();
+		}
 	}
 
 	virtual ~client_context_base();
 
-protected:
-	bool
-	really_close();
-
-	bool
-	really_close(std::error_code err);
-
-	async::loop::ptr
-
-	loop() const
-	{
-		return m_loop;
-	}
-
-	async::channel::ptr
-	channel() const
-	{
-		return m_channel;
-	}
+	void
+	cancel_request(std::uint64_t request_id, std::error_code err);
 
 	void
-	channel(async::channel::ptr cp)
-	{
-		m_channel = cp;
-	}
+	cancel_request(std::uint64_t req_ord);    // no notification
 
 	void
-	on_read(util::const_buffer&& buf, std::error_code& err)
+	cancel_all_requests(std::error_code ec);
+
+	void
+	cancel_all_requests();    // no notification;
+
+	void
+	handle_reply(util::const_buffer&& buf)
 	{
 		bstream::imbstream is{std::move(buf), m_stream_context};
 		invoke_handler(is);
+	}
+
+	void
+	on_transport_error(transport_error_handler handler)
+	{
+		m_on_transport_error = std::move(handler);
+	}
+
+	void
+	transport_error(std::error_code err)
+	{
+		if (m_on_transport_error)
+		{
+			m_on_transport_error(err);
+		}
 	}
 
 private:
@@ -116,19 +143,16 @@ private:
 	template<class T>
 	friend class logicmill::armi::method_proxy_base;
 
-	bstream::context_base::ptr
+	bstream::context_base::ptr const&
 	stream_context() const
 	{
 		return m_stream_context;
 	}
 
 	void
-	add_handler(std::uint64_t req_ord, reply_handler_base::ptr&& handler, bool persist = false)
+	add_handler(std::uint64_t req_ord, reply_handler_base::ptr&& handler)
 	{
-		auto result = m_reply_handler_map.emplace(
-				std::piecewise_construct,
-				std::forward_as_tuple(req_ord),
-				std::forward_as_tuple(std::move(handler), persist));
+		auto result = m_reply_handler_map.emplace(req_ord, std::move(handler));
 		assert(result.second);
 	}
 
@@ -139,28 +163,10 @@ private:
 	}
 
 	void
-	check_async(std::error_code& err);
-
-	void
 	send_request(std::uint64_t req_ord, bstream::ombstream& os, millisecs timeout);
 
 	void
-	cancel_all(std::error_code ec)
-	{
-		cancel_all_reply_handlers(ec);
-	}
-
-	bool
 	invoke_handler(bstream::ibstream& is);
-
-	bool
-	cancel_handler(std::uint64_t req_ord, std::error_code ec);
-
-	bool
-	cancel_handler(std::uint64_t req_ord);    // no notification;
-
-	void
-	cancel_all_reply_handlers(std::error_code ec);
 
 	std::uint64_t
 	next_request_ordinal()
@@ -205,14 +211,14 @@ private:
 		m_transient_timeout = millisecs{0};
 	}
 
-	async::loop::ptr                                      m_loop;
-	bstream::context_base::ptr                            m_stream_context;
-	std::uint64_t                                         m_next_request_ordinal;
-	std::unordered_map<std::uint64_t, reply_handler_info> m_reply_handler_map;
-	millisecs                                             m_default_timeout;
-	millisecs                                             m_transient_timeout;
-	close_handler                                         m_on_close;
-	async::channel::ptr                                   m_channel;
+	bstream::context_base::ptr                                 m_stream_context;
+	std::uint64_t                                              m_next_request_ordinal;
+	std::unordered_map<std::uint64_t, reply_handler_base::ptr> m_reply_handler_map;
+	millisecs                                                  m_default_timeout;
+	millisecs                                                  m_transient_timeout;
+	bool                                                       m_is_closing;
+	transport::client_channel::ptr                                     m_channel;
+	transport_error_handler                                    m_on_transport_error;
 };
 
 }    // namespace armi

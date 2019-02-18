@@ -31,15 +31,16 @@ using namespace logicmill;
 using namespace armi;
 
 void
-interface_stub_base::process(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is)
+interface_stub_base::process(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is)
 {
 	auto method_id = is.read_as<std::size_t>();
 	if (method_id >= method_count())
 	{
-		fail_proxy{m_context, req_ord, chan}(make_error_code(armi::errc::invalid_method_id));
+		context().request_failed(req_id, chan, make_error_code(armi::errc::invalid_method_id));
+		// fail_proxy{req_id, chan, context().stream_context()}(make_error_code(armi::errc::invalid_method_id));
 	}
 	else
 	{
-		get_method_stub(method_id).dispatch(req_ord, chan, is);
+		get_method_stub(method_id).dispatch(req_id, chan, is);
 	}
 }

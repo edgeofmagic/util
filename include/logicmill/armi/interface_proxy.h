@@ -37,20 +37,20 @@ class client_context_base;
 class interface_proxy
 {
 public:
-	inline interface_proxy(client_context_base& context, std::size_t index) : index_{index}, context_{context} {}
+	inline interface_proxy(client_context_base& context, std::size_t index) : m_index{index}, m_context{context} {}
 
 	virtual ~interface_proxy();
 
 	inline std::size_t
 	index() const
 	{
-		return index_;
+		return m_index;
 	}
 
 	inline client_context_base&
 	context()
 	{
-		return context_;
+		return m_context;
 	}
 
 protected:
@@ -58,8 +58,8 @@ protected:
 	transient_timeout(millisecs timeout);
 
 private:
-	const std::size_t    index_;
-	client_context_base& context_;
+	const std::size_t    m_index;
+	client_context_base& m_context;
 };
 
 }    // namespace armi

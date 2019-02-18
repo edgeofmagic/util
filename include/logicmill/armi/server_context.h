@@ -43,20 +43,22 @@ public:
 	using stub_list_carrier   = Template<Args...>;
 	using target_list_carrier = traits::_arg_list<typename Args::target_type...>;
 
+	using ptr = SHARED_PTR_TYPE<server_context>;
+
 	template<class T>
 	using stub_of = typename traits::replace_arg<typename traits::first_arg<stub_list_carrier>::type, T>::type;
 
-	using server_error_handler = std::function<void(server_context& server, std::error_code ec)>;
+	// using server_error_handler = std::function<void(server_context::ptr const& server, std::error_code ec)>;
 
 	server_context(
-			async::loop::ptr const&      lp             = async::loop::get_default(),
+			// async::loop::ptr const&      lp             = async::loop::get_default(),
 			bstream::context_base::ptr stream_context = armi::get_default_stream_context())
-		: base{lp, stream_context}
+		: base{stream_context}
 	{}
 
 	template<class T>
 	void
-	register_impl(std::shared_ptr<T> impl_ptr)
+	register_impl(std::shared_ptr<T> const& impl_ptr)
 	{
 		logicmill::armi::server_context_base::set_impl(traits::index_from<T, target_list_carrier>::value, impl_ptr);
 	}
@@ -70,28 +72,29 @@ public:
 	}
 
 private:
-	class error_handler_wrapper : public server_context_base::error_handler_wrapper_base
-	{
-	public:
-		template<
-				class Handler,
-				class = typename std::enable_if_t<
-						std::is_convertible<Handler, server_context::server_error_handler>::value>>
-		error_handler_wrapper(server_context& cntxt, Handler&& handler)
-			: m_server_context{cntxt}, m_handler{std::forward<Handler>(handler)}
-		{}
+	// class error_handler_wrapper : public server_context_base::error_handler_wrapper_base
+	// {
+	// public:
+	// 	template<
+	// 			class Handler,
+	// 			class = typename std::enable_if_t<
+	// 					std::is_convertible<Handler, server_context::server_error_handler>::value>>
+	// 	error_handler_wrapper(server_context::ptr const& cntxt, Handler&& handler)
+	// 		: m_server_context{cntxt}, m_handler{std::forward<Handler>(handler)}
+	// 	{}
 
-		virtual void
-		invoke(std::error_code err) override
-		{
-			m_handler(m_server_context, err);
-		}
+	// 	virtual void
+	// 	invoke(std::error_code err) override
+	// 	{
+	// 		m_handler(m_server_context, err);
+	// 	}
 
-		server_context&                      m_server_context;
-		server_context::server_error_handler m_handler;
-	};
+	// 	server_context::ptr                      m_server_context;
+	// 	server_context::server_error_handler m_handler;
+	// };
 
 public:
+/*
 	template<class T, class U>
 	typename std::enable_if_t<
 			std::is_convertible<T, server_error_handler>::value
@@ -134,6 +137,7 @@ public:
 		server_context_base::m_on_channel_error = std::forward<T>(handler);
 		return *this;
 	}
+*/
 };
 
 }    // namespace armi

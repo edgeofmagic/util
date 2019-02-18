@@ -31,7 +31,7 @@ using namespace armi;
 void
 interface_proxy::transient_timeout(millisecs timeout)
 {
-	context_.transient_timeout(timeout);
+	m_context.transient_timeout(timeout);
 }
 
 interface_proxy::~interface_proxy() {}

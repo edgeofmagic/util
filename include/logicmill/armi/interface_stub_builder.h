@@ -56,7 +56,7 @@ class interface_stub_builder : public interface_stub_base
 {
 protected:
 	template<class... Args, std::size_t... Ns>
-	inline interface_stub_builder(server_context_base& context, std::size_t index, indices<Ns...> _i, Args... args)
+	interface_stub_builder(server_context_base& context, std::size_t index, indices<Ns...> _i, Args... args)
 		: interface_stub_base(context, index)
 	{
 		m_stubs.reserve(sizeof...(Args));
@@ -64,25 +64,25 @@ protected:
 	}
 
 	template<class First, class... Args>
-	inline void
+	void
 	append(First&& first, Args&&... args)
 	{
 		m_stubs.push_back(std::move(first));
 		append(std::move(args)...);
 	}
 
-	inline void
+	void
 	append()
 	{}
 
 	virtual std::size_t
-	method_count() const noexcept
+	method_count() const noexcept override
 	{
 		return m_stubs.size();
 	}
 
 	virtual method_stub_base&
-	get_method_stub(std::size_t index)
+	get_method_stub(std::size_t index) override
 	{
 		return *m_stubs[index];
 	}

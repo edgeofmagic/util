@@ -36,8 +36,8 @@ template<class... Args>
 class server_context_builder : public server_context_base
 {
 public:
-	server_context_builder(async::loop::ptr const& lp, bstream::context_base::ptr stream_context)
-		: server_context_base{sizeof...(Args), lp, stream_context}
+	server_context_builder(/* async::loop::ptr const& lp, */ bstream::context_base::ptr const& stream_context)
+		: server_context_base{sizeof...(Args), stream_context}
 	{
 		m_stubs.reserve(sizeof...(Args));
 		append_stubs<Args...>();

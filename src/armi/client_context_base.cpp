@@ -28,154 +28,86 @@
 using namespace logicmill;
 using namespace armi;
 
-client_context_base::client_context_base(async::loop::ptr const& lp, bstream::context_base::ptr cntxt)
-	: m_loop{lp},
-	  m_stream_context{cntxt},
+client_context_base::client_context_base(bstream::context_base::ptr const& cntxt)
+	: m_stream_context{cntxt},
 	  m_next_request_ordinal{1},
 	  m_default_timeout{millisecs{0}},
-	  m_transient_timeout{millisecs{0}}
+	  m_transient_timeout{millisecs{0}},
+	  m_is_closing{false},
+	  m_channel{nullptr}
 {}
-
-void
-client_context_base::check_async(std::error_code& err)
-{
-	err.clear();
-	if (!m_loop)
-	{
-		err = make_error_code(armi::errc::no_event_loop);
-		goto exit;
-	}
-	if (!m_channel)
-	{
-		err = make_error_code(armi::errc::channel_not_connected);
-		goto exit;
-	}
-
-exit:
-	return;
-}
 
 client_context_base::~client_context_base()
 {
 	close();
 }
 
-bool
-client_context_base::really_close(std::error_code err)
-{
-	bool result{false};
-	cancel_all_reply_handlers(err);
-	if (m_channel)
-	{
-		result = m_channel->close([=](async::channel::ptr chan) {
-			m_channel.reset();
-			if (m_on_close)
-			{
-				m_on_close();
-				m_on_close = nullptr;
-			}
-		});
-	}
-	if (!result)
-	{
-		m_channel.reset();
-		m_on_close = nullptr;
-	}
-	return result;
-}
-
-bool
-client_context_base::really_close()
-{
-	return really_close(make_error_code(std::errc::operation_canceled));
-}
-
 void
 client_context_base::send_request(std::uint64_t req_ord, bstream::ombstream& os, millisecs timeout)
 {
 	std::error_code err;
-	check_async(err);
-	if (err)
-		goto exit;
 
-	if (timeout.count() > 0)
+	if (m_channel)
 	{
-		auto timer = m_loop->create_timer(err, [=](async::timer::ptr tp) {
-			cancel_handler(req_ord, std::make_error_code(std::errc::timed_out));
-		});
-		if (err)
-			goto exit;
-
-		timer->start(timeout, err);
-		if (err)
-			goto exit;
+		m_channel->send_request(req_ord, timeout, os.release_mutable_buffer(), err);
+	}
+	else
+	{
+		err = make_error_code(armi::errc::transport_not_set);
 	}
 
-	m_channel->write(os.release_mutable_buffer(), err);
-
-exit:
 	if (err)
 	{
-		cancel_handler(req_ord, err);
-	}
-}
-
-bool
-client_context_base::invoke_handler(bstream::ibstream& is)
-{
-	auto req_ord = is.read_as<std::uint64_t>();
-	auto it      = m_reply_handler_map.find(req_ord);
-	if (it == m_reply_handler_map.end())
-	{
-		return false;
-	}
-	else
-	{
-		it->second.handler->handle_reply(is);
-		if (!it->second.persist)
-		{
-			m_reply_handler_map.erase(it);
-		}
-		return true;
-	}
-}
-
-bool
-client_context_base::cancel_handler(std::uint64_t req_ord, std::error_code ec)
-{
-	auto it = m_reply_handler_map.find(req_ord);
-	if (it == m_reply_handler_map.end())
-	{
-		return false;
-	}
-	else
-	{
-		it->second.handler->cancel(ec);
-		m_reply_handler_map.erase(it);
-		return true;
-	}
-}
-
-bool
-client_context_base::cancel_handler(std::uint64_t req_ord)    // no notification
-{
-	auto it = m_reply_handler_map.find(req_ord);
-	if (it == m_reply_handler_map.end())
-	{
-		return false;
-	}
-	else
-	{
-		m_reply_handler_map.erase(it);
-		return true;
+		cancel_request(req_ord, err);
 	}
 }
 
 void
-client_context_base::cancel_all_reply_handlers(std::error_code ec)
+client_context_base::invoke_handler(bstream::ibstream& is)
+{
+	auto req_ord = is.read_as<std::uint64_t>();
+	auto it      = m_reply_handler_map.find(req_ord);
+	if (it != m_reply_handler_map.end())
+	{
+		it->second->handle_reply(is);
+		m_reply_handler_map.erase(it);
+	} // else discard silently, probably canceled
+}
+
+void
+client_context_base::cancel_request(std::uint64_t req_ord, std::error_code err)
+{
+	auto it = m_reply_handler_map.find(req_ord);
+	if (it != m_reply_handler_map.end())
+	{
+		it->second->cancel(err);
+		m_reply_handler_map.erase(it);
+	}
+}
+
+void
+client_context_base::cancel_request(std::uint64_t req_ord)    // no notification
+{
+	auto it = m_reply_handler_map.find(req_ord);
+	if (it != m_reply_handler_map.end())
+	{
+		m_reply_handler_map.erase(it);
+	}
+}
+
+void
+client_context_base::cancel_all_requests(std::error_code err)
 {
 	for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); it = m_reply_handler_map.erase(it))
 	{
-		it->second.handler->cancel(ec);
+		it->second->cancel(err);
+	}
+}
+
+void
+client_context_base::cancel_all_requests()
+{
+	for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); it = m_reply_handler_map.erase(it))
+	{
 	}
 }

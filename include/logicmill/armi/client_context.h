@@ -39,31 +39,34 @@ template<template<class...> class Template, class... Args>
 class client_context<Template<Args...>> : public logicmill::armi::client_context_builder<Args...>
 {
 public:
+	using ptr = SHARED_PTR_TYPE<client_context>;
 	using base                = logicmill::armi::client_context_builder<Args...>;
 	using proxy_list_carrier  = Template<Args...>;
 	using target_list_carrier = traits::_arg_list<typename Args::target_type...>;
 
-	using connect_handler = std::function<void(client_context&, std::error_code)>;
+	// using connect_handler = std::function<void(client_context&, std::error_code)>;
 
 	template<class T>
 	using proxy_of = typename traits::
 			nth_element_from<traits::index_from<T, target_list_carrier>::value, proxy_list_carrier>::type;
 
-	template<class T>
-	using proxy_ptr = std::shared_ptr<proxy_of<T>>;
+	// template<class T>
+	// using proxy_ptr = std::shared_ptr<proxy_of<T>>;
 
 	template<class T>
 	using proxy_ref = proxy_of<T>&;
 
-	client_context(async::loop::ptr const& lp, bstream::context_base::ptr cntxt) : base{lp, cntxt} {}
+	client_context(/* transport::client_connection::ptr const& cp, */ bstream::context_base::ptr const& cntxt)
+		: base{/* cp, */ cntxt}
+	{}
 
 	template<class T>
-	inline proxy_ref<T>
+	proxy_ref<T>
 	proxy()
 	{
 		return dynamic_cast<proxy_of<T>&>(*(base::m_proxies[traits::index_from<T, target_list_carrier>::value]));
 	}
-
+/*
 	template<class Handler>
 	typename std::enable_if_t<std::is_convertible<Handler, connect_handler>::value>
 	connect(async::options const& opts, std::error_code& err, Handler&& handler)
@@ -98,6 +101,7 @@ public:
 					handler(*this, err);
 				});
 	}
+*/
 };
 
 }    // namespace armi

@@ -48,6 +48,8 @@ enum class errc : int
 	invalid_argument_count,
 	invalid_argument_type,
 	invalid_error_category,
+	context_closed,
+	transport_closed,
 
 };
 

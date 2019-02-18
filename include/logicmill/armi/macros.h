@@ -29,22 +29,22 @@
 #define BOOST_PP_VARIADICS 1
 #endif
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
 #include <boost/preprocessor/cat.hpp>
+#include <boost/preprocessor/comparison/greater.hpp>
 #include <boost/preprocessor/empty.hpp>
+#include <boost/preprocessor/list/for_each_i.hpp>
 #include <boost/preprocessor/punctuation/comma.hpp>
 #include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
-#include <boost/preprocessor/comparison/greater.hpp>
-#include <boost/preprocessor/variadic/size.hpp>
-#include <boost/preprocessor/variadic/to_seq.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/seq/for_each_i.hpp>
-#include <boost/preprocessor/tuple/to_seq.hpp>
-#include <boost/preprocessor/tuple/to_list.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
-#include <boost/preprocessor/list/for_each_i.hpp>
+#include <boost/preprocessor/tuple/to_list.hpp>
+#include <boost/preprocessor/tuple/to_seq.hpp>
+#include <boost/preprocessor/variadic/size.hpp>
+#include <boost/preprocessor/variadic/to_seq.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
 #include <logicmill/util/preprocessor.h>
 
 #define ARMI_CONTEXT(context_name, ...) ARMI_CONTEXT_(context_name, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
@@ -61,20 +61,24 @@
 				remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>;   \
 		using client_context_type = context_type::client_context_type;                                                 \
 		using server_context_type = context_type::server_context_type;                                                 \
-		context_name(                                                                                                  \
-				async::loop::ptr           lp             = async::loop::get_default(),                                \
-				bstream::context_base::ptr stream_context = armi::get_default_stream_context())                        \
-			: m_context{lp, stream_context}                                                                            \
+		context_name(bstream::context_base::ptr const& stream_context = armi::get_default_stream_context())            \
+			: m_context{/*cp, */ stream_context}                                                                       \
 		{}                                                                                                             \
-		client_context_type&                                                                                           \
-		client()                                                                                                       \
+		SHARED_PTR_TYPE<client_context_type> create_client(/* transport::client_connection::ptr const& cp = nullptr */)            \
 		{                                                                                                              \
-			return m_context.client();                                                                                 \
+			return m_context.create_client(/* cp */);                                                                  \
 		}                                                                                                              \
-		server_context_type&                                                                                           \
-		server()                                                                                                       \
+		SHARED_PTR_TYPE<server_context_type> create_server(/* transport::server_connection::ptr const& cp = nullptr */)            \
 		{                                                                                                              \
-			return m_context.server();                                                                                 \
+			return m_context.create_server(/* cp */);                                                                  \
+		}                                                                                                              \
+		SHARED_PTR_TYPE<client_context_type> const& client(/* transport::client_connection::ptr const& cp = nullptr */)            \
+		{                                                                                                              \
+			return m_context.client(/* cp */);                                                                         \
+		}                                                                                                              \
+		SHARED_PTR_TYPE<server_context_type> const& server(/* transport::server_connection::ptr const& cp = nullptr */)            \
+		{                                                                                                              \
+			return m_context.server(/* cp */);                                                                         \
 		}                                                                                                              \
 	private:                                                                                                           \
 		context_type m_context;                                                                                        \
@@ -89,15 +93,15 @@
 	template<class T>                                                                                                  \
 	class _stub;                                                                                                       \
 	using context_type = logicmill::armi::                                                                             \
-			remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>; 
+			remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>;
 /**/
 
-#define ARMI_LIST_IFACE_(r, data, n, iface) BOOST_PP_COMMA_IF(n) iface 
+#define ARMI_LIST_IFACE_(r, data, n, iface) BOOST_PP_COMMA_IF(n) iface
 /**/
 
 #define ARMI_INTERFACE(context_name, iface, ...)                                                                       \
 	ARMI_INTERFACE_(context_name, iface, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))                                        \
-/**/
+	/**/
 
 #define ARMI_INTERFACE_(context_name, iface, methods_seq)                                                              \
 	template<>                                                                                                         \
@@ -105,7 +109,7 @@
 	{                                                                                                                  \
 	public:                                                                                                            \
 		using target_type = iface;                                                                                     \
-		_proxy(logicmill::armi::client_context_base& context, std::size_t index)                                       \
+		_proxy(logicmill::armi::client_context_base& context, std::size_t index)                            \
 			: logicmill::armi::interface_proxy{context, index}                                                         \
 		{}                                                                                                             \
 		_proxy&                                                                                                        \
@@ -128,13 +132,13 @@
 					  BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_LIST_, iface, methods_seq))                               \
 		{}                                                                                                             \
 	};                                                                                                                 \
-/**/
+	/**/
 
-#define ARMI_DO_METHOD_LIST_(r, iface, n, method) BOOST_PP_COMMA_IF(n) & iface ::method 
+#define ARMI_DO_METHOD_LIST_(r, iface, n, method) BOOST_PP_COMMA_IF(n) & iface ::method
 /**/
 
 #define ARMI_DO_METHOD_PROXY_(r, iface, n, method)                                                                     \
-	logicmill::armi::method_proxy<decltype(&iface ::method)> method{context(), index(), n}; 
+	logicmill::armi::method_proxy<decltype(&iface ::method)> method{context(), index(), n};
 /**/
 
 #endif    // LOGICMILL_ARMI_MACROS_H

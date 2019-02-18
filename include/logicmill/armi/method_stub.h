@@ -61,7 +61,7 @@ public:
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -74,35 +74,39 @@ public:
 			goto fail;
 		}
 
-		invoke(req_ord, chan);
+		invoke(req_id, chan);
 		return;
 
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 
-	inline void
-	invoke(std::uint64_t req_ord, async::channel::ptr const& chan) const
+	void
+	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan) const
 	{
 		impl_ptr_type impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
 		if (!impl)
 		{
-			fail_proxy{m_context, req_ord, chan}(make_error_code(armi::errc::no_implementation_instance_registered));
+			m_context.request_failed(req_id, chan, make_error_code(armi::errc::no_implementation_instance_registered));
+			// fail_proxy{m_context, req_id, chan}(make_error_code(armi::errc::no_implementation_instance_registered));
 		}
 		else
 		{
 			try
 			{
-				((*impl).*m_method_ptr)(reply_proxy_type{m_context, req_ord, chan});
+				((*impl).*m_method_ptr)(reply_proxy_type{req_id, chan, m_context.stream_context()});
 			}
 			catch (std::system_error const& e)
 			{
-				fail_proxy{m_context, req_ord, chan}(e.code());
+				m_context.request_failed(req_id, chan, e.code());
+				// fail_proxy{m_context, req_id, chan}(e.code());
 			}
 			catch (std::exception const& e)
 			{
-				fail_proxy{m_context, req_ord, chan}(make_error_code(armi::errc::uncaught_server_exception));
+				m_context.request_failed(req_id, chan, make_error_code(armi::errc::uncaught_server_exception));
+				// fail_proxy{m_context, req_id, chan}(make_error_code(armi::errc::uncaught_server_exception));
 			}
 		}
 	}
@@ -139,7 +143,7 @@ public:
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -154,7 +158,7 @@ public:
 
 		try
 		{
-			invoke(req_ord, chan, is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<First>>>());
+			invoke(req_id, chan, is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<First>>>());
 		}
 		catch (std::system_error const& e)
 		{
@@ -170,12 +174,13 @@ public:
 		return;
 
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 
 	inline void
-	invoke(std::uint64_t req_ord, async::channel::ptr const& chan, First first) const
+	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, First first) const
 	{
 		std::error_code err;
 		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
@@ -187,7 +192,7 @@ public:
 
 		try
 		{
-			((*impl).*m_method_ptr)(reply_proxy_type{m_context, req_ord, chan}, first);
+			((*impl).*m_method_ptr)(reply_proxy_type{req_id, chan, m_context.stream_context()}, first);
 		}
 		catch (std::system_error const& e)
 		{
@@ -202,7 +207,8 @@ public:
 
 		return;
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 
@@ -239,7 +245,7 @@ public:
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -254,7 +260,7 @@ public:
 
 		try
 		{
-			invoke(req_ord,
+			invoke(req_id,
 				   chan,
 				   is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<First>>>(),
 				   is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...);
@@ -273,12 +279,13 @@ public:
 		return;
 
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 
 	inline void
-	invoke(std::uint64_t req_ord, async::channel::ptr const& chan, First first, Args... args) const
+	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, First first, Args... args) const
 	{
 		std::error_code err;
 		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
@@ -290,7 +297,7 @@ public:
 
 		try
 		{
-			((*impl).*m_method_ptr)(reply_proxy_type{m_context, req_ord, chan}, first, args...);
+			((*impl).*m_method_ptr)(reply_proxy_type{req_id, chan, m_context.stream_context()}, first, args...);
 		}
 		catch (std::system_error const& e)
 		{
@@ -306,7 +313,8 @@ public:
 		return;
 
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 
@@ -337,7 +345,7 @@ public:
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -350,16 +358,17 @@ public:
 			goto fail;
 		}
 
-		invoke(req_ord, chan);
+		invoke(req_id, chan);
 		return;
 
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 
 	inline void
-	invoke(std::uint64_t req_ord, async::channel::ptr const& chan) const
+	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan) const
 	{
 		std::error_code err;
 		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
@@ -371,7 +380,9 @@ public:
 
 		try
 		{
-			((*impl).*m_method_ptr)(reply_proxy_type{m_context, req_ord, chan}, fail_proxy{m_context, req_ord, chan});
+			((*impl).*m_method_ptr)(
+					reply_proxy_type{req_id, chan, m_context.stream_context()},
+					fail_proxy{req_id, chan, m_context.stream_context()});
 		}
 		catch (std::system_error const& e)
 		{
@@ -387,7 +398,8 @@ public:
 		return;
 
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 
@@ -418,7 +430,7 @@ public:
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -433,9 +445,7 @@ public:
 
 		try
 		{
-			invoke(req_ord,
-				   chan,
-				   is.read_as<typename std::remove_const_t<typename std::remove_reference_t<Args>>>()...);
+			invoke(req_id, chan, is.read_as<typename std::remove_const_t<typename std::remove_reference_t<Args>>>()...);
 		}
 		catch (std::system_error const& e)
 		{
@@ -451,12 +461,13 @@ public:
 		return;
 
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 
 	inline void
-	invoke(std::uint64_t req_ord, async::channel::ptr const& chan, Args... args) const
+	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, Args... args) const
 	{
 		std::error_code err;
 		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
@@ -468,8 +479,10 @@ public:
 
 		try
 		{
-			((*impl)
-			 .*m_method_ptr)(reply_proxy_type{m_context, req_ord, chan}, fail_proxy{m_context, req_ord, chan}, args...);
+			((*impl).*m_method_ptr)(
+					reply_proxy_type{req_id, chan, m_context.stream_context()},
+					fail_proxy{req_id, chan, m_context.stream_context()},
+					args...);
 		}
 		catch (std::system_error const& e)
 		{
@@ -485,7 +498,8 @@ public:
 		return;
 
 	fail:
-		fail_proxy{m_context, req_ord, chan}(err);
+		m_context.request_failed(req_id, chan, err);
+		// fail_proxy{m_context, req_id, chan}(err);
 		return;
 	}
 

@@ -70,6 +70,10 @@ armi_category_impl::message(int ev) const noexcept
 			return "invalid argument count in marshaled method or reply";
 		case armi::errc::invalid_error_category:
 			return "error category not found in context error category map";
+		case armi::errc::context_closed:
+			return "context closed";
+		case armi::errc::transport_closed:
+			return "transport closed";
 		default:
 			return "unknown armi error";
 	}

@@ -26,7 +26,8 @@
 #define LOGICMILL_ARMI_INTERFACE_STUB_BASE_H
 
 #include <cstdint>
-#include <logicmill/async/channel.h>
+// #include <logicmill/async/channel.h>
+#include <logicmill/armi/transport.h>
 #include <logicmill/bstream/ibstream.h>
 
 namespace logicmill
@@ -44,16 +45,16 @@ public:
 protected:
 	friend class server_context_base;
 
-	inline interface_stub_base(server_context_base& context, std::size_t index) : m_context{context}, m_index{index} {}
+	interface_stub_base(server_context_base& context, std::size_t index) : m_context{context}, m_index{index} {}
 
 
-	inline std::size_t
+	std::size_t
 	index() const
 	{
 		return m_index;
 	}
 
-	inline server_context_base&
+	server_context_base&
 	context()
 	{
 		return m_context;
@@ -68,10 +69,10 @@ protected:
 			= 0;
 
 	void
-	process(std::uint64_t req_ord, async::channel::ptr const& chan, bstream::ibstream& is);
+	process(std::uint64_t req_id, logicmill::armi::transport::server_channel::ptr const& chan, bstream::ibstream& is);
 
-	const std::size_t    m_index;
 	server_context_base& m_context;
+	const std::size_t    m_index;
 };
 
 }    // namespace armi

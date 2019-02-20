@@ -25,7 +25,7 @@
 #ifndef LOGICMILL_BSTREAM_ERROR_CATEGORY_CONTEXT_H
 #define LOGICMILL_BSTREAM_ERROR_CATEGORY_CONTEXT_H
 
-#include <initializer_list>
+// #include <initializer_list>
 #include <system_error>
 #include <unordered_map>
 #include <vector>
@@ -41,12 +41,14 @@ public:
 	using index_type         = int;
 	using category_vector    = std::vector<const std::error_category*>;
 	using category_map       = std::unordered_map<const std::error_category*, index_type>;
-	using category_init_list = std::initializer_list<const std::error_category*>;
+	// using category_init_list = std::initializer_list<const std::error_category*>;
 
 
-	error_category_context();
+	error_category_context() {}
 
-	error_category_context(category_init_list init_list);
+	error_category_context(category_vector&& categories);
+
+	error_category_context(category_vector const& categories);
 
 	std::error_category const&
 	category_from_index(index_type index) const;
@@ -54,8 +56,8 @@ public:
 	index_type
 	index_of_category(std::error_category const& category) const;
 
-	static category_init_list const&
-	default_categories();
+	// static category_init_list const&
+	// default_categories();
 
 private:
 	category_vector                 m_category_vector;

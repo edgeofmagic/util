@@ -55,9 +55,8 @@ public:
 	inline method_stub(
 			server_context_base& context,
 			method_ptr_type      method_ptr,
-			std::size_t          interface_id,
 			std::size_t          method_id)
-		: m_context{context}, m_interface_id{interface_id}, m_method_id{method_id}, m_method_ptr{method_ptr}
+		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
@@ -78,19 +77,17 @@ public:
 		return;
 
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
 	void
 	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan) const
 	{
-		impl_ptr_type impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
+		impl_ptr_type impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
 		if (!impl)
 		{
-			m_context.request_failed(req_id, chan, make_error_code(armi::errc::no_implementation_instance_registered));
-			// fail_proxy{m_context, req_id, chan}(make_error_code(armi::errc::no_implementation_instance_registered));
+			request_failed(req_id, chan, m_context.stream_context(), make_error_code(armi::errc::no_implementation_instance_registered));
 		}
 		else
 		{
@@ -100,19 +97,16 @@ public:
 			}
 			catch (std::system_error const& e)
 			{
-				m_context.request_failed(req_id, chan, e.code());
-				// fail_proxy{m_context, req_id, chan}(e.code());
+				request_failed(req_id, chan, m_context.stream_context(), e.code());
 			}
 			catch (std::exception const& e)
 			{
-				m_context.request_failed(req_id, chan, make_error_code(armi::errc::uncaught_server_exception));
-				// fail_proxy{m_context, req_id, chan}(make_error_code(armi::errc::uncaught_server_exception));
+				request_failed(req_id, chan, m_context.stream_context(), make_error_code(armi::errc::uncaught_server_exception));
 			}
 		}
 	}
 
 private:
-	std::size_t          m_interface_id;
 	std::size_t          m_method_id;
 	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
@@ -137,9 +131,8 @@ public:
 	inline method_stub(
 			server_context_base& context,
 			method_ptr_type      method_ptr,
-			std::size_t          interface_id,
 			std::size_t          method_id)
-		: m_context{context}, m_interface_id{interface_id}, m_method_id{method_id}, m_method_ptr{method_ptr}
+		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
@@ -174,8 +167,7 @@ public:
 		return;
 
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
@@ -183,7 +175,7 @@ public:
 	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, First first) const
 	{
 		std::error_code err;
-		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
+		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
 		if (!impl)
 		{
 			err = make_error_code(armi::errc::no_implementation_instance_registered);
@@ -207,13 +199,11 @@ public:
 
 		return;
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
 private:
-	std::size_t          m_interface_id;
 	std::size_t          m_method_id;
 	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
@@ -239,9 +229,8 @@ public:
 	inline method_stub(
 			server_context_base& context,
 			method_ptr_type      method_ptr,
-			std::size_t          interface_id,
 			std::size_t          method_id)
-		: m_context{context}, m_interface_id{interface_id}, m_method_id{method_id}, m_method_ptr{method_ptr}
+		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
@@ -279,8 +268,7 @@ public:
 		return;
 
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
@@ -288,7 +276,7 @@ public:
 	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, First first, Args... args) const
 	{
 		std::error_code err;
-		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
+		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
 		if (!impl)
 		{
 			err = make_error_code(armi::errc::no_implementation_instance_registered);
@@ -313,13 +301,11 @@ public:
 		return;
 
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
 private:
-	std::size_t          m_interface_id;
 	std::size_t          m_method_id;
 	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
@@ -339,9 +325,8 @@ public:
 	inline method_stub(
 			server_context_base& context,
 			method_ptr_type      method_ptr,
-			std::size_t          interface_id,
 			std::size_t          method_id)
-		: m_context{context}, m_interface_id{interface_id}, m_method_id{method_id}, m_method_ptr{method_ptr}
+		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
@@ -362,8 +347,7 @@ public:
 		return;
 
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
@@ -371,7 +355,7 @@ public:
 	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan) const
 	{
 		std::error_code err;
-		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
+		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
 		if (!impl)
 		{
 			err = make_error_code(armi::errc::no_implementation_instance_registered);
@@ -398,13 +382,11 @@ public:
 		return;
 
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
 private:
-	std::size_t          m_interface_id;
 	std::size_t          m_method_id;
 	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
@@ -424,9 +406,8 @@ public:
 	inline method_stub(
 			server_context_base& context,
 			method_ptr_type      method_ptr,
-			std::size_t          interface_id,
 			std::size_t          method_id)
-		: m_context{context}, m_interface_id{interface_id}, m_method_id{method_id}, m_method_ptr{method_ptr}
+		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
@@ -461,8 +442,7 @@ public:
 		return;
 
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
@@ -470,7 +450,7 @@ public:
 	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, Args... args) const
 	{
 		std::error_code err;
-		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_impl(m_interface_id));
+		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
 		if (!impl)
 		{
 			err = make_error_code(armi::errc::no_implementation_instance_registered);
@@ -498,13 +478,11 @@ public:
 		return;
 
 	fail:
-		m_context.request_failed(req_id, chan, err);
-		// fail_proxy{m_context, req_id, chan}(err);
+		request_failed(req_id, chan, m_context.stream_context(), err);
 		return;
 	}
 
 private:
-	std::size_t          m_interface_id;
 	std::size_t          m_method_id;
 	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;

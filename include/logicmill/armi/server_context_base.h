@@ -46,46 +46,19 @@ class fail_proxy;
 class server_context_base : public ENABLE_SHARED_FROM_THIS<server_context_base>
 {
 public:
-	// using channel_error_handler = std::function<void(async::channel::ptr const& ptr, std::error_code ec)>;
-	// using close_handler         = std::function<void()>;
-
 	using ptr = SHARED_PTR_TYPE<server_context_base>;
 
-	server_context_base(
-			std::size_t interface_count,
-			// transport::server_connection::ptr cp,
-			bstream::context_base::ptr const& stream_context);
+	template<class _T, class _U>
+	friend class method_stub;
+
+	server_context_base(bstream::context_base::ptr const& stream_context);
 
 	virtual ~server_context_base();
-
-	// template<class T>
-	// typename std::enable_if_t<std::is_convertible<T, close_handler>::value, bool>
-	// close(T&& handler)
-	// {
-	// 	m_on_close = std::forward<T>(handler);
-	// 	return really_close();
-	// }
-
-	// bool
-	// close()
-	// {
-	// 	m_on_close = nullptr;
-	// 	return really_close();
-	// }
 
 	bstream::context_base::ptr const&
 	stream_context()
 	{
 		return m_stream_context;
-	}
-
-	// void
-	// send_reply(transport::server::ptr const& chan, util::mutable_buffer&& buf);
-
-	std::shared_ptr<void> const&
-	get_impl(std::size_t index)
-	{
-		return m_impl_ptrs[index];
 	}
 
 	void
@@ -103,33 +76,8 @@ public:
 	handle_request(bstream::ibstream& is, transport::server_channel::ptr const& chan);
 
 protected:
-	// class error_handler_wrapper_base
-	// {
-	// public:
-	// 	virtual ~error_handler_wrapper_base() {}
-
-	// 	virtual void
-	// 	invoke(std::error_code err)
-	// 			= 0;
-	// };
-
-	// void
-	// on_acceptor_error_default()
-	// {
-	// 	close();
-	// }
-
-	// void
-	// on_channel_error_default(async::channel::ptr const& chan)
-	// {
-	// 	chan->close();
-	// }
-
 	void
 	cleanup();
-
-	// bool
-	// really_close();
 
 	std::unique_ptr<bstream::ombstream>
 	create_reply_stream()
@@ -137,29 +85,15 @@ protected:
 		return std::make_unique<bstream::ombstream>(m_stream_context);
 	}
 
-	interface_stub_base&
-	get_stub(std::size_t index)
-	{
-		return *(m_stubs[index]);
-	}
+	virtual interface_stub_base&
+	get_type_erased_stub()
+			= 0;
 
-	void
-	set_impl(std::size_t index, std::shared_ptr<void> const& ptr)
-	{
-		m_impl_ptrs[index] = ptr;
-	}
-
-	// void
-	// really_bind(async::options const& opts, std::error_code& err);
+	virtual std::shared_ptr<void> const&
+	get_type_erased_impl()
+			= 0;
 
 	bstream::context_base::ptr m_stream_context;
-	// async::acceptor::ptr                              m_acceptor;
-	std::vector<std::unique_ptr<interface_stub_base>> m_stubs;
-	std::vector<std::shared_ptr<void>>                m_impl_ptrs;
-	// channel_error_handler                             m_on_channel_error;
-	// std::unique_ptr<error_handler_wrapper_base>       m_on_server_error;
-	// close_handler                                     m_on_close;
-	// std::unordered_set<async::channel::ptr>           m_open_channels;
 };
 
 }    // namespace armi

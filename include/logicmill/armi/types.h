@@ -30,6 +30,7 @@
 #include <functional>
 #include <logicmill/armi/error.h>
 #include <logicmill/bstream/context.h>
+#include <logicmill/bstream/macros.h>
 #include <system_error>
 
 namespace logicmill
@@ -40,18 +41,18 @@ using fail_reply = std::function<void(std::error_code ec)>;
 
 using millisecs = std::chrono::milliseconds;
 
-inline bstream::context_base::ptr
-get_default_stream_context()
+class default_stream_context
 {
+public:
+	using context_type = bstream::context<>;
 
-	static const bstream::error_category_context::category_init_list clist = {&armi::error_category()};
-	static bstream::context_base::ptr default_context = MAKE_SHARED<bstream::context<>>(clist);
-	// static const context<> default_context{{}};
-	return default_context;
-
-	// static const bstream::context<> default_context({&armi::error_category()});
-	// return default_context;
-}
+	static bstream::context_options options()
+	{
+		return bstream::context_options{}.error_categories({&armi::error_category()});
+	}
+	
+	BSTRM_CONTEXT_ACCESSOR();
+};
 
 enum class reply_kind
 {

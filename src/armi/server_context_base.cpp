@@ -30,11 +30,8 @@
 using namespace logicmill;
 using namespace armi;
 
-server_context_base::server_context_base(
-		std::size_t                  interface_count,
-		// async::loop::ptr             lp,
-		bstream::context_base::ptr const& stream_context)
-	: /* m_loop{lp}, */ m_stream_context{stream_context}, m_impl_ptrs{interface_count, nullptr}
+server_context_base::server_context_base(bstream::context_base::ptr const& stream_context)
+	: m_stream_context{stream_context}
 {}
 
 server_context_base::~server_context_base() {}
@@ -96,17 +93,9 @@ void
 server_context_base::handle_request(bstream::ibstream& is, transport::server_channel::ptr const& chan)
 {
 	auto        req_ord  = is.read_as<std::uint64_t>();
-	std::size_t if_index = is.read_as<std::size_t>();
-	if (if_index >= m_stubs.size())
-	{
-		request_failed(req_ord, chan, make_error_code(armi::errc::invalid_interface_id));
-		// fail_proxy{shared_from_this(), req_ord, chan}(make_error_code(armi::errc::invalid_interface_id));
-	}
-	else
-	{
-		auto& stub = get_stub(if_index);
+	// std::size_t if_index = is.read_as<std::size_t>();
+		auto& stub = get_type_erased_stub();
 		stub.process(req_ord, chan, is);
-	}
 }
 
 // void

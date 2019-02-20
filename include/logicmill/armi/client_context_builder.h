@@ -39,37 +39,38 @@ class client_context_builder : public client_context_base
 {
 public:
 	client_context_builder( /* transport::client_channel::ptr const& cp, */ bstream::context_base::ptr const& strm_cntxt)
-		: client_context_base{/* cp, */ strm_cntxt}
+		: client_context_base{/* cp, */ strm_cntxt},
+		m_proxy{std::make_unique<_proxy<T>(*this)}
 	{
-		m_proxies.reserve(sizeof...(Args));
-		append_proxies<Args...>();
+		// m_proxies.reserve(sizeof...(Args));
+		// append_proxies<Args...>();
 	}
 
-	template<class T>
-	void
-	append_proxies()
-	{
-		append_proxy<T>();
-	}
+	// template<class T>
+	// void
+	// append_proxies()
+	// {
+	// 	append_proxy<T>();
+	// }
 
-	template<class First_, class... Args_>
-	typename std::enable_if<(sizeof...(Args_) > 0)>::type
-	append_proxies()
-	{
-		append_proxy<First_>();
-		append_proxies<Args_...>();
-	}
+	// template<class First_, class... Args_>
+	// typename std::enable_if<(sizeof...(Args_) > 0)>::type
+	// append_proxies()
+	// {
+	// 	append_proxy<First_>();
+	// 	append_proxies<Args_...>();
+	// }
 
-	template<class T>
-	void
-	append_proxy()
-	{
-		std::size_t index = m_proxies.size();
-		m_proxies.push_back(std::make_unique<T>(*this, index));
-	}
+	// template<class T>
+	// void
+	// append_proxy()
+	// {
+	// 	std::size_t index = m_proxies.size();
+	// 	m_proxies.push_back(std::make_unique<T>(*this, index));
+	// }
 
 protected:
-	std::vector<std::unique_ptr<armi::interface_proxy>> m_proxies;
+	std::unique_ptr<armi::interface_proxy> m_proxy;
 };
 
 }    // namespace armi

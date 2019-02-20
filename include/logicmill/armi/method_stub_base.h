@@ -41,6 +41,21 @@ public:
 	virtual ~method_stub_base() {}
 	virtual void
 	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const = 0;
+
+	static void
+	request_failed(
+			std::uint64_t                         request_id,
+			transport::server_channel::ptr const& transp,
+			bstream::context_base::ptr const&     stream_context,
+			std::error_code                       err)
+	{
+		bstream::ombstream os{stream_context};
+		os << request_id;
+		os << reply_kind::fail;
+		os.write_array_header(1);
+		os << err;
+		transp->send_reply(os.release_mutable_buffer());
+	}
 };
 
 }    // namespace armi

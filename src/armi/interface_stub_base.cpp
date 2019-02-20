@@ -36,11 +36,25 @@ interface_stub_base::process(std::uint64_t req_id, transport::server_channel::pt
 	auto method_id = is.read_as<std::size_t>();
 	if (method_id >= method_count())
 	{
-		context().request_failed(req_id, chan, make_error_code(armi::errc::invalid_method_id));
-		// fail_proxy{req_id, chan, context().stream_context()}(make_error_code(armi::errc::invalid_method_id));
+		request_failed(req_id, chan, context().stream_context(), make_error_code(armi::errc::invalid_method_id));
 	}
 	else
 	{
 		get_method_stub(method_id).dispatch(req_id, chan, is);
 	}
+}
+
+void
+interface_stub_base::request_failed(
+		std::uint64_t                         request_id,
+		transport::server_channel::ptr const& transp,
+		bstream::context_base::ptr const&     stream_context,
+		std::error_code                       err)
+{
+	bstream::ombstream os{stream_context};
+	os << request_id;
+	os << reply_kind::fail;
+	os.write_array_header(1);
+	os << err;
+	transp->send_reply(os.release_mutable_buffer());
 }

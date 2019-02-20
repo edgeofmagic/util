@@ -51,8 +51,6 @@ class client_context_base : public ENABLE_SHARED_FROM_THIS<client_context_base>
 public:
 	using ptr                     = SHARED_PTR_TYPE<client_context_base>;
 	using wptr                    = WEAK_PTR_TYPE<client_context_base>;
-	// using connect_handler         = std::function<void(std::error_code err)>;
-	// using request_timeout_handler = std::function<void(std::error_code err)>;
 	using close_handler           = std::function<void()>;
 	using transport_error_handler = std::function<void(std::error_code err)>;
 
@@ -174,12 +172,12 @@ private:
 		return m_next_request_ordinal++;
 	}
 
-	template<class T>
-	std::size_t
-	get_index()
-	{
-		return T::index;
-	}
+	// template<class T>
+	// std::size_t
+	// get_index()
+	// {
+	// 	return T::index;
+	// }
 
 	millisecs
 	default_timeout() const

@@ -42,8 +42,8 @@ class method_proxy_base
 protected:
 	using reply_hndlr_type = reply_handler<Reply>;
 
-	method_proxy_base(client_context_base& context, std::size_t interface_id, std::size_t method_id)
-		: m_context{context}, m_interface_id{interface_id}, m_method_id{method_id}
+	method_proxy_base(client_context_base& context, std::size_t method_id)
+		: m_context{context}, m_method_id{method_id}
 	{}
 
 	std::chrono::milliseconds
@@ -81,8 +81,6 @@ protected:
 		return m_context.stream_context();
 	}
 
-
-	std::size_t          m_interface_id;
 	std::size_t          m_method_id;
 	client_context_base& m_context;
 };
@@ -102,8 +100,8 @@ class method_proxy<
 public:
 	using base = method_proxy_base<Reply>;
 
-	method_proxy(client_context_base& context, std::size_t interface_id, std::size_t method_id)
-		: method_proxy_base<Reply>{context, interface_id, method_id}
+	method_proxy(client_context_base& context, std::size_t method_id)
+		: method_proxy_base<Reply>{context, method_id}
 	{}
 
 	void
@@ -114,7 +112,7 @@ public:
 
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_interface_id << base::m_method_id;
+		os << req_ord << base::m_method_id;
 		os.write_array_header(0);
 		base::send_request(req_ord, os, timeout);
 	}
@@ -134,8 +132,8 @@ class method_proxy<
 public:
 	using base = method_proxy_base<Reply>;
 
-	method_proxy(client_context_base& context, std::size_t interface_id, std::size_t method_id)
-		: method_proxy_base<Reply>(context, interface_id, method_id)
+	method_proxy(client_context_base& context, std::size_t method_id)
+		: method_proxy_base<Reply>(context, method_id)
 	{}
 
 	void
@@ -145,7 +143,7 @@ public:
 		auto               req_ord = base::add_handler(reply);
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_interface_id << base::m_method_id;
+		os << req_ord << base::m_method_id;
 		os.write_array_header(1);
 		os << first;
 
@@ -168,8 +166,8 @@ class method_proxy<
 public:
 	using base = method_proxy_base<Reply>;
 
-	method_proxy(client_context_base& context, std::size_t interface_id, std::size_t method_id)
-		: method_proxy_base<Reply>(context, interface_id, method_id)
+	method_proxy(client_context_base& context, std::size_t method_id)
+		: method_proxy_base<Reply>(context, method_id)
 	{}
 
 	void
@@ -179,7 +177,7 @@ public:
 		auto               req_ord = base::add_handler(reply);
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_interface_id << base::m_method_id;
+		os << req_ord << base::m_method_id;
 
 		os.write_array_header(1 + sizeof...(Args));
 		os << first;
@@ -211,8 +209,8 @@ class method_proxy<void (Target::*)(Reply, fail_reply)> : public method_proxy_ba
 public:
 	using base = method_proxy_base<Reply>;
 
-	method_proxy(client_context_base& context, std::size_t interface_id, std::size_t method_id)
-		: method_proxy_base<Reply>(context, interface_id, method_id)
+	method_proxy(client_context_base& context, std::size_t method_id)
+		: method_proxy_base<Reply>(context, method_id)
 	{}
 
 	void
@@ -222,7 +220,7 @@ public:
 		auto               req_ord = base::add_handler(reply);
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_interface_id << base::m_method_id;
+		os << req_ord << base::m_method_id;
 		os.write_array_header(0);
 
 		base::send_request(req_ord, os, timeout);
@@ -238,8 +236,8 @@ class method_proxy<void (Target::*)(Reply, fail_reply, Args...)> : public method
 public:
 	using base = method_proxy_base<Reply>;
 
-	method_proxy(client_context_base& context, std::size_t interface_id, std::size_t method_id)
-		: method_proxy_base<Reply>(context, interface_id, method_id)
+	method_proxy(client_context_base& context, std::size_t method_id)
+		: method_proxy_base<Reply>(context, method_id)
 	{}
 
 	void
@@ -249,7 +247,7 @@ public:
 		auto               req_ord = base::add_handler(reply);
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_interface_id << base::m_method_id;
+		os << req_ord << base::m_method_id;
 		os.write_array_header(sizeof...(Args));    // item_count
 		append(os, args...);
 

@@ -56,18 +56,18 @@ class interface_stub_builder : public interface_stub_base
 {
 protected:
 	template<class... Args, std::size_t... Ns>
-	interface_stub_builder(server_context_base& context, std::size_t index, indices<Ns...> _i, Args... args)
-		: interface_stub_base(context, index)
+	interface_stub_builder(server_context_base& context, indices<Ns...> _i, Args... args)
+		: interface_stub_base(context)
 	{
-		m_stubs.reserve(sizeof...(Args));
-		append(std::unique_ptr<method_stub_base>(new armi::method_stub<decltype(args)>(context, args, index, Ns))...);
+		m_method_stubs.reserve(sizeof...(Args));
+		append(std::unique_ptr<method_stub_base>(new armi::method_stub<decltype(args)>(context, args, Ns))...);
 	}
 
 	template<class First, class... Args>
 	void
 	append(First&& first, Args&&... args)
 	{
-		m_stubs.push_back(std::move(first));
+		m_method_stubs.push_back(std::move(first));
 		append(std::move(args)...);
 	}
 
@@ -78,17 +78,17 @@ protected:
 	virtual std::size_t
 	method_count() const noexcept override
 	{
-		return m_stubs.size();
+		return m_method_stubs.size();
 	}
 
 	virtual method_stub_base&
 	get_method_stub(std::size_t index) override
 	{
-		return *m_stubs[index];
+		return *m_method_stubs[index];
 	}
 
 protected:
-	std::vector<std::unique_ptr<method_stub_base>> m_stubs;
+	std::vector<std::unique_ptr<method_stub_base>> m_method_stubs;
 };
 
 }    // namespace armi

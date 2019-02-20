@@ -25,119 +25,55 @@
 #ifndef LOGICMILL_ARMI_SERVER_CONTEXT_H
 #define LOGICMILL_ARMI_SERVER_CONTEXT_H
 
-#include <logicmill/armi/server_context_builder.h>
+// #include <logicmill/armi/server_context_builder.h>
 #include <logicmill/traits.h>
 
 namespace logicmill
 {
 namespace armi
 {
-template<class T>
+template<class T, class StreamContext>
 class server_context;
 
-template<template<class...> class Template, class... Args>
-class server_context<Template<Args...>> : public logicmill::armi::server_context_builder<Args...>
+template<template<class...> class Stub, class U, class StreamContext>
+class server_context<Stub<U>, StreamContext> : public logicmill::armi::server_context_base
 {
 public:
-	using base                = logicmill::armi::server_context_builder<Args...>;
-	using stub_list_carrier   = Template<Args...>;
-	using target_list_carrier = traits::_arg_list<typename Args::target_type...>;
+	using base                = logicmill::armi::server_context_base;
+	using stub_type   = Stub<U>;
+	using target_type = U;
 
 	using ptr = SHARED_PTR_TYPE<server_context>;
 
-	template<class T>
-	using stub_of = typename traits::replace_arg<typename traits::first_arg<stub_list_carrier>::type, T>::type;
+	server_context() : base{StreamContext::get()}, m_stub{*this} {}
 
-	// using server_error_handler = std::function<void(server_context::ptr const& server, std::error_code ec)>;
-
-	server_context(
-			// async::loop::ptr const&      lp             = async::loop::get_default(),
-			bstream::context_base::ptr stream_context = armi::get_default_stream_context())
-		: base{stream_context}
-	{}
-
-	template<class T>
 	void
-	register_impl(std::shared_ptr<T> const& impl_ptr)
+	register_impl(std::shared_ptr<target_type> const& impl_ptr)
 	{
-		logicmill::armi::server_context_base::set_impl(traits::index_from<T, target_list_carrier>::value, impl_ptr);
+		m_impl = impl_ptr;
 	}
 
-	template<class T>
-	std::shared_ptr<T>
+	std::shared_ptr<target_type>
 	get_impl()
 	{
-		return std::static_pointer_cast<T>(
-				server_context_base::get_impl(traits::index_from<T, target_list_carrier>::value));
+		return std::static_pointer_cast<target_type>(m_impl);
+	}
+
+	virtual interface_stub_base&
+	get_type_erased_stub() override
+	{
+		return m_stub;
+	}
+
+	virtual std::shared_ptr<void> const&
+	get_type_erased_impl() override
+	{
+		return m_impl;
 	}
 
 private:
-	// class error_handler_wrapper : public server_context_base::error_handler_wrapper_base
-	// {
-	// public:
-	// 	template<
-	// 			class Handler,
-	// 			class = typename std::enable_if_t<
-	// 					std::is_convertible<Handler, server_context::server_error_handler>::value>>
-	// 	error_handler_wrapper(server_context::ptr const& cntxt, Handler&& handler)
-	// 		: m_server_context{cntxt}, m_handler{std::forward<Handler>(handler)}
-	// 	{}
-
-	// 	virtual void
-	// 	invoke(std::error_code err) override
-	// 	{
-	// 		m_handler(m_server_context, err);
-	// 	}
-
-	// 	server_context::ptr                      m_server_context;
-	// 	server_context::server_error_handler m_handler;
-	// };
-
-public:
-/*
-	template<class T, class U>
-	typename std::enable_if_t<
-			std::is_convertible<T, server_error_handler>::value
-					&& std::is_convertible<U, server_context_base::channel_error_handler>::value,
-			server_context&>
-	bind(async::options const& opts, std::error_code& err, T&& on_acceptor_error, U&& on_channel_error)
-	{
-		async::options opts_override{opts};
-		opts_override.framing(true);
-		server_context_base::m_on_server_error
-				= std::make_unique<error_handler_wrapper>(*this, std::forward<T>(on_acceptor_error));
-		server_context_base::m_on_channel_error = std::forward<U>(on_channel_error);
-		server_context_base::really_bind(opts_override, err);
-		return *this;
-	}
-
-	server_context&
-	bind(async::options const& opts, std::error_code& err)
-	{
-		async::options opts_override{opts};
-		opts_override.framing(true);
-		server_context_base::really_bind(opts_override, err);
-		return *this;
-	}
-
-	template<class T>
-	typename std::enable_if_t<std::is_convertible<T, server_error_handler>::value, server_context&>
-	on_acceptor_error(T&& handler)
-	{
-		server_context_base::m_on_server_error
-				= std::make_unique<error_handler_wrapper>(*this, std::forward<T>(handler));
-		return *this;
-	}
-
-	template<class T>
-	typename std::
-			enable_if_t<std::is_convertible<T, server_context_base::channel_error_handler>::value, server_context&>
-			on_channel_error(T&& handler)
-	{
-		server_context_base::m_on_channel_error = std::forward<T>(handler);
-		return *this;
-	}
-*/
+	std::shared_ptr<void> m_impl;
+	stub_type	m_stub;
 };
 
 }    // namespace armi

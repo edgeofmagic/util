@@ -45,14 +45,7 @@ public:
 protected:
 	friend class server_context_base;
 
-	interface_stub_base(server_context_base& context, std::size_t index) : m_context{context}, m_index{index} {}
-
-
-	std::size_t
-	index() const
-	{
-		return m_index;
-	}
+	interface_stub_base(server_context_base& context) : m_context{context} {}
 
 	server_context_base&
 	context()
@@ -71,8 +64,14 @@ protected:
 	void
 	process(std::uint64_t req_id, logicmill::armi::transport::server_channel::ptr const& chan, bstream::ibstream& is);
 
+	static void
+	request_failed(
+			std::uint64_t                         request_id,
+			transport::server_channel::ptr const& transp,
+			bstream::context_base::ptr const&     stream_context,
+			std::error_code                       err);
+
 	server_context_base& m_context;
-	const std::size_t    m_index;
 };
 
 }    // namespace armi

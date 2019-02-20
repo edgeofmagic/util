@@ -30,6 +30,7 @@
 #include <boost/preprocessor/punctuation/comma.hpp>
 #include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
+// #include <boost/preprocessor/punctuation/paren.hpp>
 
 #include <boost/preprocessor/arithmetic/add.hpp>
 #include <boost/preprocessor/control/if.hpp>
@@ -112,7 +113,7 @@ private                                                                         
 	template<class _U, class _V, class _E>                                                                             \
 	friend struct base_serialize;                                                                                      \
 	friend class BSTRM_BASE_TYPE_(class_name);                                                                         \
-	using base_type = BSTRM_BASE_TYPE_(class_name); 
+	using base_type = BSTRM_BASE_TYPE_(class_name);
 /**/
 
 #define BSTRM_BASE_ALIAS_(name) base_type 
@@ -420,5 +421,104 @@ public:                                                                         
 #define BSTRM_SERIALIZE_METHOD_DEF_SIG_SCOPED_(scope, name)                                                            \
 	logicmill::bstream::obstream& scope::name::serialize(logicmill::bstream::obstream& os) const 
 /**/
+
+
+#define BSTRM_CONTEXT_ACCESSOR()                                                                                       \
+	static bstream::context_base::ptr const& get()                                                                     \
+	{                                                                                                                  \
+		static const bstream::context_base::ptr instance{MAKE_SHARED<context_type>(options())};                        \
+		return instance;                                                                                               \
+	}
+/**/
+
+
+#define BSTRM_CONTEXT_TYPE(name, poly_types, error_categs)                                                             \
+	BSTRM_CONTEXT_TYPE_(                                                                                               \
+			name,                                                                                                      \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(poly_types), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_ARRAY_)(poly_types),       \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(error_categs), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_ARRAY_)(error_categs))
+/**/
+
+#define BSTRM_CONTEXT_TYPE_(name, poly_type_array, error_categs_array)                                                 \
+	class name                                                                                                         \
+	{                                                                                                                  \
+	public:                                                                                                            \
+		static logicmill::bstream::context_base::ptr const&                                                            \
+		get()                                                                                                          \
+		{                                                                                                              \
+			using context_type = logicmill::bstream::context<BSTRM_LIST_POLY_TYPES_(poly_type_array)>;                 \
+			static const std::initializer_list<const std::error_category*> icats                                       \
+					= {BSTRM_LIST_ERROR_CATEGS_(error_categs_array) &std::system_category(),                           \
+					   &std::generic_category(),                                                                       \
+					   &logicmill::bstream::error_category()};                                                         \
+			static const logicmill::bstream::context_base::ptr instance{MAKE_SHARED<context_type>(icats)};             \
+			return instance;                                                                                           \
+		}                                                                                                              \
+	};
+/**/
+
+#define BSTRM_LIST_POLY_TYPES_(poly_types_array)                                                                       \
+	BOOST_PP_IF(                                                                                                       \
+			BOOST_PP_ARRAY_SIZE(poly_types_array), BSTRM_NON_EMPTY_POLY_TYPES_ARRAY_, BSTRM_EMPTY_POLY_TYPES_ARRAY_)   \
+	(poly_types_array)
+/**/
+
+#define BSTRM_NON_EMPTY_POLY_TYPES_ARRAY_(poly_types_array)                                                            \
+	BSTRM_LIST_POLY_TYPES_SEQ_(BOOST_PP_ARRAY_TO_SEQ(poly_types_array))
+/**/
+
+#define BSTRM_EMPTY_POLY_TYPES_ARRAY_(poly_types_array)
+/**/
+
+#define BSTRM_LIST_POLY_TYPES_SEQ_(poly_types_seq)                                                                     \
+	BOOST_PP_SEQ_FOR_EACH_I(BSTRM_LIST_POLY_TYPES_EACH_MEMBER_, _, poly_types_seq)                                     \
+	/**/
+
+#define BSTRM_LIST_POLY_TYPES_EACH_MEMBER_(r, data, n, poly_type_name) BOOST_PP_COMMA_IF(n) poly_type_name
+/**/
+
+#define BSTRM_LIST_ERROR_CATEGS_(error_categs_array)                                                                   \
+	BOOST_PP_IF(BOOST_PP_ARRAY_SIZE(error_categs_array), BSTRM_NON_EMPTY_CATEGS_ARRAY_, BSTRM_EMPTY_CATEGS_ARRAY_)     \
+	(error_categs_array)
+/**/
+
+#define BSTRM_NON_EMPTY_CATEGS_ARRAY_(error_categs_array)                                                              \
+	BSTRM_LIST_ERROR_CATEGS_SEQ_(BOOST_PP_ARRAY_TO_SEQ(error_categs_array))
+/**/
+
+#define BSTRM_EMPTY_CATEGS_ARRAY_(error_categs_array)
+/**/
+
+#define BSTRM_LIST_ERROR_CATEGS_SEQ_(error_categs_seq)                                                                 \
+	BOOST_PP_SEQ_FOR_EACH_I(BSTRM_LIST_ERROR_CATEGS_EACH_MEMBER_, _, error_categs_seq)                                 \
+/**/
+
+#define BSTRM_LIST_ERROR_CATEGS_EACH_MEMBER_(r, data, n, error_categ_name) &error_categ_name(),
+/**/
+
+
+#define BSTRM_CONTEXT_FACTORY_TYPE(name) \
+struct name : public logicmill::bstream::default_context_factory 
+
+#define BSTRM_POLY_TYPES(...) \
+	BSTRM_POLY_TYPES_(BOOST_PP_VARIADIC_TO_ARRAY(__VA_ARGS__))
+
+#define BSTRM_POLY_TYPES_(poly_types_array) \
+	using context_type = bstream::context< BSTRM_LIST_POLY_TYPES_(poly_types_array)>;
+
+#define BSTRM_ERROR_CATEGORIES(...) \
+	BSTRM_ERROR_CATEGORIES_(BOOST_PP_VARIADIC_TO_ARRAY(__VA_ARGS__))
+
+#define BSTRM_ERROR_CATEGORIES_(error_categ_array)                                                                     \
+	static std::initializer_list<const std::error_category*> const& error_categories()                                 \
+	{                                                                                                                  \
+		static const std::initializer_list<const std::error_category*> categories                                      \
+				= {BSTRM_LIST_ERROR_CATEGS_(error_categs_array) &std::system_category(),                               \
+				   &std::generic_category(),                                                                           \
+				   &logicmill::bstream::error_category()};                                                             \
+		return categories;                                                                                             \
+	}
+
+#define BSTRM
 
 #endif    // LOGICMILL_BSTREAM_MACROS_H

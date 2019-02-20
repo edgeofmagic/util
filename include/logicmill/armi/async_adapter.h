@@ -65,6 +65,33 @@ public:
 	// : m_context{context}
 	// {}
 
+	static client_channel_impl::ptr
+	create(armi::client_context_base::ptr const& context, async::loop::ptr lp)
+	{
+		return MAKE_SHARED<client_channel_impl>(context, lp);
+	}
+
+	static void
+	connect(armi::client_context_base::ptr const& context, async::loop::ptr lp, async::options const& opts, std::error_code& err, connect_handler handler)
+	{
+		err.clear();
+		async::options options_override{opts};
+		options_override.framing(true);
+		lp->connect_channel(options_override, err , [=,handler{std::move(handler)}](async::channel::ptr chan, std::error_code err)
+		{
+			if (err)
+			{
+				handler(nullptr, err);
+			}
+			else
+			{
+				auto cp = MAKE_SHARED<client_channel_impl>(context, chan);
+				cp->start_read();
+				handler(cp, std::error_code{});
+			}
+		});
+	}
+
 	void
 	connect(async::options const& opts, std::error_code& err, connect_handler handler)
 	{
@@ -391,7 +418,8 @@ public:
 									}
 									else
 									{
-										auto server_channel = MAKE_SHARED<server_channel_impl>(chan);
+										auto server_channel = MAKE_SHARED<server_channel_impl>(chan); 
+										// WTF? server channel should have same lifecycle as async channel
 										bstream::imbstream is{std::move(buf), m_context->stream_context()};
 										m_context->handle_request(is, server_channel);
 									}

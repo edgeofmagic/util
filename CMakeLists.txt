@@ -69,7 +69,7 @@ set(LOGICMILL_SRCS
 
 	include/logicmill/armi/client_context.h
 	include/logicmill/armi/client_context_base.h
-	include/logicmill/armi/client_context_builder.h
+#	include/logicmill/armi/client_context_builder.h
 	include/logicmill/armi/error.h
 	include/logicmill/armi/fail_proxy.h
 	include/logicmill/armi/interface_proxy.h
@@ -88,7 +88,7 @@ set(LOGICMILL_SRCS
 	include/logicmill/armi/reply_stub.h
 	include/logicmill/armi/server_context.h
 	include/logicmill/armi/server_context_base.h
-	include/logicmill/armi/server_context_builder.h
+#	include/logicmill/armi/server_context_builder.h
 	include/logicmill/armi/traits.h
 	include/logicmill/armi/types.h
 	include/logicmill/laps/channel_anchor.h

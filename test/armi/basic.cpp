@@ -145,28 +145,64 @@ struct std::is_error_condition_enum<foo::errc> : public true_type
 using async::ip::endpoint;
 using async::ip::address;
 
+
 namespace rfoo
 {
-static auto foo_stream_context = bstream::create_context<>({&armi::error_category(), &foo::error_category()});
 
-ARMI_CONTEXT(remote, foo::bar, foo::boo);
-ARMI_INTERFACE(remote, foo::bar, increment, freak_out);
-ARMI_INTERFACE(remote, foo::boo, decrement);
+class foo_stream_context : public bstream::context<>
+{
+public:
+	foo_stream_context() : bstream::context<>{
+		bstream::context_options{}.error_categories({&armi::error_category(), &foo::error_category()})
+	} {}
+};
+
+
+// class foo_stream_context_factory
+// {
+// public:
+// 	using context_type = bstream::context<>;
+
+// 	static bstream::context_options options()
+// 	{
+// 		return bstream::context_options{}.error_categories({&armi::error_category(), &foo::error_category()});
+// 	}
+
+// 	BSTRM_CONTEXT_ACCESSOR();
+// };
+
+class foo_stream_context_factory
+{
+public:
+	static bstream::context_base::ptr const& get()                                                                     \
+	{                                                                                                                  \
+		static const bstream::context_base::ptr instance{MAKE_SHARED<foo_stream_context>()};                        \
+		return instance;                                                                                               \
+	}
+};
+
+
+// static auto foo_stream_context = foo_stream_context_factory::get();
+
+
+ARMI_CONTEXT(bar_remote, foo::bar, foo_stream_context_factory, increment, freak_out);
+ARMI_CONTEXT(boo_remote, foo::boo, foo_stream_context_factory, decrement);
+// ARMI_INTERFACE(remote, foo::bar, increment, freak_out);
+// ARMI_INTERFACE(remote, foo::boo, decrement);
 }    // namespace rfoo
 
 #if 1
 TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 {
-	bool client_connect_timer_handler_visited{false};
 	bool client_connect_handler_visited{false};
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
-	rfoo::remote context;
-	auto server_context = context.create_server();
+	// rfoo::bar_remote context;
+	auto server_context = rfoo::bar_remote::create_server();
 	server_context->register_impl(std::make_shared<foo::bar>());
 
-	END_LOOP(lp, 5000);
+	END_LOOP(lp, 500);
 
 	async::server_impl::ptr sp = MAKE_SHARED<async::server_impl>(server_context, lp);
 	sp->on_server_error([=](async::server_impl::ptr const& srvrp, std::error_code err)
@@ -193,45 +229,39 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 	sp->bind(async::options{endpoint{address::v4_any(), 7001}}, err);
 	CHECK(!err);
 
-	auto client_context = context.create_client();
+	auto client_context = rfoo::bar_remote::create_client();
 
-	async::client_channel_impl::ptr cp = MAKE_SHARED<async::client_channel_impl>(client_context, lp);
+	async::client_channel_impl::ptr cp = async::client_channel_impl::create(client_context, lp);
 
-	auto client_connect_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
-		std::error_code err;
-		cp->connect(
-				async::options{endpoint{address::v4_loopback(), 7001}},
-				err,
-				[&](armi::transport::client_channel::ptr chan, std::error_code err) {
-					client_context->use(chan);
-					client_context->proxy<foo::bar>().increment(
-							[](std::error_code err, int result) {
-								std::cout << "in increment callback, err is " << err.message() << std::endl;
-								CHECK(!err);
-								CHECK(result == 28);
-							},
-							27);
-					client_connect_handler_visited = true;
-				});
-		CHECK(!err);
-		client_connect_timer_handler_visited = true;
-	});
+	cp->connect(
+			async::options{endpoint{address::v4_loopback(), 7001}},
+			err,
+			[&](armi::transport::client_channel::ptr chan, std::error_code err) {
+				client_context->use(chan);
+				client_context->proxy().increment(
+						[](std::error_code err, int result) {
+							std::cout << "in increment callback";
+							if (err)
+							{
+								std::cout << ", err is " << err.message();
+							}
+							std::cout << std::endl;
+							CHECK(!err);
+							CHECK(result == 28);
+						},
+						27);
+				client_connect_handler_visited = true;
+			});
 
 	CHECK(!err);
-
-	client_connect_timer->start(std::chrono::milliseconds{2000}, err);
-	CHECK(!err);
-
-	std::cout << "started connect timer" << std::endl;
 
 	lp->run(err);
 	CHECK(!err);
 
 	std::cout << "loop run finished" << std::endl;
 
-	CHECK(client_connect_timer_handler_visited);
 	CHECK(client_connect_handler_visited);
-	CHECK(server_context->get_impl<foo::bar>()->increment_called);
+	CHECK(server_context->get_impl()->increment_called);
 
 	lp->close(err);
 	CHECK(!err);
@@ -240,6 +270,84 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 #endif
 
 #if 1
+TEST_CASE("logicmill::armi [ smoke ] { basic functionality, static connect }")
+{
+	bool client_connect_handler_visited{false};
+
+	std::error_code  err;
+	async::loop::ptr lp = async::loop::create();
+	// rfoo::bar_remote context;
+	auto server_context = rfoo::bar_remote::create_server();
+	server_context->register_impl(std::make_shared<foo::bar>());
+
+	END_LOOP(lp, 500);
+
+	async::server_impl::ptr sp = MAKE_SHARED<async::server_impl>(server_context, lp);
+	sp->on_server_error([=](async::server_impl::ptr const& srvrp, std::error_code err)
+	{
+		std::cout << "server error handler called: " << err.message() << std::endl;
+		srvrp->close();
+	});
+
+	sp->on_channel_error([=](async::server_impl::ptr const& srvrp, async::channel::ptr const& chan, std::error_code err) {
+		std::cout << "channel error handler called: " << err.message() << std::endl;
+		srvrp->close(chan);
+	});
+
+	sp->on_server_close([]()
+	{
+		std::cout << "server close handler called" << std::endl;
+	});
+
+	sp->on_channel_close([](async::channel::ptr const& chan)
+	{
+		std::cout << "channel close handler called" << std::endl;
+	});
+
+	sp->bind(async::options{endpoint{address::v4_any(), 7001}}, err);
+	CHECK(!err);
+
+	auto client_context = rfoo::bar_remote::create_client();
+
+	async::client_channel_impl::connect(
+			client_context,
+			lp,
+			async::options{endpoint{address::v4_loopback(), 7001}},
+			err,
+			[&](armi::transport::client_channel::ptr chan, std::error_code err) {
+				client_context->use(chan);
+				client_context->proxy().increment(
+						[](std::error_code err, int result) {
+							std::cout << "in increment callback";
+							if (err)
+							{
+								std::cout << ", err is " << err.message();
+							}
+							std::cout << std::endl;
+							CHECK(!err);
+							CHECK(result == 28);
+						},
+						27);
+				client_connect_handler_visited = true;
+			});
+
+	CHECK(!err);
+
+	lp->run(err);
+	CHECK(!err);
+
+	std::cout << "loop run finished" << std::endl;
+
+	CHECK(client_connect_handler_visited);
+	CHECK(server_context->get_impl()->increment_called);
+
+	lp->close(err);
+	CHECK(!err);
+}
+
+#endif
+
+#if 0
 
 TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 {
@@ -252,7 +360,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{rfoo::foo_stream_context};
+	rfoo::remote context{rfoo::foo_stream_context_factory::get()};
 	auto server_context = context.create_server();
 	server_context->register_impl(std::make_shared<foo::bar>());
 
@@ -410,7 +518,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close re-open client }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context};
+	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
 
 	auto bar_impl = std::make_shared<foo::bar>();
 
@@ -497,7 +605,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close server before client request }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context};
+	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
 
 	auto bar_impl = std::make_shared<foo::bar>();
 
@@ -571,7 +679,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client closes before server sends reply }
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context};
+	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
 
 	context.server().register_impl(std::make_shared<foo::boo>(lp));
 
@@ -651,7 +759,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context};
+	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
 
 	context.server().register_impl(std::make_shared<foo::boo>(lp));
 
@@ -713,7 +821,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context};
+	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
 
 	context.server().register_impl(std::make_shared<foo::boo>(lp));
 

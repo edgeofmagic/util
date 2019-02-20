@@ -41,6 +41,48 @@ namespace bstream
 // TODO: fix configurability of allocator, default size, etc.
 class ibstream;
 
+class context_options
+{
+public:
+	friend class context_base;
+
+	context_options()
+		: m_categories{&std::system_category(), &std::generic_category(), &logicmill::bstream::error_category()},
+		  m_dedup{true},
+		  m_byte_order{byte_order::big_endian},
+		  m_buf_size{65536UL}
+	{}
+
+	context_options&
+	error_categories(std::initializer_list<const std::error_category*> categ_list)
+	{
+		m_categories.reserve(m_categories.size() + categ_list.size());
+		m_categories.insert(m_categories.end(), categ_list);
+		return *this;
+	}
+
+	context_options&
+	dedup_shared_ptrs(bool flag)
+	{
+		m_dedup = flag;
+		return *this;
+	}
+
+	context_options&
+	buffer_size(size_type bsize)
+	{
+		m_buf_size = bsize;
+		return *this;
+	}
+
+private:
+	std::vector<const std::error_category*> m_categories;
+	bool                                    m_dedup;
+	enum byte_order                         m_byte_order;
+	size_type                               m_buf_size;
+};
+
+
 class context_base : public error_category_context
 {
 public:
@@ -53,6 +95,20 @@ public:
 		return tag != invalid_tag;
 	};
 
+	context_base(context_options&& opts)
+		: error_category_context{std::move(opts.m_categories)},
+		  m_dedup_shared_ptrs{opts.m_dedup},
+		  m_byte_order{opts.m_byte_order},
+		  m_buffer_size{opts.m_buf_size}
+	{}
+
+	context_base(context_options const& opts)
+		: error_category_context{opts.m_categories},
+		  m_dedup_shared_ptrs{opts.m_dedup},
+		  m_byte_order{opts.m_byte_order},
+		  m_buffer_size{opts.m_buf_size}
+	{}
+
 	context_base(bool dedup_shared_ptrs, byte_order order, size_type buffer_size = 65536)
 		// buffer::memory_broker::ptr broker      = buffer::default_broker::get())
 		: error_category_context{},
@@ -62,19 +118,19 @@ public:
 	//   m_broker{broker}
 	{}
 
-	context_base(
-			error_category_context::category_init_list categories,
-			bool                                       dedup_shared_ptrs,
-			byte_order                                 order,
-			size_type                                  buffer_size = 65536)
-		// buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
+	// context_base(
+	// 		error_category_context::category_init_list categories,
+	// 		bool                                       dedup_shared_ptrs,
+	// 		byte_order                                 order,
+	// 		size_type                                  buffer_size = 65536)
+	// 	// buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
 
-		: error_category_context{categories},
-		  m_dedup_shared_ptrs{dedup_shared_ptrs},
-		  m_byte_order{order},
-		  m_buffer_size{buffer_size}
-	//   m_broker{broker}
-	{}
+	// 	: error_category_context{categories},
+	// 	  m_dedup_shared_ptrs{dedup_shared_ptrs},
+	// 	  m_byte_order{order},
+	// 	  m_buffer_size{buffer_size}
+	// //   m_broker{broker}
+	// {}
 
 	virtual ~context_base() {}
 
@@ -194,16 +250,20 @@ public:
 
 	using ptr = SHARED_PTR_TYPE<context>;
 
-	context(bool dedup_shared_ptrs = true, enum byte_order order = byte_order::big_endian)
-		: context_base{dedup_shared_ptrs, order}
+	context(context_options&& opts) : context_base{std::move(opts)} {}
+
+	context(context_options const& opts) : context_base{opts} {}
+
+	context(bool dedup_shared_ptrs = true, enum byte_order order = byte_order::big_endian, size_type buf_size = 65536UL)
+		: context_base{dedup_shared_ptrs, order, buf_size}
 	{}
 
 
-	context(error_category_context::category_init_list categories,
-			bool                                       dedup_shared_ptrs = true,
-			enum byte_order                            order             = byte_order::big_endian)
-		: context_base{categories, dedup_shared_ptrs, order}
-	{}
+	// context(error_category_context::category_init_list categories,
+	// 		bool                                       dedup_shared_ptrs = true,
+	// 		enum byte_order                            order             = byte_order::big_endian, size_type buf_size = 65536UL)
+	// 	: context_base{categories, dedup_shared_ptrs, order, buf_size}
+	// {}
 
 	virtual poly_tag_type
 	get_type_tag(std::type_index index) const override
@@ -329,31 +389,53 @@ template<class... Args>
 const std::vector<poly_shared_factory_func> context<Args...>::m_shared_factories
 		= {[](ibstream& is) { return poly_shared_factory<Args>::get(is); }...};
 
+class default_context_factory
+{
+public:
+	using context_type = bstream::context<>;
 
-inline context_base::ptr 
+	static context_options options()
+	{
+		return context_options{};
+	}
+
+	static bstream::context_base::ptr const&
+	get()
+	{
+		static const bstream::context_base::ptr instance{
+				MAKE_SHARED<context_type>(options())};
+		return instance;
+	}
+};
+
+inline context_base::ptr const&
 get_default_context()
 {
-	static context_base::ptr default_context = MAKE_SHARED<context<>>(error_category_context::category_init_list{});
+	// static context_base::ptr default_context = MAKE_SHARED<context<>>(error_category_context::category_init_list{});
 	// static const context<> default_context{{}};
-	return default_context;
-}
-
-template<class... Args>
-context_base::ptr
-create_context(bool dedup_shared_ptrs = true, enum byte_order order = byte_order::big_endian)
-{
-	return MAKE_SHARED<context<Args...>>(dedup_shared_ptrs, order);
+	return default_context_factory::get();
 }
 
 template<class... Args>
 context_base::ptr
 create_context(
-		error_category_context::category_init_list categories,
-		bool                                       dedup_shared_ptrs = true,
-		enum byte_order                            order             = byte_order::big_endian)
+		bool            dedup_shared_ptrs = true,
+		enum byte_order order             = byte_order::big_endian,
+		size_type       buf_size          = 65536UL)
 {
-	return MAKE_SHARED<context<Args...>>(categories, dedup_shared_ptrs, order);
+	return MAKE_SHARED<context<Args...>>(dedup_shared_ptrs, order, buf_size);
 }
+
+// template<class... Args>
+// context_base::ptr
+// create_context(
+// 		error_category_context::category_init_list categories,
+// 		bool                                       dedup_shared_ptrs = true,
+// 		enum byte_order                            order             = byte_order::big_endian,
+// 		size_type                                  buf_size          = 65536UL)
+// {
+// 	return MAKE_SHARED<context<Args...>>(categories, dedup_shared_ptrs, order, buf_size);
+// }
 
 #if 0
 class context_base

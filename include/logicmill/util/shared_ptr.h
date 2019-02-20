@@ -404,6 +404,7 @@ protected:
 	static shared_ptr
 	create(Args&&... args)
 	{
+    	static_assert( std::is_constructible<T, Args...>::value, "Can't construct object in make_shared" );
 		using allocator_type      = std::allocator<element_type>;
 		using ctrl_blk_type       = detail::value_ctrl_blk<element_type, allocator_type>;
 		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
@@ -420,6 +421,7 @@ protected:
 	static shared_ptr
 	allocate(_Alloc&& alloc, Args&&... args)
 	{
+    	static_assert( std::is_constructible<T, Args...>::value, "Can't construct object in allocate_shared" );
 		using allocator_type      = _Alloc;
 		using ctrl_blk_type       = detail::value_ctrl_blk<element_type, allocator_type>;
 		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;

@@ -25,9 +25,7 @@
 #ifndef LOGICMILL_ARMI_CLIENT_CONTEXT_H
 #define LOGICMILL_ARMI_CLIENT_CONTEXT_H
 
-// #include <logicmill/armi/client_context_builder.h>
 #include <logicmill/traits.h>
-#include <logicmill/armi/interface_proxy.h>
 
 namespace logicmill
 {
@@ -40,21 +38,86 @@ template<class Proxy, class StreamContext>
 class client_context : public client_context_base 
 {
 public:
-	using ptr = SHARED_PTR_TYPE<client_context>;
 	using base = client_context_base;
 	using proxy_type = Proxy;
 
-	client_context()
-		: base{StreamContext::get()}, m_proxy{*this}
-	{}
-
-	proxy_type&
-	proxy()
+	class client_channel
 	{
-		return m_proxy;
+	public:
+
+		friend class client_context;
+
+	protected:
+
+		client_channel(client_context& context, channel_id_type id)
+		: m_context{context}, m_id{id} {}
+
+	public:
+
+		client_channel(client_channel const& other)
+		: m_context{other.m_context}, m_id{other.m_id} {}
+
+		client_channel&
+		operator=(client_channel const& other)
+		{
+			m_context = other.m_context;
+			m_id = other.m_id;
+		}		
+
+		client_channel&
+		timeout(std::chrono::milliseconds t)
+		{
+			m_context.set_transient_timeout(t);
+		}
+
+		proxy_type*
+		operator->()
+		{
+			return m_context.proxy(m_id);
+		}
+
+		bool
+		is_valid()
+		{
+			m_context.is_valid_channel_id(m_id);
+		}
+
+		void
+		close()
+		{
+			m_context.close(m_id);
+		}
+		
+		explicit operator bool() const 
+		{
+			return is_valid(); 
+		}
+
+	private:
+
+		client_context& m_context;
+		channel_id_type m_id;
+	};
+
+	client_channel
+	create_channel(channel_id_type id)
+	{
+		return client_channel(*this, id);
 	}
 
+	client_context(transport::client& transport_client)
+		: base{transport_client, StreamContext::get()}, m_proxy{*this}
+	{}
+
 private:
+
+	proxy_type*
+	proxy(channel_id_type channel_id)
+	{
+		set_transient_channel_id(channel_id);
+		return &m_proxy;
+	}
+
 	proxy_type m_proxy;
 };
 

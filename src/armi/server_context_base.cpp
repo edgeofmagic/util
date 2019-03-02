@@ -29,13 +29,13 @@
 
 using namespace logicmill;
 using namespace armi;
-
+/*
 server_context_base::server_context_base(bstream::context_base::ptr const& stream_context)
 	: m_stream_context{stream_context}
 {}
 
 server_context_base::~server_context_base() {}
-
+*/
 /*
 void
 server_context_base::really_bind(async::options const& opts, std::error_code& err)
@@ -89,15 +89,16 @@ server_context_base::really_bind(async::options const& opts, std::error_code& er
 // 	}
 // }
 
+/*
 void
-server_context_base::handle_request(bstream::ibstream& is, transport::server_channel::ptr const& chan)
+server_context_base::handle_request(bstream::ibstream& is, channel_id_type chan)
 {
-	auto        req_ord  = is.read_as<std::uint64_t>();
+	auto        req_id  = is.read_as<request_id_type>();
 	// std::size_t if_index = is.read_as<std::size_t>();
 		auto& stub = get_type_erased_stub();
-		stub.process(req_ord, chan, is);
+		stub.process(req_id, chan, is);
 }
-
+*/
 // void
 // server_context_base::cleanup()
 // {

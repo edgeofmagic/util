@@ -42,29 +42,28 @@ template<class... Args>
 class reply_proxy<std::function<void(std::error_code, Args...)>>
 {
 public:
-	reply_proxy(std::uint64_t req_ord, transport::server_channel::ptr const& chan, bstream::context_base::ptr const& stream_context)
-		: m_req_ord{req_ord}, m_channel{chan}, m_stream_context{stream_context}
+	reply_proxy(request_id_type request_id, channel_id_type channel_id, server_context_base& context)
+		: m_request_id{request_id}, m_channel_id{channel_id}, m_context{context}
 	{}
 
 	reply_proxy(reply_proxy const& other)
-		: m_req_ord{other.m_req_ord}, m_channel{other.m_channel}, m_stream_context{other.m_stream_context}
+		: m_request_id{other.m_request_id}, m_channel_id{other.m_channel_id}, m_context{other.m_context}
 	{}
 
 	reply_proxy(reply_proxy&& other)
-		: m_req_ord{other.m_req_ord}, m_channel{std::move(other.m_channel)}, m_stream_context{std::move(other.m_stream_context)}
+		: m_request_id{other.m_request_id}, m_channel_id{other.m_channel_id}, m_context{other.m_context}
 	{}
 
 	inline void
 	operator()(std::error_code ec, Args... args)
 	{
-		bstream::ombstream os{m_stream_context};
-		os << m_req_ord;
+		bstream::ombstream os{m_context.stream_context()};
+		os << m_request_id;
 		os << reply_kind::normal;
 		os.write_array_header(sizeof...(Args) + 1);
 		os << ec;
 		append(os, args...);
-		m_channel->send_reply(os.release_mutable_buffer());
-		// m_context->send_reply(m_channel, os.release_mutable_buffer());
+		m_context.get_transport().send_reply(m_channel_id, os.release_mutable_buffer());
 	}
 
 private:
@@ -81,37 +80,36 @@ private:
 	}
 
 	// server_context_base& m_context;
-	std::uint64_t        m_req_ord;
-	transport::server_channel::ptr  m_channel;
-	bstream::context_base::ptr m_stream_context;
+	request_id_type        m_request_id;
+	channel_id_type m_channel_id;
+	server_context_base& m_context;
 };
 
 template<class... Args>
 class reply_proxy<std::function<void(Args...)>>
 {
 public:
-	reply_proxy(std::uint64_t req_ord, transport::server_channel::ptr const& chan, bstream::context_base::ptr const& stream_context)
-		: m_req_ord{req_ord}, m_channel{chan}, m_stream_context{stream_context}
+	reply_proxy(request_id_type request_id, channel_id_type channel_id, server_context_base& context)
+		: m_request_id{request_id}, m_channel_id{channel_id}, m_context{context}
 	{}
 
 	reply_proxy(reply_proxy const& other)
-		: m_req_ord{other.m_req_ord}, m_channel{other.m_channel}, m_stream_context{other.m_stream_context}
+		: m_request_id{other.m_request_id}, m_channel_id{other.m_channel_id}, m_context{other.m_context}
 	{}
 
 	reply_proxy(reply_proxy&& other)
-		: m_req_ord{other.m_req_ord}, m_channel{std::move(other.m_channel)}, m_stream_context{std::move(other.m_stream_context)}
+		: m_request_id{other.m_request_id}, m_channel_id{other.m_channel_id}, m_context{other.m_context}
 	{}
 
 	inline void
 	operator()(Args... args)
 	{
-		bstream::ombstream os{m_stream_context};
-		os << m_req_ord;
+		bstream::ombstream os{m_context.stream_context()};
+		os << m_request_id;
 		os << reply_kind::normal;
 		os.write_array_header(sizeof...(Args));
 		append(os, args...);
-		m_channel->send_reply(os.release_mutable_buffer());
-		// m_context->send_reply(m_channel, os.release_mutable_buffer());
+		m_context.get_transport().send_reply(m_channel_id, os.release_mutable_buffer());
 	}
 
 private:
@@ -128,9 +126,9 @@ private:
 	}
 
 	// server_context_base& m_context;
-	std::uint64_t        m_req_ord;
-	transport::server_channel::ptr  m_channel;
-	bstream::context_base::ptr m_stream_context;
+	request_id_type        m_request_id;
+	channel_id_type  m_channel_id;
+	server_context_base& m_context;
 };
 
 }    // namespace armi

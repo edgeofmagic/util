@@ -35,27 +35,46 @@ namespace logicmill
 namespace armi
 {
 
+template<class Target>
 class method_stub_base
 {
 public:
+
+	using target_ptr_type = std::shared_ptr<Target>;
+
+	method_stub_base(server_context_base& context)
+	: m_context{context}
+	{}
+
 	virtual ~method_stub_base() {}
 	virtual void
-	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const = 0;
+	dispatch(request_id_type req_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target) const = 0;
 
-	static void
+protected:
+
+	void
 	request_failed(
-			std::uint64_t                         request_id,
-			transport::server_channel::ptr const& transp,
-			bstream::context_base::ptr const&     stream_context,
-			std::error_code                       err)
+			request_id_type                   request_id,
+			channel_id_type                   channel_id,
+			std::error_code                   err) const
 	{
-		bstream::ombstream os{stream_context};
+		bstream::ombstream os{m_context.stream_context()};
 		os << request_id;
 		os << reply_kind::fail;
 		os.write_array_header(1);
 		os << err;
-		transp->send_reply(os.release_mutable_buffer());
+		m_context.get_transport().send_reply(channel_id, os.release_mutable_buffer());
 	}
+
+	server_context_base&
+	context() const
+	{
+		return m_context;
+	}
+
+private:
+
+	server_context_base& m_context;
 };
 
 }    // namespace armi

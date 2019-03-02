@@ -35,6 +35,7 @@
 #include <logicmill/bstream/context.h>
 #include <logicmill/util/buffer.h>
 #include <system_error>
+#include <logicmill/armi/types.h>
 
 namespace logicmill
 {
@@ -43,40 +44,39 @@ namespace armi
 namespace transport
 {
 
-class server_channel
+// using channel_id_type = std::uint64_t;
+// using request_id_type = std::uint64_t;
+// using close_handler = std::function<void()>;
+
+class client
 {
 public:
-	using ptr = SHARED_PTR_TYPE<server_channel>;
-
-	// virtual void
-	// send_reply(std::deque<util::mutable_buffer>&& req) = 0;
+	virtual bool
+	is_valid_channel(channel_id_type channel_id) = 0;
 
 	virtual void
-	send_reply(util::mutable_buffer&& req)
-			= 0;
-};
-
-class client_channel
-{
-public:
-	using ptr = SHARED_PTR_TYPE<client_channel>;
-
-	using close_handler = std::function<void()>;
-
-	virtual void close(close_handler) = 0;
-
-	virtual void close() = 0;
+	close(channel_id_type channel_id) = 0;
 
 	virtual void
 	send_request(
-			std::uint64_t             request_id,
+			channel_id_type           channel_id,
+			request_id_type           request_id,
 			std::chrono::milliseconds timeout,
-			util::mutable_buffer&&    req,
-			std::error_code&          err)
+			util::mutable_buffer&&    req)
 			= 0;
+};
 
-	// reply by calling client_context_base::handle_reply(buffer);
-	// timeout should invoke client_context_base::cancel_request(request_id, std::error_code);
+class server
+{
+public:
+	virtual bool
+	is_valid_channel(channel_id_type channel) = 0;
+
+	virtual void
+	close(channel_id_type channel_id) = 0;
+
+	virtual void
+	send_reply(channel_id_type channel, util::mutable_buffer&& req) = 0;
 };
 
 }    // namespace transport

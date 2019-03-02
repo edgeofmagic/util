@@ -48,7 +48,9 @@ enum class errc : int
 	invalid_argument_count,
 	invalid_argument_type,
 	invalid_error_category,
+	invalid_channel_id,
 	context_closed,
+	channel_closed,
 	transport_closed,
 
 };

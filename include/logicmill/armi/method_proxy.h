@@ -49,36 +49,38 @@ protected:
 	std::chrono::milliseconds
 	get_timeout()
 	{
-		auto timeout = m_context.transient_timeout();
+		millisecs timeout{m_context.get_and_clear_transient_timeout()};
 		if (timeout.count() <= 0)
 		{
-			timeout = m_context.default_timeout();
-		}
-		else
-		{
-			m_context.clear_transient_timeout();
+			timeout = m_context.get_default_timeout();
 		}
 		return timeout;
 	}
 
-	std::uint64_t
+	request_id_type
 	add_handler(Reply reply)
 	{
-		auto req_ord = m_context.next_request_ordinal();
-		m_context.add_handler(req_ord, std::make_unique<reply_hndlr_type>(reply));
-		return req_ord;
+		auto request_id = m_context.next_request_id();
+		m_context.add_handler(request_id, std::make_unique<reply_hndlr_type>(reply));
+		return request_id;
 	}
 
 	void
-	send_request(std::uint64_t req_ord, bstream::ombstream& os, std::chrono::milliseconds timeout)
+	send_request(request_id_type request_id, bstream::ombstream& os, std::chrono::milliseconds timeout)
 	{
-		m_context.send_request(req_ord, os, timeout);
+		m_context.send_request(m_context.get_and_clear_transient_channel_id(), request_id, os, timeout);
 	}
 
 	bstream::context_base::ptr
 	stream_context() const
 	{
 		return m_context.stream_context();
+	}
+
+	client_context_base&
+	context() const
+	{
+		return m_context;
 	}
 
 	std::size_t          m_method_id;
@@ -108,13 +110,13 @@ public:
 	operator()(Reply reply)
 	{
 		auto timeout = base::get_timeout();
-		auto req_ord = base::add_handler(reply);
+		auto request_id = base::add_handler(reply);
 
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_method_id;
+		os << request_id << base::m_method_id;
 		os.write_array_header(0);
-		base::send_request(req_ord, os, timeout);
+		base::send_request(request_id, os, timeout);
 	}
 };
 
@@ -140,14 +142,14 @@ public:
 	operator()(Reply reply, First first)
 	{
 		auto               timeout = base::get_timeout();
-		auto               req_ord = base::add_handler(reply);
+		auto               request_id = base::add_handler(reply);
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_method_id;
+		os << request_id << base::m_method_id;
 		os.write_array_header(1);
 		os << first;
 
-		base::send_request(req_ord, os, timeout);
+		base::send_request(request_id, os, timeout);
 	}
 };
 
@@ -174,16 +176,16 @@ public:
 	operator()(Reply reply, First first, Args... args)
 	{
 		auto               timeout = base::get_timeout();
-		auto               req_ord = base::add_handler(reply);
+		auto               request_id = base::add_handler(reply);
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_method_id;
+		os << request_id << base::m_method_id;
 
 		os.write_array_header(1 + sizeof...(Args));
 		os << first;
 		append(os, args...);
 
-		base::send_request(req_ord, std::move(os), timeout);
+		base::send_request(request_id, std::move(os), timeout);
 	}
 
 private:
@@ -217,13 +219,13 @@ public:
 	operator()(Reply reply, fail_reply fail)
 	{
 		auto               timeout = base::get_timeout();
-		auto               req_ord = base::add_handler(reply);
+		auto               request_id = base::add_handler(reply);
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_method_id;
+		os << request_id << base::m_method_id;
 		os.write_array_header(0);
 
-		base::send_request(req_ord, os, timeout);
+		base::send_request(request_id, os, timeout);
 	}
 };
 
@@ -244,14 +246,14 @@ public:
 	operator()(Reply reply, fail_reply freply, Args... args)
 	{
 		auto               timeout = base::get_timeout();
-		auto               req_ord = base::add_handler(reply);
+		auto               request_id = base::add_handler(reply);
 		bstream::ombstream os{base::stream_context()};
 
-		os << req_ord << base::m_method_id;
+		os << request_id << base::m_method_id;
 		os.write_array_header(sizeof...(Args));    // item_count
 		append(os, args...);
 
-		base::send_request(req_ord, os, timeout);
+		base::send_request(request_id, os, timeout);
 	}
 
 private:

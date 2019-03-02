@@ -28,86 +28,120 @@
 using namespace logicmill;
 using namespace armi;
 
-client_context_base::client_context_base(bstream::context_base::ptr const& cntxt)
+client_context_base::client_context_base(transport::client& transport_client, bstream::context_base::ptr const& cntxt)
 	: m_stream_context{cntxt},
-	  m_next_request_ordinal{1},
+	  m_next_request_id{1},
 	  m_default_timeout{millisecs{0}},
 	  m_transient_timeout{millisecs{0}},
-	  m_is_closing{false},
-	  m_channel{nullptr}
+	  m_transient_channel_id{0},
+	  m_transport{transport_client}
 {}
 
-client_context_base::~client_context_base()
-{
-	close();
-}
-
 void
-client_context_base::send_request(std::uint64_t req_ord, bstream::ombstream& os, millisecs timeout)
+client_context_base::send_request(channel_id_type channel_id, request_id_type request_id, bstream::ombstream& os, millisecs timeout)
 {
-	std::error_code err;
-
-	if (m_channel)
-	{
-		m_channel->send_request(req_ord, timeout, os.release_mutable_buffer(), err);
-	}
-	else
-	{
-		err = make_error_code(armi::errc::transport_not_set);
-	}
-
-	if (err)
-	{
-		cancel_request(req_ord, err);
-	}
+	m_transport.send_request(channel_id, request_id, timeout, os.release_mutable_buffer());
 }
 
 void
 client_context_base::invoke_handler(bstream::ibstream& is)
 {
-	auto req_ord = is.read_as<std::uint64_t>();
-	auto it      = m_reply_handler_map.find(req_ord);
-	if (it != m_reply_handler_map.end())
+	auto request_id = is.read_as<request_id_type>();
+	visit_handler(request_id, [=,&is](reply_handler_map_type::iterator it)
 	{
-		it->second->handle_reply(is);
-		m_reply_handler_map.erase(it);
-	} // else discard silently, probably canceled
+		it->second.second->handle_reply(is);
+	});
 }
 
-void
-client_context_base::cancel_request(std::uint64_t req_ord, std::error_code err)
-{
-	auto it = m_reply_handler_map.find(req_ord);
-	if (it != m_reply_handler_map.end())
-	{
-		it->second->cancel(err);
-		m_reply_handler_map.erase(it);
-	}
-}
+
+// void
+// client_context_base::invoke_handler(bstream::ibstream& is)
+// {
+// 	auto request_id = is.read_as<request_id_type>();
+// 	auto it      = m_reply_handler_map.find(request_id);
+// 	if (it != m_reply_handler_map.end())
+// 	{
+// 		auto channel_id = it->second.first;
+// 		it->second.second->handle_reply(is);
+// 		m_reply_handler_map.erase(it);
+
+// 	} // else discard silently, probably canceled
+// }
 
 void
-client_context_base::cancel_request(std::uint64_t req_ord)    // no notification
+client_context_base::cancel_request(request_id_type request_id, std::error_code err)
 {
-	auto it = m_reply_handler_map.find(req_ord);
-	if (it != m_reply_handler_map.end())
-	{
-		m_reply_handler_map.erase(it);
-	}
+	visit_handler(request_id, [=](reply_handler_map_type::iterator it) { it->second.second->cancel(err); });
 }
+
+// void
+// client_context_base::cancel_request(request_id_type request_id, std::error_code err)
+// {
+// 	auto it = m_reply_handler_map.find(request_id);
+// 	if (it != m_reply_handler_map.end())
+// 	{
+// 		auto channel_id = it->second.first;
+// 		it->second.second->cancel(err);
+// 		m_reply_handler_map.erase(it);
+
+// 		auto cit = m_channel_request_map.find(channel_id);
+// 		if (cit != m_channel_request_map.end())
+// 		{
+// 			cit->second.erase(request_id);
+// 			if (cit->second.empty())
+// 			{
+// 				m_channel_request_map.erase(cit);
+// 			}
+// 		}
+// 	}
+// }
+
+// void
+// client_context_base::cancel_request(request_id_type request_id)    // no notification
+// {
+// 	auto it = m_reply_handler_map.find(request_id);
+// 	if (it != m_reply_handler_map.end())
+// 	{
+// 		m_reply_handler_map.erase(it);
+// 	}
+// }
 
 void
 client_context_base::cancel_all_requests(std::error_code err)
 {
-	for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); it = m_reply_handler_map.erase(it))
+	// use the crowbar
+	for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); ++it)
 	{
-		it->second->cancel(err);
+		it->second.second->cancel(err);
 	}
+	m_reply_handler_map.clear();
+	m_channel_request_map.clear();
 }
 
+// void
+// client_context_base::cancel_all_requests()
+// {
+// 	for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); it = m_reply_handler_map.erase(it))
+// 	{
+// 		it->second->cancel(make_error_code(std::errc::operation_canceled));
+// 	}
+// }
+
 void
-client_context_base::cancel_all_requests()
+client_context_base::cancel_channel_requests(channel_id_type channel_id, std::error_code err)
 {
-	for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); it = m_reply_handler_map.erase(it))
+	auto it = m_channel_request_map.find(channel_id);
+	if (it != m_channel_request_map.end())
 	{
+		for (auto request_id : it->second)
+ 		{
+			 auto rit = m_reply_handler_map.find(request_id);
+			 if (rit != m_reply_handler_map.end())
+			 {
+				 rit->second.second->cancel(err);
+				 m_reply_handler_map.erase(rit);
+			 }
+		}
+		m_channel_request_map.erase(it);
 	}
 }

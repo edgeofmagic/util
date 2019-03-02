@@ -72,7 +72,7 @@ set(LOGICMILL_SRCS
 #	include/logicmill/armi/client_context_builder.h
 	include/logicmill/armi/error.h
 	include/logicmill/armi/fail_proxy.h
-	include/logicmill/armi/interface_proxy.h
+#	include/logicmill/armi/interface_proxy.h
 	include/logicmill/armi/interface_stub.h
 	include/logicmill/armi/interface_stub_base.h
 	include/logicmill/armi/interface_stub_builder.h
@@ -130,7 +130,7 @@ set(LOGICMILL_SRCS
 	src/armi/client_context_base.cpp
 	src/armi/error.cpp
 	src/armi/fail_proxy.cpp
-	src/armi/interface_proxy.cpp
+#	src/armi/interface_proxy.cpp
 	src/armi/interface_stub_base.cpp
 	src/armi/server_context_base.cpp
 

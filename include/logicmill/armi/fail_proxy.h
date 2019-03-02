@@ -41,29 +41,37 @@ class fail_proxy
 {
 public:
 	fail_proxy(
-			std::uint64_t                     req_ord,
-			transport::server_channel::ptr const&     chan,
-			bstream::context_base::ptr const& stream_context)
-		: m_req_ord{req_ord}, m_channel{chan}, m_stream_context{stream_context}
+			request_id_type                     request_id,
+			channel_id_type     channel_id,
+			server_context_base& context)
+		: m_request_id{request_id}, m_channel_id{channel_id}, m_context{context}
 	{}
 
 	fail_proxy(fail_proxy const& other)
-		: m_req_ord{other.m_req_ord}, m_channel{other.m_channel}, m_stream_context{other.m_stream_context}
+		: m_request_id{other.m_request_id}, m_channel_id{other.m_channel_id}, m_context{other.m_context}
 	{}
 
 	fail_proxy(fail_proxy&& other)
-		: m_req_ord{other.m_req_ord},
-		  m_channel{std::move(other.m_channel)},
-		  m_stream_context{std::move(other.m_stream_context)} // TODO: don't move after this is fixed (to ref)
+		: m_request_id{other.m_request_id},
+		  m_channel_id{other.m_channel_id},
+		  m_context{other.m_context} 
 	{}
 
 	void
-	operator()(std::error_code ec);
+	operator()(std::error_code err)
+	{
+		bstream::ombstream os{m_context.stream_context()};
+		os << m_request_id;
+		os << reply_kind::fail;
+		os.write_array_header(1);
+		os << err;
+		m_context.get_transport().send_reply(m_channel_id, os.release_mutable_buffer());
+	}
 
 private:
-	std::uint64_t              m_req_ord;
-	transport::server_channel::ptr     m_channel;
-	bstream::context_base::ptr m_stream_context;
+	request_id_type              m_request_id;
+	channel_id_type     m_channel_id;
+	server_context_base& m_context;
 };
 
 }    // namespace armi

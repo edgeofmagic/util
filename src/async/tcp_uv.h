@@ -358,6 +358,12 @@ public:
 		return get_stream_handle()->write_queue_size;
 	}
 
+	virtual void
+	set_close_handler(logicmill::async::channel::close_handler&& handler) override
+	{
+		m_close_handler = std::move(handler);
+	}
+
 protected:
 	virtual void
 	clear_handler() override;
@@ -415,7 +421,7 @@ protected:
 	really_close(logicmill::async::channel::close_handler&& handler) override;
 
 	virtual bool
-	really_close(logicmill::async::channel::close_handler const& handler) override;
+	really_close() override;
 
 	logicmill::async::channel::read_handler  m_read_handler;
 	logicmill::async::channel::close_handler m_close_handler;
@@ -543,6 +549,12 @@ public:
 		}
 	}
 
+	virtual void
+	set_close_handler(logicmill::async::acceptor::close_handler&& handler) override
+	{
+		m_close_handler = std::move(handler);
+	}
+
 private:
 	static ptr
 	get_shared_acceptor(uv_stream_t* handle)
@@ -586,7 +598,7 @@ private:
 	really_close(logicmill::async::acceptor::close_handler&& handler) override;
 
 	virtual bool
-	really_close(logicmill::async::acceptor::close_handler const& handler) override;
+	really_close() override;
 
 	logicmill::async::ip::endpoint                 m_endpoint;
 	logicmill::async::acceptor::connection_handler m_connection_handler;

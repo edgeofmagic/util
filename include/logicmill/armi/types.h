@@ -37,9 +37,10 @@ namespace logicmill
 {
 namespace armi
 {
-using fail_reply = std::function<void(std::error_code ec)>;
-
-using millisecs = std::chrono::milliseconds;
+using fail_reply      = std::function<void(std::error_code ec)>;
+using millisecs       = std::chrono::milliseconds;
+using request_id_type = std::uint64_t;
+using channel_id_type = std::uint64_t;
 
 class default_stream_context
 {

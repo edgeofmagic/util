@@ -45,22 +45,22 @@ template<class Target, class Reply>
 class method_stub<
 		void (Target::*)(Reply),
 		std::enable_if_t<is_error_safe_reply<Reply>::value || std::is_same<Reply, fail_reply>::value>>
-	: public method_stub_base
+	: public method_stub_base<Target>
 {
 public:
 	using method_ptr_type  = void (Target::*)(Reply);
 	using reply_proxy_type = reply_proxy<Reply>;
-	using impl_ptr_type    = std::shared_ptr<Target>;
+	using target_ptr_type    = std::shared_ptr<Target>;
+	using method_stub_base<Target>::request_failed;
+	using method_stub_base<Target>::context;
 
-	inline method_stub(
-			server_context_base& context,
-			method_ptr_type      method_ptr,
-			std::size_t          method_id)
-		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
+	inline method_stub(server_context_base& context, method_ptr_type method_ptr, std::size_t method_id)
+		: method_stub_base<Target>{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target)
+			const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -73,42 +73,47 @@ public:
 			goto fail;
 		}
 
-		invoke(req_id, chan);
+		invoke(request_id, channel_id, target);
 		return;
 
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 	void
-	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan) const
+	invoke(request_id_type request_id, channel_id_type channel_id, target_ptr_type const& target) const
 	{
-		impl_ptr_type impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
-		if (!impl)
+		// target_ptr_type target = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
+		if (!target)
 		{
-			request_failed(req_id, chan, m_context.stream_context(), make_error_code(armi::errc::no_implementation_instance_registered));
+			request_failed(
+					request_id,
+					channel_id,
+					make_error_code(armi::errc::no_implementation_instance_registered));
 		}
 		else
 		{
 			try
 			{
-				((*impl).*m_method_ptr)(reply_proxy_type{req_id, chan, m_context.stream_context()});
+				((*target).*m_method_ptr)(reply_proxy_type{request_id, channel_id, context()});
 			}
 			catch (std::system_error const& e)
 			{
-				request_failed(req_id, chan, m_context.stream_context(), e.code());
+				request_failed(request_id, channel_id, e.code());
 			}
 			catch (std::exception const& e)
 			{
-				request_failed(req_id, chan, m_context.stream_context(), make_error_code(armi::errc::uncaught_server_exception));
+				request_failed(
+						request_id,
+						channel_id,
+						make_error_code(armi::errc::uncaught_server_exception));
 			}
 		}
 	}
 
 private:
 	std::size_t          m_method_id;
-	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
 };
 
@@ -121,22 +126,22 @@ class method_stub<
 		std::enable_if_t<
 				!std::is_same<First, fail_reply>::value
 				&& (is_error_safe_reply<Reply>::value || std::is_same<Reply, fail_reply>::value)>>
-	: public method_stub_base
+	: public method_stub_base<Target>
 {
 public:
 	using method_ptr_type  = void (Target::*)(Reply, First);
 	using reply_proxy_type = reply_proxy<Reply>;
-	using impl_ptr_type    = std::shared_ptr<Target>;
+	using target_ptr_type    = std::shared_ptr<Target>;
+	using method_stub_base<Target>::request_failed;
+	using method_stub_base<Target>::context;
 
-	inline method_stub(
-			server_context_base& context,
-			method_ptr_type      method_ptr,
-			std::size_t          method_id)
-		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
+	inline method_stub(server_context_base& context, method_ptr_type method_ptr, std::size_t method_id)
+		: method_stub_base<Target>{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target)
+			const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -151,7 +156,10 @@ public:
 
 		try
 		{
-			invoke(req_id, chan, is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<First>>>());
+			invoke(request_id,
+				   channel_id,
+				   target,
+				   is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<First>>>());
 		}
 		catch (std::system_error const& e)
 		{
@@ -167,16 +175,16 @@ public:
 		return;
 
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 	inline void
-	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, First first) const
+	invoke(request_id_type request_id, channel_id_type channel_id, target_ptr_type const& target, First first) const
 	{
 		std::error_code err;
-		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
-		if (!impl)
+		// target_ptr_type   target = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
+		if (!target)
 		{
 			err = make_error_code(armi::errc::no_implementation_instance_registered);
 			goto fail;
@@ -184,7 +192,7 @@ public:
 
 		try
 		{
-			((*impl).*m_method_ptr)(reply_proxy_type{req_id, chan, m_context.stream_context()}, first);
+			((*target).*m_method_ptr)(reply_proxy_type{request_id, channel_id, context()}, first);
 		}
 		catch (std::system_error const& e)
 		{
@@ -199,13 +207,12 @@ public:
 
 		return;
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 private:
 	std::size_t          m_method_id;
-	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
 };
 
@@ -219,22 +226,22 @@ class method_stub<
 		std::enable_if_t<
 				!std::is_same<First, fail_reply>::value
 				&& (is_error_safe_reply<Reply>::value || std::is_same<Reply, fail_reply>::value)>>
-	: public method_stub_base
+	: public method_stub_base<Target>
 {
 public:
 	using method_ptr_type  = void (Target::*)(Reply, First, Args...);
 	using reply_proxy_type = reply_proxy<Reply>;
-	using impl_ptr_type    = std::shared_ptr<Target>;
+	using target_ptr_type    = std::shared_ptr<Target>;
+	using method_stub_base<Target>::request_failed;
+	using method_stub_base<Target>::context;
 
-	inline method_stub(
-			server_context_base& context,
-			method_ptr_type      method_ptr,
-			std::size_t          method_id)
-		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
+	inline method_stub(server_context_base& context, method_ptr_type method_ptr, std::size_t method_id)
+		: method_stub_base<Target>{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target)
+			const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -249,8 +256,9 @@ public:
 
 		try
 		{
-			invoke(req_id,
-				   chan,
+			invoke(request_id,
+				   channel_id,
+				   target,
 				   is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<First>>>(),
 				   is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...);
 		}
@@ -268,16 +276,16 @@ public:
 		return;
 
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 	inline void
-	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, First first, Args... args) const
+	invoke(request_id_type request_id, channel_id_type channel_id, target_ptr_type const& target, First first, Args... args) const
 	{
 		std::error_code err;
-		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
-		if (!impl)
+		// target_ptr_type   target = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
+		if (!target)
 		{
 			err = make_error_code(armi::errc::no_implementation_instance_registered);
 			goto fail;
@@ -285,7 +293,8 @@ public:
 
 		try
 		{
-			((*impl).*m_method_ptr)(reply_proxy_type{req_id, chan, m_context.stream_context()}, first, args...);
+			((*target)
+			 .*m_method_ptr)(reply_proxy_type{request_id, channel_id, context()}, first, args...);
 		}
 		catch (std::system_error const& e)
 		{
@@ -301,13 +310,12 @@ public:
 		return;
 
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 private:
 	std::size_t          m_method_id;
-	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
 };
 
@@ -315,22 +323,22 @@ private:
  * Form 4 - A reply (not necessarily error_safe), and an error_reply (no other parameters).
  */
 template<class Target, class Reply>
-class method_stub<void (Target::*)(Reply, fail_reply)> : public method_stub_base
+class method_stub<void (Target::*)(Reply, fail_reply)> : public method_stub_base<Target>
 {
 public:
 	using method_ptr_type  = void (Target::*)(Reply, fail_reply);
 	using reply_proxy_type = reply_proxy<Reply>;
-	using impl_ptr_type    = std::shared_ptr<Target>;
+	using target_ptr_type    = std::shared_ptr<Target>;
+	using method_stub_base<Target>::request_failed;
+	using method_stub_base<Target>::context;
 
-	inline method_stub(
-			server_context_base& context,
-			method_ptr_type      method_ptr,
-			std::size_t          method_id)
-		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
+	inline method_stub(server_context_base& context, method_ptr_type method_ptr, std::size_t method_id)
+		: method_stub_base<Target>{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target)
+			const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -343,20 +351,20 @@ public:
 			goto fail;
 		}
 
-		invoke(req_id, chan);
+		invoke(request_id, channel_id, target);
 		return;
 
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 	inline void
-	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan) const
+	invoke(request_id_type request_id, channel_id_type channel_id, target_ptr_type const& target) const
 	{
 		std::error_code err;
-		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
-		if (!impl)
+		// target_ptr_type   target = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
+		if (!target)
 		{
 			err = make_error_code(armi::errc::no_implementation_instance_registered);
 			goto fail;
@@ -364,9 +372,9 @@ public:
 
 		try
 		{
-			((*impl).*m_method_ptr)(
-					reply_proxy_type{req_id, chan, m_context.stream_context()},
-					fail_proxy{req_id, chan, m_context.stream_context()});
+			((*target).*m_method_ptr)(
+					reply_proxy_type{request_id, channel_id, context()},
+					fail_proxy{request_id, channel_id, context()});
 		}
 		catch (std::system_error const& e)
 		{
@@ -382,13 +390,12 @@ public:
 		return;
 
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 private:
 	std::size_t          m_method_id;
-	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
 };
 
@@ -396,22 +403,22 @@ private:
  * Form 5 - A reply (not necessarily error_safe), an error_reply, and additional parameters.
  */
 template<class Target, class Reply, class... Args>
-class method_stub<void (Target::*)(Reply, fail_reply, Args...)> : public method_stub_base
+class method_stub<void (Target::*)(Reply, fail_reply, Args...)> : public method_stub_base<Target>
 {
 public:
 	using method_ptr_type  = void (Target::*)(Reply, fail_reply, Args...);
 	using reply_proxy_type = reply_proxy<Reply>;
-	using impl_ptr_type    = std::shared_ptr<Target>;
+	using target_ptr_type    = std::shared_ptr<Target>;
+	using method_stub_base<Target>::request_failed;
+	using method_stub_base<Target>::context;
 
-	inline method_stub(
-			server_context_base& context,
-			method_ptr_type      method_ptr,
-			std::size_t          method_id)
-		: m_context{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
+	inline method_stub(server_context_base& context, method_ptr_type method_ptr, std::size_t method_id)
+		: method_stub_base<Target>{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
 	{}
 
 	virtual void
-	dispatch(std::uint64_t req_id, transport::server_channel::ptr const& chan, bstream::ibstream& is) const override
+	dispatch(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target)
+			const override
 	{
 		std::error_code err;
 		auto            item_count = is.read_array_header(err);
@@ -426,7 +433,10 @@ public:
 
 		try
 		{
-			invoke(req_id, chan, is.read_as<typename std::remove_const_t<typename std::remove_reference_t<Args>>>()...);
+			invoke(request_id,
+				   channel_id,
+				   target,
+				   is.read_as<typename std::remove_const_t<typename std::remove_reference_t<Args>>>()...);
 		}
 		catch (std::system_error const& e)
 		{
@@ -442,16 +452,16 @@ public:
 		return;
 
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 	inline void
-	invoke(std::uint64_t req_id, transport::server_channel::ptr const& chan, Args... args) const
+	invoke(request_id_type request_id, channel_id_type channel_id, target_ptr_type const& target, Args... args) const
 	{
 		std::error_code err;
-		impl_ptr_type   impl = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
-		if (!impl)
+		// target_ptr_type   target = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
+		if (!target)
 		{
 			err = make_error_code(armi::errc::no_implementation_instance_registered);
 			goto fail;
@@ -459,9 +469,9 @@ public:
 
 		try
 		{
-			((*impl).*m_method_ptr)(
-					reply_proxy_type{req_id, chan, m_context.stream_context()},
-					fail_proxy{req_id, chan, m_context.stream_context()},
+			((*target).*m_method_ptr)(
+					reply_proxy_type{request_id, channel_id, context()},
+					fail_proxy{request_id, channel_id, context()},
 					args...);
 		}
 		catch (std::system_error const& e)
@@ -478,13 +488,12 @@ public:
 		return;
 
 	fail:
-		request_failed(req_id, chan, m_context.stream_context(), err);
+		request_failed(request_id, channel_id, err);
 		return;
 	}
 
 private:
 	std::size_t          m_method_id;
-	server_context_base& m_context;
 	method_ptr_type      m_method_ptr;
 };
 

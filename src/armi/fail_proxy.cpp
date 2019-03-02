@@ -30,13 +30,14 @@
 using namespace logicmill;
 using namespace armi;
 
-void
-fail_proxy::operator()(std::error_code err)
-{
-	bstream::ombstream os{m_stream_context};
-	os << m_req_ord;
-	os << reply_kind::fail;
-	os.write_array_header(1);
-	os << err;
-	m_channel->send_reply(os.release_mutable_buffer());
-}
+// void
+// fail_proxy::operator()(std::error_code err)
+// {
+// 	bstream::ombstream os{m_stream_context};
+// 	os << m_request_id;
+// 	os << reply_kind::fail;
+// 	os.write_array_header(1);
+// 	os << err;
+// 	if (!m_channel.expired())
+// 		m_channel.lock()->send_reply(os.release_mutable_buffer());
+// }

@@ -35,6 +35,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
 {
 	bool acceptor_handler_did_execute{false};
 	bool channel_connect_handler_did_execute{false};
+	bool channel_close_handler_did_execute{false};
 
 	async::ip::endpoint connect_ep{async::ip::address::v4_loopback(), 7001};
 
@@ -55,6 +56,10 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
             err,
             [&](acceptor::ptr const& ls, channel::ptr const& chan, std::error_code err) {
                 CHECK(!err);
+				chan->on_close([&](channel::ptr chan)
+				{
+					channel_close_handler_did_execute = true;
+				});
                 chan->close();
                 ls->close();
                 acceptor_handler_did_execute = true;
@@ -92,6 +97,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { basic functionality }")
 	lp->run(err);
 	CHECK(acceptor_handler_did_execute);
 	CHECK(channel_connect_handler_did_execute);
+	CHECK(channel_close_handler_did_execute);
 	CHECK(!err);
 
 	lp->close(err);
@@ -174,6 +180,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 	bool channel_connect_handler_did_execute{false};
 	bool channel_read_handler_did_execute{false};
 	bool channel_write_handler_did_execute{false};
+	bool channel_close_handler_did_execute{false};
 
 	std::error_code     err;
 	auto                lp = loop::create();
@@ -214,6 +221,10 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 		lp->connect_channel(async::options{connect_ep}, err, [&](channel::ptr const& chan, std::error_code err) {
 			CHECK(!err);
 
+			chan->on_close([&](async::channel::ptr chan)
+			{
+				channel_close_handler_did_execute = true;
+			});
 			chan->start_read(err, [&](channel::ptr const& cp, util::const_buffer&& buf, std::error_code err) {
 				CHECK(!err);
 				CHECK(buf.as_string() == "reply to first payload");
@@ -265,6 +276,7 @@ TEST_CASE("logicmill::async::tcp_acceptor [ smoke ] { connect read write }")
 	CHECK(channel_connect_handler_did_execute);
 	CHECK(channel_read_handler_did_execute);
 	CHECK(channel_write_handler_did_execute);
+	CHECK(channel_close_handler_did_execute);
 	CHECK(!err);
 }
 

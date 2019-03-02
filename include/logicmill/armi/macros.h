@@ -61,90 +61,40 @@ ARMI_CONTEXT_(context_name, iface, stream_context, BOOST_PP_VARIADIC_TO_SEQ(__VA
 		using target_interface    = iface;                                                                             \
 		using client_context_type = logicmill::armi::client_context<_proxy<iface>, stream_context>;                    \
 		using server_context_type = logicmill::armi::server_context<_stub<iface>, stream_context>;                     \
-		context_name()                                                                                                 \
-			: m_client_context{MAKE_SHARED<client_context_type>()},                                                    \
-			  m_server_context{MAKE_SHARED<server_context_type>()}                                                     \
-		{}                                                                                                             \
-		static SHARED_PTR_TYPE<client_context_type>                                                                    \
-		create_client()                                                                                                \
-		{                                                                                                              \
-			return MAKE_SHARED<client_context_type>();                                                                 \
-		}                                                                                                              \
-		static SHARED_PTR_TYPE<server_context_type>                                                                    \
-		create_server()                                                                                                \
-		{                                                                                                              \
-			return MAKE_SHARED<server_context_type>();                                                                 \
-		}                                                                                                              \
-		SHARED_PTR_TYPE<client_context_type> const&                                                                    \
-		client()                                                                                                       \
-		{                                                                                                              \
-			return m_client_context;                                                                                   \
-		}                                                                                                              \
-		SHARED_PTR_TYPE<server_context_type> const&                                                                    \
-		server()                                                                                                       \
-		{                                                                                                              \
-			return m_server_context;                                                                                   \
-		}                                                                                                              \
-	private:                                                                                                           \
-		SHARED_PTR_TYPE<client_context_type> m_client_context;                                                         \
-		SHARED_PTR_TYPE<server_context_type> m_server_context;                                                         \
 	};                                                                                                                 \
 	ARMI_INTERFACE_(context_name, iface, method_seq)
 /**/
 
-#define ARMI_INTERFACES(...) ARMI_INTERFACES_(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
-
-#define ARMI_INTERFACES_(ifaces_seq)                                                                                   \
-	template<class T>                                                                                                  \
-	class _proxy;                                                                                                      \
-	template<class T>                                                                                                  \
-	class _stub;                                                                                                       \
-	using context_type = logicmill::armi::                                                                             \
-			remote_context<_proxy<void>, _stub<void>, BOOST_PP_SEQ_FOR_EACH_I(ARMI_LIST_IFACE_, _, ifaces_seq)>;
-/**/
-
-#define ARMI_LIST_IFACE_(r, data, n, iface) BOOST_PP_COMMA_IF(n) iface
-/**/
-
-#define ARMI_INTERFACE(context_name, iface, ...)                                                                       \
-	ARMI_INTERFACE_(context_name, iface, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))                                        \
-	/**/
-
 #define ARMI_INTERFACE_(context_name, iface, methods_seq)                                                              \
 	template<>                                                                                                         \
-	class context_name::_proxy<iface> : public logicmill::armi::interface_proxy                                        \
+	class context_name::_proxy<iface>                                                                                  \
 	{                                                                                                                  \
+	private:                                                                                                           \
+		context_name::client_context_type& m_context;                                                                  \
+                                                                                                                       \
 	public:                                                                                                            \
 		using target_type = iface;                                                                                     \
-		_proxy(logicmill::armi::client_context_base& context)                            \
-			: logicmill::armi::interface_proxy{context}                                                         \
-		{}                                                                                                             \
-		_proxy&                                                                                                        \
-		timeout(std::chrono::milliseconds t)                                                                           \
-		{                                                                                                              \
-			transient_timeout(t);                                                                                      \
-			return *this;                                                                                              \
-		}                                                                                                              \
+		_proxy(context_name::client_context_type& context) : m_context{context} {}                                     \
 		BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_PROXY_, iface, methods_seq)                                             \
 	};                                                                                                                 \
 	template<>                                                                                                         \
-	class context_name::_stub<iface> : public logicmill::armi::interface_stub                                          \
+	class context_name::_stub<iface> : public logicmill::armi::interface_stub<iface>                                   \
 	{                                                                                                                  \
 	public:                                                                                                            \
 		using target_type = iface;                                                                                     \
-		_stub(logicmill::armi::server_context_base& context)                                        \
-			: logicmill::armi::interface_stub(                                                                         \
+		_stub(logicmill::armi::server_context_base& context)                                                           \
+			: logicmill::armi::interface_stub<target_type>(                                                            \
 					  context,                                                                                         \
 					  BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_METHOD_LIST_, iface, methods_seq))                               \
 		{}                                                                                                             \
-	};                                                                                                                 \
-	/**/
+	};
+/**/
 
 #define ARMI_DO_METHOD_LIST_(r, iface, n, method) BOOST_PP_COMMA_IF(n) & iface ::method
 /**/
 
 #define ARMI_DO_METHOD_PROXY_(r, iface, n, method)                                                                     \
-	logicmill::armi::method_proxy<decltype(&iface ::method)> method{context(), n};
+	logicmill::armi::method_proxy<decltype(&iface ::method)> method{m_context, n};
 /**/
 
 #endif    // LOGICMILL_ARMI_MACROS_H

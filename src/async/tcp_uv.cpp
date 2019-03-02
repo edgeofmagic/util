@@ -148,31 +148,24 @@ tcp_channel_uv::on_allocate(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 bool
 tcp_channel_uv::really_close(logicmill::async::channel::close_handler&& handler)
 {
-	bool result{true};
+	bool result{false};
 	if (!uv_is_closing(get_handle()))
 	{
+		result = true;
 		m_close_handler = std::move(handler);
 		uv_close(get_handle(), tcp_base_uv::on_close);
-	}
-	else
-	{
-		result = false;
 	}
 	return result;
 }
 
 bool
-tcp_channel_uv::really_close(logicmill::async::channel::close_handler const& handler)
+tcp_channel_uv::really_close()
 {
-	bool result{true};
+	bool result{false};
 	if (!uv_is_closing(get_handle()))
 	{
-		m_close_handler = handler;
+		result = true;
 		uv_close(get_handle(), tcp_base_uv::on_close);
-	}
-	else
-	{
-		result = false;
 	}
 	return result;
 }
@@ -623,31 +616,24 @@ tcp_acceptor_uv::on_framing_connection(uv_stream_t* handle, int stat)
 bool
 tcp_acceptor_uv::really_close(logicmill::async::acceptor::close_handler&& handler)
 {
-	bool result{true};
+	bool result{false};
 	if (!uv_is_closing(get_handle()))
 	{
+		result = true;
 		m_close_handler = std::move(handler);
 		uv_close(get_handle(), tcp_base_uv::on_close);
-	}
-	else
-	{
-		result = false;
 	}
 	return result;
 }
 
 bool
-tcp_acceptor_uv::really_close(logicmill::async::acceptor::close_handler const& handler)
+tcp_acceptor_uv::really_close()
 {
-	bool result{true};
+	bool result{false};
 	if (!uv_is_closing(get_handle()))
 	{
-		m_close_handler = handler;
+		result = true;
 		uv_close(get_handle(), tcp_base_uv::on_close);
-	}
-	else
-	{
-		result = false;
 	}
 	return result;
 }

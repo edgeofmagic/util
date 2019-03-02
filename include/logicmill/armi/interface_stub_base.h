@@ -29,14 +29,19 @@
 // #include <logicmill/async/channel.h>
 #include <logicmill/armi/transport.h>
 #include <logicmill/bstream/ibstream.h>
+#include <logicmill/bstream/ombstream.h>
+#include <logicmill/armi/server_context_base.h>
 
 namespace logicmill
 {
 namespace armi
 {
 class server_context_base;
+
+template<class T>
 class method_stub_base;
 
+template<class Target>
 class interface_stub_base
 {
 public:
@@ -57,19 +62,23 @@ protected:
 	method_count() const noexcept
 			= 0;
 
-	virtual method_stub_base&
+	virtual method_stub_base<Target>&
 	get_method_stub(std::size_t index)
 			= 0;
 
-	void
-	process(std::uint64_t req_id, logicmill::armi::transport::server_channel::ptr const& chan, bstream::ibstream& is);
+	// void
+	// process(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is);
 
-	static void
-	request_failed(
-			std::uint64_t                         request_id,
-			transport::server_channel::ptr const& transp,
-			bstream::context_base::ptr const&     stream_context,
-			std::error_code                       err);
+	void
+	request_failed(request_id_type request_id, channel_id_type channel_id, std::error_code err)
+	{
+		bstream::ombstream os{m_context.stream_context()};
+		os << request_id;
+		os << reply_kind::fail;
+		os.write_array_header(1);
+		os << err;
+		m_context.get_transport().send_reply(channel_id, os.release_mutable_buffer());
+	}
 
 	server_context_base& m_context;
 };

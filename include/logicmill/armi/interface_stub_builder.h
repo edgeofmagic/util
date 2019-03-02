@@ -26,6 +26,7 @@
 #define LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H
 
 #include <logicmill/armi/method_stub.h>
+#include <logicmill/armi/interface_stub_base.h>
 #include <memory>
 #include <vector>
 
@@ -52,15 +53,16 @@ struct make_indices<0>
 	typedef indices<> type;
 };
 
-class interface_stub_builder : public interface_stub_base
+template<class Target>
+class interface_stub_builder : public interface_stub_base<Target>
 {
 protected:
 	template<class... Args, std::size_t... Ns>
 	interface_stub_builder(server_context_base& context, indices<Ns...> _i, Args... args)
-		: interface_stub_base(context)
+		: interface_stub_base<Target>(context)
 	{
 		m_method_stubs.reserve(sizeof...(Args));
-		append(std::unique_ptr<method_stub_base>(new armi::method_stub<decltype(args)>(context, args, Ns))...);
+		append(std::unique_ptr<method_stub_base<Target>>(new armi::method_stub<decltype(args)>(context, args, Ns))...);
 	}
 
 	template<class First, class... Args>
@@ -81,14 +83,14 @@ protected:
 		return m_method_stubs.size();
 	}
 
-	virtual method_stub_base&
+	virtual method_stub_base<Target>&
 	get_method_stub(std::size_t index) override
 	{
 		return *m_method_stubs[index];
 	}
 
 protected:
-	std::vector<std::unique_ptr<method_stub_base>> m_method_stubs;
+	std::vector<std::unique_ptr<method_stub_base<Target>>> m_method_stubs;
 };
 
 }    // namespace armi

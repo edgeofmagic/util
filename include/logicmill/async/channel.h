@@ -57,7 +57,7 @@ public:
 
 	using connect_handler = std::function<void(channel::ptr const& chan, std::error_code err)>;
 
-	using close_handler = std::function<void(channel::ptr const& chan)>;
+	using close_handler = std::function<void(channel::ptr const& chan)>; // TODO: fix this, remove chan parameter
 
 	virtual ~channel() {}
 
@@ -158,17 +158,22 @@ public:
 		}
 	}
 
-	template<class H>
-	typename std::enable_if_t<std::is_convertible<H, close_handler>::value, bool>
-	close(H&& handler)
+	bool
+	close(close_handler handler)
 	{
-		return really_close(std::forward<H>(handler));
+		return really_close(std::move(handler));
 	}
 
 	bool
 	close()
 	{
-		return really_close(nullptr);
+		return really_close();
+	}
+
+	void
+	on_close(close_handler handler)
+	{
+		set_close_handler(std::move(handler));
 	}
 
 	virtual bool
@@ -190,6 +195,10 @@ public:
 	get_queue_size() const = 0;
 
 protected:
+
+	virtual void
+	set_close_handler(close_handler&& handler) = 0;
+
 	virtual void
 	really_write(util::mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler) = 0;
 
@@ -206,7 +215,7 @@ protected:
 	really_close(close_handler&& handler) = 0;
 
 	virtual bool
-	really_close(close_handler const& handler) = 0;
+	really_close() = 0;
 
 	virtual void
 	really_start_read(std::error_code& err, read_handler&& handler) = 0;
@@ -225,19 +234,24 @@ public:
 
 	virtual ~acceptor() {}
 
-	template<class H>
-	typename std::enable_if_t<std::is_convertible<H, close_handler>::value, bool>
-	close(H&& handler)
+	bool
+	close(close_handler handler)
 	{
-		return really_close(std::forward<H>(handler));
+		return really_close(std::move(handler));
 	}
 
 	bool
 	close()
 	{
-		return really_close(nullptr);
+		return really_close();
 	}
 
+	void
+	on_close(close_handler handler)
+	{
+		set_close_handler(std::move(handler));
+	}
+	
 	virtual ip::endpoint
 	get_endpoint(std::error_code& err) = 0;
 
@@ -248,11 +262,15 @@ public:
 	loop() = 0;
 
 protected:
+
+	virtual void
+	set_close_handler(close_handler&& handler) = 0;
+
 	virtual bool
 	really_close(close_handler&& handler) = 0;
 
 	virtual bool
-	really_close(close_handler const& handler) = 0;
+	really_close() = 0;
 };
 
 }    // namespace async

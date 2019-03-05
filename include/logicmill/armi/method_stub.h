@@ -722,6 +722,229 @@ private:
 };
 
 
+/*
+ * Form 8 - A function with no parameters, returning a void promise
+ */
+template<class Target, class PromiseType>
+class method_stub<util::promise<PromiseType> (Target::*)(), std::enable_if_t<std::is_void<PromiseType>::value>>
+	: public method_stub_base<Target>
+{
+public:
+	using method_ptr_type  = util::promise<void> (Target::*)();
+	// using reply_proxy_type = reply_proxy<util::promise<PromiseType>>;
+	using target_ptr_type    = std::shared_ptr<Target>;
+	using method_stub_base<Target>::request_failed;
+	using method_stub_base<Target>::context;
+
+	inline method_stub(server_context_base& context, method_ptr_type method_ptr, std::size_t method_id)
+		: method_stub_base<Target>{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
+	{}
+
+	virtual void
+	dispatch(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target)
+			const override
+	{
+		std::error_code err;
+		auto            item_count = is.read_array_header(err);
+		if (err)
+			goto fail;
+
+		if (!expected_count<0>(item_count))
+		{
+			err = make_error_code(armi::errc::invalid_argument_count);
+			goto fail;
+		}
+
+		try
+		{
+			invoke(request_id,
+				   channel_id,
+				   target);
+		}
+		catch (std::system_error const& e)
+		{
+			err = e.code();
+		}
+		catch (std::exception const& e)
+		{
+			err = make_error_code(armi::errc::exception_thrown_by_method_stub);
+		}
+		if (err)
+			goto fail;
+
+		return;
+
+	fail:
+		request_failed(request_id, channel_id, err);
+		return;
+	}
+
+	inline void
+	invoke(request_id_type request_id, channel_id_type channel_id, target_ptr_type const& target) const
+	{
+		std::error_code err;
+		// target_ptr_type   target = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
+		if (!target)
+		{
+			err = make_error_code(armi::errc::no_implementation_instance_registered);
+			goto fail;
+		}
+
+		try
+		{
+			// ((*target)
+			//  .*m_method_ptr)(reply_proxy_type{request_id, channel_id, context()}, first, args...);
+			((*target)
+			 .*m_method_ptr)().then([=]()
+			 {
+				bstream::ombstream os{context().stream_context()};
+				os << request_id;
+				os << reply_kind::normal;
+				os.write_array_header(0);
+				context().get_transport().send_reply(channel_id, os.release_mutable_buffer());
+
+			 },
+			 [=](std::error_code err)
+			 {
+				request_failed(request_id, channel_id, err);
+			 });
+		}
+		catch (std::system_error const& e)
+		{
+			err = e.code();
+		}
+		catch (std::exception const& e)
+		{
+			err = make_error_code(armi::errc::uncaught_server_exception);
+		}
+		if (err)
+			goto fail;
+
+		return;
+
+	fail:
+		request_failed(request_id, channel_id, err);
+		return;
+	}
+
+private:
+	std::size_t          m_method_id;
+	method_ptr_type      m_method_ptr;
+};
+
+
+/*
+ * Form 9 - A function with parameters, returning a void promise
+ */
+template<class Target, class PromiseType, class... Args>
+class method_stub<util::promise<PromiseType> (Target::*)(Args...), std::enable_if_t<std::is_void<PromiseType>::value>>
+	: public method_stub_base<Target>
+{
+public:
+	using method_ptr_type  = util::promise<void> (Target::*)(Args...);
+	// using reply_proxy_type = reply_proxy<util::promise<void>>;
+	using target_ptr_type    = std::shared_ptr<Target>;
+	using method_stub_base<Target>::request_failed;
+	using method_stub_base<Target>::context;
+
+	inline method_stub(server_context_base& context, method_ptr_type method_ptr, std::size_t method_id)
+		: method_stub_base<Target>{context}, m_method_id{method_id}, m_method_ptr{method_ptr}
+	{}
+
+	virtual void
+	dispatch(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target)
+			const override
+	{
+		std::error_code err;
+		auto            item_count = is.read_array_header(err);
+		if (err)
+			goto fail;
+
+		if (!expected_count<sizeof...(Args)>(item_count))
+		{
+			err = make_error_code(armi::errc::invalid_argument_count);
+			goto fail;
+		}
+
+		try
+		{
+			invoke(request_id,
+				   channel_id,
+				   target,
+				   is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...);
+		}
+		catch (std::system_error const& e)
+		{
+			err = e.code();
+		}
+		catch (std::exception const& e)
+		{
+			err = make_error_code(armi::errc::exception_thrown_by_method_stub);
+		}
+		if (err)
+			goto fail;
+
+		return;
+
+	fail:
+		request_failed(request_id, channel_id, err);
+		return;
+	}
+
+	inline void
+	invoke(request_id_type request_id, channel_id_type channel_id, target_ptr_type const& target, Args... args) const
+	{
+		std::error_code err;
+		// target_ptr_type   target = std::static_pointer_cast<Target>(m_context.get_type_erased_impl());
+		if (!target)
+		{
+			err = make_error_code(armi::errc::no_implementation_instance_registered);
+			goto fail;
+		}
+
+		try
+		{
+			// ((*target)
+			//  .*m_method_ptr)(reply_proxy_type{request_id, channel_id, context()}, first, args...);
+			((*target)
+			 .*m_method_ptr)(args...).then([=]()
+			 {
+				bstream::ombstream os{context().stream_context()};
+				os << request_id;
+				os << reply_kind::normal;
+				os.write_array_header(0);
+				context().get_transport().send_reply(channel_id, os.release_mutable_buffer());
+
+			 },
+			 [=](std::error_code err)
+			 {
+				request_failed(request_id, channel_id, err);
+			 });
+		}
+		catch (std::system_error const& e)
+		{
+			err = e.code();
+		}
+		catch (std::exception const& e)
+		{
+			err = make_error_code(armi::errc::uncaught_server_exception);
+		}
+		if (err)
+			goto fail;
+
+		return;
+
+	fail:
+		request_failed(request_id, channel_id, err);
+		return;
+	}
+
+private:
+	std::size_t          m_method_id;
+	method_ptr_type      m_method_ptr;
+};
+
+
 }    // namespace armi
 }    // namespace logicmill
 

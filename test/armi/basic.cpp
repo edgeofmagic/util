@@ -36,9 +36,9 @@ using namespace logicmill;
 
 namespace foo
 {
-using increment_reply = std::function<void(std::error_code, int n_plus_1)>;
-using decrement_reply = std::function<void(std::error_code, int n_minus_1)>;
-using error_reply     = std::function<void(std::error_code)>;
+// using increment_reply = std::function<void(std::error_code, int n_plus_1)>;
+// using decrement_reply = std::function<void(std::error_code, int n_minus_1)>;
+// using error_reply     = std::function<void(std::error_code)>;
 
 enum class errc
 {
@@ -98,18 +98,22 @@ make_error_code(errc e)
 class bar
 {
 public:
-	void
-	increment(increment_reply reply, int n)
+	util::promise<int>
+	increment(int n)
 	{
-		reply(std::error_code{}, n + 1);
+		util::promise<int> p;
+		p.resolve(n + 1);
 		increment_called = true;
+		return p;
 	}
 
-	void
-	freak_out(error_reply reply)
+	util::promise<void>
+	freak_out()
 	{
-		reply(make_error_code(foo::errc::sun_exploded));
+		util::promise<void> p;
+		p.reject(make_error_code(foo::errc::sun_exploded));
 		freak_out_called = true;
+		return p;
 	}
 
 	bool increment_called{false};
@@ -121,40 +125,44 @@ class boo
 public:
 	boo(async::loop::ptr lp) : loop{lp} {}
 
-	void
-	decrement(decrement_reply reply, int n)
+	util::promise<int>
+	decrement(int n)
 	{
 		std::error_code   err;
-		async::timer::ptr timer = loop->create_timer(err, [=](async::timer::ptr tp) {
+		util::promise<int> p;
+		async::timer::ptr timer = loop->create_timer(err, [=](async::timer::ptr tp) mutable {
 			decrement_called = true;
-			reply(std::error_code{}, n - 1);
+			p.resolve(n - 1);
 		});
 		CHECK(!err);
 		timer->start(std::chrono::milliseconds{3000}, err);
 		CHECK(!err);
+		return p;
 	}
 
 	async::loop::ptr loop;
 	bool             decrement_called{false};
 };
 
-using bonk_reply = std::function<void(double d)>;
+// using bonk_reply = std::function<void(double d)>;
 
 class bfail
 {
 public:
-	void
-	bonk(bonk_reply reply, armi::fail_reply fail, std::string const& s)
+	util::promise<double>
+	bonk(std::string const& s)
 	{
+		util::promise<double> p;
 		try
 		{
 			double result = std::stod(s);
-			reply(result);
+			p.resolve(result);
 		}
 		catch (std::invalid_argument const& e)
 		{
-			fail(make_error_code(std::errc::invalid_argument));
+			p.reject(make_error_code(std::errc::invalid_argument));
 		}
+		return p;
 	}
 };
 
@@ -431,6 +439,37 @@ public:
 		return result;
 	}
 
+	util::promise<void>
+	form_8_fail()
+	{
+		util::promise<void> result;
+		result.reject(make_error_code(armi_test::errc::sun_exploded));
+		return result;
+	}
+
+	util::promise<void>
+	form_8_pass()
+	{
+		util::promise<void> result;
+		result.resolve();
+		return result;
+	}
+	util::promise<void>
+	form_9_fail(std::string const& s, int n)
+	{
+		util::promise<void> result;
+		result.reject(make_error_code(armi_test::errc::sun_exploded));
+		return result;
+	}
+
+	util::promise<void>
+	form_9_pass(std::string const& s, int n)
+	{
+		util::promise<void> result;
+		result.resolve();
+		return result;
+	}
+
 private:
 	test_fixture& m_fixture;
 };
@@ -458,7 +497,11 @@ ARMI_CONTEXT(
 		form_6_fail,
 		form_6_pass,
 		form_7_fail,
-		form_7_pass);
+		form_7_pass,
+		form_8_fail,
+		form_8_pass,
+		form_9_fail,
+		form_9_pass);
 
 class test_fixture
 {
@@ -672,6 +715,43 @@ public:
 						CHECK(false);
 					});
 
+					t->form_8_fail().then([=]()
+					{
+						CHECK(false);
+					},
+					[=](std::error_code err)
+					{
+						CHECK(err == make_error_code(armi_test::errc::sun_exploded));
+						m_target_form_8_fail_visited = true;
+					});
+					t->form_8_pass().then([=]()
+					{
+						m_target_form_8_pass_visited = true;
+					},
+					[=](std::error_code err)
+					{
+						CHECK(false);
+					});
+
+					t->form_9_fail("zoot", 3).then([=]()
+					{
+						CHECK(false);
+					},
+					[=](std::error_code err)
+					{
+						CHECK(err == make_error_code(armi_test::errc::sun_exploded));
+						m_target_form_9_fail_visited = true;
+					});
+
+					t->form_9_pass("seven: ", 7).then([=]()
+					{
+						m_target_form_9_pass_visited = true;
+					},
+					[=](std::error_code err)
+					{
+						CHECK(false);
+					});
+
 					m_client_connect_handler_visited = true;
 
 				});
@@ -710,6 +790,10 @@ public:
 		CHECK(m_target_form_6_pass_visited);
 		CHECK(m_target_form_7_fail_visited);
 		CHECK(m_target_form_7_pass_visited);
+		CHECK(m_target_form_8_fail_visited);
+		CHECK(m_target_form_8_pass_visited);
+		CHECK(m_target_form_9_fail_visited);
+		CHECK(m_target_form_9_pass_visited);
 
 		CHECK(!err);
 	}
@@ -746,6 +830,10 @@ public:
 	bool m_target_form_6_pass_visited{false};
 	bool m_target_form_7_fail_visited{false};
 	bool m_target_form_7_pass_visited{false};
+	bool m_target_form_8_fail_visited{false};
+	bool m_target_form_8_pass_visited{false};
+	bool m_target_form_9_fail_visited{false};
+	bool m_target_form_9_pass_visited{false};
 };
 }    // namespace armi_test
 
@@ -759,6 +847,7 @@ TEST_CASE("logicmill::armi [ smoke ] { fixture test }")
 TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 {
 	bool client_connect_handler_visited{false};
+	bool increment_resolve_visited{false};
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
@@ -796,18 +885,15 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 
 	client.connect(async::options{endpoint{address::v4_loopback(), 7001}}, err, [&](bar_ref b, std::error_code err) {
 		CHECK(b.is_valid());
-		b->increment(
-				[](std::error_code err, int result) {
-					std::cout << "in increment callback";
-					if (err)
-					{
-						std::cout << ", err is " << err.message();
-					}
-					std::cout << std::endl;
-					CHECK(!err);
+		b->increment(27).then(
+				[&](int result) {
 					CHECK(result == 28);
+					increment_resolve_visited = true;
 				},
-				27);
+				[](std::error_code err)
+				{
+					CHECK(false);
+				});
 		client_connect_handler_visited = true;
 	});
 	CHECK(!err);
@@ -821,6 +907,7 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 	server.close();    // optional, but cleaner
 
 	CHECK(client_connect_handler_visited);
+	CHECK(increment_resolve_visited);
 	CHECK(impl->increment_called);
 
 	// lp->close(err);
@@ -872,7 +959,7 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply without error }")
 
 	client.connect(async::options{endpoint{address::v4_loopback(), 7001}}, err, [&](bfail_ref b, std::error_code err) {
 		CHECK(b.is_valid());
-		b->bonk(
+		b->bonk("3.5").then(
 				[&](double d) {
 					std::cout << "in bonk callback, arg is " << d << std::endl;
 					CHECK(d == 3.5);
@@ -882,8 +969,7 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply without error }")
 					CHECK(err);
 					std::cout << "in bonk fail reply, err is " << err.message() << std::endl;
 					fail_handler_visited = true;
-				},
-				"3.5");
+				});
 		client_connect_handler_visited = true;
 	});
 	CHECK(!err);
@@ -950,7 +1036,7 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply with error }")
 
 	client.connect(async::options{endpoint{address::v4_loopback(), 7001}}, err, [&](bfail_ref b, std::error_code err) {
 		CHECK(b.is_valid());
-		b->bonk(
+		b->bonk("zoot").then(
 				[&](double d) {
 					std::cout << "in bonk callback, arg is " << d << std::endl;
 					CHECK(d == 3.5);
@@ -960,8 +1046,7 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply with error }")
 					CHECK(err);
 					std::cout << "in bonk fail reply, err is " << err.message() << std::endl;
 					fail_handler_visited = true;
-				},
-				"zoot");
+				});
 		client_connect_handler_visited = true;
 	});
 	CHECK(!err);

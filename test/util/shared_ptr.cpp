@@ -158,6 +158,56 @@ struct int_free
 	}
 };
 
+struct containing_class;
+
+struct contained_member : util::enable_shared_from_this<contained_member>
+{
+	contained_member(containing_class& o, bool& flag) : owner{o}, destruct_flag{flag} {}
+
+	~contained_member()
+	{
+		destruct_flag = true;
+	}
+
+	containing_class&
+	container() const
+	{
+		return owner;
+	}
+
+	util::shared_ptr<contained_member>
+	self();
+
+	containing_class& owner;
+	bool& destruct_flag;
+};
+
+struct containing_class : util::enable_shared_from_this<containing_class>
+{
+	containing_class(bool& flag, bool& member_flag) : destruct_flag{flag}, member{*this, member_flag} {}
+
+	~containing_class() 
+	{
+		destruct_flag = true;
+	}
+
+	util::shared_ptr<containing_class>
+	self()
+	{
+		return shared_from_this();
+	}
+
+	bool& destruct_flag;
+	contained_member member;
+};
+
+util::shared_ptr<contained_member>
+shared_ptr_test::contained_member::self()
+{
+	return util::shared_ptr<contained_member>(owner.self(), this);
+}
+
+
 }    // namespace shared_ptr_test
 
 
@@ -419,6 +469,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct fr
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { weak_ptr construct from shared_ptr }")
 {
 	auto                        sp0 = util::make_shared<std::string>("zoot");
+	CHECK(sp0.weak_count() == 1);
 	util::weak_ptr<std::string> wp{sp0};
 	CHECK(wp.weak_count() == 2);
 	CHECK(wp.use_count() == 1);
@@ -452,4 +503,122 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { weak_ptr construct from share
 		caught = true;
 	}
 	CHECK(caught);
+}
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { shared alias }")
+{
+	using namespace shared_ptr_test;
+	bool outer_destruct{false};
+	bool inner_destruct{false};
+
+	auto original = util::make_shared<containing_class>(outer_destruct, inner_destruct);
+	CHECK(original.use_count() == 1);
+	CHECK(original.weak_count() == 2);
+
+	util::shared_ptr<contained_member> member_alias = util::shared_ptr<contained_member>(original, &(original->member));
+	CHECK(original.use_count() == 2);
+	CHECK(member_alias.use_count() == 2);
+	CHECK(original.weak_count() == 2);
+
+	auto copy_from_member = member_alias->container().self();
+	CHECK(original.use_count() == 3);
+	CHECK(member_alias.use_count() == 3);
+	CHECK(copy_from_member.use_count() == 3);
+	CHECK(original.weak_count() == 2);
+
+	auto copy_of_original = original;
+	auto copy_of_member = member_alias;
+	CHECK(original.use_count() == 5);
+	CHECK(member_alias.use_count() == 5);
+	CHECK(copy_from_member.use_count() == 5);
+	CHECK(copy_of_original.use_count() == 5);
+	CHECK(copy_of_member.use_count() == 5);
+	CHECK(original.weak_count() == 2);
+
+	auto copy_of_original_from_self = original->self();
+	auto copy_of_member_from_self = member_alias->self();
+	CHECK(original.use_count() == 7);
+	CHECK(member_alias.use_count() == 7);
+	CHECK(copy_from_member.use_count() == 7);
+	CHECK(copy_of_original.use_count() == 7);
+	CHECK(copy_of_member.use_count() == 7);
+	CHECK(copy_of_original_from_self.use_count() == 7);
+	CHECK(copy_of_member_from_self.use_count() == 7);
+	CHECK(original.weak_count() == 2);
+
+	CHECK(!outer_destruct);
+	CHECK(!inner_destruct);
+
+	original.reset();
+	CHECK(member_alias.use_count() == 6);
+	CHECK(copy_from_member.use_count() == 6);
+	CHECK(copy_of_original.use_count() == 6);
+	CHECK(copy_of_member.use_count() == 6);
+	CHECK(copy_of_original_from_self.use_count() == 6);
+	CHECK(copy_of_member_from_self.use_count() == 6);
+	CHECK(original.weak_count() == 0);
+	CHECK(member_alias.weak_count() == 2);
+
+	member_alias.reset();
+	CHECK(copy_from_member.use_count() == 5);
+	CHECK(copy_of_original.use_count() == 5);
+	CHECK(copy_of_member.use_count() == 5);
+	CHECK(copy_of_original_from_self.use_count() == 5);
+	CHECK(copy_of_member_from_self.use_count() == 5);
+	CHECK(original.weak_count() == 0);
+	CHECK(member_alias.weak_count() == 0);
+	CHECK(copy_from_member.weak_count() == 2);
+
+
+	copy_from_member.reset();
+	CHECK(copy_of_original.use_count() == 4);
+	CHECK(copy_of_member.use_count() == 4);
+	CHECK(copy_of_original_from_self.use_count() == 4);
+	CHECK(copy_of_member_from_self.use_count() == 4);
+	CHECK(original.weak_count() == 0);
+
+	copy_of_original.reset();
+	CHECK(copy_of_member.use_count() == 3);
+	CHECK(copy_of_original_from_self.use_count() == 3);
+	CHECK(copy_of_member_from_self.use_count() == 3);
+
+	copy_of_member.reset();
+	CHECK(copy_of_original_from_self.use_count() == 2);
+	CHECK(copy_of_member_from_self.use_count() == 2);
+
+	auto weak_original = util::weak_ptr<containing_class>(copy_of_original_from_self);
+	CHECK(copy_of_original_from_self.use_count() == 2);
+	CHECK(copy_of_member_from_self.use_count() == 2);
+	CHECK(copy_of_original_from_self.weak_count() == 3);
+	CHECK(copy_of_member_from_self.weak_count() == 3);
+	CHECK(weak_original.use_count() == 2);
+	CHECK(weak_original.weak_count() == 3);
+
+	auto weak_member = util::weak_ptr<contained_member>(copy_of_member_from_self);
+
+	CHECK(copy_of_original_from_self.use_count() == 2);
+	CHECK(copy_of_member_from_self.use_count() == 2);
+	CHECK(copy_of_original_from_self.weak_count() == 4);
+	CHECK(copy_of_member_from_self.weak_count() == 4);
+	CHECK(weak_original.use_count() == 2);
+	CHECK(weak_member.use_count() == 2);
+	CHECK(weak_original.weak_count() == 4);
+	CHECK(weak_member.weak_count() == 4);
+
+	copy_of_original_from_self.reset();
+	CHECK(copy_of_member_from_self.use_count() == 1);
+	CHECK(copy_of_member_from_self.weak_count() == 4);
+	CHECK(weak_original.use_count() == 1);
+	CHECK(weak_member.use_count() == 1);
+	CHECK(weak_original.weak_count() == 4);
+	CHECK(weak_member.weak_count() == 4);
+
+	CHECK(!outer_destruct);
+	CHECK(!inner_destruct);
+
+	copy_of_member_from_self.reset();
+
+	CHECK(outer_destruct);
+	CHECK(inner_destruct);
+
 }

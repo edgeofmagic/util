@@ -95,6 +95,49 @@ public:
 
  };
 
+template<class PromiseType>
+class reply_stub<util::promise<PromiseType>, typename std::enable_if_t<std::is_void<PromiseType>::value>>
+{
+public:
+	using reply_type = util::promise<void>;
+
+	reply_stub(reply_type reply) : m_reply{reply} {}
+
+	void
+	cancel(std::error_code err)
+	{
+		m_reply.reject(err);
+	}
+
+	void
+	operator()(bstream::ibstream& is)
+	{
+		std::error_code err;
+		auto            item_count = is.read_array_header(err);
+		if (err)
+		{
+			cancel(err);
+		}
+		else
+		{
+			if (!expected_count<0>(item_count))
+			{
+				cancel(make_error_code(armi::errc::invalid_argument_count));
+			}
+			else
+			{
+				m_reply.resolve();
+			}
+		}
+
+	}
+
+ private:
+	reply_type m_reply;
+
+ };
+
+
 
 template<class... Args>
 class reply_stub<std::function<void(std::error_code, Args...)>>

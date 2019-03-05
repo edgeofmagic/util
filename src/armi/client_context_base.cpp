@@ -38,9 +38,9 @@ client_context_base::client_context_base(transport::client& transport_client, bs
 {}
 
 void
-client_context_base::send_request(channel_id_type channel_id, request_id_type request_id, bstream::ombstream& os, millisecs timeout)
+client_context_base::send_request(channel_id_type channel_id, request_id_type request_id, util::mutable_buffer&& req, millisecs timeout)
 {
-	m_transport.send_request(channel_id, request_id, timeout, os.release_mutable_buffer());
+	m_transport.send_request(channel_id, request_id, timeout, std::move(req));
 }
 
 void

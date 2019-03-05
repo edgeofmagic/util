@@ -290,6 +290,9 @@ public:
 		}
 	}
 
+	virtual bool
+	is_alive() const = 0;
+
 protected:
 	virtual timer::ptr
 	really_create_timer(std::error_code& err, timer::handler const& handler) = 0;

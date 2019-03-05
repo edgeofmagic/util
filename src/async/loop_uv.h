@@ -97,6 +97,9 @@ public:
 	void
 	init(wptr self);
 
+	virtual bool
+	is_alive() const override;
+
 private:
 	loop_uv(loop_uv const&) = delete;
 	loop_uv(loop_uv&&)      = delete;

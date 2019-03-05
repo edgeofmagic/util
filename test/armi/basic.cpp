@@ -1,8 +1,10 @@
 #include <doctest.h>
 #include <logicmill/armi/armi.h>
+#include <logicmill/armi/async_adapter.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
-#include <logicmill/armi/async_adapter.h>
+#include <logicmill/bstream/stdlib/pair.h>
+#include <logicmill/bstream/stdlib/vector.h>
 
 #define END_LOOP(loop_ptr, delay_ms)                                                                                   \
 	{                                                                                                                  \
@@ -136,6 +138,26 @@ public:
 	bool             decrement_called{false};
 };
 
+using bonk_reply = std::function<void(double d)>;
+
+class bfail
+{
+public:
+	void
+	bonk(bonk_reply reply, armi::fail_reply fail, std::string const& s)
+	{
+		try
+		{
+			double result = std::stod(s);
+			reply(result);
+		}
+		catch (std::invalid_argument const& e)
+		{
+			fail(make_error_code(std::errc::invalid_argument));
+		}
+	}
+};
+
 }    // namespace foo
 
 template<>
@@ -152,44 +174,586 @@ namespace rfoo
 class foo_stream_context : public bstream::context<>
 {
 public:
-	foo_stream_context() : bstream::context<>{
-		bstream::context_options{}.error_categories({&armi::error_category(), &foo::error_category()})
-	} {}
+	foo_stream_context()
+		: bstream::context<>{
+				  bstream::context_options{}.error_categories({&armi::error_category(), &foo::error_category()})}
+	{}
+	static bstream::context_base::ptr const&
+	get()
+	{
+		static const bstream::context_base::ptr instance{MAKE_SHARED<foo_stream_context>()};
+		return instance;
+	}
 };
 
+ARMI_CONTEXT(bar_remote, foo::bar, foo_stream_context, increment, freak_out);
+ARMI_CONTEXT(boo_remote, foo::boo, foo_stream_context, decrement);
+ARMI_CONTEXT(bfail_remote, foo::bfail, foo_stream_context, bonk);
 
-// class foo_stream_context_factory
-// {
-// public:
-// 	using context_type = bstream::context<>;
 
-// 	static bstream::context_options options()
-// 	{
-// 		return bstream::context_options{}.error_categories({&armi::error_category(), &foo::error_category()});
-// 	}
+}    // namespace rfoo
 
-// 	BSTRM_CONTEXT_ACCESSOR();
-// };
+namespace armi_test
+{
 
-class foo_stream_context_factory
+enum class errc
+{
+	ok = 0,
+	end_of_the_world_as_we_know_it,
+	sun_exploded,
+	aliens_invaded,
+};
+
+}
+
+namespace std
+{
+template<>
+struct is_error_condition_enum<armi_test::errc> : public true_type
+{};
+}
+
+namespace armi_test
+{
+
+class armi_test_category_impl : public std::error_category
 {
 public:
-	static bstream::context_base::ptr const& get()                                                                     \
-	{                                                                                                                  \
-		static const bstream::context_base::ptr instance{MAKE_SHARED<foo_stream_context>()};                        \
-		return instance;                                                                                               \
+	virtual const char*
+	name() const noexcept override
+	{
+		return "armi test";
+	}
+
+	virtual std::string
+	message(int ev) const noexcept override
+	{
+		switch (static_cast<armi_test::errc>(ev))
+		{
+			case armi_test::errc::ok:
+				return "success";
+			case armi_test::errc::end_of_the_world_as_we_know_it:
+				return "end of the world as we know it";
+			case armi_test::errc::sun_exploded:
+				return "sun exploded";
+			case armi_test::errc::aliens_invaded:
+				return "aliens invaded";
+			default:
+				return "unknown armi_test error";
+		}
+	}
+};
+
+inline std::error_category const&
+error_category() noexcept
+{
+	static armi_test::armi_test_category_impl instance;
+	return instance;
+}
+
+inline std::error_condition
+make_error_condition(errc e)
+{
+	return std::error_condition(static_cast<int>(e), armi_test::error_category());
+}
+
+inline std::error_code
+make_error_code(errc e)
+{
+	return std::error_code(static_cast<int>(e), armi_test::error_category());
+}
+
+class test_stream_context : public bstream::context<>
+{
+public:
+	test_stream_context()
+		: bstream::context<>{
+				  bstream::context_options{}.error_categories({&armi::error_category(), &armi_test::error_category()})}
+	{}
+	static bstream::context_base::ptr const&
+	get()
+	{
+		static const bstream::context_base::ptr instance{MAKE_SHARED<test_stream_context>()};
+		return instance;
 	}
 };
 
 
-// static auto foo_stream_context = foo_stream_context_factory::get();
+class test_fixture;
 
+using err_safe_reply = std::function<void(std::error_code, std::string const&)>;
+using not_err_safe_reply = std::function<void(std::string const&)>;
 
-ARMI_CONTEXT(bar_remote, foo::bar, foo_stream_context_factory, increment, freak_out);
-ARMI_CONTEXT(boo_remote, foo::boo, foo_stream_context_factory, decrement);
-// ARMI_INTERFACE(remote, foo::bar, increment, freak_out);
-// ARMI_INTERFACE(remote, foo::boo, decrement);
-}    // namespace rfoo
+class target
+{
+public:
+	target(test_fixture& fixture) : m_fixture{fixture} {}
+
+	void
+	form_1a_fail(armi::fail_reply fail)
+	{
+		fail(make_error_code(armi_test::errc::sun_exploded));
+	}
+
+	void
+	form_1a_pass(armi::fail_reply fail)
+	{
+		fail(std::error_code{});
+	}
+
+	void
+	form_1b_fail(err_safe_reply reply)
+	{
+		reply(make_error_code(armi_test::errc::end_of_the_world_as_we_know_it), std::string{});
+	}
+
+	void
+	form_1b_pass(err_safe_reply reply)
+	{
+		reply(std::error_code{}, "zoot");
+	}
+
+	void
+	form_2_fail(err_safe_reply reply, std::string const& s)
+	{
+		reply(make_error_code(armi_test::errc::aliens_invaded), std::string{});
+	}
+
+	void
+	form_2_pass(err_safe_reply reply, std::string const& s)
+	{
+		reply(std::error_code{}, s + " allures");
+	}
+
+	void
+	form_3_fail(err_safe_reply reply, std::string const& s, std::pair<int, int> p)
+	{
+		reply(make_error_code(std::errc::invalid_argument), std::string{});
+	}
+
+	void
+	form_3_pass(err_safe_reply reply, std::string const& s, std::pair<int, int> p)
+	{
+		reply(std::error_code{}, s + std::to_string(p.first + p.second));
+	}
+
+	void
+	form_4a_fail(not_err_safe_reply reply, armi::fail_reply fail)
+	{
+		fail(make_error_code(armi_test::errc::aliens_invaded));
+	}
+
+	void
+	form_4a_pass(not_err_safe_reply reply, armi::fail_reply fail)
+	{
+		reply("weasels ripped my flesh");
+	}
+
+	void
+	form_4b_fail(err_safe_reply reply, armi::fail_reply fail)
+	{
+		fail(make_error_code(armi_test::errc::sun_exploded));
+	}
+
+	void
+	form_4b_pass(err_safe_reply reply, armi::fail_reply fail)
+	{
+		reply(std::error_code{}, "the torture never stops");
+	}
+
+	void
+	form_5a_fail(not_err_safe_reply reply, armi::fail_reply fail, std::string const& s, std::vector<int> const& v)
+	{
+		fail(make_error_code(armi_test::errc::aliens_invaded));
+	}
+
+	void
+	form_5a_pass(not_err_safe_reply reply, armi::fail_reply fail, std::string const& s, std::vector<int> const& v)
+	{
+		std::string result{s};
+		int sum{0};
+		for (auto n : v)
+		{
+			sum += n;
+		}
+		result.append(std::to_string(sum));
+		reply(result);
+	}
+
+	void
+	form_5b_fail(err_safe_reply reply, armi::fail_reply fail, std::string const& s, std::vector<int> const& v)
+	{
+		fail(make_error_code(armi_test::errc::sun_exploded));
+	}
+
+	void
+	form_5b_pass(err_safe_reply reply, armi::fail_reply fail, std::string const& s, std::vector<int> const& v)
+	{
+		std::string result{s};
+		int sum{0};
+		for (auto n : v)
+		{
+			sum += n;
+		}
+		result.append(std::to_string(sum));
+		reply(std::error_code{}, result);
+	}
+
+	util::promise<std::string>
+	form_6_fail()
+	{
+		util::promise<std::string> result;
+		result.reject(make_error_code(armi_test::errc::sun_exploded));
+		return result;
+	}
+
+	util::promise<std::string>
+	form_6_pass()
+	{
+		util::promise<std::string> result;
+		result.resolve("shamma lamma ding dong");
+		return result;
+	}
+
+	util::promise<std::string>
+	form_7_fail(std::string const& s, int n)
+	{
+		util::promise<std::string> result;
+		result.reject(make_error_code(armi_test::errc::sun_exploded));
+		return result;
+	}
+
+	util::promise<std::string>
+	form_7_pass(std::string const& s, int n)
+	{
+		util::promise<std::string> result;
+		result.resolve(s + std::to_string(n));
+		return result;
+	}
+
+private:
+	test_fixture& m_fixture;
+};
+
+ARMI_CONTEXT(
+		test_remote,
+		target,
+		test_stream_context,
+		form_1a_fail,
+		form_1a_pass,
+		form_1b_fail,
+		form_1b_pass,
+		form_2_fail,
+		form_2_pass,
+		form_3_fail,
+		form_3_pass,
+		form_4a_fail,
+		form_4a_pass,
+		form_4b_fail,
+		form_4b_pass,
+		form_5a_fail,
+		form_5a_pass,
+		form_5b_fail,
+		form_5b_pass,
+		form_6_fail,
+		form_6_pass,
+		form_7_fail,
+		form_7_pass);
+
+class test_fixture
+{
+public:
+	using ref_type = test_remote::client_context_type::client_channel;
+
+	test_fixture()
+		: m_loop{async::loop::create()}, m_target{std::make_shared<target>(*this)}, m_client{m_loop}, m_server{m_loop}
+	{
+		m_server.on_request([&](armi::channel_id_type channel_id) {
+					m_server_request_handler_visited = true;
+					return m_target;
+				})
+				.on_channel_connect(
+						[=](armi::channel_id_type channel_id) { m_server_channel_connect_handler_visited = true; })
+				.on_accept_error([=](std::error_code err) { m_server_accept_error_handler_visited = true; })
+				.on_channel_error([=](armi::channel_id_type channel_id, std::error_code err) {
+					m_server_channel_error_handler_visited = true;
+				})
+				.on_channel_close(
+						[=](armi::channel_id_type channel_id) { m_server_channel_close_handler_visited = true; })
+				.on_server_close([=]() { m_server_close_handler_visited = true; });
+	}
+
+	void
+	run()
+	{
+		std::error_code err;
+		m_loop->schedule(std::chrono::milliseconds{500}, [](async::loop::ptr const& lp) {
+			std::error_code err;
+			lp->stop(err);
+			CHECK(!err);
+		});
+
+		m_server.bind(async::options{endpoint{address::v4_any(), 7001}}, err);
+		CHECK(!err);
+
+		m_client.connect(
+				async::options{endpoint{address::v4_loopback(), 7001}}, err, [=](ref_type t, std::error_code err) {
+					CHECK(t.is_valid());
+					t->form_1a_fail([=](std::error_code err) {
+						m_target_form_1a_fail_visited = true;
+						CHECK(err);
+						CHECK(err == armi_test::errc::sun_exploded);
+					});
+					t->form_1a_pass([=](std::error_code err)
+					{
+						m_target_form_1a_pass_visited = true;
+						CHECK(!err);
+					});
+					t->form_1b_fail([=](std::error_code err, std::string const& s)
+					{
+						m_target_form_1b_fail_visited = true;
+						CHECK(err);
+						CHECK(err == armi_test::errc::end_of_the_world_as_we_know_it);
+					});
+					t->form_1b_pass([=](std::error_code err, std::string const& s)
+					{
+						m_target_form_1b_pass_visited = true;
+						CHECK(!err);
+						CHECK(s == "zoot");
+					});
+					t->form_2_fail([=](std::error_code err, std::string const& s)
+					{
+						m_target_form_2_fail_visited = true;
+						CHECK(err);
+						CHECK(err == armi_test::errc::aliens_invaded);
+					},
+					"zoot");
+					t->form_2_pass([=](std::error_code err, std::string const& s)
+					{
+						m_target_form_2_pass_visited = true;
+						CHECK(!err);
+						CHECK(s == "zoot allures");
+					},
+					"zoot");
+					t->form_3_fail([=](std::error_code err, std::string const& s)
+					{
+						m_target_form_3_fail_visited = true;
+						CHECK(err);
+						CHECK(err == std::errc::invalid_argument);
+					},
+					"zoot",
+					std::make_pair(3, 4));
+					t->form_3_pass([=](std::error_code err, std::string const& s)
+					{
+						m_target_form_3_pass_visited = true;
+						CHECK(!err);
+						CHECK(s == "seven: 7");
+					},
+					"seven: ",
+					std::make_pair(3, 4));
+					t->form_4a_fail([=](std::string const& s){
+						CHECK(false);
+					},
+					[=](std::error_code err)
+					{
+						m_target_form_4a_fail_visited = true;
+						CHECK(err);
+						CHECK(err == armi_test::errc::aliens_invaded);
+					});
+					t->form_4a_pass([=](std::string const& s)
+					{
+						m_target_form_4a_pass_visited = true;
+						CHECK(!err);
+						CHECK(s == "weasels ripped my flesh");
+					},
+					[=](std::error_code err)
+					{
+						CHECK(false);
+					});
+					t->form_4b_fail([=](std::error_code err, std::string const& s){
+						CHECK(false);
+					},
+					[=](std::error_code err)
+					{
+						m_target_form_4b_fail_visited = true;
+						CHECK(err);
+						CHECK(err == armi_test::errc::sun_exploded);
+					});
+					t->form_4b_pass([=](std::error_code err, std::string const& s)
+					{
+						m_target_form_4b_pass_visited = true;
+						CHECK(!err);
+						CHECK(s == "the torture never stops");
+					},
+					[=](std::error_code err)
+					{
+						CHECK(false);
+					});
+
+					t->form_5a_fail([=](std::string const& s){
+						CHECK(false);
+					},
+					[=](std::error_code err)
+					{
+						m_target_form_5a_fail_visited = true;
+						CHECK(err);
+						CHECK(err == armi_test::errc::aliens_invaded);
+					},
+					"vector sum: ", {1,2,3,5,8});
+					t->form_5a_pass([=](std::string const& s)
+					{
+						m_target_form_5a_pass_visited = true;
+						CHECK(!err);
+						CHECK(s == "vector sum: 19");
+					},
+					[=](std::error_code err)
+					{
+						CHECK(false);
+					},
+					"vector sum: ", {1,2,3,5,8});
+					t->form_5b_fail([=](std::error_code err, std::string const& s){
+						CHECK(false);
+					},
+					[=](std::error_code err)
+					{
+						m_target_form_5b_fail_visited = true;
+						CHECK(err);
+						CHECK(err == armi_test::errc::sun_exploded);
+					},
+					"vector sum: ", {1,2,3,5,8});
+					t->form_5b_pass([=](std::error_code err, std::string const& s)
+					{
+						m_target_form_5b_pass_visited = true;
+						CHECK(!err);
+						CHECK(s == "vector sum: 19");
+					},
+					[=](std::error_code err)
+					{
+						CHECK(false);
+					},
+					"vector sum: ", {1,2,3,5,8});
+
+					t->form_6_fail().then([=](std::string s)
+					{
+						CHECK(false);
+					},
+					[=](std::error_code err)
+					{
+						CHECK(err == make_error_code(armi_test::errc::sun_exploded));
+						m_target_form_6_fail_visited = true;
+					});
+					t->form_6_pass().then([=](std::string s)
+					{
+						CHECK(s == "shamma lamma ding dong");
+						m_target_form_6_pass_visited = true;
+					},
+					[=](std::error_code err)
+					{
+						CHECK(false);
+					});
+
+					t->form_7_fail("zoot", 3).then([=](std::string s)
+					{
+						CHECK(false);
+					},
+					[=](std::error_code err)
+					{
+						CHECK(err == make_error_code(armi_test::errc::sun_exploded));
+						m_target_form_7_fail_visited = true;
+					});
+
+					t->form_7_pass("seven: ", 7).then([=](std::string s)
+					{
+						CHECK(s == "seven: 7");
+						m_target_form_7_pass_visited = true;
+					},
+					[=](std::error_code err)
+					{
+						CHECK(false);
+					});
+
+					m_client_connect_handler_visited = true;
+
+				});
+		CHECK(!err);
+
+		m_loop->run(err);
+		CHECK(!err);
+
+		m_client.close();    // optional, but cleaner
+		m_server.close();    // optional, but cleaner
+
+		CHECK(m_client_connect_handler_visited);
+		CHECK(m_server_request_handler_visited);
+		CHECK(m_server_channel_connect_handler_visited);
+		CHECK(!m_server_accept_error_handler_visited);
+		CHECK(!m_server_channel_error_handler_visited);
+		CHECK(m_server_channel_close_handler_visited);
+		CHECK(m_server_close_handler_visited);
+		CHECK(m_target_form_1a_fail_visited);
+		CHECK(m_target_form_1a_pass_visited);
+		CHECK(m_target_form_1b_fail_visited);
+		CHECK(m_target_form_1b_pass_visited);
+		CHECK(m_target_form_2_fail_visited);
+		CHECK(m_target_form_2_pass_visited);
+		CHECK(m_target_form_3_fail_visited);
+		CHECK(m_target_form_3_pass_visited);
+		CHECK(m_target_form_4a_fail_visited);
+		CHECK(m_target_form_4a_pass_visited);
+		CHECK(m_target_form_4b_fail_visited);
+		CHECK(m_target_form_4b_pass_visited);
+		CHECK(m_target_form_5a_fail_visited);
+		CHECK(m_target_form_5a_pass_visited);
+		CHECK(m_target_form_5b_fail_visited);
+		CHECK(m_target_form_5b_pass_visited);
+		CHECK(m_target_form_6_fail_visited);
+		CHECK(m_target_form_6_pass_visited);
+		CHECK(m_target_form_7_fail_visited);
+		CHECK(m_target_form_7_pass_visited);
+
+		CHECK(!err);
+	}
+
+	async::loop::ptr                                        m_loop;
+	std::shared_ptr<target>                                 m_target;
+	async::client_adaptor<test_remote::client_context_type> m_client;
+	async::server_adaptor<test_remote::server_context_type> m_server;
+
+	bool m_client_connect_handler_visited{false};
+	bool m_server_request_handler_visited{false};
+	bool m_server_channel_connect_handler_visited{false};
+	bool m_server_accept_error_handler_visited{false};
+	bool m_server_channel_error_handler_visited{false};
+	bool m_server_channel_close_handler_visited{false};
+	bool m_server_close_handler_visited{false};
+	bool m_target_form_1a_fail_visited{false};
+	bool m_target_form_1a_pass_visited{false};
+	bool m_target_form_1b_fail_visited{false};
+	bool m_target_form_1b_pass_visited{false};
+	bool m_target_form_2_fail_visited{false};
+	bool m_target_form_2_pass_visited{false};
+	bool m_target_form_3_fail_visited{false};
+	bool m_target_form_3_pass_visited{false};
+	bool m_target_form_4a_fail_visited{false};
+	bool m_target_form_4a_pass_visited{false};
+	bool m_target_form_4b_fail_visited{false};
+	bool m_target_form_4b_pass_visited{false};
+	bool m_target_form_5a_fail_visited{false};
+	bool m_target_form_5a_pass_visited{false};
+	bool m_target_form_5b_fail_visited{false};
+	bool m_target_form_5b_pass_visited{false};
+	bool m_target_form_6_fail_visited{false};
+	bool m_target_form_6_pass_visited{false};
+	bool m_target_form_7_fail_visited{false};
+	bool m_target_form_7_pass_visited{false};
+};
+}    // namespace armi_test
+
+TEST_CASE("logicmill::armi [ smoke ] { fixture test }")
+{
+	armi_test::test_fixture tfix;
+	tfix.run();
+}
 
 #if 1
 TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
@@ -198,19 +762,17 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
-	// rfoo::bar_remote context;
-
+	using bar_ref       = rfoo::bar_remote::client_context_type::client_channel;
 	async::client_adaptor<rfoo::bar_remote::client_context_type> client{lp};
-
-	using bar_ref = rfoo::bar_remote::client_context_type::client_channel;
-
 	async::server_adaptor<rfoo::bar_remote::server_context_type> server{lp};
-	auto impl = std::make_shared<foo::bar>();
+	auto                                                         impl = std::make_shared<foo::bar>();
 
-	server.on_request([&](armi::channel_id_type channel_id) {
-			  std::cout << "request handler called with channel id " << channel_id << std::endl;
-			  return impl;
-		  })
+	server
+
+			.on_request([&](armi::channel_id_type channel_id) {
+				std::cout << "request handler called with channel id " << channel_id << std::endl;
+				return impl;
+			})
 			.on_channel_connect([=](armi::channel_id_type channel_id) {
 				std::cout << "channel connection handler called with channel id " << channel_id << std::endl;
 			})
@@ -226,83 +788,28 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 			})
 			.on_server_close([=]() { std::cout << "server close handler called" << std::endl; });
 
-
-	// auto server_context = rfoo::bar_remote::create_server();
-	// server_context->register_impl(std::make_shared<foo::bar>());
-
 	END_LOOP(lp, 500);
-
-	// async::server_impl::ptr sp = MAKE_SHARED<async::server_impl>(server_context, lp);
-	// sp->on_server_error([=](async::server_impl::ptr const& srvrp, std::error_code err)
-	// {
-	// 	std::cout << "server error handler called: " << err.message() << std::endl;
-	// 	srvrp->close();
-	// });
-
-	// sp->on_channel_error([=](async::server_impl::ptr const& srvrp, async::channel::ptr const& chan, std::error_code err) {
-	// 	std::cout << "channel error handler called: " << err.message() << std::endl;
-	// 	srvrp->close(chan);
-	// });
-
-	// sp->on_server_close([]()
-	// {
-	// 	std::cout << "server close handler called" << std::endl;
-	// });
-
-	// sp->on_channel_close([](async::channel::ptr const& chan)
-	// {
-	// 	std::cout << "channel close handler called" << std::endl;
-	// });
 
 	server.bind(async::options{endpoint{address::v4_any(), 7001}}, err);
 
-	// sp->bind(async::options{endpoint{address::v4_any(), 7001}}, err);
 	CHECK(!err);
 
-
-	// auto client_context = rfoo::bar_remote::create_client();
-
-	// async::client_channel_impl::ptr cp = async::client_channel_impl::create(client_context, lp);
-
-	client.connect(
-			async::options{endpoint{address::v4_loopback(), 7001}},
-			err,
-			[&](bar_ref b, std::error_code err) {
-				b->increment(
-						[](std::error_code err, int result) {
-							std::cout << "in increment callback";
-							if (err)
-							{
-								std::cout << ", err is " << err.message();
-							}
-							std::cout << std::endl;
-							CHECK(!err);
-							CHECK(result == 28);
-						},
-						27);
-				client_connect_handler_visited = true;
-			});
-
-	// cp->connect(
-	// 		async::options{endpoint{address::v4_loopback(), 7001}},
-	// 		err,
-	// 		[&](armi::transport::client_channel::ptr chan, std::error_code err) {
-	// 			client_context->use(chan);
-	// 			client_context->proxy().increment(
-	// 					[](std::error_code err, int result) {
-	// 						std::cout << "in increment callback";
-	// 						if (err)
-	// 						{
-	// 							std::cout << ", err is " << err.message();
-	// 						}
-	// 						std::cout << std::endl;
-	// 						CHECK(!err);
-	// 						CHECK(result == 28);
-	// 					},
-	// 					27);
-	// 			client_connect_handler_visited = true;
-	// 		});
-
+	client.connect(async::options{endpoint{address::v4_loopback(), 7001}}, err, [&](bar_ref b, std::error_code err) {
+		CHECK(b.is_valid());
+		b->increment(
+				[](std::error_code err, int result) {
+					std::cout << "in increment callback";
+					if (err)
+					{
+						std::cout << ", err is " << err.message();
+					}
+					std::cout << std::endl;
+					CHECK(!err);
+					CHECK(result == 28);
+				},
+				27);
+		client_connect_handler_visited = true;
+	});
 	CHECK(!err);
 
 	lp->run(err);
@@ -310,10 +817,169 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 
 	std::cout << "loop run finished" << std::endl;
 
+	client.close();    // optional, but cleaner
+	server.close();    // optional, but cleaner
+
 	CHECK(client_connect_handler_visited);
 	CHECK(impl->increment_called);
 
-	lp->close(err);
+	// lp->close(err);
+	CHECK(!err);
+}
+
+#endif
+
+#if 1
+TEST_CASE("logicmill::armi [ smoke ] { fail reply without error }")
+{
+	bool client_connect_handler_visited{false};
+	bool fail_handler_visited{false};
+	bool reply_handler_visited{false};
+
+	std::error_code  err;
+	async::loop::ptr lp = async::loop::create();
+	using bfail_ref     = rfoo::bfail_remote::client_context_type::client_channel;
+	async::client_adaptor<rfoo::bfail_remote::client_context_type> client{lp};
+	async::server_adaptor<rfoo::bfail_remote::server_context_type> server{lp};
+	auto                                                           impl = std::make_shared<foo::bfail>();
+
+	server
+
+			.on_request([&](armi::channel_id_type channel_id) {
+				std::cout << "request handler called with channel id " << channel_id << std::endl;
+				return impl;
+			})
+			.on_channel_connect([=](armi::channel_id_type channel_id) {
+				std::cout << "channel connection handler called with channel id " << channel_id << std::endl;
+			})
+			.on_accept_error([=](std::error_code err) {
+				std::cout << "accept error handler called with error code " << err.message() << std::endl;
+			})
+			.on_channel_error([=](armi::channel_id_type channel_id, std::error_code err) {
+				std::cout << "accept error handler called with channel id " << channel_id << ", error code "
+						  << err.message() << std::endl;
+			})
+			.on_channel_close([=](armi::channel_id_type channel_id) {
+				std::cout << "channel close handler called with channel id " << channel_id << std::endl;
+			})
+			.on_server_close([=]() { std::cout << "server close handler called" << std::endl; });
+
+	END_LOOP(lp, 500);
+
+	server.bind(async::options{endpoint{address::v4_any(), 7001}}, err);
+
+	CHECK(!err);
+
+	client.connect(async::options{endpoint{address::v4_loopback(), 7001}}, err, [&](bfail_ref b, std::error_code err) {
+		CHECK(b.is_valid());
+		b->bonk(
+				[&](double d) {
+					std::cout << "in bonk callback, arg is " << d << std::endl;
+					CHECK(d == 3.5);
+					reply_handler_visited = true;
+				},
+				[&](std::error_code err) {
+					CHECK(err);
+					std::cout << "in bonk fail reply, err is " << err.message() << std::endl;
+					fail_handler_visited = true;
+				},
+				"3.5");
+		client_connect_handler_visited = true;
+	});
+	CHECK(!err);
+
+	lp->run(err);
+	CHECK(!err);
+
+	std::cout << "loop run finished" << std::endl;
+
+	client.close();    // optional, but cleaner
+	server.close();    // optional, but cleaner
+
+	CHECK(client_connect_handler_visited);
+	CHECK(reply_handler_visited);
+	CHECK(!fail_handler_visited);
+	// CHECK(impl->increment_called);
+
+	// lp->close(err);
+	CHECK(!err);
+}
+
+#endif
+
+#if 1
+TEST_CASE("logicmill::armi [ smoke ] { fail reply with error }")
+{
+	bool client_connect_handler_visited{false};
+	bool fail_handler_visited{false};
+	bool reply_handler_visited{false};
+
+	std::error_code  err;
+	async::loop::ptr lp = async::loop::create();
+	using bfail_ref     = rfoo::bfail_remote::client_context_type::client_channel;
+	async::client_adaptor<rfoo::bfail_remote::client_context_type> client{lp};
+	async::server_adaptor<rfoo::bfail_remote::server_context_type> server{lp};
+	auto                                                           impl = std::make_shared<foo::bfail>();
+
+	server
+
+			.on_request([&](armi::channel_id_type channel_id) {
+				std::cout << "request handler called with channel id " << channel_id << std::endl;
+				return impl;
+			})
+			.on_channel_connect([=](armi::channel_id_type channel_id) {
+				std::cout << "channel connection handler called with channel id " << channel_id << std::endl;
+			})
+			.on_accept_error([=](std::error_code err) {
+				std::cout << "accept error handler called with error code " << err.message() << std::endl;
+			})
+			.on_channel_error([=](armi::channel_id_type channel_id, std::error_code err) {
+				std::cout << "accept error handler called with channel id " << channel_id << ", error code "
+						  << err.message() << std::endl;
+			})
+			.on_channel_close([=](armi::channel_id_type channel_id) {
+				std::cout << "channel close handler called with channel id " << channel_id << std::endl;
+			})
+			.on_server_close([=]() { std::cout << "server close handler called" << std::endl; });
+
+	END_LOOP(lp, 500);
+
+	server.bind(async::options{endpoint{address::v4_any(), 7001}}, err);
+
+	CHECK(!err);
+
+	client.connect(async::options{endpoint{address::v4_loopback(), 7001}}, err, [&](bfail_ref b, std::error_code err) {
+		CHECK(b.is_valid());
+		b->bonk(
+				[&](double d) {
+					std::cout << "in bonk callback, arg is " << d << std::endl;
+					CHECK(d == 3.5);
+					reply_handler_visited = true;
+				},
+				[&](std::error_code err) {
+					CHECK(err);
+					std::cout << "in bonk fail reply, err is " << err.message() << std::endl;
+					fail_handler_visited = true;
+				},
+				"zoot");
+		client_connect_handler_visited = true;
+	});
+	CHECK(!err);
+
+	lp->run(err);
+	CHECK(!err);
+
+	std::cout << "loop run finished" << std::endl;
+
+	client.close();    // optional, but cleaner
+	server.close();    // optional, but cleaner
+
+	CHECK(client_connect_handler_visited);
+	CHECK(!reply_handler_visited);
+	CHECK(fail_handler_visited);
+	// CHECK(impl->increment_called);
+
+	// lp->close(err);
 	CHECK(!err);
 }
 
@@ -410,7 +1076,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{rfoo::foo_stream_context_factory::get()};
+	rfoo::remote context{rfoo::foo_stream_context::get()};
 	auto server_context = context.create_server();
 	server_context->register_impl(std::make_shared<foo::bar>());
 
@@ -568,7 +1234,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close re-open client }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
+	rfoo::remote context{lp, rfoo::foo_stream_context::get()};
 
 	auto bar_impl = std::make_shared<foo::bar>();
 
@@ -655,7 +1321,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close server before client request }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
+	rfoo::remote context{lp, rfoo::foo_stream_context::get()};
 
 	auto bar_impl = std::make_shared<foo::bar>();
 
@@ -729,7 +1395,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client closes before server sends reply }
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
+	rfoo::remote context{lp, rfoo::foo_stream_context::get()};
 
 	context.server().register_impl(std::make_shared<foo::boo>(lp));
 
@@ -809,7 +1475,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
+	rfoo::remote context{lp, rfoo::foo_stream_context::get()};
 
 	context.server().register_impl(std::make_shared<foo::boo>(lp));
 
@@ -871,7 +1537,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 
-	rfoo::remote context{lp, rfoo::foo_stream_context_factory::get()};
+	rfoo::remote context{lp, rfoo::foo_stream_context::get()};
 
 	context.server().register_impl(std::make_shared<foo::boo>(lp));
 

@@ -784,6 +784,12 @@ exit:
 	return;
 }
 
+bool
+loop_uv::is_alive() const
+{
+	return m_uv_loop;
+}
+
 void
 loop_uv::really_schedule(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_handler&& handler)
 {

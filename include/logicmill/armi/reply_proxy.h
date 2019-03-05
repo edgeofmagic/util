@@ -29,6 +29,7 @@
 #include <logicmill/armi/types.h>
 #include <logicmill/bstream/context.h>
 #include <system_error>
+#include <logicmill/util/promise.h>
 
 namespace logicmill
 {
@@ -130,6 +131,55 @@ private:
 	channel_id_type  m_channel_id;
 	server_context_base& m_context;
 };
+
+/*
+template<class PromiseType>
+class reply_proxy<util::promise<PromiseType>>
+{
+public:
+	reply_proxy(request_id_type request_id, channel_id_type channel_id, server_context_base& context)
+		: m_request_id{request_id}, m_channel_id{channel_id}, m_context{context}
+	{}
+
+	reply_proxy(reply_proxy const& other)
+		: m_request_id{other.m_request_id}, m_channel_id{other.m_channel_id}, m_context{other.m_context}
+	{}
+
+	reply_proxy(reply_proxy&& other)
+		: m_request_id{other.m_request_id}, m_channel_id{other.m_channel_id}, m_context{other.m_context}
+	{}
+
+	inline void
+	operator()(Args... args)
+	{
+		bstream::ombstream os{m_context.stream_context()};
+		os << m_request_id;
+		os << reply_kind::normal;
+		os.write_array_header(sizeof...(Args));
+		append(os, args...);
+		m_context.get_transport().send_reply(m_channel_id, os.release_mutable_buffer());
+	}
+
+private:
+	void
+	append(bstream::obstream& os)
+	{}
+
+	template<class First, class... More>
+	void
+	append(bstream::obstream& os, First first, More... more)
+	{
+		os << first;
+		append(os, more...);
+	}
+
+	// server_context_base& m_context;
+	request_id_type        m_request_id;
+	channel_id_type  m_channel_id;
+	server_context_base& m_context;
+};
+
+*/
 
 }    // namespace armi
 }    // namespace logicmill

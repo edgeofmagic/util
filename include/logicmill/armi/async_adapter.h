@@ -67,6 +67,11 @@ public:
 		};
 	}
 
+	~client_adaptor()
+	{
+		close();
+	}
+
 	void
 	connect(async::options const& opts, std::error_code& err, client_connect_handler handler)
 	{
@@ -119,15 +124,18 @@ public:
 	}
 
 	void
+	close()
+	{
+		close(make_error_code(armi::errc::context_closed));
+	}
+
+	void
 	close(std::error_code err)
 	{
 		if (!m_is_closing)
 		{
 			m_is_closing = true;
-			m_loop->dispatch([=]()
-			{
-				really_close(make_error_code(armi::errc::context_closed));
-			});
+			really_close(make_error_code(armi::errc::context_closed));
 		}
 	}
 
@@ -202,10 +210,16 @@ public:
 
 	exit:
 		if (err)
-			m_loop->dispatch([=]()
+		{
+			if (m_loop->is_alive())
 			{
-				m_context.cancel_request(request_id, err);
-			});
+				m_loop->dispatch([=]() { m_context.cancel_request(request_id, err); });
+			}
+			else
+			{
+				m_context.cancel_request(request_id, make_error_code(armi::errc::no_event_loop));
+			}
+		}
 		return;
 	}
 
@@ -220,14 +234,22 @@ private:
 			{
 				auto chan = it->second;
 				m_channel_map.erase(it);
-				if (!chan->is_closing())
+				if (m_loop->is_alive())
 				{
-					chan->close();
+					if (!chan->is_closing())
+					{
+						chan->close();
+					}
+					m_loop->dispatch([=]()
+					{
+						m_context.cancel_channel_requests(channel_id, err);
+					});
 				}
-				m_loop->dispatch([=]()
+				else
 				{
-					m_context.cancel_channel_requests(channel_id, err);
-				});
+					m_context.cancel_channel_requests(channel_id, make_error_code(armi::errc::no_event_loop));
+				}
+				
 			}
 		}
 	}
@@ -235,19 +257,28 @@ private:
 	void
 	really_close(std::error_code err)
 	{
-		auto it = m_channel_map.begin();
-		while(it != m_channel_map.end())
+		if (m_loop->is_alive())
 		{
-			if (!it->second->is_closing())
+			auto it = m_channel_map.begin();
+			while(it != m_channel_map.end())
 			{
-				it->second->close();
+				if (!it->second->is_closing())
+				{
+					it->second->close();
+				}
+				it = m_channel_map.erase(it);
 			}
-			it = m_channel_map.erase(it);
+			m_loop->dispatch([=]()
+			{
+				m_context.cancel_all_requests(err);
+			});
 		}
-		m_loop->dispatch([=]()
+		else
 		{
-			m_context.cancel_all_requests(err);
-		});
+			m_channel_map.clear();
+			m_context.cancel_all_requests(make_error_code(armi::errc::no_event_loop));
+		}
+		
 	}
 
 	armi::channel_id_type
@@ -311,6 +342,12 @@ public:
 			close();
 		};
 	}
+
+	~server_adaptor()
+	{
+		close();
+	}
+
 
 	server_adaptor&
 	on_request(request_handler handler)
@@ -427,13 +464,10 @@ public:
 	virtual void
 	close(armi::channel_id_type channel_id)
 	{
-		if (channel_id != 0)
+		auto it = m_channel_map.find(channel_id);
+		if (it != m_channel_map.end())
 		{
-			auto it = m_channel_map.find(channel_id);
-			if (it != m_channel_map.end())
-			{
-				really_close(*it);
-			}
+			really_close(it);
 		}
 	}
 
@@ -469,41 +503,25 @@ private:
 	void
 	cleanup()
 	{
-		if (m_on_server_close)
-		{
-			m_on_server_close();
-			m_on_server_close = nullptr;
-		}
+		m_on_server_close = nullptr;
 		m_on_request  = nullptr;
 		m_on_channel_close  = nullptr;
 		m_on_channel_error  = nullptr;
 		m_on_accept_error  = nullptr;
-		m_on_server_close  = nullptr;
 		m_on_channel_connect  = nullptr;
 	}
 
-	void
-	really_close(channel_map_element_type& map_element)
+	channel_map_iterator
+	really_close(channel_map_iterator it)
 	{
-		auto channel_id = map_element.first;
-		map_element.second->close([=](async::channel::ptr const& c) {
-			auto cit = m_channel_map.find(channel_id);
-			if (cit != m_channel_map.end())
-			{
-				m_channel_map.erase(cit);
-				if (m_on_channel_close)
-				{
-					m_on_channel_close(channel_id);
-				}
-			}
-			if (m_is_server_closing)
-			{
-				if (m_channel_map.empty() && !m_acceptor)
-				{
-					cleanup();
-				}
-			}
-		});
+		auto channel_id = it->first;
+		it->second->close();
+		it = m_channel_map.erase(it);
+		if (m_on_channel_close)
+		{
+			m_on_channel_close(channel_id);
+		}
+		return it;
 	}
 
 	void
@@ -512,20 +530,21 @@ private:
 		if (!m_is_server_closing)
 		{
 			m_is_server_closing = true;
+
 			if (m_acceptor)
 			{
-				m_acceptor->close([=](async::acceptor::ptr const& lp) {
-					m_acceptor.reset();
-					if (m_channel_map.empty())
-					{
-						cleanup();
-					}
-				});
+				m_acceptor->close();
+				if (m_on_server_close)
+				{
+					m_on_server_close();
+				}
 			}
-			for (channel_map_element_type& element : m_channel_map)
+			auto it = m_channel_map.begin();
+			while (it != m_channel_map.end())
 			{
-				really_close(element);
+				it = really_close(it);
 			}
+			cleanup();
 		}
 	}
 };

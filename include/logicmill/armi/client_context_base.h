@@ -44,7 +44,7 @@ namespace armi
 
 // class interface_proxy;
 
-template<class T>
+template<class Reply, class Fail = void, class Enable = void>
 class method_proxy_base;
 
 class client_context_base
@@ -106,7 +106,7 @@ public:
 protected:
 	// friend class logicmill::armi::interface_proxy;
 
-	template<class T>
+	template<class T, class U, class V>
 	friend class logicmill::armi::method_proxy_base;
 
 	bstream::context_base::ptr const&
@@ -144,7 +144,7 @@ protected:
 	send_request(
 			channel_id_type channel_id,
 			request_id_type            request_id,
-			bstream::ombstream&        os,
+			util::mutable_buffer&&        req,
 			millisecs                  timeout);
 
 	void

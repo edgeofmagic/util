@@ -79,7 +79,7 @@ public:
 		bool
 		is_valid()
 		{
-			m_context.is_valid_channel_id(m_id);
+			return m_context.is_valid_channel_id(m_id);
 		}
 
 		void

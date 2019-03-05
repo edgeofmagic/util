@@ -999,6 +999,11 @@ public:
 	mutable_buffer&
 	expand(size_type new_cap, std::error_code& err)
 	{
+		if (!m_region)
+		{
+			*this = std::move(mutable_buffer{new_cap});
+		}
+		
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 
 		err.clear();

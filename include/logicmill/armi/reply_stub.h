@@ -31,6 +31,7 @@
 #include <system_error>
 #include <type_traits>
 #include <logicmill/bstream/ibstream.h>
+#include <logicmill/util/promise.h>
 
 
 namespace logicmill
@@ -38,8 +39,62 @@ namespace logicmill
 namespace armi
 {
 
-template<class T>
+template<class T, class Enable = void>
 class reply_stub;
+
+template<class PromiseType>
+class reply_stub<util::promise<PromiseType>, typename std::enable_if_t<!std::is_void<PromiseType>::value>>
+{
+public:
+	using reply_type = util::promise<PromiseType>;
+
+	reply_stub(reply_type reply) : m_reply{reply} {}
+
+	void
+	cancel(std::error_code err)
+	{
+		m_reply.reject(err);
+	}
+
+	void
+	operator()(bstream::ibstream& is)
+	{
+		std::error_code err;
+		auto            item_count = is.read_array_header(err);
+		if (err)
+		{
+			cancel(err);
+		}
+		else
+		{
+			if (!expected_count<1>(item_count))
+			{
+				cancel(make_error_code(armi::errc::invalid_argument_count));
+			}
+			else
+			{
+				try
+				{
+					m_reply.resolve(is.read_as<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>());
+				}
+				catch (std::system_error const& e)
+				{
+					cancel(e.code());
+				}
+				catch (std::exception const& e)
+				{
+					cancel(make_error_code(armi::errc::exception_thrown_by_reply_handler));
+				}
+			}
+		}
+
+	}
+
+ private:
+	reply_type m_reply;
+
+ };
+
 
 template<class... Args>
 class reply_stub<std::function<void(std::error_code, Args...)>>

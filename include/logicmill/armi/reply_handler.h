@@ -36,11 +36,58 @@ namespace armi
 template<class Reply, class Fail = void, class Enable = void>
 class reply_handler;
 
-template<class Reply, class Fail>
-class reply_handler<Reply, Fail, typename std::enable_if_t<std::is_void<Fail>::value>> : public reply_handler_base
+#if 1
+
+template<class PromiseType, class Fail>
+class reply_handler<util::promise<PromiseType>, Fail, typename std::enable_if_t<std::is_void<Fail>::value
+&& !std::is_void<PromiseType>::value>>
+	: public reply_handler_base
 {
 public:
-	inline reply_handler(Reply reply) : m_reply_stub{reply_stub<Reply>(reply)} {}
+	// reply_handler(util::promise<PromiseType> p) : m_reply_stub{reply_stub<util::promise<PromiseType>>(p)} {}
+
+	reply_handler(util::promise<PromiseType> p) : m_reply_stub{p} {}
+
+	virtual void
+	handle_reply(bstream::ibstream& is) override
+	{
+		reply_kind rk = is.read_as<reply_kind>();
+		if (rk == reply_kind::fail)
+		{
+			auto item_count = is.read_array_header();
+			if (!expected_count<1>(item_count))
+			{
+				cancel(make_error_code(armi::errc::invalid_argument_count));
+			}
+			else
+			{
+				cancel(is.read_as<std::error_code>());
+			}
+		}
+		else
+		{
+			m_reply_stub(is);
+		}
+	}
+
+	virtual void
+	cancel(std::error_code err) override
+	{
+		m_reply_stub.cancel(err);
+	}
+
+private:
+	reply_stub<util::promise<PromiseType>> m_reply_stub;
+
+};
+
+#endif
+
+template<class Reply, class Fail>
+class reply_handler<Reply, Fail, typename std::enable_if_t<std::is_void<Fail>::value && !util::is_promise<Reply>::value>> : public reply_handler_base
+{
+public:
+	reply_handler(Reply reply) : m_reply_stub{reply_stub<Reply>(reply)} {}
 
 	virtual void
 	handle_reply(bstream::ibstream& is) override
@@ -75,7 +122,7 @@ private:
 };
 
 template<class Reply, class Fail>
-class reply_handler<Reply, Fail, typename std::enable_if_t<!std::is_void<Fail>::value>> : public reply_handler_base
+class reply_handler<Reply, Fail, typename std::enable_if_t<!std::is_void<Fail>::value && !util::is_promise<Reply>::value>> : public reply_handler_base
 {
 public:
 	reply_handler(Reply reply, Fail fail) : m_reply{reply_stub<Reply>(reply)}, m_fail{fail} {}

@@ -38,7 +38,11 @@ client_context_base::client_context_base(transport::client& transport_client, bs
 {}
 
 void
-client_context_base::send_request(channel_id_type channel_id, request_id_type request_id, util::mutable_buffer&& req, millisecs timeout)
+client_context_base::send_request(
+		channel_id_type        channel_id,
+		request_id_type        request_id,
+		util::mutable_buffer&& req,
+		millisecs              timeout)
 {
 	m_transport.send_request(channel_id, request_id, timeout, std::move(req));
 }
@@ -47,10 +51,7 @@ void
 client_context_base::invoke_handler(bstream::ibstream& is)
 {
 	auto request_id = is.read_as<request_id_type>();
-	visit_handler(request_id, [=,&is](reply_handler_map_type::iterator it)
-	{
-		it->second.second->handle_reply(is);
-	});
+	visit_handler(request_id, [=, &is](reply_handler_map_type::iterator it) { it->second.second->handle_reply(is); });
 }
 
 void
@@ -78,13 +79,13 @@ client_context_base::cancel_channel_requests(channel_id_type channel_id, std::er
 	if (it != m_channel_request_map.end())
 	{
 		for (auto request_id : it->second)
- 		{
-			 auto rit = m_reply_handler_map.find(request_id);
-			 if (rit != m_reply_handler_map.end())
-			 {
-				 rit->second.second->cancel(err);
-				 m_reply_handler_map.erase(rit);
-			 }
+		{
+			auto rit = m_reply_handler_map.find(request_id);
+			if (rit != m_reply_handler_map.end())
+			{
+				rit->second.second->cancel(err);
+				m_reply_handler_map.erase(rit);
+			}
 		}
 		m_channel_request_map.erase(it);
 	}

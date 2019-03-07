@@ -32,7 +32,7 @@ namespace logicmill
 namespace armi
 {
 
-template<class Target> 
+template<class Target>
 class interface_stub : public interface_stub_builder<Target>
 {
 public:
@@ -49,7 +49,7 @@ public:
 	void
 	process(channel_id_type channel_id, bstream::ibstream& is, impl_ptr impl)
 	{
-		auto request_id  = is.read_as<request_id_type>();
+		auto request_id     = is.read_as<request_id_type>();
 		auto member_func_id = is.read_as<std::size_t>();
 		if (member_func_id >= member_func_count())
 		{
@@ -60,7 +60,6 @@ public:
 			get_member_func_stub(member_func_id).dispatch(request_id, channel_id, is, impl);
 		}
 	}
-
 };
 
 }    // namespace armi

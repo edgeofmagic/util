@@ -1,6 +1,7 @@
 #include <doctest.h>
 #include <logicmill/armi/armi.h>
-#include <logicmill/armi/async_adapter.h>
+#include <logicmill/armi/adapters/async/client_adapter.h>
+#include <logicmill/armi/adapters/async/server_adapter.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
 
@@ -55,8 +56,8 @@ TEST_CASE("logicmill::armi [ smoke ] { example 1 }")
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
 	using counter_ref   = remote::client_context_type::client_channel;
-	client_adaptor<remote::client_context_type> client{lp};
-	server_adaptor<remote::server_context_type> server{lp};
+	client_adapter<remote::client_context_type> client{lp};
+	server_adapter<remote::server_context_type> server{lp};
 
 	auto impl = std::make_shared<up_down_counter>();
 
@@ -89,8 +90,8 @@ TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
 	using counter_ref   = remote::client_context_type::client_channel;
-	client_adaptor<remote::client_context_type> client{lp};
-	server_adaptor<remote::server_context_type> server{lp};
+	client_adapter<remote::client_context_type> client{lp};
+	server_adapter<remote::server_context_type> server{lp};
 
 	auto impl = std::make_shared<up_down_counter>();
 

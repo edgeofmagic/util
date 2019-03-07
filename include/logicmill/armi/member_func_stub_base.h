@@ -26,9 +26,9 @@
 #define LOGICMILL_ARMI_METHOD_STUB_BASE_H
 
 #include <cstdint>
+#include <logicmill/armi/server_context_base.h>
 #include <logicmill/armi/transport.h>
 #include <logicmill/bstream/ibstream.h>
-#include <logicmill/armi/server_context_base.h>
 #include <logicmill/bstream/ombstream.h>
 
 namespace logicmill
@@ -40,24 +40,18 @@ template<class Target>
 class member_func_stub_base
 {
 public:
-
 	using target_ptr_type = std::shared_ptr<Target>;
 
-	member_func_stub_base(server_context_base& context)
-	: m_context{context}
-	{}
+	member_func_stub_base(server_context_base& context) : m_context{context} {}
 
 	virtual ~member_func_stub_base() {}
 	virtual void
-	dispatch(request_id_type req_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target) const = 0;
+	dispatch(request_id_type req_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target)
+			const = 0;
 
 protected:
-
 	void
-	request_failed(
-			request_id_type                   request_id,
-			channel_id_type                   channel_id,
-			std::error_code                   err) const
+	request_failed(request_id_type request_id, channel_id_type channel_id, std::error_code err) const
 	{
 		bstream::ombstream os{m_context.stream_context()};
 		os << request_id;
@@ -74,7 +68,6 @@ protected:
 	}
 
 private:
-
 	server_context_base& m_context;
 };
 

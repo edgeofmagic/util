@@ -69,10 +69,7 @@ set(LOGICMILL_SRCS
 
 	include/logicmill/armi/client_context.h
 	include/logicmill/armi/client_context_base.h
-#	include/logicmill/armi/client_context_builder.h
 	include/logicmill/armi/error.h
-#	include/logicmill/armi/fail_proxy.h
-#	include/logicmill/armi/interface_proxy.h
 	include/logicmill/armi/interface_stub.h
 	include/logicmill/armi/interface_stub_base.h
 	include/logicmill/armi/interface_stub_builder.h
@@ -81,16 +78,15 @@ set(LOGICMILL_SRCS
 	include/logicmill/armi/member_func_stub.h
 	include/logicmill/armi/member_func_stub_base.h
 	include/logicmill/armi/armi.h
-#	include/logicmill/armi/remote_context.h
 	include/logicmill/armi/reply_handler.h
 	include/logicmill/armi/reply_handler_base.h
-#	include/logicmill/armi/reply_proxy.h
-#	include/logicmill/armi/reply_stub.h
 	include/logicmill/armi/server_context.h
 	include/logicmill/armi/server_context_base.h
-#	include/logicmill/armi/server_context_builder.h
-#	include/logicmill/armi/traits.h
 	include/logicmill/armi/types.h
+	include/logicmill/armi/adapters/async/client_adapter.h
+	include/logicmill/armi/adapters/async/server_adapter.h
+	include/logicmill/armi/adapters/async/channel_manager.h
+
 	include/logicmill/laps/channel_anchor.h
 	include/logicmill/laps/driver.h
 	include/logicmill/laps/types.h
@@ -129,10 +125,9 @@ set(LOGICMILL_SRCS
 
 	src/armi/client_context_base.cpp
 	src/armi/error.cpp
-#	src/armi/fail_proxy.cpp
-#	src/armi/interface_proxy.cpp
-#	src/armi/interface_stub_base.cpp
-#	src/armi/server_context_base.cpp
+	src/armi/adapters/async/channel_manager.cpp
+	src/armi/adapters/async/client_adapter.cpp
+	src/armi/adapters/async/server_adapter.cpp
 
 	src/laps/error.cpp
 	src/laps/tls.cpp

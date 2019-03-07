@@ -25,6 +25,7 @@
 #ifndef LOGICMILL_ARMI_SERVER_CONTEXT_H
 #define LOGICMILL_ARMI_SERVER_CONTEXT_H
 
+#include <logicmill/armi/server_context_base.h>
 #include <logicmill/traits.h>
 
 namespace logicmill

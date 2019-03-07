@@ -47,11 +47,14 @@ class member_func_stub<
 {
 public:
 	using member_func_ptr_type = Actual;
-	using target_ptr_type = std::shared_ptr<Target>;
+	using target_ptr_type      = std::shared_ptr<Target>;
 	using member_func_stub_base<Target>::request_failed;
 	using member_func_stub_base<Target>::context;
 
-	inline member_func_stub(server_context_base& context, member_func_ptr_type member_func_ptr, std::size_t member_func_id)
+	inline member_func_stub(
+			server_context_base& context,
+			member_func_ptr_type member_func_ptr,
+			std::size_t          member_func_id)
 		: member_func_stub_base<Target>{context}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
 	{}
 
@@ -81,17 +84,18 @@ public:
 
 		try
 		{
-			((*target).*m_member_func_ptr)(is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...).then(
-					[=](PromiseType value) {
-						bstream::ombstream os{context().stream_context()};
-						os << request_id;
-						os << reply_kind::normal;
-						os.write_array_header(1);
-						os << value;
-						context().get_transport().send_reply(channel_id, os.release_mutable_buffer());
-					},
-					[=](std::error_code err) { request_failed(request_id, channel_id, err); });
-
+			((*target)
+			 .*m_member_func_ptr)(is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...)
+					.then(
+							[=](PromiseType value) {
+								bstream::ombstream os{context().stream_context()};
+								os << request_id;
+								os << reply_kind::normal;
+								os.write_array_header(1);
+								os << value;
+								context().get_transport().send_reply(channel_id, os.release_mutable_buffer());
+							},
+							[=](std::error_code err) { request_failed(request_id, channel_id, err); });
 		}
 		catch (std::system_error const& e)
 		{
@@ -103,12 +107,12 @@ public:
 		}
 
 	exit:
-		if (err) request_failed(request_id, channel_id, err);
-
+		if (err)
+			request_failed(request_id, channel_id, err);
 	}
 
 private:
-	std::size_t     m_member_func_id;
+	std::size_t          m_member_func_id;
 	member_func_ptr_type m_member_func_ptr;
 };
 
@@ -123,11 +127,14 @@ class member_func_stub<
 {
 public:
 	using member_func_ptr_type = Actual;
-	using target_ptr_type = std::shared_ptr<Target>;
+	using target_ptr_type      = std::shared_ptr<Target>;
 	using member_func_stub_base<Target>::request_failed;
 	using member_func_stub_base<Target>::context;
 
-	inline member_func_stub(server_context_base& context, member_func_ptr_type member_func_ptr, std::size_t member_func_id)
+	inline member_func_stub(
+			server_context_base& context,
+			member_func_ptr_type member_func_ptr,
+			std::size_t          member_func_id)
 		: member_func_stub_base<Target>{context}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
 	{}
 
@@ -157,15 +164,17 @@ public:
 
 		try
 		{
-			((*target).*m_member_func_ptr)(is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...).then(
-					[=]() {
-						bstream::ombstream os{context().stream_context()};
-						os << request_id;
-						os << reply_kind::normal;
-						os.write_array_header(0);
-						context().get_transport().send_reply(channel_id, os.release_mutable_buffer());
-					},
-					[=](std::error_code err) { request_failed(request_id, channel_id, err); });
+			((*target)
+			 .*m_member_func_ptr)(is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...)
+					.then(
+							[=]() {
+								bstream::ombstream os{context().stream_context()};
+								os << request_id;
+								os << reply_kind::normal;
+								os.write_array_header(0);
+								context().get_transport().send_reply(channel_id, os.release_mutable_buffer());
+							},
+							[=](std::error_code err) { request_failed(request_id, channel_id, err); });
 		}
 		catch (std::system_error const& e)
 		{
@@ -176,11 +185,12 @@ public:
 			err = make_error_code(armi::errc::exception_thrown_by_member_func_stub);
 		}
 	exit:
-		if (err) request_failed(request_id, channel_id, err);
+		if (err)
+			request_failed(request_id, channel_id, err);
 	}
 
 private:
-	std::size_t     m_member_func_id;
+	std::size_t          m_member_func_id;
 	member_func_ptr_type m_member_func_ptr;
 };
 

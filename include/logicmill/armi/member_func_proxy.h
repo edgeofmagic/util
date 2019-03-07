@@ -48,7 +48,7 @@ public:
 	using reply_handler_type = reply_handler<util::promise<PromiseType>>;
 
 	member_func_proxy(client_context_base& context, std::size_t member_func_id)
-	: m_context{context}, m_member_func_id{member_func_id}
+		: m_context{context}, m_member_func_id{member_func_id}
 	{}
 
 	util::promise<PromiseType>
@@ -56,14 +56,15 @@ public:
 	{
 		auto                       timeout = get_timeout();
 		util::promise<PromiseType> p;
-		auto request_id = m_context.next_request_id();
+		auto                       request_id = m_context.next_request_id();
 		m_context.add_handler(request_id, std::make_unique<reply_handler_type>(p));
 
 		bstream::ombstream os{m_context.stream_context()};
 		os << request_id << m_member_func_id;
 		os.write_array_header(sizeof...(Args));    // item_count
 		append(os, args...);
-		m_context.send_request(m_context.get_and_clear_transient_channel_id(), request_id, os.release_mutable_buffer(), timeout);
+		m_context.send_request(
+				m_context.get_and_clear_transient_channel_id(), request_id, os.release_mutable_buffer(), timeout);
 		return p;
 	}
 
@@ -100,8 +101,7 @@ class stripped_member_func_proxy : public member_func_proxy<typename traits::rem
 {
 public:
 	using base = member_func_proxy<typename traits::remove_member_func_cv_noexcept<T>::type>;
-	stripped_member_func_proxy(client_context_base& context, std::size_t member_func_id)
-	: base{context, member_func_id}
+	stripped_member_func_proxy(client_context_base& context, std::size_t member_func_id) : base{context, member_func_id}
 	{}
 };
 

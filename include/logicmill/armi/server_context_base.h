@@ -39,13 +39,13 @@ namespace armi
 {
 
 class server_context_base
-{ 
+{
 public:
 	template<class _T, class _U, class _V>
 	friend class member_func_stub;
 
 	server_context_base(transport::server& transport_server, bstream::context_base::ptr const& stream_context)
-	: m_transport{transport_server}, m_stream_context{stream_context}
+		: m_transport{transport_server}, m_stream_context{stream_context}
 	{}
 
 	virtual ~server_context_base() {}
@@ -63,8 +63,7 @@ public:
 	}
 
 protected:
-
-	transport::server& m_transport;
+	transport::server&         m_transport;
 	bstream::context_base::ptr m_stream_context;
 };
 

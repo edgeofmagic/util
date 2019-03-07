@@ -47,11 +47,12 @@ class default_stream_context
 public:
 	using context_type = bstream::context<>;
 
-	static bstream::context_options options()
+	static bstream::context_options
+	options()
 	{
 		return bstream::context_options{}.error_categories({&armi::error_category()});
 	}
-	
+
 	BSTRM_CONTEXT_ACCESSOR();
 };
 

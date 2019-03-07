@@ -25,17 +25,17 @@
 #ifndef LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H
 #define LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H
 
-#include <logicmill/armi/member_func_stub.h>
 #include <logicmill/armi/interface_stub_base.h>
+#include <logicmill/armi/member_func_stub.h>
+#include <logicmill/traits.h>
 #include <memory>
 #include <vector>
-#include <logicmill/traits.h>
 
 namespace logicmill
 {
 namespace armi
 {
-	
+
 template<std::size_t... Ns>
 struct indices
 {

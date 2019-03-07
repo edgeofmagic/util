@@ -25,6 +25,7 @@
 #ifndef LOGICMILL_ARMI_CLIENT_CONTEXT_H
 #define LOGICMILL_ARMI_CLIENT_CONTEXT_H
 
+#include <logicmill/armi/client_context_base.h>
 #include <logicmill/traits.h>
 
 namespace logicmill
@@ -48,7 +49,6 @@ public:
 		client_channel(client_context& context, channel_id_type id) : m_context{&context}, m_id{id} {}
 
 	public:
-
 		client_channel() : m_context{nullptr}, m_id{0} {}
 
 		client_channel(client_channel const& other) : m_context{other.m_context}, m_id{other.m_id} {}

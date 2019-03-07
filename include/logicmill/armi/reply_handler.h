@@ -84,7 +84,8 @@ public:
 			{
 				try
 				{
-					m_promise.resolve(is.read_as<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>());
+					m_promise.resolve(
+							is.read_as<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>());
 				}
 				catch (std::system_error const& e)
 				{
@@ -106,7 +107,6 @@ public:
 
 private:
 	util::promise<PromiseType> m_promise;
-
 };
 
 template<class PromiseType>
@@ -157,7 +157,7 @@ public:
 			{
 				m_promise.resolve();
 			}
-		}		
+		}
 	}
 
 	virtual void
@@ -168,7 +168,6 @@ public:
 
 private:
 	util::promise<void> m_promise;
-
 };
 
 }    // namespace armi

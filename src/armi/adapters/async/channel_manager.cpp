@@ -22,37 +22,25 @@
  * THE SOFTWARE.
  */
 
-#include <logicmill/armi/error.h>
-#include <logicmill/armi/interface_stub_base.h>
-#include <logicmill/armi/member_func_stub_base.h>
+#include <logicmill/armi/adapters/async/channel_manager.h>
 
 using namespace logicmill;
 using namespace armi;
 
-// void
-// interface_stub_base::process(request_id_type req_id, channel_id_type channel_id, bstream::ibstream& is)
-// {
-// 	auto member_func_id = is.read_as<std::size_t>();
-// 	if (member_func_id >= member_func_count())
-// 	{
-// 		request_failed(req_id, channel_id, context().stream_context(), make_error_code(armi::errc::invalid_member_func_id));
-// 	}
-// 	else
-// 	{
-// 		get_member_func_stub(member_func_id).dispatch(req_id, channel_id, is);
-// 	}
-// }
+async::channel::ptr
+async::channel_manager::get_channel(armi::channel_id_type channel_id)
+{
+	async::channel::ptr chan;
+	auto                it = m_channel_map.find(channel_id);
+	if (it != m_channel_map.end())
+		chan = it->second;
+	return chan;
+}
 
-// void
-// interface_stub_base::request_failed(
-// 		request_id_type                         request_id,
-// 		channel_id_type channel_id,
-// 		std::error_code                       err)
-// {
-// 	bstream::ombstream os{m_context.stream_context()};
-// 	os << request_id;
-// 	os << reply_kind::fail;
-// 	os.write_array_header(1);
-// 	os << err;
-// 	m_context.get_transport().send_reply(channel_id, os.release_mutable_buffer());
-// }
+armi::channel_id_type
+async::channel_manager::new_channel(async::channel::ptr const& chan)
+{
+	auto id = get_next_channel_id();
+	m_channel_map.emplace(id, chan);
+	return id;
+}

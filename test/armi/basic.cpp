@@ -1,6 +1,7 @@
 #include <doctest.h>
 #include <logicmill/armi/armi.h>
-#include <logicmill/armi/async_adapter.h>
+#include <logicmill/armi/adapters/async/client_adapter.h>
+#include <logicmill/armi/adapters/async/server_adapter.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
 #include <logicmill/bstream/stdlib/pair.h>
@@ -518,8 +519,8 @@ public:
 
 	async::loop::ptr                                        m_loop;
 	std::shared_ptr<target>                                 m_target;
-	async::client_adaptor<test_remote::client_context_type> m_client;
-	async::server_adaptor<test_remote::server_context_type> m_server;
+	async::client_adapter<test_remote::client_context_type> m_client;
+	async::server_adapter<test_remote::server_context_type> m_server;
 
 	bool m_client_connect_handler_visited{false};
 	bool m_server_request_handler_visited{false};
@@ -554,8 +555,8 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 	using bar_ref       = rfoo::bar_remote::client_context_type::client_channel;
-	async::client_adaptor<rfoo::bar_remote::client_context_type> client{lp};
-	async::server_adaptor<rfoo::bar_remote::server_context_type> server{lp};
+	async::client_adapter<rfoo::bar_remote::client_context_type> client{lp};
+	async::server_adapter<rfoo::bar_remote::server_context_type> server{lp};
 	auto                                                         impl = std::make_shared<foo::bar>();
 
 	server
@@ -628,8 +629,8 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply without error }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 	using bfail_ref     = rfoo::bfail_remote::client_context_type::client_channel;
-	async::client_adaptor<rfoo::bfail_remote::client_context_type> client{lp};
-	async::server_adaptor<rfoo::bfail_remote::server_context_type> server{lp};
+	async::client_adapter<rfoo::bfail_remote::client_context_type> client{lp};
+	async::server_adapter<rfoo::bfail_remote::server_context_type> server{lp};
 	auto                                                           impl = std::make_shared<foo::bfail>();
 
 	server
@@ -705,8 +706,8 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply with error }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 	using bfail_ref     = rfoo::bfail_remote::client_context_type::client_channel;
-	async::client_adaptor<rfoo::bfail_remote::client_context_type> client{lp};
-	async::server_adaptor<rfoo::bfail_remote::server_context_type> server{lp};
+	async::client_adapter<rfoo::bfail_remote::client_context_type> client{lp};
+	async::server_adapter<rfoo::bfail_remote::server_context_type> server{lp};
 	auto                                                           impl = std::make_shared<foo::bfail>();
 
 	server

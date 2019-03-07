@@ -26,10 +26,10 @@
 #define LOGICMILL_ARMI_INTERFACE_STUB_BASE_H
 
 #include <cstdint>
+#include <logicmill/armi/server_context_base.h>
 #include <logicmill/armi/transport.h>
 #include <logicmill/bstream/ibstream.h>
 #include <logicmill/bstream/ombstream.h>
-#include <logicmill/armi/server_context_base.h>
 
 namespace logicmill
 {

@@ -29,10 +29,10 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <logicmill/armi/types.h>
 #include <logicmill/bstream/context.h>
 #include <logicmill/util/buffer.h>
 #include <system_error>
-#include <logicmill/armi/types.h>
 
 namespace logicmill
 {
@@ -45,10 +45,12 @@ class client
 {
 public:
 	virtual bool
-	is_valid_channel(channel_id_type channel_id) = 0;
+	is_valid_channel(channel_id_type channel_id)
+			= 0;
 
 	virtual void
-	close(channel_id_type channel_id) = 0;
+	close(channel_id_type channel_id)
+			= 0;
 
 	virtual void
 	send_request(
@@ -63,13 +65,16 @@ class server
 {
 public:
 	virtual bool
-	is_valid_channel(channel_id_type channel) = 0;
+	is_valid_channel(channel_id_type channel)
+			= 0;
 
 	virtual void
-	close(channel_id_type channel_id) = 0;
+	close(channel_id_type channel_id)
+			= 0;
 
 	virtual void
-	send_reply(channel_id_type channel, util::mutable_buffer&& req) = 0;
+	send_reply(channel_id_type channel, util::mutable_buffer&& req)
+			= 0;
 };
 
 }    // namespace transport

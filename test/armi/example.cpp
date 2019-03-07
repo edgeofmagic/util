@@ -68,13 +68,12 @@ TEST_CASE("logicmill::armi [ smoke ] { example 1 }")
 	.then([=] (counter_ref cp)
 	{
 		cp->increment()
-				.then([=](int result) mutable {
+				.then([=](int result) {
 					std::cout << result << std::endl;
 					cp->decrement().then([=](int result)
 					{
 						std::cout << result << std::endl;
-						std::error_code err;
-						lp->stop(err);
+						lp->stop();
 					});
 				});
 	}, [=](std::error_code err)
@@ -82,7 +81,7 @@ TEST_CASE("logicmill::armi [ smoke ] { example 1 }")
 		std::cout << err.message() << std::endl;
 	});
 
-	lp->run(err);
+	lp->run();
 }
 
 TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
@@ -111,13 +110,12 @@ TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
 				.then([=](int n) 
 				{
 					std::cout << n << std::endl;
-					return cp->decrement();
+					return cp->increment();
 				})
 				.then([=](int n)
 				{
 					std::cout << n << std::endl;
-					std::error_code err;
-					lp->stop(err);
+					lp->stop();
 				});
 
 	}, [=](std::error_code err)
@@ -125,5 +123,5 @@ TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
 		std::cout << err.message() << std::endl;
 	});
 
-	lp->run(err);
+	lp->run();
 }

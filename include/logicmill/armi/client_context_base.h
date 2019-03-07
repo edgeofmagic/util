@@ -29,23 +29,19 @@
 #include <logicmill/armi/reply_handler_base.h>
 #include <logicmill/armi/transport.h>
 #include <logicmill/armi/types.h>
-// #include <logicmill/async/channel.h>
-// #include <logicmill/async/loop.h>
 #include <logicmill/bstream/imbstream.h>
 #include <logicmill/bstream/ombstream.h>
 #include <memory>
-#include <unordered_map>
 #include <set>
+#include <unordered_map>
 
 namespace logicmill
 {
 namespace armi
 {
 
-// class interface_proxy;
-
-template<class Reply, class Fail = void, class Enable = void>
-class method_proxy_base;
+template<class U>
+class member_func_proxy;
 
 class client_context_base
 {
@@ -53,13 +49,11 @@ public:
 	using close_handler           = std::function<void()>;
 	using transport_error_handler = std::function<void(std::error_code err)>;
 
-	using reply_handler_map_type = std::unordered_map<request_id_type, std::pair<channel_id_type, reply_handler_base::ptr>>;
+	using reply_handler_map_type
+			= std::unordered_map<request_id_type, std::pair<channel_id_type, reply_handler_base::ptr>>;
 	using channel_request_map_type = std::unordered_map<channel_id_type, std::set<request_id_type>>;
-	// using request_id_type         = std::uint64_t;
 
 	client_context_base(transport::client& tclient, bstream::context_base::ptr const& stream_context);
-
-	// TODO: fix close chain
 
 	virtual ~client_context_base()
 	{
@@ -69,14 +63,8 @@ public:
 	void
 	cancel_request(request_id_type request_id, std::error_code err);
 
-	// void
-	// cancel_request(request_id_type request_id);    // no notification
-
 	void
 	cancel_all_requests(std::error_code ec);
-
-	// void
-	// cancel_all_requests();    // no notification;
 
 	void
 	cancel_channel_requests(channel_id_type channel_id, std::error_code err);
@@ -88,26 +76,9 @@ public:
 		invoke_handler(is);
 	}
 
-	// void
-	// on_transport_error(transport_error_handler handler)
-	// {
-	// 	m_on_transport_error = std::move(handler);
-	// }
-
-	// void
-	// transport_error(std::error_code err)
-	// {
-	// 	if (m_on_transport_error)
-	// 	{
-	// 		m_on_transport_error(err);
-	// 	}
-	// }
-
 protected:
-	// friend class logicmill::armi::interface_proxy;
-
-	template<class T, class U, class V>
-	friend class logicmill::armi::method_proxy_base;
+	template<class U>
+	friend class logicmill::armi::member_func_proxy;
 
 	bstream::context_base::ptr const&
 	stream_context() const
@@ -119,7 +90,7 @@ protected:
 	add_handler(request_id_type request_id, reply_handler_base::ptr&& handler)
 	{
 		auto channel_id = get_transient_channel_id();
-		auto it = m_channel_request_map.find(channel_id);
+		auto it         = m_channel_request_map.find(channel_id);
 		if (it == m_channel_request_map.end())
 		{
 			m_channel_request_map.emplace(channel_id, std::set<request_id_type>{request_id});
@@ -128,7 +99,7 @@ protected:
 		{
 			it->second.insert(request_id);
 		}
-		
+
 		auto result = m_reply_handler_map.emplace(request_id, std::make_pair(channel_id, std::move(handler)));
 
 		assert(result.second);
@@ -141,11 +112,7 @@ protected:
 	}
 
 	void
-	send_request(
-			channel_id_type channel_id,
-			request_id_type            request_id,
-			util::mutable_buffer&&        req,
-			millisecs                  timeout);
+	send_request(channel_id_type channel_id, request_id_type request_id, util::mutable_buffer&& req, millisecs timeout);
 
 	void
 	invoke_handler(bstream::ibstream& is);
@@ -201,7 +168,7 @@ protected:
 	}
 
 	void
-	set_transient_channel_id(channel_id_type id)
+	set_transient_channel_id(channel_id_type id) const
 	{
 		m_transient_channel_id = id;
 	}
@@ -221,7 +188,7 @@ protected:
 	}
 
 	template<class V>
-	void 
+	void
 	visit_handler(request_id_type request_id, V visitor)
 	{
 		auto it = m_reply_handler_map.find(request_id);
@@ -249,7 +216,7 @@ protected:
 	channel_request_map_type   m_channel_request_map;
 	millisecs                  m_default_timeout;
 	millisecs                  m_transient_timeout;
-	channel_id_type            m_transient_channel_id;
+	mutable channel_id_type    m_transient_channel_id;
 	transport::client&         m_transport;
 };
 

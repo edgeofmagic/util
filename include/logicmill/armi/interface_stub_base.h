@@ -26,7 +26,6 @@
 #define LOGICMILL_ARMI_INTERFACE_STUB_BASE_H
 
 #include <cstdint>
-// #include <logicmill/async/channel.h>
 #include <logicmill/armi/transport.h>
 #include <logicmill/bstream/ibstream.h>
 #include <logicmill/bstream/ombstream.h>
@@ -39,7 +38,7 @@ namespace armi
 class server_context_base;
 
 template<class T>
-class method_stub_base;
+class member_func_stub_base;
 
 template<class Target>
 class interface_stub_base
@@ -59,15 +58,12 @@ protected:
 	}
 
 	virtual std::size_t
-	method_count() const noexcept
+	member_func_count() const noexcept
 			= 0;
 
-	virtual method_stub_base<Target>&
-	get_method_stub(std::size_t index)
+	virtual member_func_stub_base<Target>&
+	get_member_func_stub(std::size_t index)
 			= 0;
-
-	// void
-	// process(request_id_type request_id, channel_id_type channel_id, bstream::ibstream& is);
 
 	void
 	request_failed(request_id_type request_id, channel_id_type channel_id, std::error_code err)

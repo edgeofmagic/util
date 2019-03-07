@@ -25,23 +25,12 @@
 #ifndef LOGICMILL_ARMI_ASYNC_ADAPTER_H
 #define LOGICMILL_ARMI_ASYNC_ADAPTER_H
 
-// #include <chrono>
-// #include <cstdint>
-// #include <deque>
-// #include <functional>
-// #include <logicmill/armi/client_context_base.h>
-// #include <logicmill/armi/server_context_base.h>
-// #include <logicmill/armi/error.h>
-// #include <logicmill/bstream/context.h>
-// #include <logicmill/util/buffer.h>
-// #include <system_error>
-
+#include <functional>
+#include <logicmill/armi/client_context.h>
 #include <logicmill/armi/transport.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
-#include <logicmill/armi/client_context.h>
-
-#include <functional>
+#include <logicmill/util/promise.h>
 
 namespace logicmill
 {
@@ -53,23 +42,71 @@ class client_adaptor : public armi::transport::client
 {
 public:
 	using client_context_type    = T;
-	using channel_error_handler = std::function<void(armi::channel_id_type channel_id, std::error_code err)>;
+	using channel_error_handler  = std::function<void(armi::channel_id_type channel_id, std::error_code err)>;
 	using client_connect_handler = std::function<void(typename client_context_type::client_channel, std::error_code)>;
 	using channel_map_type       = std::unordered_map<armi::channel_id_type, async::channel::ptr>;
 
 	/* public interface for client_adapter */
 
-	client_adaptor(loop::ptr lp) : m_loop{lp}, m_context{*this}, m_next_channel_id{1}, m_is_closing{false} 
+	client_adaptor(loop::ptr lp) : m_loop{lp}, m_context{*this}, m_next_channel_id{1}, m_is_closing{false}
 	{
-		m_on_channel_read_error = [=](armi::channel_id_type channel_id, std::error_code err)
-		{
-			close(channel_id, err);
-		};
+		m_on_channel_read_error
+				= [=](armi::channel_id_type channel_id, std::error_code err) { close(channel_id, err); };
 	}
 
 	~client_adaptor()
 	{
 		close();
+	}
+
+	util::promise<typename client_context_type::client_channel>
+	connect(async::options const& opts)
+	{
+		async::options options_override{opts};
+		options_override.framing(true);
+		util::promise<typename client_context_type::client_channel> p;
+		std::error_code err;
+		m_loop->connect_channel(
+				options_override, err, [=](async::channel::ptr chan, std::error_code err) mutable {
+					if (err)
+					{
+						p.reject(err);
+					}
+					else
+					{
+						auto id = get_next_channel_id();
+						m_channel_map.emplace(id, chan);
+						chan->start_read(
+								err,
+								[=](async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err) {
+									if (err)
+									{
+										if (m_on_channel_read_error)
+										{
+											m_on_channel_read_error(id, err);
+										}
+										else
+										{
+											close(id, err);
+										}
+									}
+									else
+									{
+										m_context.handle_reply(std::move(buf));
+									}
+								});
+						if (err)
+						{
+							p.reject(err);
+						}
+						else
+						{
+							p.resolve(m_context.create_channel(id));
+						}
+					}
+				});
+		if (err) p.reject(err);
+		return p;	
 	}
 
 	void
@@ -88,24 +125,25 @@ public:
 					{
 						auto id = get_next_channel_id();
 						m_channel_map.emplace(id, chan);
-						chan->start_read(err, [=] (async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err)
-						{
-							if (err)
-							{
-								if (m_on_channel_read_error)
-								{
-									m_on_channel_read_error(id, err);
-								}
-								else
-								{
-									close(id, err);
-								}
-							}
-							else
-							{
-								m_context.handle_reply(std::move(buf));
-							}
-						});
+						chan->start_read(
+								err,
+								[=](async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err) {
+									if (err)
+									{
+										if (m_on_channel_read_error)
+										{
+											m_on_channel_read_error(id, err);
+										}
+										else
+										{
+											close(id, err);
+										}
+									}
+									else
+									{
+										m_context.handle_reply(std::move(buf));
+									}
+								});
 						handler(m_context.create_channel(id), std::error_code{});
 					}
 				});
@@ -116,10 +154,7 @@ public:
 	{
 		if (is_valid_channel(channel_id))
 		{
-			m_loop->dispatch([=]()
-			{
-				really_close(channel_id, err);
-			});
+			m_loop->dispatch([=]() { really_close(channel_id, err); });
 		}
 	}
 
@@ -240,16 +275,12 @@ private:
 					{
 						chan->close();
 					}
-					m_loop->dispatch([=]()
-					{
-						m_context.cancel_channel_requests(channel_id, err);
-					});
+					m_loop->dispatch([=]() { m_context.cancel_channel_requests(channel_id, err); });
 				}
 				else
 				{
 					m_context.cancel_channel_requests(channel_id, make_error_code(armi::errc::no_event_loop));
 				}
-				
 			}
 		}
 	}
@@ -260,7 +291,7 @@ private:
 		if (m_loop->is_alive())
 		{
 			auto it = m_channel_map.begin();
-			while(it != m_channel_map.end())
+			while (it != m_channel_map.end())
 			{
 				if (!it->second->is_closing())
 				{
@@ -268,17 +299,13 @@ private:
 				}
 				it = m_channel_map.erase(it);
 			}
-			m_loop->dispatch([=]()
-			{
-				m_context.cancel_all_requests(err);
-			});
+			m_loop->dispatch([=]() { m_context.cancel_all_requests(err); });
 		}
 		else
 		{
 			m_channel_map.clear();
 			m_context.cancel_all_requests(make_error_code(armi::errc::no_event_loop));
 		}
-		
 	}
 
 	armi::channel_id_type
@@ -292,7 +319,7 @@ private:
 	channel_map_type      m_channel_map;
 	armi::channel_id_type m_next_channel_id;
 	channel_error_handler m_on_channel_read_error;
-	bool m_is_closing;
+	bool                  m_is_closing;
 };
 
 template<class T>
@@ -326,28 +353,13 @@ private:
 	connection_handler    m_on_channel_connect;
 
 public:
-	server_adaptor(async::loop::ptr lp)
-		: m_context{*this},
-		  m_loop{lp},
-		  m_next_channel_id{1},
-		  m_is_server_closing{false}
-	{
-		m_on_channel_error = [=](armi::channel_id_type channel_id, std::error_code err)
-		{
-			close(channel_id);
-		};
-
-		m_on_accept_error = [=](std::error_code err)
-		{
-			close();
-		};
-	}
+	server_adaptor(async::loop::ptr lp) : m_context{*this}, m_loop{lp}, m_next_channel_id{1}, m_is_server_closing{false}
+	{}
 
 	~server_adaptor()
 	{
 		close();
 	}
-
 
 	server_adaptor&
 	on_request(request_handler handler)
@@ -403,10 +415,7 @@ public:
 				[=](async::acceptor::ptr const& sp, async::channel::ptr const& chan, std::error_code err) {
 					if (err)
 					{
-						if (m_on_accept_error)
-						{
-							m_on_accept_error(err);
-						}
+						accept_error(err);
 					}
 					else
 					{
@@ -421,16 +430,20 @@ public:
 								[=](async::channel::ptr const& chan, util::const_buffer&& buf, std::error_code err) {
 									if (err)
 									{
-										if (m_on_channel_error)
-										{
-											m_on_channel_error(channel_id, err);
-										}
+										channel_error(channel_id, err);
 									}
 									else
 									{
-										// TODO: check to see if channel_id is still in channel_map first
-										bstream::imbstream is{std::move(buf), m_context.stream_context()};
-										m_context.handle_request(channel_id, is, m_on_request(channel_id));
+										if (!m_on_request)
+										{
+											accept_error(make_error_code(armi::errc::no_target_provided));
+										}
+										else
+										{
+											// TODO: check to see if channel_id is still in channel_map first
+											bstream::imbstream is{std::move(buf), m_context.stream_context()};
+											m_context.handle_request(channel_id, is, m_on_request(channel_id));
+										}
 									}
 								});
 					}
@@ -477,23 +490,58 @@ public:
 		auto it = m_channel_map.find(channel_id);
 		if (it == m_channel_map.end())
 		{
-			if (m_on_channel_error)
-			{
-				m_on_channel_error(channel_id, make_error_code(armi::errc::invalid_channel_id));
-			}
+			channel_error(channel_id, make_error_code(armi::errc::invalid_channel_id));
 		}
 		else
 		{
 			std::error_code err;
 			it->second->write(std::move(req), err);
-			if (err && m_on_channel_error)
+			if (err)
 			{
-				m_on_channel_error(channel_id, err);
+				channel_error(channel_id, err);
 			}
 		}
 	}
 
 private:
+	void
+	accept_error(std::error_code err)
+	{
+		if (m_on_accept_error)
+		{
+			m_on_accept_error(err);
+		}
+		else
+		{
+			default_accept_error_handler(err);
+		}
+	}
+
+	void
+	channel_error(armi::channel_id_type channel_id, std::error_code err)
+	{
+		if (m_on_channel_error)
+		{
+			m_on_channel_error(channel_id, err);
+		}
+		else
+		{
+			default_channel_error_handler(channel_id, err);
+		}
+	}
+
+	void
+	default_channel_error_handler(armi::channel_id_type channel_id, std::error_code err)
+	{
+		close(channel_id);
+	}
+
+	void
+	default_accept_error_handler(std::error_code err)
+	{
+		close();
+	}
+
 	armi::channel_id_type
 	get_next_channel_id()
 	{
@@ -503,12 +551,12 @@ private:
 	void
 	cleanup()
 	{
-		m_on_server_close = nullptr;
-		m_on_request  = nullptr;
-		m_on_channel_close  = nullptr;
-		m_on_channel_error  = nullptr;
-		m_on_accept_error  = nullptr;
-		m_on_channel_connect  = nullptr;
+		m_on_server_close    = nullptr;
+		m_on_request         = nullptr;
+		m_on_channel_close   = nullptr;
+		m_on_channel_error   = nullptr;
+		m_on_accept_error    = nullptr;
+		m_on_channel_connect = nullptr;
 	}
 
 	channel_map_iterator

@@ -64,20 +64,93 @@ public:
 
 	virtual ~loop() {}
 
-	virtual int
-	run(std::error_code& err) =0;
+	int
+	run(std::error_code& err)
+	{
+		return really_run(err);
+	}
 
-	virtual int
-	run_once(std::error_code& err) =0;
+	int
+	run()
+	{
+		std::error_code err;
+		auto result = really_run(err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+		return result;
+	}
 
-	virtual int
-	run_nowait(std::error_code& err) =0;
+	int
+	run_once(std::error_code& err)
+	{
+		return really_run_once(err);
+	}
 
-	virtual void
-	stop(std::error_code& err) = 0;
+	int
+	run_once()
+	{
+		std::error_code err;
+		auto result = really_run_once(err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+		return result;
+	}
 
-	virtual void
-	close(std::error_code& err) = 0;
+	int
+	run_nowait(std::error_code& err)
+	{
+		return really_run_nowait(err);
+	}
+
+	int
+	run_nowait()
+	{
+		std::error_code err;
+		auto result = really_run_nowait(err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+		return result;
+	}
+
+	void
+	stop(std::error_code& err)
+	{
+		really_stop(err);
+	}
+
+	void
+	stop()
+	{
+		std::error_code err;
+		really_stop(err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
+
+	void
+	close(std::error_code& err)
+	{
+		really_close(err);
+	}
+
+	void
+	close()
+	{
+		std::error_code err;
+		really_close(err);
+		if (err)
+		{
+			throw std::system_error{err};
+		}
+	}
 
 	template<class Handler>
 	typename std::enable_if_t<
@@ -294,6 +367,22 @@ public:
 	is_alive() const = 0;
 
 protected:
+
+	virtual int
+	really_run(std::error_code& err) =0;
+
+	virtual int
+	really_run_once(std::error_code& err) =0;
+
+	virtual int
+	really_run_nowait(std::error_code& err) =0;
+
+	virtual void
+	really_stop(std::error_code& err) = 0;
+
+	virtual void
+	really_close(std::error_code& err) = 0;
+
 	virtual timer::ptr
 	really_create_timer(std::error_code& err, timer::handler const& handler) = 0;
 

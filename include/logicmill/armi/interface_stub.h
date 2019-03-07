@@ -32,13 +32,13 @@ namespace logicmill
 namespace armi
 {
 
-template<class Target> // Target is target class type
+template<class Target> 
 class interface_stub : public interface_stub_builder<Target>
 {
 public:
 	using impl_ptr = std::shared_ptr<Target>;
-	using interface_stub_builder<Target>::method_count;
-	using interface_stub_builder<Target>::get_method_stub;
+	using interface_stub_builder<Target>::member_func_count;
+	using interface_stub_builder<Target>::get_member_func_stub;
 	using interface_stub_base<Target>::request_failed;
 
 	template<class... Args>
@@ -50,14 +50,14 @@ public:
 	process(channel_id_type channel_id, bstream::ibstream& is, impl_ptr impl)
 	{
 		auto request_id  = is.read_as<request_id_type>();
-		auto method_id = is.read_as<std::size_t>();
-		if (method_id >= method_count())
+		auto member_func_id = is.read_as<std::size_t>();
+		if (member_func_id >= member_func_count())
 		{
-			request_failed(request_id, channel_id, make_error_code(armi::errc::invalid_method_id));
+			request_failed(request_id, channel_id, make_error_code(armi::errc::invalid_member_func_id));
 		}
 		else
 		{
-			get_method_stub(method_id).dispatch(request_id, channel_id, is, impl);
+			get_member_func_stub(member_func_id).dispatch(request_id, channel_id, is, impl);
 		}
 	}
 

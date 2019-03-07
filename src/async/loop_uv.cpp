@@ -193,7 +193,7 @@ exit:
 }
 
 int
-loop_uv::run(std::error_code& err)
+loop_uv::really_run(std::error_code& err)
 {
 	err.clear();
 	int result = 0;
@@ -213,7 +213,7 @@ exit:
 }
 
 int
-loop_uv::run_once(std::error_code& err)
+loop_uv::really_run_once(std::error_code& err)
 {
 	err.clear();
 	int result = 0;
@@ -233,7 +233,7 @@ exit:
 }
 
 int
-loop_uv::run_nowait(std::error_code& err)
+loop_uv::really_run_nowait(std::error_code& err)
 {
 	err.clear();
 	int result = 0;
@@ -253,7 +253,7 @@ exit:
 }
 
 void
-loop_uv::stop(std::error_code& err)
+loop_uv::really_stop(std::error_code& err)
 {
 	err.clear();
 	if (!m_uv_loop)
@@ -315,7 +315,7 @@ loop_uv::on_walk(uv_handle_t* handle, void*)
 }
 
 void
-loop_uv::close(std::error_code& err)    // probably should NOT be called from any handler
+loop_uv::really_close(std::error_code& err)    // probably should NOT be called from any handler
 {
 	err.clear();
 	int status = 0;

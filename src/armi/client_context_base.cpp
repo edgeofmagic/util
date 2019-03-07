@@ -53,58 +53,11 @@ client_context_base::invoke_handler(bstream::ibstream& is)
 	});
 }
 
-
-// void
-// client_context_base::invoke_handler(bstream::ibstream& is)
-// {
-// 	auto request_id = is.read_as<request_id_type>();
-// 	auto it      = m_reply_handler_map.find(request_id);
-// 	if (it != m_reply_handler_map.end())
-// 	{
-// 		auto channel_id = it->second.first;
-// 		it->second.second->handle_reply(is);
-// 		m_reply_handler_map.erase(it);
-
-// 	} // else discard silently, probably canceled
-// }
-
 void
 client_context_base::cancel_request(request_id_type request_id, std::error_code err)
 {
 	visit_handler(request_id, [=](reply_handler_map_type::iterator it) { it->second.second->cancel(err); });
 }
-
-// void
-// client_context_base::cancel_request(request_id_type request_id, std::error_code err)
-// {
-// 	auto it = m_reply_handler_map.find(request_id);
-// 	if (it != m_reply_handler_map.end())
-// 	{
-// 		auto channel_id = it->second.first;
-// 		it->second.second->cancel(err);
-// 		m_reply_handler_map.erase(it);
-
-// 		auto cit = m_channel_request_map.find(channel_id);
-// 		if (cit != m_channel_request_map.end())
-// 		{
-// 			cit->second.erase(request_id);
-// 			if (cit->second.empty())
-// 			{
-// 				m_channel_request_map.erase(cit);
-// 			}
-// 		}
-// 	}
-// }
-
-// void
-// client_context_base::cancel_request(request_id_type request_id)    // no notification
-// {
-// 	auto it = m_reply_handler_map.find(request_id);
-// 	if (it != m_reply_handler_map.end())
-// 	{
-// 		m_reply_handler_map.erase(it);
-// 	}
-// }
 
 void
 client_context_base::cancel_all_requests(std::error_code err)
@@ -117,15 +70,6 @@ client_context_base::cancel_all_requests(std::error_code err)
 	m_reply_handler_map.clear();
 	m_channel_request_map.clear();
 }
-
-// void
-// client_context_base::cancel_all_requests()
-// {
-// 	for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); it = m_reply_handler_map.erase(it))
-// 	{
-// 		it->second->cancel(make_error_code(std::errc::operation_canceled));
-// 	}
-// }
 
 void
 client_context_base::cancel_channel_requests(channel_id_type channel_id, std::error_code err)

@@ -159,6 +159,57 @@ struct apply_args<Template<U>, Args...>
 	using type = _arg_list<Template<Args>...>;
 };
 
+template<class T>
+struct remove_member_func_cv_noexcept;
+
+template<class Target, class Return, class... Args>
+struct remove_member_func_cv_noexcept<Return (Target::*)(Args...)>
+{
+    using type = Return (Target::*)(Args...);
+};
+
+template<class Target, class Return, class... Args>
+struct remove_member_func_cv_noexcept<Return (Target::*)(Args...) const>
+{
+    using type = Return (Target::*)(Args...);
+};
+
+template<class Target, class Return, class... Args>
+struct remove_member_func_cv_noexcept<Return (Target::*)(Args...) volatile>
+{
+    using type = Return (Target::*)(Args...);
+};
+
+template<class Target, class Return, class... Args>
+struct remove_member_func_cv_noexcept<Return (Target::*)(Args...) const volatile>
+{
+    using type = Return (Target::*)(Args...);
+};
+
+template<class Target, class Return, class... Args>
+struct remove_member_func_cv_noexcept<Return (Target::*)(Args...) noexcept>
+{
+    using type = Return (Target::*)(Args...);
+};
+
+template<class Target, class Return, class... Args>
+struct remove_member_func_cv_noexcept<Return (Target::*)(Args...) const noexcept>
+{
+    using type = Return (Target::*)(Args...);
+};
+
+template<class Target, class Return, class... Args>
+struct remove_member_func_cv_noexcept<Return (Target::*)(Args...) volatile noexcept>
+{
+    using type = Return (Target::*)(Args...);
+};
+
+template<class Target, class Return, class... Args>
+struct remove_member_func_cv_noexcept<Return (Target::*)(Args...) const volatile noexcept>
+{
+    using type = Return (Target::*)(Args...);
+};
+
 }    // namespace traits
 }    // namespace logicmill
 

@@ -23,7 +23,6 @@
  */
 
 #include <logicmill/armi/error.h>
-#include <logicmill/armi/fail_proxy.h>
 #include <logicmill/armi/server_context_base.h>
 #include <logicmill/bstream/imbstream.h>
 

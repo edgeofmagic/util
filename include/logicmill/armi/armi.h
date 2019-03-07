@@ -27,9 +27,8 @@
 
 #include <logicmill/armi/interface_stub.h>
 #include <logicmill/armi/macros.h>
-#include <logicmill/armi/method_proxy.h>
+#include <logicmill/armi/member_func_proxy.h>
 #include <logicmill/armi/client_context.h>
 #include <logicmill/armi/server_context.h>
-// #include <logicmill/armi/remote_context.h>
 
 #endif    // LOGICMILL_ARMI_ARMI_H

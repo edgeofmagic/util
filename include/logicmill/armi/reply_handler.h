@@ -26,27 +26,22 @@
 #define LOGICMILL_ARMI_REPLY_HANDLER_H
 
 #include <logicmill/armi/reply_handler_base.h>
-#include <logicmill/armi/reply_stub.h>
+#include <logicmill/util/promise.h>
 
 namespace logicmill
 {
 namespace armi
 {
 
-template<class Reply, class Fail = void, class Enable = void>
+template<class PromiseType, class Enable = void>
 class reply_handler;
 
-#if 1
-
-template<class PromiseType, class Fail>
-class reply_handler<util::promise<PromiseType>, Fail, typename std::enable_if_t<std::is_void<Fail>::value
-&& !std::is_void<PromiseType>::value>>
+template<class PromiseType>
+class reply_handler<util::promise<PromiseType>, typename std::enable_if_t<!std::is_void<PromiseType>::value>>
 	: public reply_handler_base
 {
 public:
-	// reply_handler(util::promise<PromiseType> p) : m_reply_stub{reply_stub<util::promise<PromiseType>>(p)} {}
-
-	reply_handler(util::promise<PromiseType> p) : m_reply_stub{p} {}
+	reply_handler(util::promise<PromiseType> p) : m_promise{p} {}
 
 	virtual void
 	handle_reply(bstream::ibstream& is) override
@@ -66,34 +61,60 @@ public:
 		}
 		else
 		{
-			m_reply_stub(is);
+			resolve(is);
+		}
+	}
+
+	void
+	resolve(bstream::ibstream& is)
+	{
+		std::error_code err;
+		auto            item_count = is.read_array_header(err);
+		if (err)
+		{
+			cancel(err);
+		}
+		else
+		{
+			if (!expected_count<1>(item_count))
+			{
+				cancel(make_error_code(armi::errc::invalid_argument_count));
+			}
+			else
+			{
+				try
+				{
+					m_promise.resolve(is.read_as<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>());
+				}
+				catch (std::system_error const& e)
+				{
+					cancel(e.code());
+				}
+				catch (std::exception const& e)
+				{
+					cancel(make_error_code(armi::errc::exception_thrown_by_reply_handler));
+				}
+			}
 		}
 	}
 
 	virtual void
 	cancel(std::error_code err) override
 	{
-		m_reply_stub.cancel(err);
+		m_promise.reject(err);
 	}
 
 private:
-	reply_stub<util::promise<PromiseType>> m_reply_stub;
+	util::promise<PromiseType> m_promise;
 
 };
 
-#endif
-
-#if 1
-
-template<class PromiseType, class Fail>
-class reply_handler<util::promise<PromiseType>, Fail, typename std::enable_if_t<std::is_void<Fail>::value
-&& std::is_void<PromiseType>::value>>
+template<class PromiseType>
+class reply_handler<util::promise<PromiseType>, typename std::enable_if_t<std::is_void<PromiseType>::value>>
 	: public reply_handler_base
 {
 public:
-	// reply_handler(util::promise<PromiseType> p) : m_reply_stub{reply_stub<util::promise<PromiseType>>(p)} {}
-
-	reply_handler(util::promise<void> p) : m_reply_stub{p} {}
+	reply_handler(util::promise<void> p) : m_promise{p} {}
 
 	virtual void
 	handle_reply(bstream::ibstream& is) override
@@ -113,104 +134,41 @@ public:
 		}
 		else
 		{
-			m_reply_stub(is);
+			resolve(is);
 		}
+	}
+
+	void
+	resolve(bstream::ibstream& is)
+	{
+		std::error_code err;
+		auto            item_count = is.read_array_header(err);
+		if (err)
+		{
+			cancel(err);
+		}
+		else
+		{
+			if (!expected_count<0>(item_count))
+			{
+				cancel(make_error_code(armi::errc::invalid_argument_count));
+			}
+			else
+			{
+				m_promise.resolve();
+			}
+		}		
 	}
 
 	virtual void
 	cancel(std::error_code err) override
 	{
-		m_reply_stub.cancel(err);
+		m_promise.reject(err);
 	}
 
 private:
-	reply_stub<util::promise<void>> m_reply_stub;
+	util::promise<void> m_promise;
 
-};
-
-#endif
-
-
-template<class Reply, class Fail>
-class reply_handler<Reply, Fail, typename std::enable_if_t<std::is_void<Fail>::value && !util::is_promise<Reply>::value>> : public reply_handler_base
-{
-public:
-	reply_handler(Reply reply) : m_reply_stub{reply_stub<Reply>(reply)} {}
-
-	virtual void
-	handle_reply(bstream::ibstream& is) override
-	{
-		reply_kind rk = is.read_as<reply_kind>();
-		if (rk == reply_kind::fail)
-		{
-			auto item_count = is.read_array_header();
-			if (!expected_count<1>(item_count))
-			{
-				cancel(make_error_code(armi::errc::invalid_argument_count));
-			}
-			else
-			{
-				cancel(is.read_as<std::error_code>());
-			}
-		}
-		else
-		{
-			m_reply_stub(is);
-		}
-	}
-
-	virtual void
-	cancel(std::error_code ec) override
-	{
-		m_reply_stub.cancel(ec);
-	}
-
-private:
-	reply_stub<Reply> m_reply_stub;
-};
-
-template<class Reply, class Fail>
-class reply_handler<Reply, Fail, typename std::enable_if_t<!std::is_void<Fail>::value && !util::is_promise<Reply>::value>> : public reply_handler_base
-{
-public:
-	reply_handler(Reply reply, Fail fail) : m_reply{reply_stub<Reply>(reply)}, m_fail{fail} {}
-
-	virtual void
-	handle_reply(bstream::ibstream& is) override
-	{
-		reply_kind rk = is.read_as<reply_kind>();
-		if (rk == reply_kind::fail)
-		{
-			m_fail(is);
-		}
-		else
-		{
-			// note: this reply_stub (m_reply) can't cancel itself or return an error,
-			// so failure (e.g., invalid argument count) will throw an exception
-			try
-			{
-				m_reply(is);
-			}
-			catch (std::system_error const& e)
-			{
-				cancel(e.code());
-			}
-			catch (std::exception const& e)
-			{
-				cancel(make_error_code(armi::errc::exception_thrown_by_reply_handler));
-			}
-		}
-	}
-
-	virtual void
-	cancel(std::error_code ec) override
-	{
-		m_fail.cancel(ec);
-	}
-
-private:
-	reply_stub<Reply> m_reply;
-	fail_stub         m_fail;
 };
 
 }    // namespace armi

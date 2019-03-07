@@ -29,9 +29,6 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
-// #include <logicmill/armi/client_context_base.h>
-// #include <logicmill/armi/error.h>
-// #include <logicmill/armi/server_context_base.h>
 #include <logicmill/bstream/context.h>
 #include <logicmill/util/buffer.h>
 #include <system_error>
@@ -43,10 +40,6 @@ namespace armi
 {
 namespace transport
 {
-
-// using channel_id_type = std::uint64_t;
-// using request_id_type = std::uint64_t;
-// using close_handler = std::function<void()>;
 
 class client
 {

@@ -131,22 +131,22 @@ private:
 	really_create_timer_void(std::error_code& err, timer::void_handler&& handler) override;
 
 	virtual int
-	run(std::error_code& err) override;
+	really_run(std::error_code& err) override;
 
 	virtual int
-	run_once(std::error_code& err) override;
+	really_run_once(std::error_code& err) override;
 
 	virtual int
-	run_nowait(std::error_code& err) override;
+	really_run_nowait(std::error_code& err) override;
 
 	virtual void
-	stop(std::error_code& err) override;
+	really_stop(std::error_code& err) override;
 
 	static void
 	on_walk(uv_handle_t* handle, void*);
 
 	virtual void
-	close(std::error_code& err) override;    // probably should NOT be called from any handler
+	really_close(std::error_code& err) override;    // probably should NOT be called from any handler
 
 	virtual acceptor::ptr
 	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler) override;

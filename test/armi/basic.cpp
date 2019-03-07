@@ -36,9 +36,6 @@ using namespace logicmill;
 
 namespace foo
 {
-// using increment_reply = std::function<void(std::error_code, int n_plus_1)>;
-// using decrement_reply = std::function<void(std::error_code, int n_minus_1)>;
-// using error_reply     = std::function<void(std::error_code)>;
 
 enum class errc
 {
@@ -143,8 +140,6 @@ public:
 	async::loop::ptr loop;
 	bool             decrement_called{false};
 };
-
-// using bonk_reply = std::function<void(double d)>;
 
 class bfail
 {
@@ -287,125 +282,13 @@ public:
 };
 
 
-class test_fixture;
 
-using err_safe_reply = std::function<void(std::error_code, std::string const&)>;
-using not_err_safe_reply = std::function<void(std::string const&)>;
+class test_fixture;
 
 class target
 {
 public:
 	target(test_fixture& fixture) : m_fixture{fixture} {}
-
-	void
-	form_1a_fail(armi::fail_reply fail)
-	{
-		fail(make_error_code(armi_test::errc::sun_exploded));
-	}
-
-	void
-	form_1a_pass(armi::fail_reply fail)
-	{
-		fail(std::error_code{});
-	}
-
-	void
-	form_1b_fail(err_safe_reply reply)
-	{
-		reply(make_error_code(armi_test::errc::end_of_the_world_as_we_know_it), std::string{});
-	}
-
-	void
-	form_1b_pass(err_safe_reply reply)
-	{
-		reply(std::error_code{}, "zoot");
-	}
-
-	void
-	form_2_fail(err_safe_reply reply, std::string const& s)
-	{
-		reply(make_error_code(armi_test::errc::aliens_invaded), std::string{});
-	}
-
-	void
-	form_2_pass(err_safe_reply reply, std::string const& s)
-	{
-		reply(std::error_code{}, s + " allures");
-	}
-
-	void
-	form_3_fail(err_safe_reply reply, std::string const& s, std::pair<int, int> p)
-	{
-		reply(make_error_code(std::errc::invalid_argument), std::string{});
-	}
-
-	void
-	form_3_pass(err_safe_reply reply, std::string const& s, std::pair<int, int> p)
-	{
-		reply(std::error_code{}, s + std::to_string(p.first + p.second));
-	}
-
-	void
-	form_4a_fail(not_err_safe_reply reply, armi::fail_reply fail)
-	{
-		fail(make_error_code(armi_test::errc::aliens_invaded));
-	}
-
-	void
-	form_4a_pass(not_err_safe_reply reply, armi::fail_reply fail)
-	{
-		reply("weasels ripped my flesh");
-	}
-
-	void
-	form_4b_fail(err_safe_reply reply, armi::fail_reply fail)
-	{
-		fail(make_error_code(armi_test::errc::sun_exploded));
-	}
-
-	void
-	form_4b_pass(err_safe_reply reply, armi::fail_reply fail)
-	{
-		reply(std::error_code{}, "the torture never stops");
-	}
-
-	void
-	form_5a_fail(not_err_safe_reply reply, armi::fail_reply fail, std::string const& s, std::vector<int> const& v)
-	{
-		fail(make_error_code(armi_test::errc::aliens_invaded));
-	}
-
-	void
-	form_5a_pass(not_err_safe_reply reply, armi::fail_reply fail, std::string const& s, std::vector<int> const& v)
-	{
-		std::string result{s};
-		int sum{0};
-		for (auto n : v)
-		{
-			sum += n;
-		}
-		result.append(std::to_string(sum));
-		reply(result);
-	}
-
-	void
-	form_5b_fail(err_safe_reply reply, armi::fail_reply fail, std::string const& s, std::vector<int> const& v)
-	{
-		fail(make_error_code(armi_test::errc::sun_exploded));
-	}
-
-	void
-	form_5b_pass(err_safe_reply reply, armi::fail_reply fail, std::string const& s, std::vector<int> const& v)
-	{
-		std::string result{s};
-		int sum{0};
-		for (auto n : v)
-		{
-			sum += n;
-		}
-		result.append(std::to_string(sum));
-		reply(std::error_code{}, result);
-	}
 
 	util::promise<std::string>
 	form_6_fail()
@@ -478,22 +361,6 @@ ARMI_CONTEXT(
 		test_remote,
 		target,
 		test_stream_context,
-		form_1a_fail,
-		form_1a_pass,
-		form_1b_fail,
-		form_1b_pass,
-		form_2_fail,
-		form_2_pass,
-		form_3_fail,
-		form_3_pass,
-		form_4a_fail,
-		form_4a_pass,
-		form_4b_fail,
-		form_4b_pass,
-		form_5a_fail,
-		form_5a_pass,
-		form_5b_fail,
-		form_5b_pass,
 		form_6_fail,
 		form_6_pass,
 		form_7_fail,
@@ -542,139 +409,6 @@ public:
 		m_client.connect(
 				async::options{endpoint{address::v4_loopback(), 7001}}, err, [=](ref_type t, std::error_code err) {
 					CHECK(t.is_valid());
-					t->form_1a_fail([=](std::error_code err) {
-						m_target_form_1a_fail_visited = true;
-						CHECK(err);
-						CHECK(err == armi_test::errc::sun_exploded);
-					});
-					t->form_1a_pass([=](std::error_code err)
-					{
-						m_target_form_1a_pass_visited = true;
-						CHECK(!err);
-					});
-					t->form_1b_fail([=](std::error_code err, std::string const& s)
-					{
-						m_target_form_1b_fail_visited = true;
-						CHECK(err);
-						CHECK(err == armi_test::errc::end_of_the_world_as_we_know_it);
-					});
-					t->form_1b_pass([=](std::error_code err, std::string const& s)
-					{
-						m_target_form_1b_pass_visited = true;
-						CHECK(!err);
-						CHECK(s == "zoot");
-					});
-					t->form_2_fail([=](std::error_code err, std::string const& s)
-					{
-						m_target_form_2_fail_visited = true;
-						CHECK(err);
-						CHECK(err == armi_test::errc::aliens_invaded);
-					},
-					"zoot");
-					t->form_2_pass([=](std::error_code err, std::string const& s)
-					{
-						m_target_form_2_pass_visited = true;
-						CHECK(!err);
-						CHECK(s == "zoot allures");
-					},
-					"zoot");
-					t->form_3_fail([=](std::error_code err, std::string const& s)
-					{
-						m_target_form_3_fail_visited = true;
-						CHECK(err);
-						CHECK(err == std::errc::invalid_argument);
-					},
-					"zoot",
-					std::make_pair(3, 4));
-					t->form_3_pass([=](std::error_code err, std::string const& s)
-					{
-						m_target_form_3_pass_visited = true;
-						CHECK(!err);
-						CHECK(s == "seven: 7");
-					},
-					"seven: ",
-					std::make_pair(3, 4));
-					t->form_4a_fail([=](std::string const& s){
-						CHECK(false);
-					},
-					[=](std::error_code err)
-					{
-						m_target_form_4a_fail_visited = true;
-						CHECK(err);
-						CHECK(err == armi_test::errc::aliens_invaded);
-					});
-					t->form_4a_pass([=](std::string const& s)
-					{
-						m_target_form_4a_pass_visited = true;
-						CHECK(!err);
-						CHECK(s == "weasels ripped my flesh");
-					},
-					[=](std::error_code err)
-					{
-						CHECK(false);
-					});
-					t->form_4b_fail([=](std::error_code err, std::string const& s){
-						CHECK(false);
-					},
-					[=](std::error_code err)
-					{
-						m_target_form_4b_fail_visited = true;
-						CHECK(err);
-						CHECK(err == armi_test::errc::sun_exploded);
-					});
-					t->form_4b_pass([=](std::error_code err, std::string const& s)
-					{
-						m_target_form_4b_pass_visited = true;
-						CHECK(!err);
-						CHECK(s == "the torture never stops");
-					},
-					[=](std::error_code err)
-					{
-						CHECK(false);
-					});
-
-					t->form_5a_fail([=](std::string const& s){
-						CHECK(false);
-					},
-					[=](std::error_code err)
-					{
-						m_target_form_5a_fail_visited = true;
-						CHECK(err);
-						CHECK(err == armi_test::errc::aliens_invaded);
-					},
-					"vector sum: ", {1,2,3,5,8});
-					t->form_5a_pass([=](std::string const& s)
-					{
-						m_target_form_5a_pass_visited = true;
-						CHECK(!err);
-						CHECK(s == "vector sum: 19");
-					},
-					[=](std::error_code err)
-					{
-						CHECK(false);
-					},
-					"vector sum: ", {1,2,3,5,8});
-					t->form_5b_fail([=](std::error_code err, std::string const& s){
-						CHECK(false);
-					},
-					[=](std::error_code err)
-					{
-						m_target_form_5b_fail_visited = true;
-						CHECK(err);
-						CHECK(err == armi_test::errc::sun_exploded);
-					},
-					"vector sum: ", {1,2,3,5,8});
-					t->form_5b_pass([=](std::error_code err, std::string const& s)
-					{
-						m_target_form_5b_pass_visited = true;
-						CHECK(!err);
-						CHECK(s == "vector sum: 19");
-					},
-					[=](std::error_code err)
-					{
-						CHECK(false);
-					},
-					"vector sum: ", {1,2,3,5,8});
 
 					t->form_6_fail().then([=](std::string s)
 					{
@@ -770,22 +504,6 @@ public:
 		CHECK(!m_server_channel_error_handler_visited);
 		CHECK(m_server_channel_close_handler_visited);
 		CHECK(m_server_close_handler_visited);
-		CHECK(m_target_form_1a_fail_visited);
-		CHECK(m_target_form_1a_pass_visited);
-		CHECK(m_target_form_1b_fail_visited);
-		CHECK(m_target_form_1b_pass_visited);
-		CHECK(m_target_form_2_fail_visited);
-		CHECK(m_target_form_2_pass_visited);
-		CHECK(m_target_form_3_fail_visited);
-		CHECK(m_target_form_3_pass_visited);
-		CHECK(m_target_form_4a_fail_visited);
-		CHECK(m_target_form_4a_pass_visited);
-		CHECK(m_target_form_4b_fail_visited);
-		CHECK(m_target_form_4b_pass_visited);
-		CHECK(m_target_form_5a_fail_visited);
-		CHECK(m_target_form_5a_pass_visited);
-		CHECK(m_target_form_5b_fail_visited);
-		CHECK(m_target_form_5b_pass_visited);
 		CHECK(m_target_form_6_fail_visited);
 		CHECK(m_target_form_6_pass_visited);
 		CHECK(m_target_form_7_fail_visited);
@@ -810,22 +528,6 @@ public:
 	bool m_server_channel_error_handler_visited{false};
 	bool m_server_channel_close_handler_visited{false};
 	bool m_server_close_handler_visited{false};
-	bool m_target_form_1a_fail_visited{false};
-	bool m_target_form_1a_pass_visited{false};
-	bool m_target_form_1b_fail_visited{false};
-	bool m_target_form_1b_pass_visited{false};
-	bool m_target_form_2_fail_visited{false};
-	bool m_target_form_2_pass_visited{false};
-	bool m_target_form_3_fail_visited{false};
-	bool m_target_form_3_pass_visited{false};
-	bool m_target_form_4a_fail_visited{false};
-	bool m_target_form_4a_pass_visited{false};
-	bool m_target_form_4b_fail_visited{false};
-	bool m_target_form_4b_pass_visited{false};
-	bool m_target_form_5a_fail_visited{false};
-	bool m_target_form_5a_pass_visited{false};
-	bool m_target_form_5b_fail_visited{false};
-	bool m_target_form_5b_pass_visited{false};
 	bool m_target_form_6_fail_visited{false};
 	bool m_target_form_6_pass_visited{false};
 	bool m_target_form_7_fail_visited{false};
@@ -1062,9 +764,6 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply with error }")
 	CHECK(client_connect_handler_visited);
 	CHECK(!reply_handler_visited);
 	CHECK(fail_handler_visited);
-	// CHECK(impl->increment_called);
-
-	// lp->close(err);
 	CHECK(!err);
 }
 

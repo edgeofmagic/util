@@ -36,14 +36,13 @@ namespace armi
 enum class errc : int
 {
 	ok = 0,
-	transport_not_set,
 	no_event_loop,
 	channel_not_connected,
-	no_implementation_instance_registered,
+	no_target_provided,
 	uncaught_server_exception,
 	exception_thrown_by_reply_handler,
-	exception_thrown_by_method_stub,
-	invalid_method_id,
+	exception_thrown_by_member_func_stub,
+	invalid_member_func_id,
 	invalid_interface_id,
 	invalid_argument_count,
 	invalid_argument_type,

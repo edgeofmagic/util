@@ -23,9 +23,8 @@
  */
 
 #include <logicmill/armi/error.h>
-#include <logicmill/armi/fail_proxy.h>
 #include <logicmill/armi/interface_stub_base.h>
-#include <logicmill/armi/method_stub_base.h>
+#include <logicmill/armi/member_func_stub_base.h>
 
 using namespace logicmill;
 using namespace armi;
@@ -33,14 +32,14 @@ using namespace armi;
 // void
 // interface_stub_base::process(request_id_type req_id, channel_id_type channel_id, bstream::ibstream& is)
 // {
-// 	auto method_id = is.read_as<std::size_t>();
-// 	if (method_id >= method_count())
+// 	auto member_func_id = is.read_as<std::size_t>();
+// 	if (member_func_id >= member_func_count())
 // 	{
-// 		request_failed(req_id, channel_id, context().stream_context(), make_error_code(armi::errc::invalid_method_id));
+// 		request_failed(req_id, channel_id, context().stream_context(), make_error_code(armi::errc::invalid_member_func_id));
 // 	}
 // 	else
 // 	{
-// 		get_method_stub(method_id).dispatch(req_id, channel_id, is);
+// 		get_member_func_stub(member_func_id).dispatch(req_id, channel_id, is);
 // 	}
 // }
 

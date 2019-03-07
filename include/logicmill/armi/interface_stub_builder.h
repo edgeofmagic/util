@@ -25,10 +25,11 @@
 #ifndef LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H
 #define LOGICMILL_ARMI_INTERFACE_STUB_BUILDER_H
 
-#include <logicmill/armi/method_stub.h>
+#include <logicmill/armi/member_func_stub.h>
 #include <logicmill/armi/interface_stub_base.h>
 #include <memory>
 #include <vector>
+#include <logicmill/traits.h>
 
 namespace logicmill
 {
@@ -61,15 +62,18 @@ protected:
 	interface_stub_builder(server_context_base& context, indices<Ns...> _i, Args... args)
 		: interface_stub_base<Target>(context)
 	{
-		m_method_stubs.reserve(sizeof...(Args));
-		append(std::unique_ptr<method_stub_base<Target>>(new armi::method_stub<decltype(args)>(context, args, Ns))...);
+		m_member_func_stubs.reserve(sizeof...(Args));
+		append(std::unique_ptr<member_func_stub_base<Target>>(
+				new armi::member_func_stub<
+						decltype(args),
+						typename traits::remove_member_func_cv_noexcept<decltype(args)>::type>(context, args, Ns))...);
 	}
 
 	template<class First, class... Args>
 	void
 	append(First&& first, Args&&... args)
 	{
-		m_method_stubs.push_back(std::move(first));
+		m_member_func_stubs.push_back(std::move(first));
 		append(std::move(args)...);
 	}
 
@@ -78,19 +82,19 @@ protected:
 	{}
 
 	virtual std::size_t
-	method_count() const noexcept override
+	member_func_count() const noexcept override
 	{
-		return m_method_stubs.size();
+		return m_member_func_stubs.size();
 	}
 
-	virtual method_stub_base<Target>&
-	get_method_stub(std::size_t index) override
+	virtual member_func_stub_base<Target>&
+	get_member_func_stub(std::size_t index) override
 	{
-		return *m_method_stubs[index];
+		return *m_member_func_stubs[index];
 	}
 
 protected:
-	std::vector<std::unique_ptr<method_stub_base<Target>>> m_method_stubs;
+	std::vector<std::unique_ptr<member_func_stub_base<Target>>> m_member_func_stubs;
 };
 
 }    // namespace armi

@@ -22,59 +22,63 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_FAIL_PROXY_H
-#define LOGICMILL_ARMI_FAIL_PROXY_H
+#ifndef LOGICMILL_ARMI_METHOD_STUB_BASE_H
+#define LOGICMILL_ARMI_METHOD_STUB_BASE_H
 
 #include <cstdint>
-// #include <logicmill/async/channel.h>
-#include <logicmill/armi/server_context_base.h>
 #include <logicmill/armi/transport.h>
-#include <system_error>
+#include <logicmill/bstream/ibstream.h>
+#include <logicmill/armi/server_context_base.h>
+#include <logicmill/bstream/ombstream.h>
 
 namespace logicmill
 {
 namespace armi
 {
-class server_context_base;
 
-class fail_proxy
+template<class Target>
+class member_func_stub_base
 {
 public:
-	fail_proxy(
-			request_id_type                     request_id,
-			channel_id_type     channel_id,
-			server_context_base& context)
-		: m_request_id{request_id}, m_channel_id{channel_id}, m_context{context}
+
+	using target_ptr_type = std::shared_ptr<Target>;
+
+	member_func_stub_base(server_context_base& context)
+	: m_context{context}
 	{}
 
-	fail_proxy(fail_proxy const& other)
-		: m_request_id{other.m_request_id}, m_channel_id{other.m_channel_id}, m_context{other.m_context}
-	{}
+	virtual ~member_func_stub_base() {}
+	virtual void
+	dispatch(request_id_type req_id, channel_id_type channel_id, bstream::ibstream& is, target_ptr_type const& target) const = 0;
 
-	fail_proxy(fail_proxy&& other)
-		: m_request_id{other.m_request_id},
-		  m_channel_id{other.m_channel_id},
-		  m_context{other.m_context} 
-	{}
+protected:
 
 	void
-	operator()(std::error_code err)
+	request_failed(
+			request_id_type                   request_id,
+			channel_id_type                   channel_id,
+			std::error_code                   err) const
 	{
 		bstream::ombstream os{m_context.stream_context()};
-		os << m_request_id;
+		os << request_id;
 		os << reply_kind::fail;
 		os.write_array_header(1);
 		os << err;
-		m_context.get_transport().send_reply(m_channel_id, os.release_mutable_buffer());
+		m_context.get_transport().send_reply(channel_id, os.release_mutable_buffer());
+	}
+
+	server_context_base&
+	context() const
+	{
+		return m_context;
 	}
 
 private:
-	request_id_type              m_request_id;
-	channel_id_type     m_channel_id;
+
 	server_context_base& m_context;
 };
 
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_FAIL_PROXY_H
+#endif    // LOGICMILL_ARMI_METHOD_STUB_BASE_H

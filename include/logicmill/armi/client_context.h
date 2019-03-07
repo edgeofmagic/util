@@ -31,71 +31,66 @@ namespace logicmill
 {
 namespace armi
 {
-// template<class T>
-// class client_context;
 
 template<class Proxy, class StreamContext>
-class client_context : public client_context_base 
+class client_context : public client_context_base
 {
 public:
-	using base = client_context_base;
+	using base       = client_context_base;
 	using proxy_type = Proxy;
 
 	class client_channel
 	{
 	public:
-
 		friend class client_context;
 
 	protected:
-
-		client_channel(client_context& context, channel_id_type id)
-		: m_context{context}, m_id{id} {}
+		client_channel(client_context& context, channel_id_type id) : m_context{&context}, m_id{id} {}
 
 	public:
 
-		client_channel(client_channel const& other)
-		: m_context{other.m_context}, m_id{other.m_id} {}
+		client_channel() : m_context{nullptr}, m_id{0} {}
+
+		client_channel(client_channel const& other) : m_context{other.m_context}, m_id{other.m_id} {}
 
 		client_channel&
 		operator=(client_channel const& other)
 		{
 			m_context = other.m_context;
-			m_id = other.m_id;
-		}		
+			m_id      = other.m_id;
+			return *this;
+		}
 
 		client_channel&
 		timeout(std::chrono::milliseconds t)
 		{
-			m_context.set_transient_timeout(t);
+			m_context->set_transient_timeout(t);
 		}
 
-		proxy_type*
-		operator->()
+		const proxy_type* operator->() const
 		{
-			return m_context.proxy(m_id);
+			return m_context->proxy(m_id);
 		}
 
 		bool
 		is_valid()
 		{
-			return m_context.is_valid_channel_id(m_id);
+			return m_context->is_valid_channel_id(m_id);
 		}
 
 		void
 		close()
 		{
-			m_context.close(m_id);
+			m_context->close(m_id);
 		}
-		
-		explicit operator bool() const 
+
+		explicit operator bool() const
 		{
-			return is_valid(); 
+			return is_valid();
 		}
 
 	private:
-
-		client_context& m_context;
+		client_context* m_context;
 		channel_id_type m_id;
 	};
 
@@ -105,20 +100,18 @@ public:
 		return client_channel(*this, id);
 	}
 
-	client_context(transport::client& transport_client)
-		: base{transport_client, StreamContext::get()}, m_proxy{*this}
+	client_context(transport::client& transport_client) : base{transport_client, StreamContext::get()}, m_proxy{*this}
 	{}
 
 private:
-
-	proxy_type*
-	proxy(channel_id_type channel_id)
+	const proxy_type*
+	proxy(channel_id_type channel_id) const
 	{
 		set_transient_channel_id(channel_id);
 		return &m_proxy;
 	}
 
-	proxy_type m_proxy;
+	const proxy_type m_proxy;
 };
 
 }    // namespace armi

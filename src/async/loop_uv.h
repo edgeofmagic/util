@@ -119,16 +119,10 @@ private:
 			= delete;
 
 	virtual timer::ptr
-	really_create_timer(std::error_code& err, timer::handler const& handler) override;
+	really_create_timer(std::error_code& err, timer::handler handler) override;
 
 	virtual timer::ptr
-	really_create_timer(std::error_code& err, timer::handler&& handler) override;
-
-	virtual timer::ptr
-	really_create_timer_void(std::error_code& err, timer::void_handler const& handler) override;
-
-	virtual timer::ptr
-	really_create_timer_void(std::error_code& err, timer::void_handler&& handler) override;
+	really_create_timer_void(std::error_code& err, timer::void_handler handler) override;
 
 	virtual int
 	really_run(std::error_code& err) override;
@@ -149,24 +143,13 @@ private:
 	really_close(std::error_code& err) override;    // probably should NOT be called from any handler
 
 	virtual acceptor::ptr
-	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler) override;
-
-	virtual acceptor::ptr
-	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler const& handler)
-			override;
+	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler handler) override;
 
 	virtual channel::ptr
-	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler) override;
-
-	virtual channel::ptr
-	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler) override;
+	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler handler) override;
 
 	virtual transceiver::ptr
-	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler&& handler)
-			override;
-
-	virtual transceiver::ptr
-	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler const& handler)
+	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler handler)
 			override;
 
 	virtual transceiver::ptr
@@ -176,34 +159,19 @@ private:
 	setup_transceiver(options const& opts, std::error_code& err);
 
 	virtual void
-	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler) override;
+	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler handler) override;
 
 	virtual void
-	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler) override;
+	really_dispatch(std::error_code& err, loop::dispatch_handler handler) override;
 
 	virtual void
-	really_dispatch(std::error_code& err, loop::dispatch_handler const& handler) override;
+	really_dispatch_void(std::error_code& err, loop::dispatch_void_handler handler) override;
 
 	virtual void
-	really_dispatch(std::error_code& err, loop::dispatch_handler&& handler) override;
+	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_handler handler) override;
 
 	virtual void
-	really_dispatch_void(std::error_code& err, loop::dispatch_void_handler const& handler) override;
-
-	virtual void
-	really_dispatch_void(std::error_code& err, loop::dispatch_void_handler&& handler) override;
-
-	virtual void
-	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_handler&& handler) override;
-
-	virtual void
-	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_handler const& handler) override;
-
-	virtual void
-	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_void_handler&& handler) override;
-
-	virtual void
-	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_void_handler const& handler) override;
+	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, loop::scheduled_void_handler handler) override;
 
 	bool
 	try_dispatch_front();

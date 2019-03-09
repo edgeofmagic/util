@@ -81,33 +81,7 @@ loop_uv::~loop_uv()
 }
 
 timer::ptr
-loop_uv::really_create_timer(std::error_code& err, timer::handler const& handler)
-{
-	err.clear();
-	timer_uv::ptr result;
-
-	if (!handler)
-	{
-		err = make_error_code(std::errc::invalid_argument);
-		goto exit;
-	}
-
-	if (!m_uv_loop)
-	{
-		err = make_error_code(async::errc::loop_closed);
-		goto exit;
-	}
-	result = MAKE_SHARED<timer_uv>(m_uv_loop, err, handler);
-	result->init(result);
-	if (err)
-		goto exit;
-
-exit:
-	return result;
-}
-
-timer::ptr
-loop_uv::really_create_timer(std::error_code& err, timer::handler&& handler)
+loop_uv::really_create_timer(std::error_code& err, timer::handler handler)
 {
 	err.clear();
 	timer_uv::ptr result;
@@ -134,36 +108,7 @@ exit:
 }
 
 timer::ptr
-loop_uv::really_create_timer_void(std::error_code& err, timer::void_handler const& handler)
-{
-	err.clear();
-	timer_uv::ptr result;
-
-	if (!handler)
-	{
-		err = make_error_code(std::errc::invalid_argument);
-		goto exit;
-	}
-
-	if (!m_uv_loop)
-	{
-		err = make_error_code(async::errc::loop_closed);
-		goto exit;
-	}
-	result = MAKE_SHARED<timer_uv>(m_uv_loop, err, [=](logicmill::async::timer::ptr)
-	{
-		handler();
-	});
-	result->init(result);
-	if (err)
-		goto exit;
-
-exit:
-	return result;
-}
-
-timer::ptr
-loop_uv::really_create_timer_void(std::error_code& err, timer::void_handler&& handler)
+loop_uv::really_create_timer_void(std::error_code& err, timer::void_handler handler)
 {
 	err.clear();
 	timer_uv::ptr result;
@@ -349,7 +294,7 @@ exit:
 }
 
 acceptor::ptr
-loop_uv::really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler)
+loop_uv::really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler handler)
 {
 	err.clear();
 	SHARED_PTR_TYPE<tcp_acceptor_uv> acceptor;
@@ -372,32 +317,8 @@ exit:
 	return acceptor;
 }
 
-acceptor::ptr
-loop_uv::really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler const& handler)
-{
-	err.clear();
-	SHARED_PTR_TYPE<tcp_acceptor_uv> acceptor;
-
-	if (!handler)
-	{
-		err = make_error_code(std::errc::invalid_argument);
-		goto exit;
-	}
-
-	if (!m_uv_loop)
-	{
-		err = make_error_code(async::errc::loop_closed);
-		goto exit;
-	}
-
-	acceptor = MAKE_SHARED<tcp_acceptor_uv>(opt.endpoint(), handler);
-	acceptor->init(m_uv_loop, acceptor, opt, err);
-exit:
-	return acceptor;
-}
-
 channel::ptr
-loop_uv::really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler)
+loop_uv::really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler handler)
 {
 	err.clear();
 	SHARED_PTR_TYPE<tcp_channel_uv> cp;
@@ -430,40 +351,6 @@ exit:
 	return cp;
 }
 
-channel::ptr
-loop_uv::really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler)
-{
-	err.clear();
-	SHARED_PTR_TYPE<tcp_channel_uv> cp;
-
-	if (!handler)
-	{
-		err = make_error_code(std::errc::invalid_argument);
-		goto exit;
-	}
-
-	if (!m_uv_loop)
-	{
-		err = make_error_code(async::errc::loop_closed);
-		goto exit;
-	}
-
-	if (opt.framing())
-	{
-		cp = MAKE_SHARED<tcp_framed_channel_uv>();
-	}
-	else
-	{
-		cp = MAKE_SHARED<tcp_channel_uv>();
-	}
-	cp->init(m_uv_loop, cp, err);
-	if (err)
-		goto exit;
-	cp->connect(opt.endpoint(), err, handler);
-exit:
-	return cp;
-}
-
 udp_transceiver_uv::ptr
 loop_uv::setup_transceiver(options const& opts, std::error_code& err)
 {
@@ -491,7 +378,7 @@ exit:
 }
 
 transceiver::ptr
-loop_uv::really_create_transceiver(options const& opts, std::error_code& err, transceiver::receive_handler&& handler)
+loop_uv::really_create_transceiver(options const& opts, std::error_code& err, transceiver::receive_handler handler)
 {
 	err.clear();
 	udp_transceiver_uv::ptr tp;
@@ -513,31 +400,6 @@ exit:
 }
 
 transceiver::ptr
-loop_uv::really_create_transceiver(
-		options const&                      opts,
-		std::error_code&                    err,
-		transceiver::receive_handler const& handler)
-{
-	err.clear();
-	SHARED_PTR_TYPE<udp_transceiver_uv> tp;
-
-	if (!handler)
-	{
-		err = make_error_code(std::errc::invalid_argument);
-		goto exit;
-	}
-
-	tp = setup_transceiver(opts, err);
-	if (err)
-		goto exit;
-
-	tp->start_receive(err, handler);
-
-exit:
-	return tp;
-}
-
-transceiver::ptr
 loop_uv::really_create_transceiver(options const& opts, std::error_code& err)
 {
 	err.clear();
@@ -553,7 +415,7 @@ exit:
 
 
 void
-loop_uv::really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler)
+loop_uv::really_resolve(std::string const& hostname, std::error_code& err, resolve_handler handler)
 {
 	err.clear();
 
@@ -571,32 +433,6 @@ loop_uv::really_resolve(std::string const& hostname, std::error_code& err, resol
 
 	{
 		resolve_req_uv* req = new resolve_req_uv{hostname, std::move(handler)};
-		req->start(m_uv_loop, err);
-	}
-
-exit:
-	return;
-}
-
-void
-loop_uv::really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler)
-{
-	err.clear();
-
-	if (!handler)
-	{
-		err = make_error_code(std::errc::invalid_argument);
-		goto exit;
-	}
-
-	if (!m_uv_loop)
-	{
-		err = make_error_code(async::errc::loop_closed);
-		goto exit;
-	}
-
-	{
-		resolve_req_uv* req = new resolve_req_uv{hostname, handler};
 		req->start(m_uv_loop, err);
 	}
 
@@ -647,44 +483,7 @@ loop::create()
 }
 
 void
-loop_uv::really_dispatch(std::error_code& err, loop::dispatch_handler const& handler)
-{
-	err.clear();
-	if (!handler)
-	{
-		err = make_error_code(std::errc::invalid_argument);
-		goto exit;
-	}
-
-	if (!m_uv_loop)
-	{
-		err = make_error_code(async::errc::loop_closed);
-		goto exit;
-	}
-
-	{
-		std::lock_guard<std::recursive_mutex> guard(m_dispatch_queue_mutex);
-		m_dispatch_queue.emplace_back([=]()
-		{
-			handler(m_data.get_loop_ptr());
-		});
-		// m_dispatch_queue.emplace_back(handler);
-	}
-
-	{
-		auto stat = uv_async_send(&m_async_handle);
-		if (stat < 0)
-		{
-			err = map_uv_error(stat);
-			goto exit;
-		}
-	}
-exit:
-	return;
-}
-
-void
-loop_uv::really_dispatch(std::error_code& err, loop::dispatch_handler&& handler)
+loop_uv::really_dispatch(std::error_code& err, loop::dispatch_handler handler)
 {
 	err.clear();
 	if (!handler)
@@ -720,40 +519,7 @@ exit:
 }
 
 void
-loop_uv::really_dispatch_void(std::error_code& err, loop::dispatch_void_handler const& handler)
-{
-	err.clear();
-	if (!handler)
-	{
-		err = make_error_code(std::errc::invalid_argument);
-		goto exit;
-	}
-
-	if (!m_uv_loop)
-	{
-		err = make_error_code(async::errc::loop_closed);
-		goto exit;
-	}
-
-	{
-		std::lock_guard<std::recursive_mutex> guard(m_dispatch_queue_mutex);
-		m_dispatch_queue.emplace_back(handler);
-	}
-
-	{
-		auto stat = uv_async_send(&m_async_handle);
-		if (stat < 0)
-		{
-			err = map_uv_error(stat);
-			goto exit;
-		}
-	}
-exit:
-	return;
-}
-
-void
-loop_uv::really_dispatch_void(std::error_code& err, loop::dispatch_void_handler&& handler)
+loop_uv::really_dispatch_void(std::error_code& err, loop::dispatch_void_handler handler)
 {
 	err.clear();
 	if (!handler)
@@ -791,7 +557,7 @@ loop_uv::is_alive() const
 }
 
 void
-loop_uv::really_schedule(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_handler&& handler)
+loop_uv::really_schedule(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_handler handler)
 {
 	auto tp = really_create_timer(err, [=,handler{std::move(handler)}] (logicmill::async::timer::ptr) {
 		handler(m_data.get_loop_ptr());
@@ -803,33 +569,9 @@ exit:
 }
 
 void
-loop_uv::really_schedule(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_handler const& handler)
-{
-	auto tp = really_create_timer(err, [=] (logicmill::async::timer::ptr) {
-		handler(m_data.get_loop_ptr());
-	});
-	if (err) goto exit;
-	tp->start(timeout, err);
-exit:
-	return;
-}
-
-void
-loop_uv::really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_void_handler&& handler)
+loop_uv::really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_void_handler handler)
 {
 	auto tp = really_create_timer(err, [handler{std::move(handler)}] (logicmill::async::timer::ptr) {
-		handler();
-	});
-	if (err) goto exit;
-	tp->start(timeout, err);
-exit:
-	return;
-}
-
-void
-loop_uv::really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_void_handler const& handler)
-{
-	auto tp = really_create_timer(err, [=] (logicmill::async::timer::ptr) {
 		handler();
 	});
 	if (err) goto exit;

@@ -32,6 +32,7 @@
 #include <logicmill/async/endpoint.h>
 #include <logicmill/async/options.h>
 #include <logicmill/async/timer.h>
+#include <logicmill/util/promise.h>
 #include <memory>
 #include <system_error>
 
@@ -44,16 +45,11 @@ class loop
 {
 public:
 	using ptr = std::shared_ptr<loop>;
-
 	using resolve_handler = std::function<
 			void(std::string const& hostname, std::deque<ip::address>&& addresses, std::error_code err)>;
-
 	using dispatch_handler = std::function<void(loop::ptr const&)>;
-
 	using dispatch_void_handler = std::function<void()>;
-
 	using scheduled_handler = std::function<void(loop::ptr const&)>;
-
 	using scheduled_void_handler = std::function<void()>;
 
 	static loop::ptr
@@ -384,70 +380,82 @@ protected:
 	really_close(std::error_code& err) = 0;
 
 	virtual timer::ptr
-	really_create_timer(std::error_code& err, timer::handler const& handler) = 0;
+	really_create_timer(std::error_code& err, timer::handler handler) = 0;
 
 	virtual timer::ptr
-	really_create_timer(std::error_code& err, timer::handler&& handler) = 0;
-
-	virtual timer::ptr
-	really_create_timer_void(std::error_code& err, timer::void_handler const& handler) = 0;
-
-	virtual timer::ptr
-	really_create_timer_void(std::error_code& err, timer::void_handler&& handler) = 0;
+	really_create_timer_void(std::error_code& err, timer::void_handler handler) = 0;
 
 	virtual void
-	really_dispatch(std::error_code& err, dispatch_handler&& handler) = 0;
+	really_dispatch(std::error_code& err, dispatch_handler handler) = 0;
 
 	virtual void
-	really_dispatch(std::error_code& err, dispatch_handler const& handler) = 0;
+	really_dispatch_void(std::error_code& err, dispatch_void_handler handler) = 0;
 
 	virtual void
-	really_dispatch_void(std::error_code& err, dispatch_void_handler&& handler) = 0;
+	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, scheduled_handler handler) = 0;
 
 	virtual void
-	really_dispatch_void(std::error_code& err, dispatch_void_handler const& handler) = 0;
-
-	virtual void
-	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, scheduled_handler&& handler) = 0;
-
-	virtual void
-	really_schedule(std::chrono::milliseconds timeout, std::error_code& err, scheduled_handler const& handler) = 0;
-
-	virtual void
-	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, scheduled_void_handler&& handler) = 0;
-
-	virtual void
-	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, scheduled_void_handler const& handler) = 0;
+	really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, scheduled_void_handler handler) = 0;
 
 	virtual acceptor::ptr
-	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler&& handler) = 0;
-
-	virtual acceptor::ptr
-	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler const& handler) = 0;
+	really_create_acceptor(options const& opt, std::error_code& err, acceptor::connection_handler handler) = 0;
 
 	virtual channel::ptr
-	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler&& handler) = 0;
-
-	virtual channel::ptr
-	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler const& handler) = 0;
+	really_connect_channel(options const& opt, std::error_code& err, channel::connect_handler handler) = 0;
 
 	virtual transceiver::ptr
-	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler&& handler) = 0;
-
-	virtual transceiver::ptr
-	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler const& handler) = 0;
+	really_create_transceiver(options const& opt, std::error_code& err, transceiver::receive_handler handler) = 0;
 
 	virtual transceiver::ptr
 	really_create_transceiver(options const& opt, std::error_code& err) = 0;
 
 	virtual void
-	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler&& handler) = 0;
+	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler handler) = 0;
 
-	virtual void
-	really_resolve(std::string const& hostname, std::error_code& err, resolve_handler const& handler) = 0;
 };
 
 }    // namespace async
 }    // namespace logicmill
+
+template<>
+class logicmill::util::promise_timer<logicmill::async::loop::ptr>
+{
+public:
+	promise_timer(std::chrono::milliseconds t, logicmill::async::loop::ptr const& lp) : m_timeout{t}, m_loop{lp} {}
+
+	promise_timer(std::chrono::milliseconds t) : m_timeout{t},
+	m_loop{logicmill::async::loop::get_default()} {}
+
+	template<class T>
+	void operator()(promise<T>& p)
+	{
+		p.cancel_timer();
+		if (p.m_shared)
+		{
+			std::error_code err;
+			auto tp = m_loop->create_timer(err, [p]() mutable
+			{
+				p.cancel_timer();
+				if (!p.is_finished())
+				{
+					p.reject(make_error_code(std::errc::timed_out));
+				}
+			});
+
+			p.m_shared->cancel_timer = [tp]()
+			{
+				tp->close();
+			};
+
+			tp->start(m_timeout, err);
+
+		}
+	}
+
+private:
+	std::chrono::milliseconds m_timeout;
+	logicmill::async::loop::ptr m_loop;
+};
+
 
 #endif    // LOGICMILL_ASYNC_LOOP_H

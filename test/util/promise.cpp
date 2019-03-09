@@ -25,6 +25,7 @@
 #include <doctest.h>
 #include <iostream>
 #include <logicmill/util/promise.h>
+#include <logicmill/async/loop.h>
 #include <unordered_map>
 
 using namespace logicmill;
@@ -1014,6 +1015,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 
 	SUBCASE( "timeout" )
 	{
+		using timer = util::promise_timer<async::loop::ptr>;
 		auto err	= std::error_code();
 		auto func	= []()
 		{
@@ -1038,7 +1040,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		auto done = false;
 
 		func()
-		.timeout( std::chrono::milliseconds( 10 ) )
+		.timeout( timer{std::chrono::milliseconds( 10 )} )
 		.then( [&]() mutable
 		{
 			done = true;

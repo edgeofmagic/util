@@ -40,7 +40,6 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
-#include <logicmill/async/loop.h>
 #include <memory>
 #include <string>
 #include <system_error>
@@ -49,6 +48,9 @@ namespace logicmill
 {
 namespace util
 {
+
+template<typename U>
+class promise_timer;
 
 template<typename T>
 class promise;
@@ -110,13 +112,14 @@ struct __promise_shared
 	typedef std::function<void(std::error_code)> reject_f;
 	typedef std::function<void()>                finally_f;
 	typedef boost::container::deque<T>           maybe_array_type;
+	using cancel_timer_f = std::function<void()>;
 
 	bool              resolved;
 	bool              rejected;
 	resolve_f         resolve;
 	reject_f          reject;
 	finally_f         finally;
-	async::timer::ptr timer;
+	cancel_timer_f	  cancel_timer;
 	std::uint32_t     refs;
 	T                 val;
 	std::error_code   err;
@@ -129,13 +132,14 @@ struct __promise_shared<void>
 	typedef std::function<void(std::error_code)> reject_f;
 	typedef std::function<void()>                finally_f;
 	typedef void                                 maybe_array_type;
+	using cancel_timer_f = std::function<void()>;
 
 	bool              resolved;
 	bool              rejected;
 	resolve_f         resolve;
 	reject_f          reject;
 	finally_f         finally;
-	async::timer::ptr timer;
+	cancel_timer_f	  cancel_timer;
 	std::uint32_t     refs;
 	std::error_code   err;
 };
@@ -148,6 +152,9 @@ public:
 	typedef boost::container::deque<promise<T>>    array_type;
 	typedef __promise_shared<T>                    shared_type;
 	typedef typename shared_type::maybe_array_type maybe_array_type;
+
+	template<class U>
+	friend class promise_timer;
 
 	template<class Q = T>
 	static typename std::enable_if_t<std::is_void<Q>::value, promise<T>>
@@ -224,7 +231,7 @@ public:
 		m_shared->rejected = false;
 		m_shared->resolve  = nullptr;
 		m_shared->reject   = nullptr;
-		m_shared->timer    = nullptr;
+		m_shared->cancel_timer    = nullptr;
 		m_shared->refs     = 1;
 	}
 
@@ -387,10 +394,11 @@ public:
 		return (is_resolved() || is_rejected());
 	}
 
+	template<class U>
 	promise<T>
-	timeout(std::chrono::milliseconds timeout)
+	timeout(U timer)
 	{
-		arm_timer(timeout);
+		timer(*this);
 
 		return *this;
 	}
@@ -793,34 +801,13 @@ private:
 		rhs.m_shared = nullptr;
 	}
 
-	inline void
-	arm_timer(std::chrono::milliseconds timeout)
-	{
-		cancel_timer();
-
-		if (m_shared)
-		{
-			std::error_code err;
-			auto            copy = *this;
-			m_shared->timer      = async::loop::get_default()->create_timer(err, [copy](async::timer::ptr) mutable {
-                copy.cancel_timer();
-
-                if (!copy.is_finished())
-                {
-                    copy.reject(make_error_code(std::errc::timed_out));
-                }
-            });
-
-			m_shared->timer->start(timeout, err);
-		}
-	}
-
-	inline void
+	void
 	cancel_timer()
 	{
-		if (m_shared && m_shared->timer)
+		if (m_shared && m_shared->cancel_timer)
 		{
-			m_shared->timer.reset();
+			m_shared->cancel_timer();
+			m_shared->cancel_timer = nullptr;
 		}
 	}
 
@@ -1065,5 +1052,48 @@ logicmill::util::promise<void>::any(promises_type promises)
 
 	return ret;
 }
+
+
+#if 0
+template<>
+class logicmill::util::promise_timer<logicmill::async::loop::ptr>
+{
+public:
+	promise_timer(std::chrono::milliseconds t, logicmill::async::loop::ptr const& lp) : m_timeout{t}, m_loop{lp} {}
+
+	promise_timer(std::chrono::milliseconds t) : m_timeout{t},
+	m_loop{logicmill::async::loop::get_default()} {}
+
+	template<class T>
+	void operator()(promise<T>& p)
+	{
+		p.cancel_timer();
+		if (p.m_shared)
+		{
+			std::error_code err;
+			auto tp = m_loop->create_timer(err, [p]() mutable
+			{
+				p.cancel_timer();
+				if (!p.is_finished())
+				{
+					p.reject(make_error_code(std::errc::timed_out));
+				}
+			});
+
+			p.m_shared->cancel_timer = [tp]()
+			{
+				tp->close();
+			};
+
+			tp->start(m_timeout, err);
+
+		}
+	}
+
+private:
+	std::chrono::milliseconds m_timeout;
+	logicmill::async::loop::ptr m_loop;
+};
+#endif
 
 #endif    // LOGICMILL_UTIL_PROMISE_H

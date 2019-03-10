@@ -34,6 +34,7 @@
 #include <logicmill/util/macros.h>
 #include <logicmill/util/shared_ptr.h>
 #include <system_error>
+#include <deque>
 
 #if 0
 #define USE_STD_SHARED_PTR 0
@@ -56,7 +57,7 @@
 		assert((_buf_).m_size <= (_buf_).m_region->capacity());                                                        \
 		assert((_buf_).m_capacity == (_buf_).m_region->capacity());                                                    \
 	}                                                                                                                  \
-	/**/
+/**/
 
 #if 0
 
@@ -123,7 +124,30 @@ struct null_delete<T[]>
 	{}
 };
 
+class buffer;
+class mutable_buffer;
 class const_buffer;
+class shared_buffer;
+
+template<class T>
+struct is_buffer_type : public std::false_type {};
+
+template<>
+struct is_buffer_type<buffer> : public std::true_type {};
+
+template<>
+struct is_buffer_type<mutable_buffer> : public std::true_type {};
+
+template<>
+struct is_buffer_type<const_buffer> : public std::true_type {};
+
+template<>
+struct is_buffer_type<shared_buffer> : public std::true_type {};
+
+template<class Buffer>
+inline size_type 
+total_size(std::deque<Buffer> const& bufs);
+
 
 /** \brief Represents and manages a contiguous region of memory.
  * 
@@ -920,6 +944,36 @@ public:
 
 	mutable_buffer(const_buffer&& cbuf);
 
+	template<class Buffer, class _Alloc, class = typename std::enable_if_t< is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	mutable_buffer(std::deque<Buffer> const& bufs, _Alloc&& alloc)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(total_size(bufs), std::forward<_Alloc>(alloc))}
+	{
+		auto p = m_region->data();
+		for (auto const& buf : bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		std::error_code err;
+		ctor_body(m_region->data(), m_region->capacity(), 0, m_region->capacity()
+		, err);
+	}
+
+	template<class Buffer, class = typename std::enable_if_t< is_buffer_type<Buffer>::value>>
+	mutable_buffer(std::deque<Buffer> const& bufs)
+		: m_region{std::make_unique<alloc_region<default_alloc>>(total_size(bufs))}
+	{
+		auto p = m_region->data();
+		for (auto const& buf : bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		std::error_code err;
+		ctor_body(m_region->data(), m_region->capacity(), 0, m_region->capacity(), err);
+	}
+
+
 	mutable_buffer&
 	operator=(mutable_buffer&& rhs)
 	{
@@ -1245,14 +1299,6 @@ public:
 		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
 
-	// const_buffer( const void* data, size_type size )
-	// :
-	// m_alloc{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( data ), size ) }
-	// {
-	// 	m_data = m_alloc->data();
-	// 	m_size = size;
-	// }
-
 	template<class _Del>
 	const_buffer(void* data, size_type size, _Del&& del)
 		: m_region{
@@ -1310,26 +1356,6 @@ public:
 		ASSERT_CONST_BUFFER_INVARIANTS(rhs);
 	}
 
-	// const_buffer( mutable_buffer const& rhs, memory_broker::ptr broker = buffer::default_broker::get() )
-	// :
-	// m_alloc{ std::make_unique< allocation >( rhs.m_data, rhs.m_size, broker ) }
-	// {
-	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS( rhs );
-	// 	m_data = m_alloc->data();
-	// 	m_size = rhs.m_size;
-	// 	ASSERT_CONST_BUFFER_INVARIANTS( *this );
-	// }
-
-	// const_buffer( const_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
-	// :
-	// m_alloc{ std::make_unique< allocation >( rhs.m_data, rhs.m_size, broker ) }
-	// {
-	// 	m_data = m_alloc->data();
-	// 	m_size = rhs.m_size;
-	// 	// ASSERT_BUFFER_INVARIANTS( *this );
-	// 	// ASSERT_BUFFER_INVARIANTS( rhs );
-	// }
-
 	const_buffer(const_buffer&& rhs) : m_region{std::move(rhs.m_region)}
 	{
 		m_data     = rhs.m_data;
@@ -1338,14 +1364,6 @@ public:
 		rhs.m_size = 0;
 		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
-
-	// const_buffer( mutable_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
-	// :
-	// m_alloc{ MAKE_SHARED< allocation >( rhs.data(), rhs.size(), broker ) }
-	// {
-	// 	m_data = m_alloc->data();
-	// 	m_size = rhs.size();
-	// }
 
 	const_buffer(mutable_buffer&& rhs) : m_region{std::move(rhs.m_region)}
 	{
@@ -1356,6 +1374,37 @@ public:
 		rhs.m_capacity = 0;
 		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
+
+	template<class Buffer, class _Alloc, class = typename std::enable_if_t< is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	const_buffer(std::deque<Buffer> const& bufs, _Alloc&& alloc)
+		: m_region{std::make_unique<alloc_region<_Alloc>>(total_size(bufs), std::forward<_Alloc>(alloc))}
+	{
+		auto p = m_region->data();
+		for (auto const& buf : bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		m_data = m_region->data();
+		m_size = m_region->capacity();
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
+	}
+
+	template<class Buffer, class = typename std::enable_if_t< is_buffer_type<Buffer>::value>>
+	const_buffer(std::deque<Buffer> const& bufs)
+		: m_region{std::make_unique<alloc_region<default_alloc>>(total_size(bufs))}
+	{
+		auto p = m_region->data();
+		for (auto const& buf : bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		m_data = m_region->data();
+		m_size = m_region->capacity();
+		ASSERT_CONST_BUFFER_INVARIANTS(*this);
+	}
+
 
 private:
 	void
@@ -1448,14 +1497,6 @@ public:
 		return;
 	}
 
-	// const_buffer( buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
-	// :
-	// m_alloc{ std::make_unique< allocation >( rhs.m_data, rhs.m_size, broker ) }
-	// {
-	// 	m_data = m_alloc->data();
-	// 	m_size = rhs.m_size;
-	// }
-
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	const_buffer
 	slice(position_type offset, size_type length, _Alloc&& alloc) const
@@ -1522,16 +1563,6 @@ public:
 		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 		return *this;
 	}
-
-	// shared_buffer&
-	// operator=( mutable_buffer const& rhs )
-	// {
-	// 	m_alloc = MAKE_SHARED< allocation >( rhs.data(), rhs.size() );
-	// 	m_data = m_alloc->data();
-	// 	m_size = rhs.size();
-	// 	// ASSERT_MUTABLE_BUFFER_INVARIANTS( buf );
-	// 	return *this;
-	// }
 
 	const_buffer&
 	operator=(mutable_buffer&& rhs)
@@ -1605,14 +1636,6 @@ public:
 		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	// shared_buffer( const void* data, size_type size )
-	// :
-	// m_alloc{ MAKE_SHARED< allocation >( reinterpret_cast< const byte_type* >( data ), size ) }
-	// {
-	// 	m_data = m_alloc->data();
-	// 	m_size = size;
-	// }
-
 	template<class _Del>
 	shared_buffer(void* data, size_type size, _Del&& del)
 		: m_region{MAKE_SHARED<del_region<_Del>>(reinterpret_cast<byte_type*>(data), size, std::forward<_Del>(del))}
@@ -1622,18 +1645,7 @@ public:
 		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
-	/*
-	shared_buffer( void* data, size_type size)
-	:
-	m_region{ MAKE_SHARED< del_region<default_del> >( 
-		reinterpret_cast< byte_type* >( data ), size ) }
-	{
-		m_data = reinterpret_cast< byte_type* >( data );
-		m_size = size;
-		announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS( *this );
-	}
-*/
+
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	shared_buffer(const void* data, size_type size, _Alloc&& alloc)
 		: m_region{MAKE_SHARED<alloc_region<_Alloc>>(
@@ -1685,6 +1697,36 @@ public:
 		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
+	template<class Buffer, class _Alloc, class = typename std::enable_if_t< is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	shared_buffer(std::deque<Buffer> const& bufs, _Alloc&& alloc)
+		: m_region{MAKE_SHARED<alloc_region<_Alloc>>(total_size(bufs), std::forward<_Alloc>(alloc))}
+	{
+		auto p = m_region->data();
+		for (auto const& buf : bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		m_data = m_region->data();
+		m_size = m_region->capacity();
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
+	}
+
+	template<class Buffer, class = typename std::enable_if_t< is_buffer_type<Buffer>::value>>
+	shared_buffer(std::deque<Buffer> const& bufs)
+		: m_region{MAKE_SHARED<alloc_region<default_alloc>>(total_size(bufs))}
+	{
+		auto p = m_region->data();
+		for (auto const& buf : bufs)
+		{
+			::memcpy(p, buf.data(), buf.size());
+			p += buf.size();
+		}
+		m_data = m_region->data();
+		m_size = m_region->capacity();
+		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
+	}
+
 	shared_buffer(buffer const& rhs) : m_region{MAKE_SHARED<alloc_region<default_alloc>>(rhs.data(), rhs.size())}
 	{
 		m_data = m_region->data();
@@ -1692,22 +1734,6 @@ public:
 		// announce();
 		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
-
-	// shared_buffer( mutable_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
-	// :
-	// m_alloc{ MAKE_SHARED< allocation >( rhs.data(), rhs.size(), broker ) }
-	// {
-	// 	m_data = m_alloc->data();
-	// 	m_size = rhs.size();
-	// }
-
-	// shared_buffer( const_buffer const& rhs, memory_broker::ptr broker = default_broker::get() )
-	// :
-	// m_alloc{ MAKE_SHARED< allocation >( rhs.data(), rhs.size(), broker ) }
-	// {
-	// 	m_data = m_alloc->data();
-	// 	m_size = rhs.size();
-	// }
 
 	shared_buffer(mutable_buffer&& rhs) : m_region{std::move(rhs.m_region)}
 	{
@@ -1912,15 +1938,6 @@ public:
 		return *this;
 	}
 
-
-	// shared_buffer( buffer const& rhs, memory_broker::ptr broker )
-	// :
-	// m_alloc{ MAKE_SHARED< allocation >( rhs.m_data, rhs.m_size, broker ) }
-	// {
-	// 	m_data = m_alloc->data();
-	// 	m_size = rhs.m_size;
-	// }
-
 	shared_buffer
 	slice(position_type offset, size_type length) const
 	{
@@ -2003,6 +2020,25 @@ public:
 		return m_region.use_count();
 	}
 };
+
+
+// inline const_buffer
+// consolidate(std::deque<const_buffer> const& bufs)
+// {
+// 	size_type capacity{0};
+// 	for (auto& buf : bufs)
+// 	{
+// 		capacity += buf.size();
+// 	}
+// 	mutable_buffer temp{capacity};
+// 	position_type pos{0};
+// 	for (auto const& buf : bufs)
+// 	{
+// 		temp.putn(pos, buf.data(), buf.size());
+// 		pos += buf.size();
+// 	}
+// 	return const_buffer{std::move(temp)};
+// }
 
 class string_alias
 {
@@ -2129,5 +2165,53 @@ private:
 
 }    // namespace util
 }    // namespace logicmill
+
+template<>
+logicmill::size_type
+inline logicmill::util::total_size<logicmill::util::buffer>(std::deque<logicmill::util::buffer> const& bufs)
+{
+	size_type result{0};
+	for (auto const& buf : bufs)
+	{
+		result += buf.size();
+	}
+	return result;
+}
+
+template<>
+inline logicmill::size_type
+logicmill::util::total_size<logicmill::util::mutable_buffer>(std::deque<logicmill::util::mutable_buffer> const& bufs)
+{
+	size_type result{0};
+	for (auto const& buf : bufs)
+	{
+		result += buf.size();
+	}
+	return result;
+}
+template<>
+inline logicmill::size_type
+logicmill::util::total_size<logicmill::util::const_buffer>(std::deque<logicmill::util::const_buffer> const& bufs)
+{
+	size_type result{0};
+	for (auto const& buf : bufs)
+	{
+		result += buf.size();
+	}
+	return result;
+}
+
+template<>
+inline logicmill::size_type
+logicmill::util::total_size<logicmill::util::shared_buffer>(std::deque<logicmill::util::shared_buffer> const& bufs)
+{
+	size_type result{0};
+	for (auto const& buf : bufs)
+	{
+		result += buf.size();
+	}
+	return result;
+}
+
 
 #endif    // LOGICMILL_UTIL_BUFFER_H

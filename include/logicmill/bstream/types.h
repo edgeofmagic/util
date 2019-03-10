@@ -25,6 +25,7 @@
 #ifndef LOGICMILL_BSTREAM_TYPES_H
 #define LOGICMILL_BSTREAM_TYPES_H
 
+#include <array>
 #include <boost/endian/conversion.hpp>
 #include <cstdint>
 #include <limits>
@@ -35,6 +36,9 @@ namespace logicmill
 {
 namespace bstream
 {
+
+template<std::size_t N>
+using byte_block = std::array<std::uint8_t, N>;
 
 using poly_tag_type = int;
 

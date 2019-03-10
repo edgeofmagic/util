@@ -251,3 +251,144 @@ TEST_CASE("logicmill/buffer/smoke/string_alias")
 	CHECK(cbuf1.ref_count() == 3);
 	CHECK(slice.ref_count() == 3);
 }
+
+TEST_CASE("logicmill::util::buffer [ smoke ] { consolidating ctor mutable_buffer }")
+{
+	{
+		std::deque<util::mutable_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::mutable_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+	{
+		std::deque<util::const_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::mutable_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+
+	{
+		std::deque<util::shared_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::mutable_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+
+	{
+		std::deque<util::shared_buffer> bufs;
+		util::mutable_buffer consolidated(bufs);
+		CHECK(consolidated.size() == 0);
+	}
+}
+
+TEST_CASE("logicmill::util::buffer [ smoke ] { consolidating ctor const_buffer }")
+{
+	{
+		std::deque<util::mutable_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::const_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+	{
+		std::deque<util::const_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::const_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+
+	{
+		std::deque<util::shared_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::const_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+
+	{
+		std::deque<util::mutable_buffer> bufs;
+		util::const_buffer consolidated(bufs);
+		CHECK(consolidated.size() == 0);
+	}
+}
+
+TEST_CASE("logicmill::util::buffer [ smoke ] { consolidating ctor shared_buffer }")
+{
+	{
+		std::deque<util::mutable_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::shared_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+	{
+		std::deque<util::const_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::shared_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+
+	{
+		std::deque<util::shared_buffer> bufs;
+		bufs.emplace_back(util::mutable_buffer{"This "});
+		bufs.emplace_back(util::mutable_buffer{"is "});
+		bufs.emplace_back(util::mutable_buffer{"a "});
+		bufs.emplace_back(util::mutable_buffer{"set "});
+		bufs.emplace_back(util::mutable_buffer{"of "});
+		bufs.emplace_back(util::mutable_buffer{"mutable "});
+		bufs.emplace_back(util::mutable_buffer{"buffers."});
+		util::shared_buffer consolidated(bufs);
+		CHECK(consolidated.to_string() == "This is a set of mutable buffers.");
+	}
+
+	{
+		std::deque<util::shared_buffer> bufs;
+		util::shared_buffer consolidated(bufs);
+		CHECK(consolidated.size() == 0);
+	}
+}

@@ -43,6 +43,7 @@ set(LOGICMILL_SRCS
 	include/logicmill/bstream/types.h
 	include/logicmill/bstream/source.h
 	include/logicmill/bstream/sink.h
+	include/logicmill/bstream/seq_sink.h
 	include/logicmill/bstream/file/source.h
 	include/logicmill/bstream/file/sink.h
 	include/logicmill/bstream/buffer/source.h
@@ -108,6 +109,7 @@ set(LOGICMILL_SRCS
 	src/bstream/obstream.cpp
 	src/bstream/source.cpp
 	src/bstream/sink.cpp
+	src/bstream/seq_sink.cpp
 	src/bstream/file_source.cpp
 	src/bstream/file_sink.cpp
 	src/bstream/buffer_sink.cpp

@@ -36,18 +36,6 @@
 #include <system_error>
 #include <deque>
 
-#if 0
-#define USE_STD_SHARED_PTR 0
-
-#if (USE_STD_SHARED_PTR)
-#define SHARED_PTR_TYPE std::shared_ptr
-#define MAKE_SHARED std::make_shared
-#else
-#define SHARED_PTR_TYPE SHARED_PTR_TYPE
-#define MAKE_SHARED util::make_shared
-#endif
-#endif
-
 #ifndef NDEBUG
 
 #define ASSERT_MUTABLE_BUFFER_INVARIANTS(_buf_)                                                                        \
@@ -358,7 +346,7 @@ protected:
 	class alloc_region : protected Alloc, public region
 	{
 	public:
-		using sptr = SHARED_PTR_TYPE<alloc_region>;
+		using sptr = util::shared_ptr<alloc_region>;
 		using uptr = std::unique_ptr<alloc_region>;
 
 		using allocator_type = Alloc;
@@ -1582,7 +1570,7 @@ public:
 class shared_buffer : public buffer
 {
 protected:
-	SHARED_PTR_TYPE<region> m_region;
+	util::shared_ptr<region> m_region;
 
 public:
 	~shared_buffer()
@@ -1628,7 +1616,7 @@ public:
 	// 	}
 	// }
 
-	shared_buffer() : m_region{MAKE_SHARED<alloc_region<default_alloc>>()}
+	shared_buffer() : m_region{util::make_shared<alloc_region<default_alloc>>()}
 	{
 		m_data = nullptr;
 		m_size = 0;
@@ -1638,7 +1626,7 @@ public:
 
 	template<class _Del>
 	shared_buffer(void* data, size_type size, _Del&& del)
-		: m_region{MAKE_SHARED<del_region<_Del>>(reinterpret_cast<byte_type*>(data), size, std::forward<_Del>(del))}
+		: m_region{util::make_shared<del_region<_Del>>(reinterpret_cast<byte_type*>(data), size, std::forward<_Del>(del))}
 	{
 		m_data = reinterpret_cast<byte_type*>(data);
 		m_size = size;
@@ -1648,7 +1636,7 @@ public:
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	shared_buffer(const void* data, size_type size, _Alloc&& alloc)
-		: m_region{MAKE_SHARED<alloc_region<_Alloc>>(
+		: m_region{util::make_shared<alloc_region<_Alloc>>(
 				  reinterpret_cast<const byte_type*>(data),
 				  size,
 				  std::forward<_Alloc>(alloc))}
@@ -1660,7 +1648,7 @@ public:
 	}
 
 	shared_buffer(const void* data, size_type size)
-		: m_region{MAKE_SHARED<alloc_region<default_alloc>>(reinterpret_cast<const byte_type*>(data), size)}
+		: m_region{util::make_shared<alloc_region<default_alloc>>(reinterpret_cast<const byte_type*>(data), size)}
 	{
 		m_data = m_region->data();
 		m_size = size;
@@ -1689,7 +1677,7 @@ public:
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	shared_buffer(buffer const& rhs, _Alloc&& alloc)
-		: m_region{MAKE_SHARED<alloc_region<_Alloc>>(rhs.data(), rhs.size(), std::forward<_Alloc>(alloc))}
+		: m_region{util::make_shared<alloc_region<_Alloc>>(rhs.data(), rhs.size(), std::forward<_Alloc>(alloc))}
 	{
 		m_data = m_region->data();
 		m_size = rhs.size();
@@ -1699,7 +1687,7 @@ public:
 
 	template<class Buffer, class _Alloc, class = typename std::enable_if_t< is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	shared_buffer(std::deque<Buffer> const& bufs, _Alloc&& alloc)
-		: m_region{MAKE_SHARED<alloc_region<_Alloc>>(total_size(bufs), std::forward<_Alloc>(alloc))}
+		: m_region{util::make_shared<alloc_region<_Alloc>>(total_size(bufs), std::forward<_Alloc>(alloc))}
 	{
 		auto p = m_region->data();
 		for (auto const& buf : bufs)
@@ -1714,7 +1702,7 @@ public:
 
 	template<class Buffer, class = typename std::enable_if_t< is_buffer_type<Buffer>::value>>
 	shared_buffer(std::deque<Buffer> const& bufs)
-		: m_region{MAKE_SHARED<alloc_region<default_alloc>>(total_size(bufs))}
+		: m_region{util::make_shared<alloc_region<default_alloc>>(total_size(bufs))}
 	{
 		auto p = m_region->data();
 		for (auto const& buf : bufs)
@@ -1727,7 +1715,7 @@ public:
 		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	shared_buffer(buffer const& rhs) : m_region{MAKE_SHARED<alloc_region<default_alloc>>(rhs.data(), rhs.size())}
+	shared_buffer(buffer const& rhs) : m_region{util::make_shared<alloc_region<default_alloc>>(rhs.data(), rhs.size())}
 	{
 		m_data = m_region->data();
 		m_size = rhs.size();
@@ -1979,7 +1967,7 @@ public:
 	shared_buffer&
 	operator=(buffer const& rhs)
 	{
-		m_region = MAKE_SHARED<alloc_region<default_alloc>>(rhs.data(), rhs.size());
+		m_region = util::make_shared<alloc_region<default_alloc>>(rhs.data(), rhs.size());
 		m_data   = m_region->data();
 		m_size   = rhs.size();
 		ASSERT_SHARED_BUFFER_INVARIANTS(*this);

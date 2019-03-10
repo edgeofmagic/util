@@ -41,7 +41,7 @@ class loop;
 class timer
 {
 public:
-	using ptr     = SHARED_PTR_TYPE<timer>;
+	using ptr     = util::shared_ptr<timer>;
 	using handler = std::function<void(timer::ptr)>;
 	using void_handler = std::function<void()>;
 

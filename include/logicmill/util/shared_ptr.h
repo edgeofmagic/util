@@ -30,23 +30,55 @@
 #include <functional>
 #include <memory>
 
+#define LOGICMILL_UTIL_USE_STD_SHARED_PTR 0
 
-#define USE_STD_SHARED_PTR 0
+#if (LOGICMILL_UTIL_USE_STD_SHARED_PTR)
 
-#if (USE_STD_SHARED_PTR)
-#define SHARED_PTR_TYPE std::shared_ptr
-#define WEAK_PTR_TYPE std::weak_ptr
-#define MAKE_SHARED std::make_shared
-#define DYNAMIC_POINTER_CAST std::dynamic_pointer_cast
-#define ENABLE_SHARED_FROM_THIS std::enable_shared_from_this
+namespace logicmill
+{
+namespace util
+{
+
+template<class T>
+using shared_ptr = std::shared_ptr<T>;
+
+template<class T>
+using weak_ptr = std::weak_ptr<T>;
+
+template<class T>
+using enable_shared_from_this = std::enable_shared_from_this<T>;
+
+template<class T, class... Args>
+inline std::shared_ptr<T>
+make_shared(Args&&... args)
+{
+	return std::make_shared<T>(std::forward<Args>(args)...);
+}
+
+template<class T, class Alloc, class... Args>
+inline std::shared_ptr<T>
+allocate_shared(Alloc&& alloc, Args&&... args)
+{
+	return std::allocate_shared<T, Alloc>(std::forward<Alloc>(alloc), std::forward<Args>(args)...);
+}
+
+template<class T, class U>
+inline std::shared_ptr<T>
+dynamic_pointer_cast(std::shared_ptr<U> const& uptr)
+{
+	return std::dynamic_pointer_cast<T>(uptr);
+}
+
+template<class T, class U>
+inline shared_ptr<T>
+static_pointer_cast(shared_ptr<U> const& uptr)
+{
+	return std::static_pointer_cast<T>(uptr);
+}
+
+}    // namespace util
+}    // namespace logicmill
 #else
-#define SHARED_PTR_TYPE logicmill::util::shared_ptr
-#define WEAK_PTR_TYPE logicmill::util::weak_ptr
-#define MAKE_SHARED logicmill::util::make_shared
-#define DYNAMIC_POINTER_CAST logicmill::util::dynamic_pointer_cast
-#define ENABLE_SHARED_FROM_THIS logicmill::util::enable_shared_from_this
-#endif
-
 
 namespace logicmill
 {
@@ -361,7 +393,7 @@ private:
 template<class U>
 class weak_ptr;
 
-template<class U> 
+template<class U>
 class enable_shared_from_this;
 
 template<class T>
@@ -404,7 +436,7 @@ protected:
 	static shared_ptr
 	create(Args&&... args)
 	{
-    	static_assert( std::is_constructible<T, Args...>::value, "Can't construct object in make_shared" );
+		static_assert(std::is_constructible<T, Args...>::value, "Can't construct object in make_shared");
 		using allocator_type      = std::allocator<element_type>;
 		using ctrl_blk_type       = detail::value_ctrl_blk<element_type, allocator_type>;
 		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
@@ -421,7 +453,7 @@ protected:
 	static shared_ptr
 	allocate(_Alloc&& alloc, Args&&... args)
 	{
-    	static_assert( std::is_constructible<T, Args...>::value, "Can't construct object in allocate_shared" );
+		static_assert(std::is_constructible<T, Args...>::value, "Can't construct object in allocate_shared");
 		using allocator_type      = _Alloc;
 		using ctrl_blk_type       = detail::value_ctrl_blk<element_type, allocator_type>;
 		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
@@ -601,7 +633,7 @@ public:
 		uptr.release();
 	}
 
-    template<class U>
+	template<class U>
 	shared_ptr(shared_ptr<U> const& rhs, element_type* p) noexcept;
 
 	~shared_ptr()
@@ -729,24 +761,23 @@ public:
 		return m_state.ctrl() ? m_state.ctrl()->weak_count() : 0;
 	}
 
-
 private:
 	shared_ptr(detail::ctrl_blk* p, element_type* ep) : m_state{p, ep} {}
 
-    template <class Y, class U>
-        typename std::enable_if_t<std::is_convertible<U*, const enable_shared_from_this<Y>*>::value>
-        enable_weak_this(const enable_shared_from_this<Y>* ep,
-                           U* p) _NOEXCEPT
-        {
-            typedef typename std::remove_cv<Y>::type RawY;
-            if (ep && ep->m_weak_this.expired())
-            {
-                ep->m_weak_this = shared_ptr<RawY>(*this,
-                    const_cast<RawY*>(static_cast<const Y*>(p)));
-            }
-        }
+	template<class Y, class U>
+	typename std::enable_if_t<std::is_convertible<U*, const enable_shared_from_this<Y>*>::value>
+	enable_weak_this(const enable_shared_from_this<Y>* ep, U* p) _NOEXCEPT
+	{
+		typedef typename std::remove_cv<Y>::type RawY;
+		if (ep && ep->m_weak_this.expired())
+		{
+			ep->m_weak_this = shared_ptr<RawY>(*this, const_cast<RawY*>(static_cast<const Y*>(p)));
+		}
+	}
 
-    void enable_weak_this(...) noexcept {}
+	void
+	enable_weak_this(...) noexcept
+	{}
 
 
 	detail::pstate<element_type> m_state;
@@ -972,43 +1003,57 @@ shared_ptr<T>::shared_ptr(
 	}
 }
 
-
 template<class T>
 template<class U>
-shared_ptr<T>::shared_ptr(shared_ptr<U> const& rhs, element_type* p) noexcept
-: m_state{rhs.m_state.ctrl(), p}
+shared_ptr<T>::shared_ptr(shared_ptr<U> const& rhs, element_type* p) noexcept : m_state{rhs.m_state.ctrl(), p}
 {
-    if (m_state.ctrl())
-			m_state.ctrl()->increment_use_count();
+	if (m_state.ctrl())
+		m_state.ctrl()->increment_use_count();
 }
-
 
 template<class T>
 class enable_shared_from_this
 {
-    mutable weak_ptr<T> m_weak_this;
+	mutable weak_ptr<T> m_weak_this;
+
 protected:
-    enable_shared_from_this() noexcept {}
-    enable_shared_from_this(enable_shared_from_this const&) noexcept {}
-    enable_shared_from_this& operator=(enable_shared_from_this const&) noexcept
-        {return *this;}
-    ~enable_shared_from_this() {}
+	enable_shared_from_this() noexcept {}
+	enable_shared_from_this(enable_shared_from_this const&) noexcept {}
+	enable_shared_from_this&
+	operator=(enable_shared_from_this const&) noexcept
+	{
+		return *this;
+	}
+	~enable_shared_from_this() {}
+
 public:
-    shared_ptr<T> shared_from_this()
-        {return shared_ptr<T>(m_weak_this);}
-    
-    shared_ptr<T const> shared_from_this() const
-        {return shared_ptr<const T>(m_weak_this);}
+	shared_ptr<T>
+	shared_from_this()
+	{
+		return shared_ptr<T>(m_weak_this);
+	}
 
-    weak_ptr<T> weak_from_this() noexcept
-       { return m_weak_this; }
+	shared_ptr<T const>
+	shared_from_this() const
+	{
+		return shared_ptr<const T>(m_weak_this);
+	}
 
-    weak_ptr<const T> weak_from_this() const noexcept
-        { return m_weak_this; }
+	weak_ptr<T>
+	weak_from_this() noexcept
+	{
+		return m_weak_this;
+	}
 
-    template <class U> friend class shared_ptr;
+	weak_ptr<const T>
+	weak_from_this() const noexcept
+	{
+		return m_weak_this;
+	}
+
+	template<class U>
+	friend class shared_ptr;
 };
-
 
 }    // namespace util
 }    // namespace logicmill
@@ -1030,5 +1075,7 @@ struct hash<logicmill::util::shared_ptr<U>>
 };
 
 }    // namespace std
+
+#endif    // LOGICMILL_UTIL_USE_STD_SHARED_PTR
 
 #endif    // LOGICMILL_UTIL_SHARED_PTR_H

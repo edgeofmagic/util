@@ -446,6 +446,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 	p.reset();
 	CHECK(shared_ptr_test::int_free_call_count == 1);
 
+#if (!LOGICMILL_UTIL_USE_STD_SHARED_PTR)
 	std::cout << "size of shared_ptr is " << sizeof(util::shared_ptr<int>) << std::endl;
 	std::cout << "size of std::string is " << sizeof(std::string) << std::endl;
 	std::cout
@@ -456,6 +457,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 	std::cout << "size of value_control_block is "
 			  << sizeof(util::detail::value_ctrl_blk<std::string, std::allocator<std::string>>) << std::endl;
 	std::cout << "size of control_blk is " << sizeof(util::detail::ctrl_blk) << std::endl;
+#endif
 }
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct from unique_ptr }")
@@ -466,6 +468,7 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct fr
 	CHECK(ups.get() == nullptr);
 }
 
+#if (!LOGICMILL_UTIL_USE_STD_SHARED_PTR)
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { weak_ptr construct from shared_ptr }")
 {
 	auto                        sp0 = util::make_shared<std::string>("zoot");
@@ -622,3 +625,4 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { shared alias }")
 	CHECK(inner_destruct);
 
 }
+#endif

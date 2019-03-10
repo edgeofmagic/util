@@ -155,7 +155,7 @@ private:
 	virtual transceiver::ptr
 	really_create_transceiver(options const& opt, std::error_code& err) override;
 
-	SHARED_PTR_TYPE<udp_transceiver_uv>
+	logicmill::util::shared_ptr<udp_transceiver_uv>
 	setup_transceiver(options const& opts, std::error_code& err);
 
 	virtual void

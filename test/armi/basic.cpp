@@ -185,7 +185,7 @@ public:
 	static bstream::context_base::ptr const&
 	get()
 	{
-		static const bstream::context_base::ptr instance{MAKE_SHARED<foo_stream_context>()};
+		static const bstream::context_base::ptr instance{util::make_shared<foo_stream_context>()};
 		return instance;
 	}
 };
@@ -277,7 +277,7 @@ public:
 	static bstream::context_base::ptr const&
 	get()
 	{
-		static const bstream::context_base::ptr instance{MAKE_SHARED<test_stream_context>()};
+		static const bstream::context_base::ptr instance{util::make_shared<test_stream_context>()};
 		return instance;
 	}
 };
@@ -783,7 +783,7 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality, static connect }")
 
 	END_LOOP(lp, 500);
 
-	async::server_impl::ptr sp = MAKE_SHARED<async::server_impl>(server_context, lp);
+	async::server_impl::ptr sp = util::make_shared<async::server_impl>(server_context, lp);
 	sp->on_server_error([=](async::server_impl::ptr const& srvrp, std::error_code err)
 	{
 		std::cout << "server error handler called: " << err.message() << std::endl;
@@ -867,7 +867,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 
 	END_LOOP(lp, 5000);
 
-	async::server_impl::ptr sp = MAKE_SHARED<async::server_impl>(server_context, lp);
+	async::server_impl::ptr sp = util::make_shared<async::server_impl>(server_context, lp);
 	sp->on_server_error([=](async::server_impl::ptr const& srvrp, std::error_code err)
 	{
 		std::cout << "server error handler called: " << err.message() << std::endl;
@@ -897,7 +897,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 
 	auto client_context = context.create_client();
 
-	async::client_channel_impl::ptr cp = MAKE_SHARED<async::client_channel_impl>(client_context, lp);
+	async::client_channel_impl::ptr cp = util::make_shared<async::client_channel_impl>(client_context, lp);
 
 	auto client_connect_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
 		std::error_code err;

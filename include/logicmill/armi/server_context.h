@@ -44,7 +44,7 @@ public:
 	using target_type = U;
 	using impl_ptr    = std::shared_ptr<target_type>;
 
-	using ptr = SHARED_PTR_TYPE<server_context>;
+	using ptr = util::shared_ptr<server_context>;
 
 	server_context(transport::server& transport_server) : base{transport_server, StreamContext::get()}, m_stub{*this} {}
 

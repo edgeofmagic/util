@@ -484,7 +484,7 @@ protected:
 	static std::size_t
 	blob_header_size(std::size_t blob_size);
 
-	SHARED_PTR_TYPE<context_base> m_context;
+	util::shared_ptr<context_base> m_context;
 	std::unique_ptr<ptr_deduper>             m_ptr_deduper;
 	std::unique_ptr<bstream::sink>           m_strmbuf;
 	// const bool                               m_reverse_order;

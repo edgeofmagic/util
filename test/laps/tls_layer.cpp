@@ -333,11 +333,11 @@ TEST_CASE("logicmill::laps::tls::context [ smoke ] { construction }")
 	CHECK(server_opts.private_key_filename() == "testdata/edge.key");
 	CHECK(server_opts.private_key_passwd() == "k8tylied");
 
-	auto client_context = MAKE_SHARED<tls::context>(client_opts);
-	auto server_context = MAKE_SHARED<tls::context>(server_opts);
+	auto client_context = util::make_shared<tls::context>(client_opts);
+	auto server_context = util::make_shared<tls::context>(server_opts);
 
-	// auto client_context = MAKE_SHARED<clnt_context>();
-	// auto server_context = MAKE_SHARED<srvr_context>();
+	// auto client_context = util::make_shared<clnt_context>();
+	// auto server_context = util::make_shared<srvr_context>();
 
 	using client_stack_type = assembly<laps::channel_anchor, laps::tls::client, laps::driver>;
 	using server_stack_type = assembly<laps::channel_anchor, laps::tls::server, laps::driver>;
@@ -464,8 +464,8 @@ TEST_CASE("logicmill::laps::tls [ smoke ] { client stack connect read write }")
 	// std::shared_ptr<stack_type> stackp;
 
 
-	auto client_context = MAKE_SHARED<clnt_context>();
-	auto server_context = MAKE_SHARED<srvr_context>();
+	auto client_context = util::make_shared<clnt_context>();
+	auto server_context = util::make_shared<srvr_context>();
 
 	using client_stack_type = assembly<laps::channel_anchor, laps::tls::client, laps::driver>;
 

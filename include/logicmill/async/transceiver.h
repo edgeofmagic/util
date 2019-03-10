@@ -48,7 +48,7 @@ class loop;
 class transceiver
 {
 public:
-	using ptr = SHARED_PTR_TYPE<transceiver>;
+	using ptr = util::shared_ptr<transceiver>;
 
 	using receive_handler = std::function<
 			void(transceiver::ptr const& chan, util::const_buffer&& buf, ip::endpoint const& ep, std::error_code err)>;

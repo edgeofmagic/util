@@ -7,7 +7,7 @@ using namespace logicmill;
 udp_transceiver_uv::ptr
 udp_send_buf_req_uv::get_transceiver_shared_ptr(uv_udp_send_t* req)
 {
-	return DYNAMIC_POINTER_CAST<udp_transceiver_uv>(udp_transceiver_uv::get_shared_ptr(req->handle));
+	return logicmill::util::dynamic_pointer_cast<udp_transceiver_uv>(udp_transceiver_uv::get_shared_ptr(req->handle));
 }
 
 void
@@ -27,7 +27,7 @@ udp_send_buf_req_uv::on_send(uv_udp_send_t* req, int status)
 udp_transceiver_uv::ptr
 udp_send_bufs_req_uv::get_transceiver_shared_ptr(uv_udp_send_t* req)
 {
-	return DYNAMIC_POINTER_CAST<udp_transceiver_uv>(udp_transceiver_uv::get_shared_ptr(req->handle));
+	return logicmill::util::dynamic_pointer_cast<udp_transceiver_uv>(udp_transceiver_uv::get_shared_ptr(req->handle));
 }
 
 void
@@ -67,7 +67,7 @@ udp_transceiver_uv::on_receive(
 		const struct sockaddr* addr,
 		unsigned               flags)
 {
-	ptr transceiver_ptr = DYNAMIC_POINTER_CAST<udp_transceiver_uv>(get_shared_ptr(udp_handle));
+	ptr transceiver_ptr = logicmill::util::dynamic_pointer_cast<udp_transceiver_uv>(get_shared_ptr(udp_handle));
 	assert(transceiver_ptr);
 	if (nread < 0)
 	{

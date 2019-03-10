@@ -311,7 +311,7 @@ public:
 class context : public context_base
 {
 public:
-	using ptr = SHARED_PTR_TYPE<context>;
+	using ptr = util::shared_ptr<context>;
 
 	context(options const& opts) : m_cred_mgr{opts}, m_session_mgr{m_rng}, m_policy{""}
 	{
@@ -363,11 +363,11 @@ public:
 
 	client() : m_top{this}, m_bottom{this}, m_context{}, m_server_info{}, m_tls_client{} {}
 
-	client(SHARED_PTR_TYPE<context_base> cntxt)
+	client(util::shared_ptr<context_base> cntxt)
 		: m_top{this}, m_bottom{this}, m_context{cntxt}, m_server_info{}, m_tls_client{}
 	{}
 
-	client(SHARED_PTR_TYPE<context_base> cntxt, std::string const& server_name, std::uint16_t port = 0)
+	client(util::shared_ptr<context_base> cntxt, std::string const& server_name, std::uint16_t port = 0)
 		: m_top{this},
 		  m_bottom{this},
 		  m_context{cntxt},
@@ -391,7 +391,7 @@ public:
 	}
 
 	void
-	config(SHARED_PTR_TYPE<context_base> cntxt, std::string const& server_name, std::uint16_t port = 0)
+	config(util::shared_ptr<context_base> cntxt, std::string const& server_name, std::uint16_t port = 0)
 	{
 		m_context     = cntxt;
 		m_server_info = std::make_unique<Botan::TLS::Server_Information>(server_name, port);
@@ -564,7 +564,7 @@ public:
 private:
 	top                                             m_top;
 	bottom                                          m_bottom;
-	SHARED_PTR_TYPE<context_base>                   m_context;
+	util::shared_ptr<context_base>                   m_context;
 	std::unique_ptr<Botan::TLS::Server_Information> m_server_info;
 	std::unique_ptr<Botan::TLS::Client>             m_tls_client;
 };
@@ -577,7 +577,7 @@ public:
 
 	server() : m_top{this}, m_bottom{this}, m_context{}, m_tls_server{} {}
 
-	server(SHARED_PTR_TYPE<context_base> cntxt) : m_top{this}, m_bottom{this}, m_context{cntxt}, m_tls_server{} {}
+	server(util::shared_ptr<context_base> cntxt) : m_top{this}, m_bottom{this}, m_context{cntxt}, m_tls_server{} {}
 
 	server(server const& rhs) = delete;
 
@@ -591,7 +591,7 @@ public:
 	}
 
 	void
-	config(SHARED_PTR_TYPE<context_base> cntxt)
+	config(util::shared_ptr<context_base> cntxt)
 	{
 		m_context = cntxt;
 	}
@@ -753,7 +753,7 @@ public:
 private:
 	top                                 m_top;
 	bottom                              m_bottom;
-	SHARED_PTR_TYPE<context_base>       m_context;
+	util::shared_ptr<context_base>       m_context;
 	std::unique_ptr<Botan::TLS::Server> m_tls_server;
 };
 

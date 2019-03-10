@@ -426,7 +426,7 @@ public:                                                                         
 #define BSTRM_CONTEXT_ACCESSOR()                                                                                       \
 	static bstream::context_base::ptr const& get()                                                                     \
 	{                                                                                                                  \
-		static const bstream::context_base::ptr instance{MAKE_SHARED<context_type>(options())};                        \
+		static const bstream::context_base::ptr instance{util::make_shared<context_type>(options())};                        \
 		return instance;                                                                                               \
 	}
 /**/
@@ -451,7 +451,7 @@ public:                                                                         
 					= {BSTRM_LIST_ERROR_CATEGS_(error_categs_array) &std::system_category(),                           \
 					   &std::generic_category(),                                                                       \
 					   &logicmill::bstream::error_category()};                                                         \
-			static const logicmill::bstream::context_base::ptr instance{MAKE_SHARED<context_type>(icats)};             \
+			static const logicmill::bstream::context_base::ptr instance{util::make_shared<context_type>(icats)};             \
 			return instance;                                                                                           \
 		}                                                                                                              \
 	};

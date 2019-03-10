@@ -40,18 +40,18 @@ namespace bstream
 class ofbstream : public obstream
 {
 public:
-	ofbstream(open_mode mode = file::sink::default_mode, context_base::ptr cntxt = get_default_context())
+	ofbstream(open_mode mode = file::sink::default_mode, context_base const& cntxt = get_default_context())
 		: obstream{std::make_unique<file::sink>(
 						   mode,
-						   cntxt->buffer_size(),
-						   cntxt->byte_order()),
+						   cntxt.buffer_size(),
+						   cntxt.byte_order()),
 				   cntxt}
 	{}
 
 	ofbstream(ofbstream const&) = delete;
 	ofbstream(ofbstream&&)      = delete;
 
-	ofbstream(std::unique_ptr<file::sink> fbuf, context_base::ptr cntxt = get_default_context())
+	ofbstream(std::unique_ptr<file::sink> fbuf, context_base const& cntxt = get_default_context())
 		: obstream{std::move(fbuf), cntxt}
 	{}
 
@@ -59,8 +59,8 @@ public:
 		: obstream{std::make_unique<file::sink>(
 						   filename,
 						   file::sink::default_mode,
-						   get_default_context()->buffer_size(),
-						   get_default_context()->byte_order()),
+						   get_default_context().buffer_size(),
+						   get_default_context().byte_order()),
 				   get_default_context()}
 	{}
 
@@ -68,8 +68,8 @@ public:
 		: obstream{std::make_unique<file::sink>(
 						   filename,
 						   file::sink::default_mode,
-						   get_default_context()->buffer_size(),
-						   get_default_context()->byte_order(),
+						   get_default_context().buffer_size(),
+						   get_default_context().byte_order(),
 						   err),
 				   get_default_context()}
 	{}
@@ -78,8 +78,8 @@ public:
 		: obstream{std::make_unique<file::sink>(
 						   filename,
 						   mode,
-						   get_default_context()->buffer_size(),
-						   get_default_context()->byte_order()),
+						   get_default_context().buffer_size(),
+						   get_default_context().byte_order()),
 				   get_default_context()}
 	{}
 
@@ -87,27 +87,27 @@ public:
 		: obstream{std::make_unique<file::sink>(
 						   filename,
 						   mode,
-						   get_default_context()->buffer_size(),
-						   get_default_context()->byte_order(),
+						   get_default_context().buffer_size(),
+						   get_default_context().byte_order(),
 						   err),
 				   get_default_context()}
 	{}
 
-	ofbstream(std::string const& filename, open_mode mode, context_base::ptr cntxt)
+	ofbstream(std::string const& filename, open_mode mode, context_base const& cntxt)
 		: obstream{std::make_unique<file::sink>(
 						   filename,
 						   mode,
-						   cntxt->buffer_size(),
-						   cntxt->byte_order()),
+						   cntxt.buffer_size(),
+						   cntxt.byte_order()),
 				   cntxt}
 	{}
 
-	ofbstream(std::string const& filename, open_mode mode, context_base::ptr cntxt, std::error_code& err)
+	ofbstream(std::string const& filename, open_mode mode, context_base const& cntxt, std::error_code& err)
 		: obstream{std::make_unique<file::sink>(
 						   filename,
 						   mode,
-						   cntxt->buffer_size(),
-						   cntxt->byte_order(),
+						   cntxt.buffer_size(),
+						   cntxt.byte_order(),
 						   err),
 				   cntxt}
 	{}

@@ -90,7 +90,7 @@ TEST_CASE( "logicmill/smoke/bstream/composite_types/0" )
 //	std::this_thread::sleep_for ( std::chrono::seconds( 10 ) );
 
 	// bstream::context<> cntxt;
-	auto cntxt = bstream::get_default_context();
+	bstream::context_base const& cntxt{bstream::get_default_context()};
 	
 	bstream::ombstream os{ 1024, cntxt };
 

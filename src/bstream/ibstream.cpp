@@ -669,7 +669,7 @@ ibstream::read_error_code()
 
 	try
 	{
-		result = std::error_code{value, m_context->category_from_index(category_index)};
+		result = std::error_code{value, m_context.category_from_index(category_index)};
 	}
 	catch (std::system_error const& e)
 	{

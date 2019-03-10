@@ -87,9 +87,9 @@ public:
 	ibstream(ibstream const&) = delete;
 	ibstream(ibstream&&)      = delete;
 
-	ibstream(std::unique_ptr<bstream::source> strmbuf, context_base::ptr cntxt = get_default_context())
+	ibstream(std::unique_ptr<bstream::source> strmbuf, context_base const& cntxt = get_default_context())
 		: m_context{cntxt},
-		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
+		  m_ptr_deduper{m_context.dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
 		  m_strmbuf{std::move(strmbuf)}
 	//   m_reverse_order{cntxt->byte_order() != bend::order::native}
 	{}
@@ -634,7 +634,7 @@ protected:
 			throw std::system_error{make_error_code(bstream::errc::abstract_non_poly_class)};
 		}
 
-		result = m_context->create_shared<T>(tag, *this);
+		result = m_context.create_shared<T>(tag, *this);
 
 		if (m_ptr_deduper)
 		{
@@ -656,7 +656,7 @@ protected:
 		}
 		else
 		{
-			result = m_context->create_shared<T>(tag, *this);
+			result = m_context.create_shared<T>(tag, *this);
 		}
 
 		if (m_ptr_deduper)
@@ -677,7 +677,7 @@ protected:
 		}
 		else
 		{
-			return std::unique_ptr<T>(m_context->create_raw<T>(tag, *this));
+			return std::unique_ptr<T>(m_context.create_raw<T>(tag, *this));
 		}
 	}
 
@@ -691,7 +691,7 @@ protected:
 		}
 		else
 		{
-			return std::unique_ptr<T>(m_context->create_raw<T>(tag, *this));
+			return std::unique_ptr<T>(m_context.create_raw<T>(tag, *this));
 		}
 	}
 
@@ -706,7 +706,7 @@ protected:
 	ingest(util::bufwriter& os);
 
 	std::unique_ptr<util::bufwriter> m_bufwriter = nullptr;
-	context_base::ptr                m_context;
+	context_base const&                m_context;
 	std::unique_ptr<ptr_deduper>     m_ptr_deduper;
 	std::unique_ptr<bstream::source> m_strmbuf;
 };
@@ -1734,12 +1734,12 @@ ibstream::get_saved_ptr(int type_tag)
 		auto info  = m_ptr_deduper->get_saved_ptr(index);
 		if (type_tag > -1)
 		{
-			auto saved_tag = m_context->get_type_tag(info.first);
+			auto saved_tag = m_context.get_type_tag(info.first);
 			if (saved_tag != type_tag)
 			{
 				throw std::system_error{make_error_code(bstream::errc::dynamic_type_mismatch_in_saved_ptr)};
 			}
-			if (m_context->can_downcast_ptr(type_tag, m_context->get_type_tag(typeid(T))))
+			if (m_context.can_downcast_ptr(type_tag, m_context.get_type_tag(typeid(T))))
 			{
 				result = std::static_pointer_cast<T>(info.second);
 			}

@@ -87,7 +87,7 @@ class context_base : public error_category_context
 {
 public:
 
-	using ptr = util::shared_ptr<context_base>;
+	// using ptr = util::shared_ptr<context_base>;
 
 	static constexpr bool
 	is_valid_tag(poly_tag_type tag)
@@ -248,7 +248,7 @@ class context : public context_base
 {
 public:
 
-	using ptr = util::shared_ptr<context>;
+	// using ptr = util::shared_ptr<context>;
 
 	context(context_options&& opts) : context_base{std::move(opts)} {}
 
@@ -399,16 +399,15 @@ public:
 		return context_options{};
 	}
 
-	static bstream::context_base::ptr const&
+	static bstream::context_base const&
 	get()
 	{
-		static const bstream::context_base::ptr instance{
-				util::make_shared<context_type>(options())};
+		static const context_type instance{options()};
 		return instance;
 	}
 };
 
-inline context_base::ptr const&
+inline context_base const&
 get_default_context()
 {
 	// static context_base::ptr default_context = util::make_shared<context<>>(error_category_context::category_init_list{});
@@ -416,15 +415,15 @@ get_default_context()
 	return default_context_factory::get();
 }
 
-template<class... Args>
-context_base::ptr
-create_context(
-		bool            dedup_shared_ptrs = true,
-		enum byte_order order             = byte_order::big_endian,
-		size_type       buf_size          = 65536UL)
-{
-	return util::make_shared<context<Args...>>(dedup_shared_ptrs, order, buf_size);
-}
+// template<class... Args>
+// context_base::ptr
+// create_context(
+// 		bool            dedup_shared_ptrs = true,
+// 		enum byte_order order             = byte_order::big_endian,
+// 		size_type       buf_size          = 65536UL)
+// {
+// 	return util::make_shared<context<Args...>>(dedup_shared_ptrs, order, buf_size);
+// }
 
 // template<class... Args>
 // context_base::ptr

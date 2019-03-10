@@ -182,10 +182,10 @@ public:
 		: bstream::context<>{
 				  bstream::context_options{}.error_categories({&armi::error_category(), &foo::error_category()})}
 	{}
-	static bstream::context_base::ptr const&
+	static bstream::context_base const&
 	get()
 	{
-		static const bstream::context_base::ptr instance{util::make_shared<foo_stream_context>()};
+		static const foo_stream_context instance;
 		return instance;
 	}
 };
@@ -274,10 +274,10 @@ public:
 		: bstream::context<>{
 				  bstream::context_options{}.error_categories({&armi::error_category(), &armi_test::error_category()})}
 	{}
-	static bstream::context_base::ptr const&
+	static bstream::context_base const&
 	get()
 	{
-		static const bstream::context_base::ptr instance{util::make_shared<test_stream_context>()};
+		static const test_stream_context instance;
 		return instance;
 	}
 };

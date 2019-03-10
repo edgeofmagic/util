@@ -28,7 +28,7 @@
 using namespace logicmill;
 using namespace armi;
 
-client_context_base::client_context_base(transport::client& transport_client, bstream::context_base::ptr const& cntxt)
+client_context_base::client_context_base(transport::client& transport_client, bstream::context_base const& cntxt)
 	: m_stream_context{cntxt},
 	  m_next_request_id{1},
 	  m_default_timeout{millisecs{0}},

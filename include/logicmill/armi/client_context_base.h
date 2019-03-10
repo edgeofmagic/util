@@ -53,7 +53,7 @@ public:
 			= std::unordered_map<request_id_type, std::pair<channel_id_type, reply_handler_base::ptr>>;
 	using channel_request_map_type = std::unordered_map<channel_id_type, std::set<request_id_type>>;
 
-	client_context_base(transport::client& tclient, bstream::context_base::ptr const& stream_context);
+	client_context_base(transport::client& tclient, bstream::context_base const& stream_context);
 
 	virtual ~client_context_base()
 	{
@@ -80,7 +80,7 @@ protected:
 	template<class U>
 	friend class logicmill::armi::member_func_proxy;
 
-	bstream::context_base::ptr const&
+	bstream::context_base const&
 	stream_context() const
 	{
 		return m_stream_context;
@@ -210,7 +210,7 @@ protected:
 		}
 	}
 
-	bstream::context_base::ptr m_stream_context;
+	bstream::context_base const& m_stream_context;
 	request_id_type            m_next_request_id;
 	reply_handler_map_type     m_reply_handler_map;
 	channel_request_map_type   m_channel_request_map;

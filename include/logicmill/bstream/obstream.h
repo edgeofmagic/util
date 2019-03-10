@@ -88,16 +88,16 @@ public:
 		std::unordered_map<std::shared_ptr<void>, saved_ptr_info> m_saved_ptrs;
 	};
 
-	obstream(std::unique_ptr<bstream::sink> strmbuf, context_base::ptr cntxt = get_default_context())
+	obstream(std::unique_ptr<bstream::sink> strmbuf, context_base const& cntxt = get_default_context())
 		: m_context{cntxt},
-		  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
+		  m_ptr_deduper{m_context.dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
 		  m_strmbuf{std::move(strmbuf)}
 	//   m_reverse_order{is_reverse(cntxt->byte_order())}
 	{}
 
 	// obstream(std::unique_ptr<bstream::sink> strmbuf, std::shared_ptr<const context_impl_base> context_impl)
 	// 	: m_context{context_impl},
-	// 	  m_ptr_deduper{m_context->dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
+	// 	  m_ptr_deduper{m_context.dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
 	// 	  m_strmbuf{std::move(strmbuf)},
 	// 	  m_reverse_order{cntxt->byte_order() != bend::order::native}
 	// {}
@@ -484,7 +484,7 @@ protected:
 	static std::size_t
 	blob_header_size(std::size_t blob_size);
 
-	util::shared_ptr<context_base> m_context;
+	context_base const& m_context;
 	std::unique_ptr<ptr_deduper>             m_ptr_deduper;
 	std::unique_ptr<bstream::sink>           m_strmbuf;
 	// const bool                               m_reverse_order;
@@ -848,7 +848,7 @@ obstream::write_shared_ptr(std::shared_ptr<T> ptr)
 			}
 			else
 			{
-				auto tag = m_context->get_type_tag(typeid(*ptr));
+				auto tag = m_context.get_type_tag(typeid(*ptr));
 				write_array_header(2);
 				*this << tag;
 				*this << *ptr;
@@ -857,7 +857,7 @@ obstream::write_shared_ptr(std::shared_ptr<T> ptr)
 		}
 		else
 		{
-			auto tag = m_context->get_type_tag(typeid(*ptr));
+			auto tag = m_context.get_type_tag(typeid(*ptr));
 			write_array_header(2);
 			*this << tag;
 			*this << *ptr;
@@ -876,7 +876,7 @@ obstream::write_as_unique_pointer(T* ptr)
 	}
 	else
 	{
-		auto tag = m_context->get_type_tag(typeid(*ptr));
+		auto tag = m_context.get_type_tag(typeid(*ptr));
 		write_array_header(2);
 		*this << tag;
 		*this << *ptr;

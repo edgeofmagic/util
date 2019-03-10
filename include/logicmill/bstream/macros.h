@@ -424,9 +424,9 @@ public:                                                                         
 
 
 #define BSTRM_CONTEXT_ACCESSOR()                                                                                       \
-	static bstream::context_base::ptr const& get()                                                                     \
+	static bstream::context_base const& get()                                                                     \
 	{                                                                                                                  \
-		static const bstream::context_base::ptr instance{util::make_shared<context_type>(options())};                        \
+		static const context_type instance{options()};                        \
 		return instance;                                                                                               \
 	}
 /**/
@@ -443,7 +443,7 @@ public:                                                                         
 	class name                                                                                                         \
 	{                                                                                                                  \
 	public:                                                                                                            \
-		static logicmill::bstream::context_base::ptr const&                                                            \
+		static logicmill::bstream::context_base const&                                                            \
 		get()                                                                                                          \
 		{                                                                                                              \
 			using context_type = logicmill::bstream::context<BSTRM_LIST_POLY_TYPES_(poly_type_array)>;                 \
@@ -451,7 +451,7 @@ public:                                                                         
 					= {BSTRM_LIST_ERROR_CATEGS_(error_categs_array) &std::system_category(),                           \
 					   &std::generic_category(),                                                                       \
 					   &logicmill::bstream::error_category()};                                                         \
-			static const logicmill::bstream::context_base::ptr instance{util::make_shared<context_type>(icats)};             \
+			static const context_type instance{icats};             \
 			return instance;                                                                                           \
 		}                                                                                                              \
 	};

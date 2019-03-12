@@ -322,22 +322,16 @@ source::new_position(offset_type offset, seek_anchor where) const
 	switch (where)
 	{
 		case seek_anchor::current:
-		{
 			result = really_get_position() + offset;
-		}
-		break;
+			break;
 
 		case seek_anchor::end:
-		{
 			result = really_get_size() + offset;
-		}
-		break;
+			break;
 
 		case seek_anchor::begin:
-		{
 			result = offset;
-		}
-		break;
+			break;
 	}
 
 	return result;

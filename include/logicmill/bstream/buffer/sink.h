@@ -25,8 +25,8 @@
 #ifndef LOGICMILL_BSTREAM_BUFFER_SINK_H
 #define LOGICMILL_BSTREAM_BUFFER_SINK_H
 
-#include <logicmill/util/buffer.h>
 #include <logicmill/bstream/sink.h>
+#include <logicmill/util/buffer.h>
 
 #ifndef LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE
 #define LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE 16384UL
@@ -53,13 +53,12 @@ public:
 
 	template<class _Alloc>
 	sink(size_type size, _Alloc&& alloc, byte_order order = byte_order::big_endian)
-	: base{order}, m_buf{size, std::forward<_Alloc>(alloc)}
+		: base{order}, m_buf{size, std::forward<_Alloc>(alloc)}
 	{
 		reset_ptrs();
 	}
 
-	sink(size_type size, byte_order order = byte_order::big_endian)
-	: base{order}, m_buf{size}
+	sink(size_type size, byte_order order = byte_order::big_endian) : base{order}, m_buf{size}
 	{
 		reset_ptrs();
 	}

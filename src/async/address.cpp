@@ -383,7 +383,6 @@ public:
 			switch (state)
 			{
 				case parse_state::initial:
-				{
 					// expect first colon of initial zero compression or first digit of value
 					if (nextch == ':')
 					{
@@ -401,11 +400,9 @@ public:
 					{
 						parse_error = true;
 					}
-				}
-				break;
+					break;
 
 				case parse_state::found_initial_colon:
-				{
 					// expect second colon of initial zero compression
 					if (nextch == ':')
 					{
@@ -417,11 +414,9 @@ public:
 					{
 						parse_error = true;
 					}
-				}
-				break;
+					break;
 
 				case parse_state::found_0_compr:
-				{
 					// expect initial digit of value or empty
 					if (is_hex_digit(nextch))
 					{
@@ -437,11 +432,9 @@ public:
 					{
 						parse_error = true;
 					}
-				}
-				break;
+					break;
 
 				case parse_state::found_hex_digit:    // in number
-				{
 					// expect next digit of value or separator or empty
 					if (is_hex_digit(nextch))
 					{
@@ -475,11 +468,9 @@ public:
 					{
 						parse_error = true;
 					}
-				}
-				break;
+					break;
 
 				case parse_state::found_trailing_colon:
-				{
 					// expect second colon of zero compression or initial digit of value
 					if (nextch == ':')
 					{
@@ -496,11 +487,9 @@ public:
 					{
 						parse_error = true;
 					}
-				}
-				break;
+					break;
 
 				case parse_state::found_dot:
-				{
 					// expect deximal digit
 					if (is_dec_digit(nextch))
 					{
@@ -512,11 +501,9 @@ public:
 					{
 						parse_error = true;
 					}
-				}
-				break;
+					break;
 
 				case parse_state::found_dec_digit:
-				{
 					// expect next digit of decimal number in ipv4 address or dot or empty
 					if (is_dec_digit(nextch))
 					{
@@ -542,8 +529,7 @@ public:
 					{
 						parse_error = true;
 					}
-				}
-				break;
+					break;
 			}
 		}
 

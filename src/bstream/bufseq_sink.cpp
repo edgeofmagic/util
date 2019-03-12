@@ -39,7 +39,6 @@ bufseq::sink::really_overflow(size_type n, std::error_code& err)
 		assert(m_did_jump = false);
 		assert(m_dirty = false);
 		assert(m_base_offset = 0);
-		// m_bufs.emplace_back( util::mutable_buffer{ m_segment_capacity, m_broker } );
 		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
 		reset_ptrs();
 	}

@@ -119,8 +119,9 @@ struct has_msgpack_pack_method : decltype(detail::test_pack_method<T>(0))
 template<class T>
 struct value_deserializer<
 		T,
-		typename std::enable_if_t<(std::is_copy_constructible<T>::value || std::is_move_constructible<T>::value)
-								  && is_msgpack_object_constructible<T>::value>>
+		typename std::enable_if_t<
+				(std::is_copy_constructible<T>::value || std::is_move_constructible<T>::value)
+				&& is_msgpack_object_constructible<T>::value>>
 {
 	static T
 	get(ibstream& is)
@@ -135,8 +136,9 @@ struct value_deserializer<
 template<class T>
 struct value_deserializer<
 		T,
-		typename std::enable_if_t<(std::is_copy_constructible<T>::value || std::is_move_constructible<T>::value)
-								  && !is_msgpack_object_constructible<T>::value && has_msgpack_as_adaptor<T>::value>>
+		typename std::enable_if_t<
+				(std::is_copy_constructible<T>::value || std::is_move_constructible<T>::value)
+				&& !is_msgpack_object_constructible<T>::value && has_msgpack_as_adaptor<T>::value>>
 {
 	static T
 	get(ibstream& is)
@@ -193,8 +195,9 @@ struct serializer<T, typename std::enable_if_t<has_msgpack_pack_method<T>::value
 };
 
 template<class T>
-struct serializer<T,
-				  typename std::enable_if_t<!has_msgpack_pack_method<T>::value && has_msgpack_pack_adaptor<T>::value>>
+struct serializer<
+		T,
+		typename std::enable_if_t<!has_msgpack_pack_method<T>::value && has_msgpack_pack_adaptor<T>::value>>
 {
 	static obstream&
 	put(obstream& os, T const& obj)

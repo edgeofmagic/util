@@ -25,8 +25,8 @@
 #ifndef LOGICMILL_BSTREAM_FILE_SINK_H
 #define LOGICMILL_BSTREAM_FILE_SINK_H
 
-#include <logicmill/util/buffer.h>
 #include <logicmill/bstream/sink.h>
+#include <logicmill/util/buffer.h>
 
 #ifndef LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE
 #define LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE 16384UL
@@ -55,21 +55,6 @@ public:
 
 	sink(sink&& rhs);
 
-	// sink(std::string const& filename,
-	// 	 open_mode          mode,
-	// 	 std::error_code&   err,
-	// 	 size_type          buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
-	// 	 byte_order         order       = byte_order::big_endian);
-
-	// sink(std::string const& filename,
-	// 	 open_mode          mode        = default_mode,
-	// 	 size_type          buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
-	// 	 byte_order         order       = byte_order::big_endian);
-
-	// sink(open_mode  mode        = default_mode,
-	// 	 size_type  buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
-	// 	 byte_order order       = byte_order::big_endian);
-
 	sink(std::string const& filename, open_mode mode, size_type buffer_size, byte_order order, std::error_code& err);
 
 	sink(std::string const& filename, open_mode mode, size_type buffer_size, byte_order order);
@@ -79,9 +64,9 @@ public:
 	sink(std::string const& filename, open_mode mode, size_type buffer_size);
 
 
-	sink(open_mode  mode = default_mode,
+	sink(open_mode  mode        = default_mode,
 		 size_type  buffer_size = LOGICMILL_BSTREAM_DEFAULT_FILE_BUFFER_SIZE,
-		 byte_order order = byte_order::big_endian);
+		 byte_order order       = byte_order::big_endian);
 
 
 	void
@@ -179,12 +164,6 @@ protected:
 	virtual void
 	really_overflow(size_type, std::error_code& err) override;
 
-	// virtual size_type
-	// really_get_size() const
-	// {
-	// 	return ( m_dirty && ( ppos() > get_high_watermark() ) ) ? ppos() : get_high_watermark();
-	// }
-
 private:
 	static bool
 	is_truncate(int flags);
@@ -206,11 +185,11 @@ private:
 	to_flags(open_mode mode);
 
 	util::mutable_buffer m_buf;
-	std::string    m_filename;
-	bool           m_is_open;
-	open_mode      m_mode;
-	int            m_flags;
-	int            m_fd;
+	std::string          m_filename;
+	bool                 m_is_open;
+	open_mode            m_mode;
+	int                  m_flags;
+	int                  m_fd;
 };
 
 }    // namespace file

@@ -25,9 +25,9 @@
 #ifndef LOGICMILL_BSTREAM_BUFFER_SOURCE_H
 #define LOGICMILL_BSTREAM_BUFFER_SOURCE_H
 
-#include <logicmill/util/buffer.h>
 #include <logicmill/bstream/source.h>
 #include <logicmill/bstream/types.h>
+#include <logicmill/util/buffer.h>
 
 namespace logicmill
 {
@@ -93,7 +93,7 @@ public:
 	release_buffer()
 	{
 		set_ptrs(nullptr, nullptr, nullptr);
-		return std::move( m_buf );
+		return std::move(m_buf);
 	}
 
 	virtual util::shared_buffer
@@ -134,26 +134,30 @@ protected:
 
 
 template<>
-inline source<util::const_buffer>::source(util::shared_buffer const& buf, bstream::byte_order order) : base{order}, m_buf{buf}
+inline source<util::const_buffer>::source(util::shared_buffer const& buf, bstream::byte_order order)
+	: base{order}, m_buf{buf}
 {
 	set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 }
 
 template<>
 inline source<util::const_buffer>::source(util::shared_buffer&& buf, bstream::byte_order order)
-	: base{order}, m_buf{buf}    // construct by copy (as base type buffer); can't move util::shared_buffer to util::const_buffer
+	: base{order},
+	  m_buf{buf}    // construct by copy (as base type buffer); can't move util::shared_buffer to util::const_buffer
 {
 	set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 }
 
 template<>
-inline source<util::shared_buffer>::source(util::shared_buffer const& buf, bstream::byte_order order) : base{order}, m_buf{buf}
+inline source<util::shared_buffer>::source(util::shared_buffer const& buf, bstream::byte_order order)
+	: base{order}, m_buf{buf}
 {
 	set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 }
 
 template<>
-inline source<util::shared_buffer>::source(util::shared_buffer&& buf, bstream::byte_order order) : base{order}, m_buf{std::move(buf)}
+inline source<util::shared_buffer>::source(util::shared_buffer&& buf, bstream::byte_order order)
+	: base{order}, m_buf{std::move(buf)}
 {
 	set_ptrs(m_buf.data(), m_buf.data(), m_buf.data() + m_buf.size());
 }

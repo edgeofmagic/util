@@ -30,7 +30,6 @@
 #include <boost/preprocessor/punctuation/comma.hpp>
 #include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
-// #include <boost/preprocessor/punctuation/paren.hpp>
 
 #include <boost/preprocessor/arithmetic/add.hpp>
 #include <boost/preprocessor/control/if.hpp>
@@ -64,7 +63,7 @@
 
 #if (BOOST_COMP_CLANG)
 #define BSTRM_START_DISABLE_OVERRIDE_WARNING()                                                                         \
-	_Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") 
+	_Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"")
 /**/
 #define BSTRM_END_DISABLE_OVERRIDE_WARNING() _Pragma("clang diagnostic pop")
 /**/
@@ -89,24 +88,23 @@
 #endif
 
 #define BSTRM_BUILD_OPTIONAL_ARRAY_(...)                                                                               \
-	BOOST_PP_IIF(UTIL_PP_ISEMPTY(__VA_ARGS__), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_ARRAY_)(__VA_ARGS__) 
+	BOOST_PP_IIF(UTIL_PP_ISEMPTY(__VA_ARGS__), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_ARRAY_)(__VA_ARGS__)
 /**/
 
-#define BSTRM_BUILD_ARRAY_(...)                                                                                        \
-	BOOST_PP_VARIADIC_TO_ARRAY(BOOST_PP_REMOVE_PARENS(__VA_ARGS__)) 
+#define BSTRM_BUILD_ARRAY_(...) BOOST_PP_VARIADIC_TO_ARRAY(BOOST_PP_REMOVE_PARENS(__VA_ARGS__))
 /**/
 
 #define BSTRM_CLASS(name, bases, members)                                                                              \
-	BSTRM_CLASS_(name, BSTRM_BUILD_OPTIONAL_ARRAY_(bases), BSTRM_BUILD_OPTIONAL_ARRAY_(members)) 
+	BSTRM_CLASS_(name, BSTRM_BUILD_OPTIONAL_ARRAY_(bases), BSTRM_BUILD_OPTIONAL_ARRAY_(members))
 /**/
 
 #define BSTRM_BASE(class_name)                                                                                         \
 private                                                                                                                \
-	BSTRM_BASE_TYPE_(class_name) 
+	BSTRM_BASE_TYPE_(class_name)
 /**/
 
 #define BSTRM_POLY_CLASS(name, bases, members)                                                                         \
-	BSTRM_POLY_CLASS_(name, BSTRM_BUILD_OPTIONAL_ARRAY_(bases), BSTRM_BUILD_OPTIONAL_ARRAY_(members)) 
+	BSTRM_POLY_CLASS_(name, BSTRM_BUILD_OPTIONAL_ARRAY_(bases), BSTRM_BUILD_OPTIONAL_ARRAY_(members))
 /**/
 
 #define BSTRM_FRIEND_BASE(class_name)                                                                                  \
@@ -116,54 +114,57 @@ private                                                                         
 	using base_type = BSTRM_BASE_TYPE_(class_name);
 /**/
 
-#define BSTRM_BASE_ALIAS_(name) base_type 
+#define BSTRM_BASE_ALIAS_(name) base_type
 /**/
 
 #define BSTRM_CTOR(name, bases, members)                                                                               \
-	BSTRM_CTOR_(name,                                                                                                  \
-				BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),             \
-				BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+	BSTRM_CTOR_(                                                                                                       \
+			name,                                                                                                      \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members))
 /**/
 
-#define BSTRM_CTOR_DECL(name) BSTRM_CTOR_DECL_SIG_(name); 
+#define BSTRM_CTOR_DECL(name) BSTRM_CTOR_DECL_SIG_(name);
 /**/
 
 #define BSTRM_CTOR_DEF(scope, name, bases, members)                                                                    \
-	BSTRM_CTOR_DEF_(scope,                                                                                             \
-					name,                                                                                              \
-					BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),         \
-					BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+	BSTRM_CTOR_DEF_(                                                                                                   \
+			scope,                                                                                                     \
+			name,                                                                                                      \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members))
 /**/
 
 #define BSTRM_ITEM_COUNT(bases, members)                                                                               \
 	BSTRM_ITEM_COUNT_(                                                                                                 \
 			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
-			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members))
 /**/
 
 #define BSTRM_SERIALIZE(name, bases, members)                                                                          \
-	BSTRM_SERIALIZE_(name,                                                                                             \
-					 BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),        \
-					 BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+	BSTRM_SERIALIZE_(                                                                                                  \
+			name,                                                                                                      \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members))
 /**/
 
 #define BSTRM_POLY_SERIALIZE(name, bases, members)                                                                     \
 	BSTRM_POLY_SERIALIZE_(                                                                                             \
 			name,                                                                                                      \
 			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
-			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members))
 /**/
 
 #define BSTRM_SERIALIZE_DECL()                                                                                         \
 	BSTRM_SERIALIZE_IMPL_DECL_SIG_();                                                                                  \
-	BSTRM_SERIALIZE_METHOD_DECL_SIG_(); 
+	BSTRM_SERIALIZE_METHOD_DECL_SIG_();
 /**/
 
 #define BSTRM_POLY_SERIALIZE_DECL()                                                                                    \
 	BSTRM_SERIALIZE_IMPL_DECL_SIG_();                                                                                  \
 	BSTRM_START_DISABLE_OVERRIDE_WARNING()                                                                             \
 	BSTRM_POLY_SERIALIZE_METHOD_DECL_SIG_();                                                                           \
-	BSTRM_END_DISABLE_OVERRIDE_WARNING() 
+	BSTRM_END_DISABLE_OVERRIDE_WARNING()
 /**/
 
 
@@ -172,18 +173,16 @@ private                                                                         
 			scope,                                                                                                     \
 			name,                                                                                                      \
 			BOOST_PP_IIF(UTIL_PP_ISEMPTY(bases), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_BASES_)(bases),                 \
-			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members)) 
+			BOOST_PP_IIF(UTIL_PP_ISEMPTY(members), BSTRM_ZERO_LENGTH_ARRAY_, BSTRM_BUILD_MEMBERS_)(members))
 /**/
 
-#define BSTRM_ZERO_LENGTH_ARRAY_(...) (0, ()) 
+#define BSTRM_ZERO_LENGTH_ARRAY_(...) (0, ())
 /**/
 
-#define BSTRM_BUILD_BASES_(bases)                                                                                      \
-	BOOST_PP_VARIADIC_TO_ARRAY(BOOST_PP_REMOVE_PARENS(bases)) 
+#define BSTRM_BUILD_BASES_(bases) BOOST_PP_VARIADIC_TO_ARRAY(BOOST_PP_REMOVE_PARENS(bases))
 /**/
 
-#define BSTRM_BUILD_MEMBERS_(members)                                                                                  \
-	BOOST_PP_VARIADIC_TO_ARRAY(BOOST_PP_REMOVE_PARENS(members)) 
+#define BSTRM_BUILD_MEMBERS_(members) BOOST_PP_VARIADIC_TO_ARRAY(BOOST_PP_REMOVE_PARENS(members))
 /**/
 
 
@@ -191,101 +190,100 @@ private                                                                         
 	BSTRM_FRIEND_BASE(name)                                                                                            \
 	BSTRM_CTOR_(name, base_array, member_array)                                                                        \
 	BSTRM_ITEM_COUNT_(base_array, member_array)                                                                        \
-	BSTRM_SERIALIZE_(name, base_array, member_array) 
+	BSTRM_SERIALIZE_(name, base_array, member_array)
 /**/
 
 #define BSTRM_POLY_CLASS_(name, base_array, member_array)                                                              \
 	BSTRM_FRIEND_BASE(name)                                                                                            \
 	BSTRM_CTOR_(name, base_array, member_array)                                                                        \
 	BSTRM_ITEM_COUNT_(base_array, member_array)                                                                        \
-	BSTRM_POLY_SERIALIZE_(name, base_array, member_array) 
+	BSTRM_POLY_SERIALIZE_(name, base_array, member_array)
 /**/
 
-#define BSTRM_BASE_TYPE_(class_name) logicmill::bstream::streaming_base<class_name> 
+#define BSTRM_BASE_TYPE_(class_name) logicmill::bstream::streaming_base<class_name>
 /**/
 
 #define BSTRM_CTOR_(name, base_array, member_array)                                                                    \
 	BSTRM_CTOR_DECL_SIG_(name)                                                                                         \
 		: BSTRM_INIT_BASE_(name) BSTRM_INIT_BASES_(base_array) BSTRM_INIT_MEMBERS_(member_array)                       \
-	{} 
+	{}
 /**/
 
 #define BSTRM_INIT_BASE_(name)                                                                                         \
-	BSTRM_BASE_ALIAS_(name) { is } 
+	BSTRM_BASE_ALIAS_(name)                                                                                            \
+	{                                                                                                                  \
+		is                                                                                                             \
+	}
 /**/
 
 #define BSTRM_INIT_BASES_(base_array)                                                                                  \
-	BOOST_PP_IF(BOOST_PP_ARRAY_SIZE(base_array), BSTRM_DO_INIT_BASES_, BSTRM_DO_NOT_INIT_BASES_)(base_array) 
+	BOOST_PP_IF(BOOST_PP_ARRAY_SIZE(base_array), BSTRM_DO_INIT_BASES_, BSTRM_DO_NOT_INIT_BASES_)(base_array)
 /**/
 
-#define BSTRM_DO_INIT_BASES_(base_array)                                                                               \
-	BSTRM_INIT_BASES_SEQ_(BOOST_PP_ARRAY_TO_SEQ(base_array)) 
+#define BSTRM_DO_INIT_BASES_(base_array) BSTRM_INIT_BASES_SEQ_(BOOST_PP_ARRAY_TO_SEQ(base_array))
 /**/
 
-#define BSTRM_DO_NOT_INIT_BASES_(base_array) 
+#define BSTRM_DO_NOT_INIT_BASES_(base_array)
 /**/
 
-#define BSTRM_INIT_BASES_SEQ_(base_seq)                                                                                \
-	BOOST_PP_SEQ_FOR_EACH_I(BSTRM_INIT_EACH_BASE_, _, base_seq) 
+#define BSTRM_INIT_BASES_SEQ_(base_seq) BOOST_PP_SEQ_FOR_EACH_I(BSTRM_INIT_EACH_BASE_, _, base_seq)
 /**/
 
 #define BSTRM_INIT_EACH_BASE_(r, data, i, elem)                                                                        \
 	, elem                                                                                                             \
 	{                                                                                                                  \
 		logicmill::bstream::ibstream_initializer<elem>::get(is)                                                        \
-	} 
+	}
 /**/
 
 #define BSTRM_INIT_MEMBERS_(member_array)                                                                              \
 	BOOST_PP_IF(BOOST_PP_ARRAY_SIZE(member_array), BSTRM_DO_INIT_MEMBERS_, BSTRM_DO_NOT_INIT_MEMBERS_)                 \
-	(member_array) 
+	(member_array)
 /**/
 
-#define BSTRM_DO_NOT_INIT_MEMBERS_(member_array) 
+#define BSTRM_DO_NOT_INIT_MEMBERS_(member_array)
 /**/
 
-#define BSTRM_DO_INIT_MEMBERS_(member_array)                                                                           \
-	BSTRM_INIT_MEMBERS_SEQ_(BOOST_PP_ARRAY_TO_SEQ(member_array)) 
+#define BSTRM_DO_INIT_MEMBERS_(member_array) BSTRM_INIT_MEMBERS_SEQ_(BOOST_PP_ARRAY_TO_SEQ(member_array))
 /**/
 
-#define BSTRM_INIT_MEMBERS_SEQ_(member_seq)                                                                            \
-	BOOST_PP_SEQ_FOR_EACH_I(BSTRM_INIT_EACH_MEMBER_, _, member_seq) 
+#define BSTRM_INIT_MEMBERS_SEQ_(member_seq) BOOST_PP_SEQ_FOR_EACH_I(BSTRM_INIT_EACH_MEMBER_, _, member_seq)
 /**/
 
 #define BSTRM_INIT_EACH_MEMBER_(r, data, i, elem)                                                                      \
 	, elem                                                                                                             \
 	{                                                                                                                  \
 		logicmill::bstream::ibstream_initializer<decltype(elem)>::get(is)                                              \
-	} 
+	}
 /**/
 
 #define BSTRM_ITEM_COUNT_(base_array, member_array)                                                                    \
 	constexpr std::size_t _streamed_item_count() const                                                                 \
 	{                                                                                                                  \
 		return BSTRM_ITEM_COUNT_EVAL_(base_array, member_array);                                                       \
-	} 
+	}
 /**/
 
 #define BSTRM_ITEM_COUNT_EVAL_(base_array, member_array)                                                               \
-	BOOST_PP_ADD(BOOST_PP_ARRAY_SIZE(base_array), BOOST_PP_ARRAY_SIZE(member_array)) 
+	BOOST_PP_ADD(BOOST_PP_ARRAY_SIZE(base_array), BOOST_PP_ARRAY_SIZE(member_array))
 /**/
 
-#define BSTRM_CTOR_DECL_SIG_(name) name(logicmill::bstream::ibstream& is) 
+#define BSTRM_CTOR_DECL_SIG_(name) name(logicmill::bstream::ibstream& is)
 /**/
 
 #define BSTRM_CTOR_DEF_SIG_(scope, name)                                                                               \
-	BOOST_PP_IIF(UTIL_PP_ISEMPTY(scope), BSTRM_CTOR_DEF_SIG_UNSCOPED_, BSTRM_CTOR_DEF_SIG_SCOPED_)(scope, name) 
+	BOOST_PP_IIF(UTIL_PP_ISEMPTY(scope), BSTRM_CTOR_DEF_SIG_UNSCOPED_, BSTRM_CTOR_DEF_SIG_SCOPED_)(scope, name)
 /**/
 
-#define BSTRM_CTOR_DEF_SIG_UNSCOPED_(scope, name) name::name(logicmill::bstream::ibstream& is) 
+#define BSTRM_CTOR_DEF_SIG_UNSCOPED_(scope, name) name::name(logicmill::bstream::ibstream& is)
 /**/
 
-#define BSTRM_CTOR_DEF_SIG_SCOPED_(scope, name) scope::name::name(logicmill::bstream::ibstream& is) 
+#define BSTRM_CTOR_DEF_SIG_SCOPED_(scope, name) scope::name::name(logicmill::bstream::ibstream& is)
 /**/
 
 #define BSTRM_CTOR_DEF_(scope, name, base_array, member_array)                                                         \
 	BSTRM_CTOR_DEF_SIG_(scope, name)                                                                                   \
-		: BSTRM_INIT_BASE_(name) BSTRM_INIT_BASES_(base_array) BSTRM_INIT_MEMBERS_(member_array) 
+		: BSTRM_INIT_BASE_(name) BSTRM_INIT_BASES_(base_array) BSTRM_INIT_MEMBERS_(member_array)
 /**/
 
 /*
@@ -296,23 +294,23 @@ private                                                                         
 protected:                                                                                                             \
 	BSTRM_SERIALIZE_IMPL_(name, base_array, member_array)                                                              \
 public:                                                                                                                \
-	BSTRM_SERIALIZE_METHOD_() 
+	BSTRM_SERIALIZE_METHOD_()
 /**/
 
 #define BSTRM_POLY_SERIALIZE_(name, base_array, member_array)                                                          \
 protected:                                                                                                             \
 	BSTRM_SERIALIZE_IMPL_(name, base_array, member_array)                                                              \
 public:                                                                                                                \
-	BSTRM_POLY_SERIALIZE_METHOD_() 
+	BSTRM_POLY_SERIALIZE_METHOD_()
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_(name, base_array, member_array)                                                          \
 	BSTRM_SERIALIZE_IMPL_DECL_SIG_()                                                                                   \
-	BSTRM_SERIALIZE_IMPL_BODY_(name, base_array, member_array) 
+	BSTRM_SERIALIZE_IMPL_BODY_(name, base_array, member_array)
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_DECL_SIG_()                                                                               \
-	logicmill::bstream::obstream& serialize_impl(logicmill::bstream::obstream& os) const 
+	logicmill::bstream::obstream& serialize_impl(logicmill::bstream::obstream& os) const
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_BODY_(name, base_array, member_array)                                                     \
@@ -321,112 +319,110 @@ public:                                                                         
 		BSTRM_SERIALIZE_IMPL_BASES_(base_array)                                                                        \
 		BSTRM_SERIALIZE_IMPL_MEMBERS_(member_array)                                                                    \
 		return os;                                                                                                     \
-	} 
+	}
 /**/
 
-#define BSTRM_SERIALIZE_IMPL_BASE_(name)                                                                               \
-	BSTRM_BASE_ALIAS_(name)::_serialize(os); 
+#define BSTRM_SERIALIZE_IMPL_BASE_(name) BSTRM_BASE_ALIAS_(name)::_serialize(os);
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_BASES_(base_array)                                                                        \
-	BOOST_PP_IF(BOOST_PP_ARRAY_SIZE(base_array), BSTRM_SERIALIZE_IMPL_BASES_SEQ_(BOOST_PP_ARRAY_TO_SEQ(base_array)), ) 
+	BOOST_PP_IF(BOOST_PP_ARRAY_SIZE(base_array), BSTRM_SERIALIZE_IMPL_BASES_SEQ_(BOOST_PP_ARRAY_TO_SEQ(base_array)), )
 /*???*/
 
-#define BSTRM_SERIALIZE_IMPL_BASES_SEQ_(base_seq)                                                                      \
-	BOOST_PP_SEQ_FOR_EACH_I(BSTRM_SERIALIZE_IMPL_EACH_BASE_, _, base_seq) 
+#define BSTRM_SERIALIZE_IMPL_BASES_SEQ_(base_seq) BOOST_PP_SEQ_FOR_EACH_I(BSTRM_SERIALIZE_IMPL_EACH_BASE_, _, base_seq)
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_EACH_BASE_(r, data, i, base)                                                              \
-	(logicmill::bstream::base_serializer<decltype(*this), base>::put(os, *this)); 
+	(logicmill::bstream::base_serializer<decltype(*this), base>::put(os, *this));
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_MEMBERS_(member_array)                                                                    \
-	BOOST_PP_IF(BOOST_PP_ARRAY_SIZE(member_array),                                                                     \
-				BSTRM_SERIALIZE_IMPL_MEMBERS_SEQ_(BOOST_PP_ARRAY_TO_SEQ(member_array)), ) 
+	BOOST_PP_IF(                                                                                                       \
+			BOOST_PP_ARRAY_SIZE(member_array),                                                                         \
+			BSTRM_SERIALIZE_IMPL_MEMBERS_SEQ_(BOOST_PP_ARRAY_TO_SEQ(member_array)), )
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_MEMBERS_SEQ_(members_seq)                                                                 \
 	BOOST_PP_SEQ_FOR_EACH_I(BSTRM_SERIALIZE_IMPL_EACH_MEMBER_, _, members_seq)                                         \
-/**/
+	/**/
 
 #define BSTRM_SERIALIZE_IMPL_EACH_MEMBER_(r, data, i, member) os << member;
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_()                                                                                      \
 	BSTRM_SERIALIZE_METHOD_DECL_SIG_()                                                                                 \
-	BSTRM_SERIALIZE_METHOD_BODY_() 
+	BSTRM_SERIALIZE_METHOD_BODY_()
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DECL_SIG_()                                                                             \
-	logicmill::bstream::obstream& serialize(logicmill::bstream::obstream& os) const 
+	logicmill::bstream::obstream& serialize(logicmill::bstream::obstream& os) const
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_BODY_()                                                                                 \
 	{                                                                                                                  \
 		serialize_impl(os);                                                                                            \
 		return os;                                                                                                     \
-	} 
+	}
 /**/
 
 #define BSTRM_POLY_SERIALIZE_METHOD_()                                                                                 \
 	BSTRM_START_DISABLE_OVERRIDE_WARNING()                                                                             \
 	BSTRM_POLY_SERIALIZE_METHOD_DECL_SIG_()                                                                            \
 	BSTRM_SERIALIZE_METHOD_BODY_()                                                                                     \
-	BSTRM_END_DISABLE_OVERRIDE_WARNING() 
+	BSTRM_END_DISABLE_OVERRIDE_WARNING()
 /**/
 
 #define BSTRM_POLY_SERIALIZE_METHOD_DECL_SIG_()                                                                        \
-	virtual logicmill::bstream::obstream& serialize(logicmill::bstream::obstream& os) const 
+	virtual logicmill::bstream::obstream& serialize(logicmill::bstream::obstream& os) const
 /**/
 
 #define BSTRM_SERIALIZE_DEF_(scope, name, base_array, member_array)                                                    \
 	BSTRM_SERIALIZE_IMPL_DEF_(scope, name, base_array, member_array)                                                   \
-	BSTRM_SERIALIZE_METHOD_DEF_(scope, name) 
+	BSTRM_SERIALIZE_METHOD_DEF_(scope, name)
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_DEF_(scope, name, base_array, member_array)                                               \
 	BSTRM_SERIALIZE_IMPL_DEF_SIG_(scope, name)                                                                         \
-	BSTRM_SERIALIZE_IMPL_BODY_(name, base_array, member_array) 
+	BSTRM_SERIALIZE_IMPL_BODY_(name, base_array, member_array)
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_DEF_SIG_(scope, name)                                                                     \
-	BOOST_PP_IIF(                                                                                                      \
-			UTIL_PP_ISEMPTY(scope), BSTRM_SERIALIZE_IMPL_DEF_SIG_UNSCOPED_, BSTRM_SERIALIZE_IMPL_DEF_SIG_SCOPED_)      \
-	(scope, name) 
+	BOOST_PP_IIF(UTIL_PP_ISEMPTY(scope), BSTRM_SERIALIZE_IMPL_DEF_SIG_UNSCOPED_, BSTRM_SERIALIZE_IMPL_DEF_SIG_SCOPED_) \
+	(scope, name)
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_DEF_SIG_UNSCOPED_(scope, name)                                                            \
-	logicmill::bstream::obstream& name::serialize_impl(logicmill::bstream::obstream& os) const 
+	logicmill::bstream::obstream& name::serialize_impl(logicmill::bstream::obstream& os) const
 /**/
 
 #define BSTRM_SERIALIZE_IMPL_DEF_SIG_SCOPED_(scope, name)                                                              \
-	logicmill::bstream::obstream& scope::name::serialize_impl(logicmill::bstream::obstream& os) const 
+	logicmill::bstream::obstream& scope::name::serialize_impl(logicmill::bstream::obstream& os) const
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DEF_(scope, name)                                                                       \
 	BSTRM_SERIALIZE_METHOD_DEF_SIG_(scope, name)                                                                       \
-	BSTRM_SERIALIZE_METHOD_BODY_() 
+	BSTRM_SERIALIZE_METHOD_BODY_()
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DEF_SIG_(scope, name)                                                                   \
 	BOOST_PP_IIF(                                                                                                      \
 			UTIL_PP_ISEMPTY(scope), BSTRM_SERIALIZE_METHOD_DEF_SIG_UNSCOPED_, BSTRM_SERIALIZE_METHOD_DEF_SIG_SCOPED_)  \
-	(scope, name) 
+	(scope, name)
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DEF_SIG_UNSCOPED_(scope, name)                                                          \
-	logicmill::bstream::obstream& name::serialize(logicmill::bstream::obstream& os) const 
+	logicmill::bstream::obstream& name::serialize(logicmill::bstream::obstream& os) const
 /**/
 
 #define BSTRM_SERIALIZE_METHOD_DEF_SIG_SCOPED_(scope, name)                                                            \
-	logicmill::bstream::obstream& scope::name::serialize(logicmill::bstream::obstream& os) const 
+	logicmill::bstream::obstream& scope::name::serialize(logicmill::bstream::obstream& os) const
 /**/
 
 
 #define BSTRM_CONTEXT_ACCESSOR()                                                                                       \
-	static bstream::context_base const& get()                                                                     \
+	static bstream::context_base const& get()                                                                          \
 	{                                                                                                                  \
-		static const context_type instance{options()};                        \
+		static const context_type instance{options()};                                                                 \
 		return instance;                                                                                               \
 	}
 /**/
@@ -443,15 +439,15 @@ public:                                                                         
 	class name                                                                                                         \
 	{                                                                                                                  \
 	public:                                                                                                            \
-		static logicmill::bstream::context_base const&                                                            \
+		static logicmill::bstream::context_base const&                                                                 \
 		get()                                                                                                          \
 		{                                                                                                              \
 			using context_type = logicmill::bstream::context<BSTRM_LIST_POLY_TYPES_(poly_type_array)>;                 \
 			static const std::initializer_list<const std::error_category*> icats                                       \
-					= {BSTRM_LIST_ERROR_CATEGS_(error_categs_array) &std::system_category(),                           \
+					= {BSTRM_LIST_ERROR_CATEGS_(error_categs_array) & std::system_category(),                          \
 					   &std::generic_category(),                                                                       \
 					   &logicmill::bstream::error_category()};                                                         \
-			static const context_type instance{icats};             \
+			static const context_type instance{icats};                                                                 \
 			return instance;                                                                                           \
 		}                                                                                                              \
 	};
@@ -491,29 +487,26 @@ public:                                                                         
 
 #define BSTRM_LIST_ERROR_CATEGS_SEQ_(error_categs_seq)                                                                 \
 	BOOST_PP_SEQ_FOR_EACH_I(BSTRM_LIST_ERROR_CATEGS_EACH_MEMBER_, _, error_categs_seq)                                 \
-/**/
+	/**/
 
 #define BSTRM_LIST_ERROR_CATEGS_EACH_MEMBER_(r, data, n, error_categ_name) &error_categ_name(),
 /**/
 
 
-#define BSTRM_CONTEXT_FACTORY_TYPE(name) \
-struct name : public logicmill::bstream::default_context_factory 
+#define BSTRM_CONTEXT_FACTORY_TYPE(name) struct name : public logicmill::bstream::default_context_factory
 
-#define BSTRM_POLY_TYPES(...) \
-	BSTRM_POLY_TYPES_(BOOST_PP_VARIADIC_TO_ARRAY(__VA_ARGS__))
+#define BSTRM_POLY_TYPES(...) BSTRM_POLY_TYPES_(BOOST_PP_VARIADIC_TO_ARRAY(__VA_ARGS__))
 
-#define BSTRM_POLY_TYPES_(poly_types_array) \
-	using context_type = bstream::context< BSTRM_LIST_POLY_TYPES_(poly_types_array)>;
+#define BSTRM_POLY_TYPES_(poly_types_array)                                                                            \
+	using context_type = bstream::context<BSTRM_LIST_POLY_TYPES_(poly_types_array)>;
 
-#define BSTRM_ERROR_CATEGORIES(...) \
-	BSTRM_ERROR_CATEGORIES_(BOOST_PP_VARIADIC_TO_ARRAY(__VA_ARGS__))
+#define BSTRM_ERROR_CATEGORIES(...) BSTRM_ERROR_CATEGORIES_(BOOST_PP_VARIADIC_TO_ARRAY(__VA_ARGS__))
 
 #define BSTRM_ERROR_CATEGORIES_(error_categ_array)                                                                     \
 	static std::initializer_list<const std::error_category*> const& error_categories()                                 \
 	{                                                                                                                  \
 		static const std::initializer_list<const std::error_category*> categories                                      \
-				= {BSTRM_LIST_ERROR_CATEGS_(error_categs_array) &std::system_category(),                               \
+				= {BSTRM_LIST_ERROR_CATEGS_(error_categs_array) & std::system_category(),                              \
 				   &std::generic_category(),                                                                           \
 				   &logicmill::bstream::error_category()};                                                             \
 		return categories;                                                                                             \

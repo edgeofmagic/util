@@ -37,7 +37,6 @@ namespace logicmill
 namespace armi
 {
 
-
 template<class MemberFuncPtr>
 class member_func_proxy;
 

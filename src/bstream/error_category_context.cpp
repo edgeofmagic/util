@@ -30,18 +30,7 @@
 using namespace logicmill;
 using namespace bstream;
 
-
-// error_category_context::category_init_list const&
-// error_category_context::default_categories()
-// {
-// 	static const category_init_list catlist
-// 			= {&std::system_category(), &std::generic_category(), &bstream::error_category()};
-// 	return catlist;
-// };
-
-
-error_category_context::error_category_context(category_vector&& categories)
-: m_category_vector{std::move(categories)}
+error_category_context::error_category_context(category_vector&& categories) : m_category_vector{std::move(categories)}
 {
 	for (auto i = 0u; i < m_category_vector.size(); ++i)
 	{
@@ -49,8 +38,7 @@ error_category_context::error_category_context(category_vector&& categories)
 	}
 }
 
-error_category_context::error_category_context(category_vector const& categories)
-: m_category_vector{categories}
+error_category_context::error_category_context(category_vector const& categories) : m_category_vector{categories}
 {
 	for (auto i = 0u; i < m_category_vector.size(); ++i)
 	{

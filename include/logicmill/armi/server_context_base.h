@@ -63,7 +63,7 @@ public:
 	}
 
 protected:
-	transport::server&         m_transport;
+	transport::server&           m_transport;
 	bstream::context_base const& m_stream_context;
 };
 

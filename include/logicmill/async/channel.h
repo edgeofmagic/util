@@ -28,8 +28,8 @@
 #include <chrono>
 #include <deque>
 #include <functional>
-#include <logicmill/util/buffer.h>
 #include <logicmill/async/endpoint.h>
+#include <logicmill/util/buffer.h>
 #include <logicmill/util/shared_ptr.h>
 #include <memory>
 #include <system_error>
@@ -46,8 +46,7 @@ class channel
 public:
 	using ptr = util::shared_ptr<channel>;
 
-	using read_handler
-			= std::function<void(channel::ptr const& chan, util::const_buffer&& buf, std::error_code err)>;
+	using read_handler = std::function<void(channel::ptr const& chan, util::const_buffer&& buf, std::error_code err)>;
 
 	using write_buffer_handler
 			= std::function<void(channel::ptr const& chan, util::mutable_buffer&& buf, std::error_code err)>;
@@ -57,7 +56,7 @@ public:
 
 	using connect_handler = std::function<void(channel::ptr const& chan, std::error_code err)>;
 
-	using close_handler = std::function<void(channel::ptr const& chan)>; // TODO: fix this, remove chan parameter
+	using close_handler = std::function<void(channel::ptr const& chan)>;    // TODO: fix this, remove chan parameter
 
 	virtual ~channel() {}
 
@@ -81,7 +80,8 @@ public:
 	}
 
 	virtual void
-	stop_read() = 0;
+	stop_read()
+			= 0;
 
 	virtual std::shared_ptr<loop>
 	loop() = 0;
@@ -177,51 +177,64 @@ public:
 	}
 
 	virtual bool
-	is_closing() = 0;
+	is_closing()
+			= 0;
 
 	virtual ip::endpoint
-	get_endpoint(std::error_code& err) = 0;
+	get_endpoint(std::error_code& err)
+			= 0;
 
 	virtual ip::endpoint
-	get_endpoint() = 0;
+	get_endpoint()
+			= 0;
 
 	virtual ip::endpoint
-	get_peer_endpoint(std::error_code& err) = 0;
+	get_peer_endpoint(std::error_code& err)
+			= 0;
 
 	virtual ip::endpoint
-	get_peer_endpoint() = 0;
+	get_peer_endpoint()
+			= 0;
 
 	virtual std::size_t
 	get_queue_size() const = 0;
 
 protected:
+	virtual void
+	set_close_handler(close_handler&& handler)
+			= 0;
 
 	virtual void
-	set_close_handler(close_handler&& handler) = 0;
+	really_write(util::mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler)
+			= 0;
 
 	virtual void
-	really_write(util::mutable_buffer&& buf, std::error_code& err, write_buffer_handler&& handler) = 0;
+	really_write(util::mutable_buffer&& buf, std::error_code& err, write_buffer_handler const& handler)
+			= 0;
 
 	virtual void
-	really_write(util::mutable_buffer&& buf, std::error_code& err, write_buffer_handler const& handler) = 0;
+	really_write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler&& handler)
+			= 0;
 
 	virtual void
-	really_write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler&& handler) = 0;
-
-	virtual void
-	really_write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler const& handler) = 0;
+	really_write(std::deque<util::mutable_buffer>&& bufs, std::error_code& err, write_buffers_handler const& handler)
+			= 0;
 
 	virtual bool
-	really_close(close_handler&& handler) = 0;
+	really_close(close_handler&& handler)
+			= 0;
 
 	virtual bool
-	really_close() = 0;
+	really_close()
+			= 0;
 
 	virtual void
-	really_start_read(std::error_code& err, read_handler&& handler) = 0;
+	really_start_read(std::error_code& err, read_handler&& handler)
+			= 0;
 
 	virtual void
-	really_start_read(std::error_code& err, read_handler const& handler) = 0;
+	really_start_read(std::error_code& err, read_handler const& handler)
+			= 0;
 };
 
 class acceptor
@@ -251,26 +264,30 @@ public:
 	{
 		set_close_handler(std::move(handler));
 	}
-	
-	virtual ip::endpoint
-	get_endpoint(std::error_code& err) = 0;
 
 	virtual ip::endpoint
-	get_endpoint() = 0;
+	get_endpoint(std::error_code& err)
+			= 0;
+
+	virtual ip::endpoint
+	get_endpoint()
+			= 0;
 
 	virtual std::shared_ptr<loop>
 	loop() = 0;
 
 protected:
-
 	virtual void
-	set_close_handler(close_handler&& handler) = 0;
+	set_close_handler(close_handler&& handler)
+			= 0;
 
 	virtual bool
-	really_close(close_handler&& handler) = 0;
+	really_close(close_handler&& handler)
+			= 0;
 
 	virtual bool
-	really_close() = 0;
+	really_close()
+			= 0;
 };
 
 }    // namespace async

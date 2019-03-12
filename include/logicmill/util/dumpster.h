@@ -75,8 +75,6 @@ public:
 		: m_line_length{line_length}, m_dump_limit{limit}
 	{}
 
-	// using get_next_byte_func = std::function< bool ( std::uint8_t& byte ) >;
-
 	template<class Functor, class CharT, class Traits>
 	void
 	dump(std::basic_ostream<CharT, Traits>& os, std::size_t length, Functor&& get_next_byte)

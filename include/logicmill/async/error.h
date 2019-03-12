@@ -94,7 +94,7 @@ make_error_code(errc e);
 
 namespace std
 {
-	
+
 template<>
 struct is_error_condition_enum<logicmill::async::errc> : public true_type
 {};

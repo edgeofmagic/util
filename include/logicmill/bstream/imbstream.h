@@ -25,8 +25,8 @@
 #ifndef LOGICMILL_BSTREAM_IMBSTREAM_H
 #define LOGICMILL_BSTREAM_IMBSTREAM_H
 
-#include <logicmill/bstream/ibstream.h>
 #include <logicmill/bstream/buffer/source.h>
+#include <logicmill/bstream/ibstream.h>
 
 namespace logicmill
 {

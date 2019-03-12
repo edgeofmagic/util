@@ -1,7 +1,31 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2017 David Curtis.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #include <doctest.h>
-#include <logicmill/armi/armi.h>
 #include <logicmill/armi/adapters/async/client_adapter.h>
 #include <logicmill/armi/adapters/async/server_adapter.h>
+#include <logicmill/armi/armi.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
 #include <logicmill/bstream/stdlib/pair.h>
@@ -126,12 +150,12 @@ public:
 	util::promise<int>
 	decrement(int n)
 	{
-		std::error_code   err;
+		std::error_code    err;
 		util::promise<int> p;
-		async::timer::ptr timer = loop->create_timer(err, [=](async::timer::ptr tp) mutable {
-			decrement_called = true;
-			p.resolve(n - 1);
-		});
+		async::timer::ptr  timer = loop->create_timer(err, [=](async::timer::ptr tp) mutable {
+            decrement_called = true;
+            p.resolve(n - 1);
+        });
 		CHECK(!err);
 		timer->start(std::chrono::milliseconds{3000}, err);
 		CHECK(!err);
@@ -207,7 +231,6 @@ enum class errc
 	sun_exploded,
 	aliens_invaded,
 };
-
 }
 
 namespace std
@@ -215,7 +238,7 @@ namespace std
 template<>
 struct is_error_condition_enum<armi_test::errc> : public true_type
 {};
-}
+}    // namespace std
 
 namespace armi_test
 {
@@ -281,7 +304,6 @@ public:
 		return instance;
 	}
 };
-
 
 
 class test_fixture;
@@ -411,84 +433,55 @@ public:
 				async::options{endpoint{address::v4_loopback(), 7001}}, err, [=](ref_type t, std::error_code err) {
 					CHECK(t.is_valid());
 
-					t->form_6_fail().then([=](std::string s)
-					{
-						CHECK(false);
-					},
-					[=](std::error_code err)
-					{
-						CHECK(err == make_error_code(armi_test::errc::sun_exploded));
-						m_target_form_6_fail_visited = true;
-					});
-					t->form_6_pass().then([=](std::string s)
-					{
-						CHECK(s == "shamma lamma ding dong");
-						m_target_form_6_pass_visited = true;
-					},
-					[=](std::error_code err)
-					{
-						CHECK(false);
-					});
+					t->form_6_fail().then(
+							[=](std::string s) { CHECK(false); },
+							[=](std::error_code err) {
+								CHECK(err == make_error_code(armi_test::errc::sun_exploded));
+								m_target_form_6_fail_visited = true;
+							});
+					t->form_6_pass().then(
+							[=](std::string s) {
+								CHECK(s == "shamma lamma ding dong");
+								m_target_form_6_pass_visited = true;
+							},
+							[=](std::error_code err) { CHECK(false); });
 
-					t->form_7_fail("zoot", 3).then([=](std::string s)
-					{
-						CHECK(false);
-					},
-					[=](std::error_code err)
-					{
-						CHECK(err == make_error_code(armi_test::errc::sun_exploded));
-						m_target_form_7_fail_visited = true;
-					});
+					t->form_7_fail("zoot", 3).then(
+							[=](std::string s) { CHECK(false); },
+							[=](std::error_code err) {
+								CHECK(err == make_error_code(armi_test::errc::sun_exploded));
+								m_target_form_7_fail_visited = true;
+							});
 
-					t->form_7_pass("seven: ", 7).then([=](std::string s)
-					{
-						CHECK(s == "seven: 7");
-						m_target_form_7_pass_visited = true;
-					},
-					[=](std::error_code err)
-					{
-						CHECK(false);
-					});
+					t->form_7_pass("seven: ", 7)
+							.then(
+									[=](std::string s) {
+										CHECK(s == "seven: 7");
+										m_target_form_7_pass_visited = true;
+									},
+									[=](std::error_code err) { CHECK(false); });
 
-					t->form_8_fail().then([=]()
-					{
-						CHECK(false);
-					},
-					[=](std::error_code err)
-					{
-						CHECK(err == make_error_code(armi_test::errc::sun_exploded));
-						m_target_form_8_fail_visited = true;
-					});
-					t->form_8_pass().then([=]()
-					{
-						m_target_form_8_pass_visited = true;
-					},
-					[=](std::error_code err)
-					{
-						CHECK(false);
-					});
+					t->form_8_fail().then(
+							[=]() { CHECK(false); },
+							[=](std::error_code err) {
+								CHECK(err == make_error_code(armi_test::errc::sun_exploded));
+								m_target_form_8_fail_visited = true;
+							});
+					t->form_8_pass().then(
+							[=]() { m_target_form_8_pass_visited = true; }, [=](std::error_code err) { CHECK(false); });
 
-					t->form_9_fail("zoot", 3).then([=]()
-					{
-						CHECK(false);
-					},
-					[=](std::error_code err)
-					{
-						CHECK(err == make_error_code(armi_test::errc::sun_exploded));
-						m_target_form_9_fail_visited = true;
-					});
+					t->form_9_fail("zoot", 3).then(
+							[=]() { CHECK(false); },
+							[=](std::error_code err) {
+								CHECK(err == make_error_code(armi_test::errc::sun_exploded));
+								m_target_form_9_fail_visited = true;
+							});
 
-					t->form_9_pass("seven: ", 7).then([=]()
-					{
-						m_target_form_9_pass_visited = true;
-					},
-					[=](std::error_code err)
-					{
-						CHECK(false);
-					});
+					t->form_9_pass("seven: ", 7)
+							.then([=]() { m_target_form_9_pass_visited = true; },
+								  [=](std::error_code err) { CHECK(false); });
 
 					m_client_connect_handler_visited = true;
-
 				});
 		CHECK(!err);
 
@@ -593,10 +586,7 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 					CHECK(result == 28);
 					increment_resolve_visited = true;
 				},
-				[](std::error_code err)
-				{
-					CHECK(false);
-				});
+				[](std::error_code err) { CHECK(false); });
 		client_connect_handler_visited = true;
 	});
 	CHECK(!err);

@@ -226,8 +226,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty       = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -270,8 +270,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty       = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -317,8 +317,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty       = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -365,8 +365,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty       = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -415,8 +415,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty       = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -471,8 +471,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty       = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{

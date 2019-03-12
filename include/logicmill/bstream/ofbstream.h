@@ -27,8 +27,8 @@
 
 #include <fstream>
 #include <logicmill/bstream/file/sink.h>
-#include <logicmill/bstream/obstream.h>
 #include <logicmill/bstream/memory.h>
+#include <logicmill/bstream/obstream.h>
 #include <system_error>
 
 namespace logicmill
@@ -41,11 +41,7 @@ class ofbstream : public obstream
 {
 public:
 	ofbstream(open_mode mode = file::sink::default_mode, context_base const& cntxt = get_default_context())
-		: obstream{std::make_unique<file::sink>(
-						   mode,
-						   cntxt.buffer_size(),
-						   cntxt.byte_order()),
-				   cntxt}
+		: obstream{std::make_unique<file::sink>(mode, cntxt.buffer_size(), cntxt.byte_order()), cntxt}
 	{}
 
 	ofbstream(ofbstream const&) = delete;
@@ -94,22 +90,11 @@ public:
 	{}
 
 	ofbstream(std::string const& filename, open_mode mode, context_base const& cntxt)
-		: obstream{std::make_unique<file::sink>(
-						   filename,
-						   mode,
-						   cntxt.buffer_size(),
-						   cntxt.byte_order()),
-				   cntxt}
+		: obstream{std::make_unique<file::sink>(filename, mode, cntxt.buffer_size(), cntxt.byte_order()), cntxt}
 	{}
 
 	ofbstream(std::string const& filename, open_mode mode, context_base const& cntxt, std::error_code& err)
-		: obstream{std::make_unique<file::sink>(
-						   filename,
-						   mode,
-						   cntxt.buffer_size(),
-						   cntxt.byte_order(),
-						   err),
-				   cntxt}
+		: obstream{std::make_unique<file::sink>(filename, mode, cntxt.buffer_size(), cntxt.byte_order(), err), cntxt}
 	{}
 
 	void

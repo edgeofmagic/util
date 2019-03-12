@@ -27,6 +27,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <iostream>
 #include <limits>
@@ -34,7 +35,6 @@
 #include <logicmill/util/macros.h>
 #include <logicmill/util/shared_ptr.h>
 #include <system_error>
-#include <deque>
 
 #ifndef NDEBUG
 
@@ -45,7 +45,7 @@
 		assert((_buf_).m_size <= (_buf_).m_region->capacity());                                                        \
 		assert((_buf_).m_capacity == (_buf_).m_region->capacity());                                                    \
 	}                                                                                                                  \
-/**/
+	/**/
 
 #if 0
 
@@ -118,22 +118,27 @@ class const_buffer;
 class shared_buffer;
 
 template<class T>
-struct is_buffer_type : public std::false_type {};
+struct is_buffer_type : public std::false_type
+{};
 
 template<>
-struct is_buffer_type<buffer> : public std::true_type {};
+struct is_buffer_type<buffer> : public std::true_type
+{};
 
 template<>
-struct is_buffer_type<mutable_buffer> : public std::true_type {};
+struct is_buffer_type<mutable_buffer> : public std::true_type
+{};
 
 template<>
-struct is_buffer_type<const_buffer> : public std::true_type {};
+struct is_buffer_type<const_buffer> : public std::true_type
+{};
 
 template<>
-struct is_buffer_type<shared_buffer> : public std::true_type {};
+struct is_buffer_type<shared_buffer> : public std::true_type
+{};
 
 template<class Buffer>
-inline size_type 
+inline size_type
 total_size(std::deque<Buffer> const& bufs);
 
 
@@ -142,8 +147,8 @@ total_size(std::deque<Buffer> const& bufs);
  * An instance of buffer represents and manages a contiguous region of memory, as a 2-tuple consisting of 
  * a pointer to the beginning of the region and the size of the region in bytes. These
  * are accessible through the member functions data() and size(). The buffer class is abstract; instances 
- * cannot be constructed directly. It serves are a base class for two concrete derived classes&mdash;mutable_buffer,
- * const_buffer, and shared_buffer&mdash;and declares constructs that are common to both derived classes.
+ * cannot be constructed directly. It serves are a base class for concrete derived classes&mdash;mutable_buffer,
+ * const_buffer, and shared_buffer&mdash;and declares constructs that are common to all derived classes.
  * 
  */
 class buffer
@@ -264,8 +269,6 @@ protected:
 				}
 				m_data     = p;
 				m_capacity = new_capacity;
-				// m_data = m_broker->allocate( new_capacity );
-				// m_capacity = new_capacity;
 			}
 			else if (new_capacity > m_capacity)
 			{
@@ -538,8 +541,9 @@ public:
 
 	/** \brief Construct a std::string value from the contents of this instance's memory region.
 	 * 
-	 * The contents of the memory region from data() to data() + size() - 1 are copied into the
-	 * resulting string value. The byte values from the buffer are copied exactly, with no 
+	 * The contents of the memory region from data() to data() + size() - 1, or until the first null character
+	 * is encountered, are copied into the
+	 * resulting string value. The byte values from the buffer are copied with no 
 	 * interpretation or transformation.
 	 * 
 	 * \return a std::string value constructed from the buffer contents.
@@ -810,15 +814,6 @@ public:
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
 
-	// mutable_buffer( const void* data, size_type capacity ) // TODO: mostly here for testing, consider removing
-	// :
-	// m_region{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( data ), capacity ) },
-	// m_capacity{ capacity }
-	// {
-	// 	m_data = m_region->data();
-	// 	m_size = capacity;
-	// }
-
 	mutable_buffer(std::string const& s)
 		: m_region{std::make_unique<alloc_region<default_alloc>>(
 				  reinterpret_cast<const byte_type*>(s.data()),
@@ -829,15 +824,6 @@ public:
 		m_size = s.size();
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
-
-	// mutable_buffer( std::string const& s )
-	// :
-	// m_region{ std::make_unique< allocation >( reinterpret_cast< const byte_type* >( s.data() ), s.size() ) },
-	// m_capacity{ s.size() }
-	// {
-	// 	m_data = m_region->data();
-	// 	m_size = s.size();
-	// }
 
 #endif
 
@@ -886,7 +872,6 @@ private:
 	}
 
 public:
-
 	/** Construct (by move) from another instance of mutable_buffer, as a sub-region of the moved instance.
 	 * 
 	 * The constucted instance has values such that data() == rhs.data() + offset, size() == length, 
@@ -932,7 +917,11 @@ public:
 
 	mutable_buffer(const_buffer&& cbuf);
 
-	template<class Buffer, class _Alloc, class = typename std::enable_if_t< is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	template<
+			class Buffer,
+			class _Alloc,
+			class = typename std::enable_if_t<
+					is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	mutable_buffer(std::deque<Buffer> const& bufs, _Alloc&& alloc)
 		: m_region{std::make_unique<alloc_region<_Alloc>>(total_size(bufs), std::forward<_Alloc>(alloc))}
 	{
@@ -943,11 +932,10 @@ public:
 			p += buf.size();
 		}
 		std::error_code err;
-		ctor_body(m_region->data(), m_region->capacity(), 0, m_region->capacity()
-		, err);
+		ctor_body(m_region->data(), m_region->capacity(), 0, m_region->capacity(), err);
 	}
 
-	template<class Buffer, class = typename std::enable_if_t< is_buffer_type<Buffer>::value>>
+	template<class Buffer, class = typename std::enable_if_t<is_buffer_type<Buffer>::value>>
 	mutable_buffer(std::deque<Buffer> const& bufs)
 		: m_region{std::make_unique<alloc_region<default_alloc>>(total_size(bufs))}
 	{
@@ -1045,7 +1033,7 @@ public:
 		{
 			*this = std::move(mutable_buffer{new_cap});
 		}
-		
+
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 
 		err.clear();
@@ -1363,7 +1351,11 @@ public:
 		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
 
-	template<class Buffer, class _Alloc, class = typename std::enable_if_t< is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	template<
+			class Buffer,
+			class _Alloc,
+			class = typename std::enable_if_t<
+					is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	const_buffer(std::deque<Buffer> const& bufs, _Alloc&& alloc)
 		: m_region{std::make_unique<alloc_region<_Alloc>>(total_size(bufs), std::forward<_Alloc>(alloc))}
 	{
@@ -1378,7 +1370,7 @@ public:
 		ASSERT_CONST_BUFFER_INVARIANTS(*this);
 	}
 
-	template<class Buffer, class = typename std::enable_if_t< is_buffer_type<Buffer>::value>>
+	template<class Buffer, class = typename std::enable_if_t<is_buffer_type<Buffer>::value>>
 	const_buffer(std::deque<Buffer> const& bufs)
 		: m_region{std::make_unique<alloc_region<default_alloc>>(total_size(bufs))}
 	{
@@ -1626,7 +1618,10 @@ public:
 
 	template<class _Del>
 	shared_buffer(void* data, size_type size, _Del&& del)
-		: m_region{util::make_shared<del_region<_Del>>(reinterpret_cast<byte_type*>(data), size, std::forward<_Del>(del))}
+		: m_region{util::make_shared<del_region<_Del>>(
+				  reinterpret_cast<byte_type*>(data),
+				  size,
+				  std::forward<_Del>(del))}
 	{
 		m_data = reinterpret_cast<byte_type*>(data);
 		m_size = size;
@@ -1685,7 +1680,11 @@ public:
 		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	template<class Buffer, class _Alloc, class = typename std::enable_if_t< is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	template<
+			class Buffer,
+			class _Alloc,
+			class = typename std::enable_if_t<
+					is_buffer_type<Buffer>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	shared_buffer(std::deque<Buffer> const& bufs, _Alloc&& alloc)
 		: m_region{util::make_shared<alloc_region<_Alloc>>(total_size(bufs), std::forward<_Alloc>(alloc))}
 	{
@@ -1700,7 +1699,7 @@ public:
 		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
 	}
 
-	template<class Buffer, class = typename std::enable_if_t< is_buffer_type<Buffer>::value>>
+	template<class Buffer, class = typename std::enable_if_t<is_buffer_type<Buffer>::value>>
 	shared_buffer(std::deque<Buffer> const& bufs)
 		: m_region{util::make_shared<alloc_region<default_alloc>>(total_size(bufs))}
 	{
@@ -2009,25 +2008,6 @@ public:
 	}
 };
 
-
-// inline const_buffer
-// consolidate(std::deque<const_buffer> const& bufs)
-// {
-// 	size_type capacity{0};
-// 	for (auto& buf : bufs)
-// 	{
-// 		capacity += buf.size();
-// 	}
-// 	mutable_buffer temp{capacity};
-// 	position_type pos{0};
-// 	for (auto const& buf : bufs)
-// 	{
-// 		temp.putn(pos, buf.data(), buf.size());
-// 		pos += buf.size();
-// 	}
-// 	return const_buffer{std::move(temp)};
-// }
-
 class string_alias
 {
 public:
@@ -2155,8 +2135,8 @@ private:
 }    // namespace logicmill
 
 template<>
-logicmill::size_type
-inline logicmill::util::total_size<logicmill::util::buffer>(std::deque<logicmill::util::buffer> const& bufs)
+logicmill::size_type inline logicmill::util::total_size<logicmill::util::buffer>(
+		std::deque<logicmill::util::buffer> const& bufs)
 {
 	size_type result{0};
 	for (auto const& buf : bufs)

@@ -28,33 +28,29 @@
 #include <boost/predef.h>
 
 // disable warning for missing overrides;
-// see definitions for BSTRM_POLY_SERIALIZE_METHOD_() and 
+// see definitions for BSTRM_POLY_SERIALIZE_METHOD_() and
 // BSTRM_POLY_SERIALIZE_DECL(), in include/logicmill/bstream/macros.h
 
-#if ( BOOST_COMP_CLANG )
-	#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()										\
-		_Pragma ( "clang diagnostic push" )													\
-		_Pragma ( "clang diagnostic ignored \"-Winconsistent-missing-override\"" )			\
-/**/
-	#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING()										\
-		_Pragma ( "clang diagnostic pop" )													\
-/**/
-#elif ( BOOST_COMP_MSVC )
+#if (BOOST_COMP_CLANG)
+#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()                                                                    \
+	_Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") /**/
+#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING() _Pragma("clang diagnostic pop")                            /**/
+#elif (BOOST_COMP_MSVC)
 // may not be necessary, probably won't work if it is:
-	#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()										\
-//        __pragma( warning( push ) )														\
+#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()                                                                    \
+	//        __pragma( warning( push ) )														\
 //        __pragma( warning( disable : ???? ) )												\
 /**/
-	#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING()										\
+#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING()                                                                      \
 //        __pragma( warning( pop ) )														\
 /**/
-#elif ( BOOST_COMP_GNUC )
+#elif (BOOST_COMP_GNUC)
 // may not be necessary, probably won't work if it is:
-	#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()										\
-//        _Pragma ( "GCC diagnostic push" )													\
+#define LGCML_UTIL_START_DISABLE_OVERRIDE_WARNING()                                                                    \
+	//        _Pragma ( "GCC diagnostic push" )													\
 //        _Pragma ( "GCC diagnostic ignored \"-W????????\"" )								\
 /**/
-	#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING()										\
+#define LGCML_UTIL_END_DISABLE_OVERRIDE_WARNING()                                                                      \
 //        _Pragma ( "GCC diagnostic pop" )													\
 /**/
 #endif
@@ -62,30 +58,26 @@
 
 // disable warning for unused values;
 
-#if ( BOOST_COMP_CLANG )
-	#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()									\
-		_Pragma ( "clang diagnostic push" )													\
-		_Pragma ( "clang diagnostic ignored \"-Wunused-value\"" )							\
-/**/
-	#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()									\
-		_Pragma ( "clang diagnostic pop" )													\
-/**/
-#elif ( BOOST_COMP_MSVC )
+#if (BOOST_COMP_CLANG)
+#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()                                                                \
+	_Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wunused-value\"") /**/
+#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING() _Pragma("clang diagnostic pop")       /**/
+#elif (BOOST_COMP_MSVC)
 // may not be necessary, certainly won't work if it is:
-	#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()									\
-//        __pragma( warning( push ) )														\
+#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()                                                                \
+	//        __pragma( warning( push ) )														\
 //        __pragma( warning( disable : ???? ) )												\
 /**/
-	#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()									\
+#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()                                                                  \
 //        __pragma( warning( pop ) )														\
 /**/
-#elif ( BOOST_COMP_GNUC )
+#elif (BOOST_COMP_GNUC)
 // may not be necessary, certainly won't work if it is:
-	#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()									\
-//        _Pragma ( "GCC diagnostic push" )													\
+#define LGCML_UTIL_START_DISABLE_UNUSED_VALUE_WARNING()                                                                \
+	//        _Pragma ( "GCC diagnostic push" )													\
 //        _Pragma ( "GCC diagnostic ignored \"-W????????\"" )								\
 /**/
-	#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()									\
+#define LGCML_UTIL_END_DISABLE_UNUSED_VALUE_WARNING()                                                                  \
 //        _Pragma ( "GCC diagnostic pop" )													\
 /**/
 #endif

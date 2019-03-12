@@ -86,7 +86,6 @@ private:
 class context_base : public error_category_context
 {
 public:
-
 	// using ptr = util::shared_ptr<context_base>;
 
 	static constexpr bool
@@ -110,27 +109,11 @@ public:
 	{}
 
 	context_base(bool dedup_shared_ptrs, byte_order order, size_type buffer_size = 65536)
-		// buffer::memory_broker::ptr broker      = buffer::default_broker::get())
 		: error_category_context{},
 		  m_dedup_shared_ptrs{dedup_shared_ptrs},
 		  m_byte_order{order},
 		  m_buffer_size{buffer_size}
-	//   m_broker{broker}
 	{}
-
-	// context_base(
-	// 		error_category_context::category_init_list categories,
-	// 		bool                                       dedup_shared_ptrs,
-	// 		byte_order                                 order,
-	// 		size_type                                  buffer_size = 65536)
-	// 	// buffer::memory_broker::ptr                 broker      = buffer::default_broker::get())
-
-	// 	: error_category_context{categories},
-	// 	  m_dedup_shared_ptrs{dedup_shared_ptrs},
-	// 	  m_byte_order{order},
-	// 	  m_buffer_size{buffer_size}
-	// //   m_broker{broker}
-	// {}
 
 	virtual ~context_base() {}
 
@@ -199,17 +182,10 @@ public:
 		return m_buffer_size;
 	}
 
-	// buffer::memory_broker::ptr
-	// broker() const
-	// {
-	// 	return m_broker;
-	// }
-
 private:
 	bool            m_dedup_shared_ptrs;
 	enum byte_order m_byte_order;
 	size_type       m_buffer_size;
-	// buffer::memory_broker::ptr m_broker;
 };
 
 using poly_raw_factory_func = std::function<void*(ibstream&)>;
@@ -247,9 +223,6 @@ template<class... Args>
 class context : public context_base
 {
 public:
-
-	// using ptr = util::shared_ptr<context>;
-
 	context(context_options&& opts) : context_base{std::move(opts)} {}
 
 	context(context_options const& opts) : context_base{opts} {}
@@ -257,13 +230,6 @@ public:
 	context(bool dedup_shared_ptrs = true, enum byte_order order = byte_order::big_endian, size_type buf_size = 65536UL)
 		: context_base{dedup_shared_ptrs, order, buf_size}
 	{}
-
-
-	// context(error_category_context::category_init_list categories,
-	// 		bool                                       dedup_shared_ptrs = true,
-	// 		enum byte_order                            order             = byte_order::big_endian, size_type buf_size = 65536UL)
-	// 	: context_base{categories, dedup_shared_ptrs, order, buf_size}
-	// {}
 
 	virtual poly_tag_type
 	get_type_tag(std::type_index index) const override
@@ -394,7 +360,8 @@ class default_context_factory
 public:
 	using context_type = bstream::context<>;
 
-	static context_options options()
+	static context_options
+	options()
 	{
 		return context_options{};
 	}
@@ -410,121 +377,8 @@ public:
 inline context_base const&
 get_default_context()
 {
-	// static context_base::ptr default_context = util::make_shared<context<>>(error_category_context::category_init_list{});
-	// static const context<> default_context{{}};
 	return default_context_factory::get();
 }
-
-// template<class... Args>
-// context_base::ptr
-// create_context(
-// 		bool            dedup_shared_ptrs = true,
-// 		enum byte_order order             = byte_order::big_endian,
-// 		size_type       buf_size          = 65536UL)
-// {
-// 	return util::make_shared<context<Args...>>(dedup_shared_ptrs, order, buf_size);
-// }
-
-// template<class... Args>
-// context_base::ptr
-// create_context(
-// 		error_category_context::category_init_list categories,
-// 		bool                                       dedup_shared_ptrs = true,
-// 		enum byte_order                            order             = byte_order::big_endian,
-// 		size_type                                  buf_size          = 65536UL)
-// {
-// 	return util::make_shared<context<Args...>>(categories, dedup_shared_ptrs, order, buf_size);
-// }
-
-#if 0
-class context_base
-{
-public:
-	virtual ~context_base() {}
-
-	virtual std::shared_ptr<const context_impl_base>
-	get_context_impl() const = 0;
-};
-
-class cloned_context : public context_base
-{
-public:
-	cloned_context(std::shared_ptr<const context_impl_base> const& impl) : m_context_impl{impl} {}
-
-	cloned_context(context_base const& cntxt) : m_context_impl{cntxt.get_context_impl()} {}
-
-	cloned_context&
-	operator=(context_base const& cntxt)
-	{
-		m_context_impl = cntxt.get_context_impl();
-		return *this;
-	}
-
-	virtual std::shared_ptr<const context_impl_base>
-	get_context_impl() const override
-	{
-		return m_context_impl;
-	}
-
-private:
-	std::shared_ptr<const context_impl_base> m_context_impl;
-};
-
-template<class... Args>
-class context : public context_base
-{
-public:
-	context(bool dedup_shared_ptrs = true, byte_order order = byte_order::big_endian)
-		: m_context_impl{std::make_shared<const context_impl<Args...>>(dedup_shared_ptrs, order)}
-	{}
-
-	context(error_category_context::category_init_list categories,
-			bool                                       dedup_shared_ptrs = true,
-			byte_order                                 order             = byte_order::big_endian)
-		: m_context_impl{std::make_shared<const context_impl<Args...>>(categories, dedup_shared_ptrs, order)}
-	{}
-
-	// context(context const& rhs)
-	// : m_context_impl{rhs.m_context_impl}
-	// {}
-
-	// context(context&& rhs)
-	// : m_context_impl{std::move(rhs.m_context_impl)}
-	// {}
-
-	// context&
-	// operator=(context const& rhs)
-	// {
-	// 	m_contest_impl = rhs.m_context_impl;
-	// 	return *this;
-	// }
-
-	// context&
-	// operator=(context&& rhs)
-	// {
-	// 	m_contest_impl = std::move(rhs.m_context_impl);
-	// 	return *this;
-	// }
-
-	virtual std::shared_ptr<const context_impl_base>
-	get_context_impl() const override
-	{
-		return m_context_impl;
-	}
-
-
-private:
-	std::shared_ptr<const context_impl_base> m_context_impl;
-};
-
-
-inline context_base const&
-get_default_context()
-{
-	static const context<> default_context{{}};
-	return default_context;
-}
-#endif
 
 }    // namespace bstream
 }    // namespace logicmill

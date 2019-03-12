@@ -295,24 +295,16 @@ ibstream::read_string_header()
 		switch (tcode)
 		{
 			case typecode::str_8:
-			{
 				length = get_num<std::uint8_t>();
-			}
-			break;
+				break;
 			case typecode::str_16:
-			{
 				length = get_num<std::uint16_t>();
-			}
-			break;
+				break;
 			case typecode::str_32:
-			{
 				length = get_num<std::uint32_t>();
-			}
-			break;
+				break;
 			default:
-			{
 				throw std::system_error{make_error_code(bstream::errc::expected_string)};
-			}
 		}
 	}
 	return length;
@@ -349,19 +341,13 @@ ibstream::read_array_header()
 		switch (tcode)
 		{
 			case typecode::array_16:
-			{
 				length = get_num<std::uint16_t>();
-			}
-			break;
+				break;
 			case typecode::array_32:
-			{
 				length = get_num<std::uint32_t>();
-			}
-			break;
+				break;
 			default:
-			{
 				throw std::system_error{make_error_code(bstream::errc::expected_array)};
-			}
 		}
 	}
 	return length;
@@ -398,19 +384,13 @@ ibstream::read_map_header()
 		switch (tcode)
 		{
 			case typecode::map_16:
-			{
 				length = get_num<std::uint16_t>();
-			}
-			break;
+				break;
 			case typecode::map_32:
-			{
 				length = get_num<std::uint32_t>();
-			}
-			break;
+				break;
 			default:
-			{
 				throw std::system_error{make_error_code(bstream::errc::expected_map)};
-			}
 		}
 	}
 	return length;
@@ -509,24 +489,16 @@ ibstream::read_blob_header()
 	switch (tcode)
 	{
 		case typecode::bin_8:
-		{
 			length = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		case typecode::bin_16:
-		{
 			length = get_num<std::uint16_t>();
-		}
-		break;
+			break;
 		case typecode::bin_32:
-		{
 			length = get_num<std::uint32_t>();
-		}
-		break;
+			break;
 		default:
-		{
 			throw std::system_error{make_error_code(bstream::errc::expected_blob)};
-		}
 	}
 	return length;
 }
@@ -583,57 +555,39 @@ ibstream::read_ext_header(std::uint8_t& ext_type)
 	switch (tcode)
 	{
 		case typecode::fixext_1:
-		{
 			length   = 1;
 			ext_type = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		case typecode::fixext_2:
-		{
 			length   = 2;
 			ext_type = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		case typecode::fixext_4:
-		{
 			length   = 4;
 			ext_type = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		case typecode::fixext_8:
-		{
 			length   = 8;
 			ext_type = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		case typecode::fixext_16:
-		{
 			length   = 16;
 			ext_type = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		case typecode::ext_8:
-		{
 			length   = get_num<std::uint8_t>();
 			ext_type = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		case typecode::ext_16:
-		{
 			length   = get_num<std::uint16_t>();
 			ext_type = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		case typecode::ext_32:
-		{
 			length   = get_num<std::uint32_t>();
 			ext_type = get_num<std::uint8_t>();
-		}
-		break;
+			break;
 		default:
-		{
 			throw std::system_error{make_error_code(bstream::errc::expected_extern)};
-		}
 	}
 	return length;
 }

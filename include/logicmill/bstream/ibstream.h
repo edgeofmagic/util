@@ -247,13 +247,6 @@ public:
 		return m_strmbuf->getn(dst, nbytes, err);
 	}
 
-	// bend::order
-	// byte_order() const
-	// {
-	// 	return m_reverse_order ? ((bend::order::native == bend::order::little) ? bend::order::big : bend::order::little)
-	// 						   : (bend::order::native);
-	// }
-
 	template<class T>
 	typename std::enable_if_t<is_ibstream_constructible<T>::value, T>
 	read_as()
@@ -548,7 +541,9 @@ public:
 	reset()
 	{
 		if (m_ptr_deduper)
+		{
 			m_ptr_deduper->clear();
+		}
 		position(0);
 	}
 
@@ -556,7 +551,9 @@ public:
 	reset(std::error_code& err)
 	{
 		if (m_ptr_deduper)
+		{
 			m_ptr_deduper->clear();
+		}
 		position(0, err);
 	}
 
@@ -706,7 +703,7 @@ protected:
 	ingest(util::bufwriter& os);
 
 	std::unique_ptr<util::bufwriter> m_bufwriter = nullptr;
-	context_base const&                m_context;
+	context_base const&              m_context;
 	std::unique_ptr<ptr_deduper>     m_ptr_deduper;
 	std::unique_ptr<bstream::source> m_strmbuf;
 };
@@ -1141,17 +1138,14 @@ struct value_deserializer<std::string>
 			switch (tcode)
 			{
 				case typecode::str_8:
-				{
 					length = is.get_num<std::uint8_t>();
-				}
+					break;
 				case typecode::str_16:
-				{
 					length = is.get_num<std::uint16_t>();
-				}
+					break;
 				case typecode::str_32:
-				{
 					length = is.get_num<std::uint32_t>();
-				}
+					break;
 				default:
 					throw std::system_error{make_error_code(bstream::errc::val_deser_type_error_string)};
 			}

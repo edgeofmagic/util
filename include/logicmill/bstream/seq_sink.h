@@ -220,8 +220,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -257,8 +257,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -296,8 +296,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -337,8 +337,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -379,8 +379,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -428,8 +428,8 @@ public:
 			if (!m_dirty)
 			{
 				m_dirty_start = m_next;
+				m_dirty = true;
 			}
-			m_dirty = true;
 
 			if (m_reverse)
 			{
@@ -501,7 +501,6 @@ protected:
 	really_fill(byte_type fill_byte, size_type n);
 
 protected:    // to be overridden by derived classes
-
 	virtual void
 	really_overflow(size_type, std::error_code& err);
 

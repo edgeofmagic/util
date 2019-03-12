@@ -26,8 +26,8 @@
 #define LOGICMILL_BSTREAM_BUFSEQ_SINK_H
 
 #include <deque>
-#include <logicmill/util/buffer.h>
 #include <logicmill/bstream/sink.h>
+#include <logicmill/util/buffer.h>
 
 #ifndef LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE
 #define LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE 16384UL
@@ -48,7 +48,7 @@ class sink_test_probe;
 class sink : public bstream::sink
 {
 public:
-	using base = bstream::sink;
+	using base          = bstream::sink;
 	using default_alloc = std::allocator<byte_type>;
 
 	using buffers = std::deque<util::mutable_buffer>;
@@ -56,7 +56,7 @@ public:
 	friend class detail::sink_test_probe;
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	sink(size_type size, _Alloc&& alloc, byte_order order=byte_order::big_endian)
+	sink(size_type size, _Alloc&& alloc, byte_order order = byte_order::big_endian)
 		: base{order},
 		  m_segment_capacity{size},
 		  m_current{0},
@@ -68,18 +68,18 @@ public:
 	}
 
 	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	sink(_Alloc&& alloc, byte_order order=byte_order::big_endian)
-	: base{order},
-	m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
-	m_current{0},
-	m_bufs{},
-	m_factory{std::make_unique<util::mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
+	sink(_Alloc&& alloc, byte_order order = byte_order::big_endian)
+		: base{order},
+		  m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
+		  m_current{0},
+		  m_bufs{},
+		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
 	{
 		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
 		reset_ptrs();
 	}
 
-	sink(size_type size, byte_order order=byte_order::big_endian)
+	sink(size_type size, byte_order order = byte_order::big_endian)
 		: base{order},
 		  m_segment_capacity{size},
 		  m_current{0},
@@ -90,7 +90,7 @@ public:
 		reset_ptrs();
 	}
 
-	sink(byte_order order=byte_order::big_endian)
+	sink(byte_order order = byte_order::big_endian)
 		: base{order},
 		  m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
 		  m_current{0},
@@ -100,7 +100,6 @@ public:
 		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
 		reset_ptrs();
 	}
-
 
 
 	sink(sink&&)      = delete;
@@ -131,9 +130,6 @@ protected:
 	void
 	locate(position_type pos, std::error_code& err);
 
-	// virtual void
-	// really_flush( std::error_code& err ) override;
-
 	virtual bool
 	is_valid_position(position_type pos) const override;
 
@@ -151,9 +147,9 @@ protected:
 		set_ptrs(base, base, base + m_segment_capacity);
 	}
 
-	size_type                               m_segment_capacity;    // capacity of individual buffers
-	size_type                               m_current;             // index of current buffer
-	buffers                                 m_bufs;
+	size_type                                     m_segment_capacity;    // capacity of individual buffers
+	size_type                                     m_current;             // index of current buffer
+	buffers                                       m_bufs;
 	std::unique_ptr<util::mutable_buffer_factory> m_factory;
 };
 

@@ -1,3 +1,27 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2017 David Curtis.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #include "loop_uv.h"
 #include "tcp_uv.h"
 #include "timer_uv.h"
@@ -124,11 +148,8 @@ loop_uv::really_create_timer_void(std::error_code& err, timer::void_handler hand
 		err = make_error_code(async::errc::loop_closed);
 		goto exit;
 	}
-	// result = logicmill::util::make_shared<timer_uv>(m_uv_loop, err, std::move(handler));
-	result = logicmill::util::make_shared<timer_uv>(m_uv_loop, err, [=,handler{std::move(handler)}](logicmill::async::timer::ptr)
-	{
-		handler();
-	});
+	result = logicmill::util::make_shared<timer_uv>(
+			m_uv_loop, err, [=, handler{std::move(handler)}](logicmill::async::timer::ptr) { handler(); });
 	result->init(result);
 	if (err)
 		goto exit;
@@ -219,42 +240,32 @@ loop_uv::on_walk(uv_handle_t* handle, void*)
 		switch (handle_type)
 		{
 			case uv_handle_type::UV_TIMER:
-			{
 				if (!uv_is_closing(handle))
 				{
 					uv_close(handle, timer_uv::on_timer_close);
 				}
-			}
-			break;
+				break;
 			case uv_handle_type::UV_TCP:
-			{
 				if (!uv_is_closing(handle))
 				{
 					uv_close(handle, tcp_base_uv::on_close);
 				}
-			}
-			break;
+				break;
 			case uv_handle_type::UV_ASYNC:
-			{
 				if (!uv_is_closing(handle))
 				{
 					uv_close(handle, nullptr);
 				}
-			}
-			break;
+				break;
 			case uv_handle_type::UV_UDP:
-			{
 				if (!uv_is_closing(handle))
 				{
 					uv_close(handle, udp_transceiver_uv::on_close);
 				}
-			}
-			break;
+				break;
 			default:
-			{
 				std::cout << "closing loop handles, unexpected handle type: " << handle_type << std::endl;
-			}
-			break;
+				break;
 		}
 	}
 }
@@ -449,22 +460,9 @@ loop_data::get_loop_ptr()
 loop_uv::ptr
 loop_uv::create_from_default()
 {
-	std::shared_ptr<loop_uv> default_loop =
-		std::make_shared<loop_uv>(use_default_loop{});
+	std::shared_ptr<loop_uv> default_loop = std::make_shared<loop_uv>(use_default_loop{});
 	default_loop->init(default_loop);
 	return default_loop;
-	// static std::weak_ptr<loop_uv> default_loop;
-	// if (default_loop.expired())
-	// {
-	// 	auto default_loop_shared = std::make_shared<loop_uv>(use_default_loop{});
-	// 	default_loop_shared->init(default_loop_shared);
-	// 	default_loop = default_loop_shared;
-	// 	return default_loop_shared;
-	// }
-	// else
-	// {
-	// 	return default_loop.lock();
-	// }
 }
 
 loop::ptr
@@ -500,11 +498,7 @@ loop_uv::really_dispatch(std::error_code& err, loop::dispatch_handler handler)
 
 	{
 		std::lock_guard<std::recursive_mutex> guard(m_dispatch_queue_mutex);
-		m_dispatch_queue.emplace_back([=,handler{std::move(handler)}]()
-		{
-			handler(m_data.get_loop_ptr());
-		});
-		// m_dispatch_queue.emplace_back(std::move(handler));
+		m_dispatch_queue.emplace_back([=, handler{std::move(handler)}]() { handler(m_data.get_loop_ptr()); });
 	}
 
 	{
@@ -557,24 +551,29 @@ loop_uv::is_alive() const
 }
 
 void
-loop_uv::really_schedule(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_handler handler)
+loop_uv::really_schedule(
+		std::chrono::milliseconds                 timeout,
+		std::error_code&                          err,
+		logicmill::async::loop::scheduled_handler handler)
 {
-	auto tp = really_create_timer(err, [=,handler{std::move(handler)}] (logicmill::async::timer::ptr) {
-		handler(m_data.get_loop_ptr());
-	});
-	if (err) goto exit;
+	auto tp = really_create_timer(
+			err, [=, handler{std::move(handler)}](logicmill::async::timer::ptr) { handler(m_data.get_loop_ptr()); });
+	if (err)
+		goto exit;
 	tp->start(timeout, err);
 exit:
 	return;
 }
 
 void
-loop_uv::really_schedule_void(std::chrono::milliseconds timeout, std::error_code& err, logicmill::async::loop::scheduled_void_handler handler)
+loop_uv::really_schedule_void(
+		std::chrono::milliseconds                      timeout,
+		std::error_code&                               err,
+		logicmill::async::loop::scheduled_void_handler handler)
 {
-	auto tp = really_create_timer(err, [handler{std::move(handler)}] (logicmill::async::timer::ptr) {
-		handler();
-	});
-	if (err) goto exit;
+	auto tp = really_create_timer(err, [handler{std::move(handler)}](logicmill::async::timer::ptr) { handler(); });
+	if (err)
+		goto exit;
 	tp->start(timeout, err);
 exit:
 	return;

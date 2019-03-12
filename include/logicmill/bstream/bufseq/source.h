@@ -27,10 +27,10 @@
 
 #include <algorithm>
 #include <deque>
-#include <logicmill/util/buffer.h>
 #include <logicmill/bstream/error.h>
 #include <logicmill/bstream/source.h>
 #include <logicmill/bstream/types.h>
+#include <logicmill/util/buffer.h>
 #include <vector>
 
 namespace logicmill
@@ -50,48 +50,53 @@ template<class Buffer>
 class source : public bstream::source
 {
 private:
-	struct signature_enable {};
+	struct signature_enable
+	{};
 
 public:
-
 	using bstream::source::getn;
 	using bstream::source::get_num;
-	using base = bstream::source;
+	using base        = bstream::source;
 	using buffer_type = Buffer;
 
 	friend class detail::source_test_probe<Buffer>;
 
-	source(byte_order order=byte_order::big_endian) : base{order}, m_bufs{}, m_size{0}, m_current{0}, m_offsets{} {}
+	source(byte_order order = byte_order::big_endian) : base{order}, m_bufs{}, m_size{0}, m_current{0}, m_offsets{} {}
 
-	source(util::shared_buffer const& buf, byte_order order=byte_order::big_endian);
+	source(util::shared_buffer const& buf, byte_order order = byte_order::big_endian);
 
-	source(util::shared_buffer&& buf, byte_order order=byte_order::big_endian);
+	source(util::shared_buffer&& buf, byte_order order = byte_order::big_endian);
 
-	source(util::const_buffer const& buf, byte_order order=byte_order::big_endian) : base{order}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
+	source(util::const_buffer const& buf, byte_order order = byte_order::big_endian)
+		: base{order}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
 	{
 		m_bufs.emplace(Buffer{buf});
 	}
 
-	source(util::const_buffer&& buf, byte_order order=byte_order::big_endian) : base{order}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
+	source(util::const_buffer&& buf, byte_order order = byte_order::big_endian)
+		: base{order}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
 	{
 		m_bufs.emplace(Buffer{std::move(buf)});
 	}
 
-	source(util::mutable_buffer const& buf, byte_order order=byte_order::big_endian) : base{order}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
+	source(util::mutable_buffer const& buf, byte_order order = byte_order::big_endian)
+		: base{order}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
 	{
 		m_bufs.emplace(Buffer{buf});
 	}
 
-	source(util::mutable_buffer&& buf, byte_order order=byte_order::big_endian) : base{order}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
+	source(util::mutable_buffer&& buf, byte_order order = byte_order::big_endian)
+		: base{order}, m_bufs{}, m_size{buf.size()}, m_current{0}, m_offsets(1, 0)
 	{
 		m_bufs.emplace(Buffer{std::move(buf)});
 	}
 
-	source(std::deque<util::shared_buffer> const& bufs, byte_order order=byte_order::big_endian);
+	source(std::deque<util::shared_buffer> const& bufs, byte_order order = byte_order::big_endian);
 
-	source(std::deque<util::shared_buffer>&& bufs, byte_order order=byte_order::big_endian);
+	source(std::deque<util::shared_buffer>&& bufs, byte_order order = byte_order::big_endian);
 
-	source(std::deque<util::const_buffer> const& bufs, byte_order order=byte_order::big_endian) : base{order}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
+	source(std::deque<util::const_buffer> const& bufs, byte_order order = byte_order::big_endian)
+		: base{order}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
 	{
 		size_type index = 0;
 		for (auto it = bufs.begin(); it != bufs.end(); ++it)
@@ -106,7 +111,8 @@ public:
 				m_bufs[m_current].data() + m_bufs[m_current].size());
 	}
 
-	source(std::deque<util::const_buffer>&& bufs, byte_order order=byte_order::big_endian) : base{order}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
+	source(std::deque<util::const_buffer>&& bufs, byte_order order = byte_order::big_endian)
+		: base{order}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
 	{
 		size_type index = 0;
 		using iter_type = std::deque<util::const_buffer>::iterator;
@@ -124,7 +130,8 @@ public:
 				m_bufs[m_current].data() + m_bufs[m_current].size());
 	}
 
-	source(std::deque<util::mutable_buffer>&& bufs, byte_order order=byte_order::big_endian) : base{order}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
+	source(std::deque<util::mutable_buffer>&& bufs, byte_order order = byte_order::big_endian)
+		: base{order}, m_bufs{}, m_size{0}, m_current{0}, m_offsets(bufs.size(), 0)
 	{
 		size_type index = 0;
 		using iter_type = std::deque<util::mutable_buffer>::iterator;
@@ -147,7 +154,7 @@ public:
 	{
 		m_bufs.clear();
 		m_offsets.clear();
-		m_size = 0;
+		m_size    = 0;
 		m_current = 0;
 		m_offsets.resize(bufs.size(), 0);
 
@@ -172,7 +179,7 @@ public:
 	{
 		m_bufs.clear();
 		m_offsets.clear();
-		m_size = 0;
+		m_size    = 0;
 		m_current = 0;
 		m_offsets.resize(bufs.size(), 0);
 
@@ -196,14 +203,14 @@ public:
 	use(std::deque<util::shared_buffer>&& bufs);
 
 	void
-	use(std::deque<util::shared_buffer> const& bufs); // TODO: here
+	use(std::deque<util::shared_buffer> const& bufs);    // TODO: here
 
 	void
 	use(util::mutable_buffer&& buf)
 	{
 		m_bufs.clear();
 		m_offsets.clear();
-		m_size = buf.size();
+		m_size    = buf.size();
 		m_current = 0;
 		m_offsets.resize(1, 0);
 		m_bufs.emplace_back(std::move(buf));
@@ -218,7 +225,7 @@ public:
 	{
 		m_bufs.clear();
 		m_offsets.clear();
-		m_size = buf.size();
+		m_size    = buf.size();
 		m_current = 0;
 		m_offsets.resize(1, 0);
 		m_bufs.emplace_back(std::move(buf));
@@ -331,7 +338,7 @@ public:
 	refresh_offsets()
 	{
 		size_type index = 0;
-		size_type size = 0;
+		size_type size  = 0;
 		using iter_type = typename std::deque<buffer_type>::iterator;
 		for (auto it = m_bufs.begin(); it != m_bufs.end(); ++it)
 		{
@@ -339,7 +346,7 @@ public:
 			size += it->size();
 		}
 		m_base_offset = m_offsets[m_current];
-		m_size = size;
+		m_size        = size;
 	}
 
 	std::deque<Buffer>&
@@ -670,7 +677,8 @@ source<util::shared_buffer>::get_segmented_slice(size_type n, std::error_code& e
 	err.clear();
 	std::deque<util::shared_buffer> result;
 
-	if (n < 1) goto exit;
+	if (n < 1)
+		goto exit;
 
 	if (n > remaining())
 	{
@@ -686,16 +694,17 @@ source<util::shared_buffer>::get_segmented_slice(size_type n, std::error_code& e
 		{
 			throw std::system_error{err};
 		}
-		if (available < 1) //  shouldn't happen
+		if (available < 1)    //  shouldn't happen
 		{
 			throw std::system_error{make_error_code(bstream::errc::read_past_end_of_stream)};
 		}
 	}
-	while(n > 0)
+	while (n > 0)
 	{
 		auto grab = std::min(n, available());
 		result.emplace_back(get_shared_slice(grab, err));
-		if (err) goto exit;
+		if (err)
+			goto exit;
 		n -= grab;
 	}
 exit:
@@ -707,7 +716,7 @@ inline std::deque<util::shared_buffer>
 source<util::shared_buffer>::get_segmented_slice(size_type n)
 {
 	std::deque<util::shared_buffer> result;
-	std::error_code err;
+	std::error_code                 err;
 	result = get_segmented_slice(n, err);
 	if (err)
 	{
@@ -731,7 +740,7 @@ source<util::const_buffer>::get_segmented_slice(size_type n, std::error_code& er
 {
 	std::deque<util::shared_buffer> result;
 	result.emplace_back(util::shared_buffer{base::get_slice(n, err)});
-	return result;	
+	return result;
 }
 
 template<>
@@ -749,18 +758,17 @@ source<util::mutable_buffer>::get_segmented_slice(size_type n, std::error_code& 
 {
 	std::deque<util::shared_buffer> result;
 	result.emplace_back(util::shared_buffer{base::get_slice(n, err)});
-	return result;	
+	return result;
 }
-
 
 
 template<>
 inline void
-source<util::mutable_buffer>::use(std::deque<util::shared_buffer>&&  bufs)
+source<util::mutable_buffer>::use(std::deque<util::shared_buffer>&& bufs)
 {
 	m_bufs.clear();
 	m_offsets.clear();
-	m_size = 0;
+	m_size    = 0;
 	m_current = 0;
 	m_offsets.resize(bufs.size(), 0);
 
@@ -772,19 +780,16 @@ source<util::mutable_buffer>::use(std::deque<util::shared_buffer>&&  bufs)
 		m_bufs.emplace_back(*it);
 	}
 	bufs.clear();
-	set_ptrs(
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data() + m_bufs[m_current].size());
+	set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
 }
 
 template<>
 inline void
-source<util::const_buffer>::use(std::deque<util::shared_buffer>&&  bufs)
+source<util::const_buffer>::use(std::deque<util::shared_buffer>&& bufs)
 {
 	m_bufs.clear();
 	m_offsets.clear();
-	m_size = 0;
+	m_size    = 0;
 	m_current = 0;
 	m_offsets.resize(bufs.size(), 0);
 
@@ -796,19 +801,16 @@ source<util::const_buffer>::use(std::deque<util::shared_buffer>&&  bufs)
 		m_bufs.emplace_back(*it);
 	}
 	bufs.clear();
-	set_ptrs(
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data() + m_bufs[m_current].size());
+	set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
 }
 
 template<>
 inline void
-source<util::shared_buffer>::use(std::deque<util::shared_buffer>&&  bufs)
+source<util::shared_buffer>::use(std::deque<util::shared_buffer>&& bufs)
 {
 	m_bufs.clear();
 	m_offsets.clear();
-	m_size = 0;
+	m_size    = 0;
 	m_current = 0;
 	m_offsets.resize(bufs.size(), 0);
 
@@ -822,10 +824,7 @@ source<util::shared_buffer>::use(std::deque<util::shared_buffer>&&  bufs)
 		m_bufs.emplace_back(*move_it);
 	}
 	bufs.clear();
-	set_ptrs(
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data() + m_bufs[m_current].size());
+	set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
 }
 
 template<>
@@ -834,14 +833,11 @@ source<util::mutable_buffer>::use(util::shared_buffer&& buf)
 {
 	m_bufs.clear();
 	m_offsets.clear();
-	m_size = buf.size();
+	m_size    = buf.size();
 	m_current = 0;
 	m_offsets.resize(1, 0);
 	m_bufs.emplace_back(buf);
-	set_ptrs(
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data() + m_bufs[m_current].size());	
+	set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
 }
 
 template<>
@@ -850,14 +846,11 @@ source<util::const_buffer>::use(util::shared_buffer&& buf)
 {
 	m_bufs.clear();
 	m_offsets.clear();
-	m_size = buf.size();
+	m_size    = buf.size();
 	m_current = 0;
 	m_offsets.resize(1, 0);
 	m_bufs.emplace_back(buf);
-	set_ptrs(
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data() + m_bufs[m_current].size());	
+	set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
 }
 
 template<>
@@ -866,14 +859,11 @@ source<util::shared_buffer>::use(util::shared_buffer&& buf)
 {
 	m_bufs.clear();
 	m_offsets.clear();
-	m_size = buf.size();
+	m_size    = buf.size();
 	m_current = 0;
 	m_offsets.resize(1, 0);
 	m_bufs.emplace_back(std::move(buf));
-	set_ptrs(
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data(),
-			m_bufs[m_current].data() + m_bufs[m_current].size());	
+	set_ptrs(m_bufs[m_current].data(), m_bufs[m_current].data(), m_bufs[m_current].data() + m_bufs[m_current].size());
 }
 
 template<>

@@ -436,8 +436,7 @@ namespace detail
 {
 template<class T, class Source>
 static auto
-test_get_source_method(int)
-		-> traits::sfinae_true_if<decltype(std::declval<T>().template get_source<Source>())>;
+test_get_source_method(int) -> traits::sfinae_true_if<decltype(std::declval<T>().template get_source<Source>())>;
 template<class>
 static auto
 test_get_source_method(long) -> std::false_type;
@@ -451,8 +450,7 @@ namespace detail
 {
 template<class T, class Sink>
 static auto
-test_get_sink_method(int)
-		-> traits::sfinae_true_if<decltype(std::declval<T>().template get_sink<Sink>())>;
+test_get_sink_method(int) -> traits::sfinae_true_if<decltype(std::declval<T>().template get_sink<Sink>())>;
 template<class>
 static auto
 test_get_sink_method(long) -> std::false_type;
@@ -472,7 +470,7 @@ static_assert(is_sink<test_sink_0>::value);
 static_assert(is_event_type<test_event_0>::value);
 static_assert(std::is_same<test_event_0, sink<test_event_0>::event_type>::value);
 static_assert(std::is_same<test_event_0::sink_f, sink<test_event_0>::type>::value);
-}
+}    // namespace _static_test
 
 template<class E>
 class emitter;
@@ -560,7 +558,7 @@ namespace _static_test
 {
 static_assert(is_binding<source<test_event_0>>::value);
 static_assert(args_are_bindings<source<test_event_0>, test_sink_0>::value);
-}
+}    // namespace _static_test
 
 template<class T, class Enable = void>
 struct binds_with;
@@ -643,7 +641,7 @@ public:
 	}
 
 	template<class U>
-	U& 
+	U&
 	get_binding()
 	{
 		return std::get<U>(m_tuple);
@@ -734,7 +732,7 @@ public:
 
 	connectable() : m_connector{binding_initializer<Args, Derived>{}(*this)...} {}
 
-	connectable(connectable&&) = delete;
+	connectable(connectable&&)      = delete;
 	connectable(connectable const&) = delete;
 
 	template<class Connector>
@@ -775,9 +773,8 @@ connect_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>&
 {}
 
 template<std::size_t I = 0, class... Tp>
-		inline typename std::enable_if_t
-		<(I < sizeof...(Tp))>
-		  connect_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>& b)
+inline typename std::enable_if_t<(I < sizeof...(Tp))>
+connect_each(std::tuple<Tp...>& a, std::tuple<typename complement<Tp>::type...>& b)
 {
 	std::get<I>(a).connect(std::get<I>(b));
 	connect_each<I + 1, Tp...>(a, b);
@@ -792,7 +789,8 @@ public:
 	static_assert(args_are_connectors<Args...>::value);
 
 	template<class... _Args>
-	surface(_Args&&... _args) : m_tuple{std::forward<_Args>(_args)...} {}
+	surface(_Args&&... _args) : m_tuple{std::forward<_Args>(_args)...}
+	{}
 
 	template<class T>
 	T&
@@ -828,7 +826,7 @@ public:
 
 	// stackable() : m_surface{connector_initializer<Args, Derived>{}(*this)...} {}
 
-	stackable(stackable&&) = delete;
+	stackable(stackable&&)      = delete;
 	stackable(stackable const&) = delete;
 
 	stackable() : m_surface{connectable<Args, Derived>::template get_connector<Args>()...} {}
@@ -897,7 +895,7 @@ public:
 	{
 		return std::get<0>(m_tuple);
 	}
-	
+
 	template<std::size_t N>
 	typename traits::nth_element<N, Args...>&
 	layer()

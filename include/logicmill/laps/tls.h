@@ -564,7 +564,7 @@ public:
 private:
 	top                                             m_top;
 	bottom                                          m_bottom;
-	util::shared_ptr<context_base>                   m_context;
+	util::shared_ptr<context_base>                  m_context;
 	std::unique_ptr<Botan::TLS::Server_Information> m_server_info;
 	std::unique_ptr<Botan::TLS::Client>             m_tls_client;
 };
@@ -753,7 +753,7 @@ public:
 private:
 	top                                 m_top;
 	bottom                              m_bottom;
-	util::shared_ptr<context_base>       m_context;
+	util::shared_ptr<context_base>      m_context;
 	std::unique_ptr<Botan::TLS::Server> m_tls_server;
 };
 

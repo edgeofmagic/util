@@ -84,7 +84,7 @@ public:
 	options&
 	nodelay(bool value)
 	{
-		m_nodelay = value;
+		m_nodelay         = value;
 		m_nodelay_was_set = true;
 		return *this;
 	}
@@ -98,8 +98,8 @@ public:
 	options&
 	keepalive(bool value, std::chrono::seconds period)
 	{
-		m_keepalive = value;
-		m_keepalive_time = period;
+		m_keepalive         = value;
+		m_keepalive_time    = period;
 		m_keepalive_was_set = true;
 		return *this;
 	}

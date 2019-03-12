@@ -114,15 +114,15 @@ struct __promise_shared
 	typedef boost::container::deque<T>           maybe_array_type;
 	using cancel_timer_f = std::function<void()>;
 
-	bool              resolved;
-	bool              rejected;
-	resolve_f         resolve;
-	reject_f          reject;
-	finally_f         finally;
-	cancel_timer_f	  cancel_timer;
-	std::uint32_t     refs;
-	T                 val;
-	std::error_code   err;
+	bool            resolved;
+	bool            rejected;
+	resolve_f       resolve;
+	reject_f        reject;
+	finally_f       finally;
+	cancel_timer_f  cancel_timer;
+	std::uint32_t   refs;
+	T               val;
+	std::error_code err;
 };
 
 template<>
@@ -134,14 +134,14 @@ struct __promise_shared<void>
 	typedef void                                 maybe_array_type;
 	using cancel_timer_f = std::function<void()>;
 
-	bool              resolved;
-	bool              rejected;
-	resolve_f         resolve;
-	reject_f          reject;
-	finally_f         finally;
-	cancel_timer_f	  cancel_timer;
-	std::uint32_t     refs;
-	std::error_code   err;
+	bool            resolved;
+	bool            rejected;
+	resolve_f       resolve;
+	reject_f        reject;
+	finally_f       finally;
+	cancel_timer_f  cancel_timer;
+	std::uint32_t   refs;
+	std::error_code err;
 };
 
 template<class T>
@@ -227,12 +227,12 @@ public:
 
 	promise() : m_shared(new __promise_shared<T>)
 	{
-		m_shared->resolved = false;
-		m_shared->rejected = false;
-		m_shared->resolve  = nullptr;
-		m_shared->reject   = nullptr;
-		m_shared->cancel_timer    = nullptr;
-		m_shared->refs     = 1;
+		m_shared->resolved     = false;
+		m_shared->rejected     = false;
+		m_shared->resolve      = nullptr;
+		m_shared->reject       = nullptr;
+		m_shared->cancel_timer = nullptr;
+		m_shared->refs         = 1;
 	}
 
 	promise(const promise& rhs) : m_shared(nullptr)
@@ -1052,48 +1052,5 @@ logicmill::util::promise<void>::any(promises_type promises)
 
 	return ret;
 }
-
-
-#if 0
-template<>
-class logicmill::util::promise_timer<logicmill::async::loop::ptr>
-{
-public:
-	promise_timer(std::chrono::milliseconds t, logicmill::async::loop::ptr const& lp) : m_timeout{t}, m_loop{lp} {}
-
-	promise_timer(std::chrono::milliseconds t) : m_timeout{t},
-	m_loop{logicmill::async::loop::get_default()} {}
-
-	template<class T>
-	void operator()(promise<T>& p)
-	{
-		p.cancel_timer();
-		if (p.m_shared)
-		{
-			std::error_code err;
-			auto tp = m_loop->create_timer(err, [p]() mutable
-			{
-				p.cancel_timer();
-				if (!p.is_finished())
-				{
-					p.reject(make_error_code(std::errc::timed_out));
-				}
-			});
-
-			p.m_shared->cancel_timer = [tp]()
-			{
-				tp->close();
-			};
-
-			tp->start(m_timeout, err);
-
-		}
-	}
-
-private:
-	std::chrono::milliseconds m_timeout;
-	logicmill::async::loop::ptr m_loop;
-};
-#endif
 
 #endif    // LOGICMILL_UTIL_PROMISE_H

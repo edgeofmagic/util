@@ -96,7 +96,7 @@
 /**/
 
 #define ARMI_DO_FUNCTION_PROXY_(r, target_class, n, member_func)                                                       \
-	logicmill::armi::member_func_proxy<                                                                                     \
+	logicmill::armi::member_func_proxy<                                                                                \
 			logicmill::traits::remove_member_func_cv_noexcept<decltype(&target_class ::member_func)>::type>            \
 			member_func{m_context, n};
 /**/

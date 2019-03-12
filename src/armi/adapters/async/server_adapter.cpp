@@ -72,7 +72,7 @@ async::server_adapter_base::channel_error(armi::channel_id_type channel_id, std:
 void
 async::server_adapter_base::cleanup_base()
 {
-	m_on_server_close    = nullptr;
+	m_on_server_close = nullptr;
 	// m_on_request         = nullptr;
 	m_on_channel_close   = nullptr;
 	m_on_channel_error   = nullptr;

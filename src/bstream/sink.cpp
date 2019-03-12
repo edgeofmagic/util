@@ -359,22 +359,16 @@ bstream::sink::new_position(offset_type offset, seek_anchor where) const
 	switch (where)
 	{
 		case seek_anchor::current:
-		{
 			result = ppos() + offset;
-		}
-		break;
+			break;
 
 		case seek_anchor::end:
-		{
 			result = size() + offset;
-		}
-		break;
+			break;
 
 		case seek_anchor::begin:
-		{
 			result = offset;
-		}
-		break;
+			break;
 	}
 
 	return result;

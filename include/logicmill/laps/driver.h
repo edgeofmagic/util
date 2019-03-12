@@ -38,7 +38,7 @@ class driver : public flow::stackable<stream_duplex_bottom, driver>, public face
 {
 public:
 	using connector_base = flow::stackable<stream_duplex_bottom, driver>;
-	using base = face<driver, driver>;
+	using base           = face<driver, driver>;
 	using emitter<mutable_data_event>::emit;
 	using emitter<mutable_buffer_event>::emit;
 	using emitter<control_event>::emit;
@@ -48,7 +48,7 @@ public:
 	using read_handler    = std::function<void(util::const_buffer&&)>;
 	using control_handler = std::function<void(control_state)>;
 	using error_handler   = std::function<void(std::error_code)>;
-	using void_handler = std::function<void()>;
+	using void_handler    = std::function<void()>;
 
 	stream_duplex_bottom&
 	get_bottom()
@@ -60,7 +60,7 @@ public:
 
 	driver(driver&& rhs)
 		: connector_base{},
-		base{this},
+		  base{this},
 		  m_read_handler{std::move(rhs.m_read_handler)},
 		  m_error_handler{std::move(rhs.m_error_handler)},
 		  m_start_handler{std::move(rhs.m_start_handler)},
@@ -69,7 +69,7 @@ public:
 
 	driver(driver const& rhs)
 		: connector_base{},
-		base{this},
+		  base{this},
 		  m_read_handler{rhs.m_read_handler},
 		  m_error_handler{rhs.m_error_handler},
 		  m_start_handler{rhs.m_start_handler},
@@ -131,13 +131,6 @@ public:
 		}
 		emit<mutable_buffer_event>(std::move(buf));
 	}
-
-	// template<class T>
-	// std::enable_if_t<std::is_convertible<T, read_handler>::value>
-	// on_read(T&& handler)
-	// {
-	// 	m_read_handler = std::forward<T>(handler);
-	// }
 
 	template<class T>
 	std::enable_if_t<std::is_convertible<T, read_handler>::value>
@@ -285,7 +278,7 @@ public:
 		else
 		{
 			assert(false);
-		}		
+		}
 	}
 
 	void
@@ -298,10 +291,10 @@ public:
 	}
 
 private:
-	read_handler    m_read_handler;
-	error_handler   m_error_handler;
-	void_handler	m_start_handler;
-	void_handler	m_stop_handler;
+	read_handler  m_read_handler;
+	error_handler m_error_handler;
+	void_handler  m_start_handler;
+	void_handler  m_stop_handler;
 };
 
 }    // namespace laps

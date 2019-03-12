@@ -15,7 +15,6 @@ enable_testing()
 
 add_subdirectory( ext/libuv )
 
-
 # INCLUDE_DIRECTORIES(/Users/dcurtis/botan-install/include/botan-2)
 LINK_DIRECTORIES(/Users/dcurtis/botan-install/lib)
 
@@ -98,7 +97,7 @@ set(LOGICMILL_SRCS
 	include/logicmill/util/dumpster.h
 	include/logicmill/util/macros.h
 	include/logicmill/util/preprocessor.h
-	include/logicmill/util/shareable.h
+#	include/logicmill/util/shareable.h
 	include/logicmill/util/shared_ptr.h
 	include/logicmill/util/buffer.h
 	include/logicmill/util/promise.h
@@ -160,7 +159,7 @@ set(LOGICMILL_TEST_SRCS
 	test/armi/example.cpp
 	test/laps/layers.cpp
 	test/laps/tls_layer.cpp
-	test/util/shareable.cpp
+#	test/util/shareable.cpp
 	test/util/allocators.cpp
 	test/util/shared_ptr.cpp
 	test/util/promise.cpp

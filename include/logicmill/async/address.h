@@ -25,8 +25,6 @@
 #ifndef LOGICMILL_ASYNC_ADDRESS_H
 #define LOGICMILL_ASYNC_ADDRESS_H
 
-// #include <nodeoze/any.h>
-// #include <nodeoze/promise.h>
 #include <deque>
 #include <functional>
 #include <iostream>
@@ -406,22 +404,16 @@ operator<<(std::ostream& os, const enum ip::address::family fam)
 	switch (fam)
 	{
 		case ip::address::family::v4:
-		{
 			os << "ipv4";
-		}
-		break;
+			break;
 
 		case ip::address::family::v6:
-		{
 			os << "ipv6";
-		}
-		break;
+			break;
 
 		default:
-		{
 			os << "unknown";
-		}
-		break;
+			break;
 	}
 
 	return os;

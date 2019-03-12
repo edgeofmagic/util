@@ -211,13 +211,13 @@ protected:
 	}
 
 	bstream::context_base const& m_stream_context;
-	request_id_type            m_next_request_id;
-	reply_handler_map_type     m_reply_handler_map;
-	channel_request_map_type   m_channel_request_map;
-	millisecs                  m_default_timeout;
-	millisecs                  m_transient_timeout;
-	mutable channel_id_type    m_transient_channel_id;
-	transport::client&         m_transport;
+	request_id_type              m_next_request_id;
+	reply_handler_map_type       m_reply_handler_map;
+	channel_request_map_type     m_channel_request_map;
+	millisecs                    m_default_timeout;
+	millisecs                    m_transient_timeout;
+	mutable channel_id_type      m_transient_channel_id;
+	transport::client&           m_transport;
 };
 
 }    // namespace armi

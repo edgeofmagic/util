@@ -35,8 +35,9 @@ namespace bstream
 {
 
 template<class T, class Hash, class Equal, class Alloc>
-struct value_deserializer<std::unordered_set<T, Hash, Equal, Alloc>,
-						  typename std::enable_if_t<is_ibstream_readable<T>::value>>
+struct value_deserializer<
+		std::unordered_set<T, Hash, Equal, Alloc>,
+		typename std::enable_if_t<is_ibstream_readable<T>::value>>
 {
 	std::unordered_set<T, Hash, Equal, Alloc>
 	operator()(ibstream& is) const
@@ -58,8 +59,9 @@ struct value_deserializer<std::unordered_set<T, Hash, Equal, Alloc>,
 };
 
 template<class T, class Hash, class Equal, class Alloc>
-struct value_deserializer<std::unordered_multiset<T, Hash, Equal, Alloc>,
-						  typename std::enable_if_t<is_ibstream_readable<T>::value>>
+struct value_deserializer<
+		std::unordered_multiset<T, Hash, Equal, Alloc>,
+		typename std::enable_if_t<is_ibstream_readable<T>::value>>
 {
 	std::unordered_multiset<T, Hash, Equal, Alloc>
 	operator()(ibstream& is) const

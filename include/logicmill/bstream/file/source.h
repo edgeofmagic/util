@@ -110,11 +110,11 @@ protected:
 	really_open(std::error_code& err);
 
 	util::mutable_buffer m_buf;
-	std::string    m_filename;
-	bool           m_is_open;
-	int            m_flags;
-	int            m_fd;
-	size_type      m_size;
+	std::string          m_filename;
+	bool                 m_is_open;
+	int                  m_flags;
+	int                  m_fd;
+	size_type            m_size;
 };
 
 }    // namespace file

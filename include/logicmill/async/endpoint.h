@@ -93,16 +93,16 @@ public:
 		}
 		else
 		{
-			throw std::system_error{ make_error_code(std::errc::address_family_not_supported) };
-		}		
+			throw std::system_error{make_error_code(std::errc::address_family_not_supported)};
+		}
 	}
 	~endpoint() {}
 
 	endpoint&
 	operator=(const endpoint& rhs)
 	{
-		m_addr = rhs.m_addr;
-		m_port = rhs.m_port;
+		m_addr  = rhs.m_addr;
+		m_port  = rhs.m_port;
 		m_dirty = rhs.m_dirty;
 		if (!m_dirty)
 		{
@@ -162,7 +162,7 @@ public:
 	{
 		if (addr != m_addr)
 		{
-			m_addr = addr;
+			m_addr  = addr;
 			m_dirty = true;
 		}
 	}
@@ -178,7 +178,7 @@ public:
 	{
 		if (val != m_port)
 		{
-			m_port = val;
+			m_port  = val;
 			m_dirty = true;
 		}
 	}
@@ -204,7 +204,7 @@ public:
 	{
 		return reinterpret_cast<const sockaddr*>(&get_sockaddr());
 	}
-	
+
 	void
 	to_sockaddr(sockaddr_storage& sockaddr) const
 	{
@@ -218,8 +218,8 @@ public:
 	}
 
 protected:
-
-	void make_sockaddr() const
+	void
+	make_sockaddr() const
 	{
 		memset(&m_sockaddr, 0, sizeof(m_sockaddr));
 
@@ -247,9 +247,9 @@ protected:
 		}
 	}
 
-	address       m_addr;
-	std::uint16_t m_port;
-	mutable bool			m_dirty;
+	address                  m_addr;
+	std::uint16_t            m_port;
+	mutable bool             m_dirty;
 	mutable sockaddr_storage m_sockaddr;
 };
 

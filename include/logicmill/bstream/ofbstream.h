@@ -40,15 +40,15 @@ namespace bstream
 class ofbstream : public obstream
 {
 public:
-	ofbstream(open_mode mode = file::sink::default_mode, context_base const& cntxt = get_default_context())
-		: obstream{std::make_unique<file::sink>(mode, cntxt.buffer_size(), cntxt.byte_order()), cntxt}
+	ofbstream(open_mode mode = file::sink::default_mode, context_base const& context = get_default_context())
+		: obstream{std::make_unique<file::sink>(mode, context.buffer_size(), context.byte_order()), context}
 	{}
 
 	ofbstream(ofbstream const&) = delete;
 	ofbstream(ofbstream&&)      = delete;
 
-	ofbstream(std::unique_ptr<file::sink> fbuf, context_base const& cntxt = get_default_context())
-		: obstream{std::move(fbuf), cntxt}
+	ofbstream(std::unique_ptr<file::sink> fbuf, context_base const& context = get_default_context())
+		: obstream{std::move(fbuf), context}
 	{}
 
 	ofbstream(std::string const& filename)
@@ -89,12 +89,12 @@ public:
 				   get_default_context()}
 	{}
 
-	ofbstream(std::string const& filename, open_mode mode, context_base const& cntxt)
-		: obstream{std::make_unique<file::sink>(filename, mode, cntxt.buffer_size(), cntxt.byte_order()), cntxt}
+	ofbstream(std::string const& filename, open_mode mode, context_base const& context)
+		: obstream{std::make_unique<file::sink>(filename, mode, context.buffer_size(), context.byte_order()), context}
 	{}
 
-	ofbstream(std::string const& filename, open_mode mode, context_base const& cntxt, std::error_code& err)
-		: obstream{std::make_unique<file::sink>(filename, mode, cntxt.buffer_size(), cntxt.byte_order(), err), cntxt}
+	ofbstream(std::string const& filename, open_mode mode, context_base const& context, std::error_code& err)
+		: obstream{std::make_unique<file::sink>(filename, mode, context.buffer_size(), context.byte_order(), err), context}
 	{}
 
 	void
@@ -142,19 +142,19 @@ public:
 	file::sink&
 	get_filebuf()
 	{
-		return reinterpret_cast<file::sink&>(get_streambuf());
+		return reinterpret_cast<file::sink&>(get_sink());
 	}
 
 	file::sink const&
 	get_filebuf() const
 	{
-		return reinterpret_cast<file::sink const&>(get_streambuf());
+		return reinterpret_cast<file::sink const&>(get_sink());
 	}
 
 	std::unique_ptr<file::sink>
 	release_filebuf()
 	{
-		return bstream::static_unique_ptr_cast<file::sink>(release_streambuf());
+		return bstream::static_unique_ptr_cast<file::sink>(release_sink());
 	}
 
 	position_type

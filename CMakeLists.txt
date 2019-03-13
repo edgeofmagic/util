@@ -101,6 +101,7 @@ set(LOGICMILL_SRCS
 	include/logicmill/util/shared_ptr.h
 	include/logicmill/util/buffer.h
 	include/logicmill/util/promise.h
+	include/logicmill/util/membuf.h
 
 	src/bstream/error.cpp
 	src/bstream/error_category_context.cpp
@@ -163,6 +164,7 @@ set(LOGICMILL_TEST_SRCS
 	test/util/allocators.cpp
 	test/util/shared_ptr.cpp
 	test/util/promise.cpp
+	test/util/membuf.cpp
 	test/test_main.cpp)
 
 add_library(logicmill ${LOGICMILL_SRCS})

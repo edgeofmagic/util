@@ -311,9 +311,9 @@ ibstream::read_string_header()
 }
 
 std::size_t
-ibstream::read_string_header(std::error_code& ec)
+ibstream::read_string_header(std::error_code& err)
 {
-	ec.clear();
+	err.clear();
 	std::size_t result = 0ul;
 	try
 	{
@@ -321,7 +321,7 @@ ibstream::read_string_header(std::error_code& ec)
 	}
 	catch (std::system_error const& e)
 	{
-		ec = e.code();
+		err = e.code();
 	}
 	return result;
 }
@@ -354,9 +354,9 @@ ibstream::read_array_header()
 }
 
 std::size_t
-ibstream::read_array_header(std::error_code& ec)
+ibstream::read_array_header(std::error_code& err)
 {
-	ec.clear();
+	err.clear();
 	std::size_t result = 0;
 	try
 	{
@@ -364,7 +364,7 @@ ibstream::read_array_header(std::error_code& ec)
 	}
 	catch (std::system_error const& e)
 	{
-		ec = e.code();
+		err = e.code();
 	}
 	return result;
 }
@@ -397,9 +397,9 @@ ibstream::read_map_header()
 }
 
 std::size_t
-ibstream::read_map_header(std::error_code& ec)
+ibstream::read_map_header(std::error_code& err)
 {
-	ec.clear();
+	err.clear();
 	std::size_t result = 0;
 	try
 	{
@@ -407,7 +407,7 @@ ibstream::read_map_header(std::error_code& ec)
 	}
 	catch (std::system_error const& e)
 	{
-		ec = e.code();
+		err = e.code();
 	}
 	return result;
 }
@@ -424,13 +424,13 @@ ibstream::check_map_key(std::string const& key)
 }
 
 ibstream&
-ibstream::check_map_key(std::string const& key, std::error_code& ec)
+ibstream::check_map_key(std::string const& key, std::error_code& err)
 {
-	ec.clear();
+	err.clear();
 	auto name = read_as<std::string>();
 	if (name != key)
 	{
-		ec = make_error_code(bstream::errc::unexpected_map_key);
+		err = make_error_code(bstream::errc::unexpected_map_key);
 	}
 	return *this;
 }
@@ -447,13 +447,13 @@ ibstream::check_array_header(std::size_t expected)
 }
 
 ibstream&
-ibstream::check_array_header(std::size_t expected, std::error_code& ec)
+ibstream::check_array_header(std::size_t expected, std::error_code& err)
 {
-	ec.clear();
+	err.clear();
 	auto actual = read_array_header();
 	if (actual != expected)
 	{
-		ec = make_error_code(bstream::errc::unexpected_array_size);
+		err = make_error_code(bstream::errc::unexpected_array_size);
 	}
 	return *this;
 }
@@ -470,13 +470,13 @@ ibstream::check_map_header(std::size_t expected)
 }
 
 ibstream&
-ibstream::check_map_header(std::size_t expected, std::error_code& ec)
+ibstream::check_map_header(std::size_t expected, std::error_code& err)
 {
-	ec.clear();
+	err.clear();
 	auto actual = read_map_header();
 	if (actual != expected)
 	{
-		ec = make_error_code(bstream::errc::unexpected_map_size);
+		err = make_error_code(bstream::errc::unexpected_map_size);
 	}
 	return *this;
 }
@@ -504,9 +504,9 @@ ibstream::read_blob_header()
 }
 
 std::size_t
-ibstream::read_blob_header(std::error_code& ec)
+ibstream::read_blob_header(std::error_code& err)
 {
-	ec.clear();
+	err.clear();
 	std::size_t result = 0;
 	try
 	{
@@ -514,36 +514,36 @@ ibstream::read_blob_header(std::error_code& ec)
 	}
 	catch (std::system_error const& e)
 	{
-		ec = e.code();
+		err = e.code();
 	}
 	return result;
 }
 
 util::shared_buffer
-ibstream::read_blob_shared(std::error_code& ec)
+ibstream::read_blob_shared(std::error_code& err)
 {
-	auto nbytes = read_blob_header(ec);
-	if (ec)
+	auto nbytes = read_blob_header(err);
+	if (err)
 	{
 		return util::shared_buffer{};
 	}
 	else
 	{
-		return read_blob_body_shared(nbytes, ec);
+		return read_blob_body_shared(nbytes, err);
 	}
 }
 
 util::const_buffer
-ibstream::read_blob(std::error_code& ec)
+ibstream::read_blob(std::error_code& err)
 {
-	auto nbytes = read_blob_header(ec);
-	if (ec)
+	auto nbytes = read_blob_header(err);
+	if (err)
 	{
 		return util::const_buffer{};
 	}
 	else
 	{
-		return read_blob_body(nbytes, ec);
+		return read_blob_body(nbytes, err);
 	}
 }
 
@@ -593,9 +593,9 @@ ibstream::read_ext_header(std::uint8_t& ext_type)
 }
 
 std::size_t
-ibstream::read_ext_header(std::uint8_t& ext_type, std::error_code& ec)
+ibstream::read_ext_header(std::uint8_t& ext_type, std::error_code& err)
 {
-	ec.clear();
+	err.clear();
 	std::size_t result = 0;
 	try
 	{
@@ -603,7 +603,7 @@ ibstream::read_ext_header(std::uint8_t& ext_type, std::error_code& ec)
 	}
 	catch (std::system_error const& e)
 	{
-		ec = e.code();
+		err = e.code();
 	}
 	return result;
 }

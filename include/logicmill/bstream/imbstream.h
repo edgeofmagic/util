@@ -42,29 +42,29 @@ public:
 
 	using source_type = buffer::source<util::shared_buffer>;
 
-	imbstream(std::unique_ptr<source_type> strmbuf, context_base const& cntxt = get_default_context())
-		: ibstream{std::move(strmbuf), cntxt}
+	imbstream(std::unique_ptr<source_type> source, context_base const& context = get_default_context())
+		: ibstream{std::move(source), context}
 	{}
 
-	imbstream(util::buffer const& buf, context_base const& cntxt = get_default_context())
-		: ibstream(std::make_unique<source_type>(buf), cntxt)
+	imbstream(util::buffer const& buf, context_base const& context = get_default_context())
+		: ibstream(std::make_unique<source_type>(buf), context)
 	{}
 
-	imbstream(util::buffer&& buf, context_base const& cntxt = get_default_context())
-		: ibstream{std::make_unique<source_type>(std::move(buf)), cntxt}
+	imbstream(util::buffer&& buf, context_base const& context = get_default_context())
+		: ibstream{std::make_unique<source_type>(std::move(buf)), context}
 	{}
 
 	void
-	use(std::unique_ptr<source_type> strmbuf)
+	use(std::unique_ptr<source_type> source)
 	{
-		ibstream::use(std::move(strmbuf));
+		ibstream::use(std::move(source));
 		reset();
 	}
 
 	void
-	use(std::unique_ptr<source_type> strmbuf, std::error_code& err)
+	use(std::unique_ptr<source_type> source, std::error_code& err)
 	{
-		ibstream::use(std::move(strmbuf));
+		ibstream::use(std::move(source));
 		reset(err);
 	}
 
@@ -113,13 +113,13 @@ public:
 	util::const_buffer
 	get_buffer()
 	{
-		return get_membuf().get_buffer();
+		return get_source().get_buffer();
 	}
 
 	source_type&
-	get_membuf()
+	get_source()
 	{
-		return reinterpret_cast<source_type&>(*m_strmbuf);
+		return reinterpret_cast<source_type&>(*m_source);
 	}
 };
 

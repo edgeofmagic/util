@@ -40,61 +40,61 @@ public:
 	ombstream(ombstream const&) = delete;
 	ombstream(ombstream&&)      = delete;
 
-	ombstream(std::unique_ptr<buffer::sink> strmbuf, context_base const& cntxt = get_default_context())
-		: obstream{std::move(strmbuf), cntxt}
+	ombstream(std::unique_ptr<buffer::sink> sink, context_base const& context = get_default_context())
+		: obstream{std::move(sink), context}
 	{}
 
-	ombstream(util::mutable_buffer&& buf, context_base const& cntxt = get_default_context())
-		: obstream{std::make_unique<buffer::sink>(std::move(buf), cntxt.byte_order()), cntxt}
+	ombstream(util::mutable_buffer&& buf, context_base const& context = get_default_context())
+		: obstream{std::make_unique<buffer::sink>(std::move(buf), context.byte_order()), context}
 	{}
 
-	ombstream(size_type size, context_base const& cntxt = get_default_context())
-		: ombstream(std::make_unique<buffer::sink>(size, cntxt.byte_order()), cntxt)
+	ombstream(size_type size, context_base const& context = get_default_context())
+		: ombstream(std::make_unique<buffer::sink>(size, context.byte_order()), context)
 	{}
 
-	ombstream(context_base const& cntxt = get_default_context())
+	ombstream(context_base const& context = get_default_context())
 		: ombstream{std::make_unique<buffer::sink>(
 							util::mutable_buffer{
-									cntxt.buffer_size(),
+									context.buffer_size(),
 							},
-							cntxt.byte_order()),
-					cntxt}
+							context.byte_order()),
+					context}
 	{}
 
 	util::const_buffer
 	get_buffer()
 	{
-		return get_membuf().get_buffer();
+		return get_sink().get_buffer();
 	}
 
 	util::mutable_buffer&
 	get_buffer_ref()
 	{
-		return get_membuf().get_buffer_ref();
+		return get_sink().get_buffer_ref();
 	}
 
 	util::const_buffer
 	release_buffer()
 	{
-		return get_membuf().release_buffer();
+		return get_sink().release_buffer();
 	}
 
 	void
 	clear()
 	{
-		get_membuf().clear();
+		get_sink().clear();
 	}
 
 	util::mutable_buffer
 	release_mutable_buffer()
 	{
-		return get_membuf().release_mutable_buffer();
+		return get_sink().release_mutable_buffer();
 	}
 
 	buffer::sink&
-	get_membuf()
+	get_sink()
 	{
-		return reinterpret_cast<buffer::sink&>(*m_strmbuf);
+		return reinterpret_cast<buffer::sink&>(*m_sink);
 	}
 };
 

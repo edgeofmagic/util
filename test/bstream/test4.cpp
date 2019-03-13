@@ -89,16 +89,16 @@ TEST_CASE( "logicmill/smoke/bstream/composite_types/0" )
 {
 //	std::this_thread::sleep_for ( std::chrono::seconds( 10 ) );
 
-	// bstream::context<> cntxt;
-	bstream::context_base const& cntxt{bstream::get_default_context()};
+	// bstream::context<> stream_context;
+	bstream::context_base const& stream_context{bstream::get_default_context()};
 	
-	bstream::ombstream os{ 1024, cntxt };
+	bstream::ombstream os{ 1024, stream_context };
 
     struct_A a0{ -7, 3.5, "zoot", { 1, 1, 2, 3, 5, 8, 13 } };
 
 	os << a0;
 	
-	bstream::imbstream is{ os.get_buffer(), cntxt };
+	bstream::imbstream is{ os.get_buffer(), stream_context };
 
     struct_A a1;
 

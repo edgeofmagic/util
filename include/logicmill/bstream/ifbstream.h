@@ -39,25 +39,25 @@ namespace bstream
 class ifbstream : public ibstream
 {
 public:
-	ifbstream(context_base const& cntxt = get_default_context()) : ibstream{std::make_unique<file::source>(), cntxt} {}
+	ifbstream(context_base const& context = get_default_context()) : ibstream{std::make_unique<file::source>(), context} {}
 
 	ifbstream(ifbstream const&) = delete;
 	ifbstream(ifbstream&&)      = delete;
 
-	ifbstream(std::unique_ptr<file::source> fbuf, context_base const& cntxt = get_default_context())
-		: ibstream{std::move(fbuf), cntxt}
+	ifbstream(std::unique_ptr<file::source> fbuf, context_base const& context = get_default_context())
+		: ibstream{std::move(fbuf), context}
 	{}
 
-	ifbstream(file::source&& fbuf, context_base const& cntxt = get_default_context())
-		: ibstream{std::make_unique<file::source>(std::move(fbuf)), cntxt}
+	ifbstream(file::source&& fbuf, context_base const& context = get_default_context())
+		: ibstream{std::make_unique<file::source>(std::move(fbuf)), context}
 	{}
 
-	ifbstream(std::string const& filename, context_base const& cntxt = get_default_context())
-		: ibstream{std::make_unique<file::source>(filename), cntxt}
+	ifbstream(std::string const& filename, context_base const& context = get_default_context())
+		: ibstream{std::make_unique<file::source>(filename), context}
 	{}
 
-	ifbstream(std::string const& filename, std::error_code& err, context_base const& cntxt = get_default_context())
-		: ibstream{std::make_unique<file::source>(filename, err), cntxt}
+	ifbstream(std::string const& filename, std::error_code& err, context_base const& context = get_default_context())
+		: ibstream{std::make_unique<file::source>(filename, err), context}
 	{}
 
 	void
@@ -93,19 +93,19 @@ public:
 	file::source&
 	get_filebuf()
 	{
-		return reinterpret_cast<file::source&>(get_streambuf());
+		return reinterpret_cast<file::source&>(get_source());
 	}
 
 	file::source const&
 	get_filebuf() const
 	{
-		return reinterpret_cast<file::source const&>(get_streambuf());
+		return reinterpret_cast<file::source const&>(get_source());
 	}
 
 	std::unique_ptr<file::source>
 	release_filebuf()
 	{
-		return bstream::static_unique_ptr_cast<file::source>(release_streambuf());
+		return bstream::static_unique_ptr_cast<file::source>(release_source());
 	}
 };
 

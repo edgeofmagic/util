@@ -87,65 +87,65 @@ public:
 	ibstream(ibstream const&) = delete;
 	ibstream(ibstream&&)      = delete;
 
-	ibstream(std::unique_ptr<bstream::source> strmbuf, context_base const& cntxt = get_default_context())
-		: m_context{cntxt},
+	ibstream(std::unique_ptr<bstream::source> source, context_base const& context = get_default_context())
+		: m_context{context},
 		  m_ptr_deduper{m_context.dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
-		  m_strmbuf{std::move(strmbuf)}
-	//   m_reverse_order{cntxt->byte_order() != bend::order::native}
+		  m_source{std::move(source)}
+	//   m_reverse_order{context->byte_order() != bend::order::native}
 	{}
 
 	bstream::source&
-	get_streambuf()
+	get_source()
 	{
-		return *m_strmbuf.get();
+		return *m_source.get();
 	}
 
 	bstream::source const&
-	get_streambuf() const
+	get_source() const
 	{
-		return *m_strmbuf.get();
+		return *m_source.get();
 	}
 
 	std::unique_ptr<bstream::source>
-	release_streambuf()
+	release_source()
 	{
-		return std::move(m_strmbuf);    // hope this is set to null
+		return std::move(m_source);    // hope this is set to null
 	}
 
 	size_type
 	size() const
 	{
-		return static_cast<size_type>(m_strmbuf->size());
+		return static_cast<size_type>(m_source->size());
 	}
 
 	position_type
 	position() const
 	{
-		return static_cast<position_type>(m_strmbuf->position());
+		return static_cast<position_type>(m_source->position());
 	}
 
 	position_type
 	position(position_type pos)
 	{
-		return static_cast<position_type>(m_strmbuf->position(pos));
+		return static_cast<position_type>(m_source->position(pos));
 	}
 
 	position_type
 	position(position_type pos, std::error_code& err)
 	{
-		return static_cast<position_type>(m_strmbuf->position(pos, err));
+		return static_cast<position_type>(m_source->position(pos, err));
 	}
 
 	position_type
 	position(offset_type offset, seek_anchor where)
 	{
-		return static_cast<position_type>(m_strmbuf->position(offset, where));
+		return static_cast<position_type>(m_source->position(offset, where));
 	}
 
 	position_type
 	position(offset_type offset, seek_anchor where, std::error_code& err)
 	{
-		return static_cast<position_type>(m_strmbuf->position(offset, where, err));
+		return static_cast<position_type>(m_source->position(offset, where, err));
 	}
 	void
 	rewind()
@@ -162,25 +162,25 @@ public:
 	byte_type
 	get()
 	{
-		return m_strmbuf->get();
+		return m_source->get();
 	}
 
 	byte_type
 	get(std::error_code& err)
 	{
-		return m_strmbuf->get(err);
+		return m_source->get(err);
 	}
 
 	byte_type
 	peek()
 	{
-		return m_strmbuf->peek();
+		return m_source->peek();
 	}
 
 	byte_type
 	peek(std::error_code& err)
 	{
-		return m_strmbuf->peek(err);
+		return m_source->peek(err);
 	}
 
 	template<class U>
@@ -201,50 +201,50 @@ public:
 	typename std::enable_if<std::is_arithmetic<U>::value && (sizeof(U) > 1), U>::type
 	get_num()
 	{
-		return m_strmbuf->get_num<U>();
+		return m_source->get_num<U>();
 	}
 
 	template<class U>
 	typename std::enable_if<std::is_arithmetic<U>::value && (sizeof(U) > 1), U>::type
 	get_num(std::error_code& err)
 	{
-		return m_strmbuf->get_num<U>(err);
+		return m_source->get_num<U>(err);
 	}
 
 	util::shared_buffer
 	get_shared_slice(size_type nbytes)
 	{
-		return m_strmbuf->get_shared_slice(nbytes);
+		return m_source->get_shared_slice(nbytes);
 	}
 
 	util::shared_buffer
 	get_shared_slice(size_type nbytes, std::error_code& err)
 	{
-		return m_strmbuf->get_shared_slice(nbytes, err);
+		return m_source->get_shared_slice(nbytes, err);
 	}
 
 	util::const_buffer
 	get_slice(size_type nbytes)
 	{
-		return m_strmbuf->get_slice(nbytes);
+		return m_source->get_slice(nbytes);
 	}
 
 	util::const_buffer
 	get_slice(size_type nbytes, std::error_code& err)
 	{
-		return m_strmbuf->get_slice(nbytes, err);
+		return m_source->get_slice(nbytes, err);
 	}
 
 	size_type
 	getn(byte_type* dst, size_type nbytes)
 	{
-		return m_strmbuf->getn(dst, nbytes);
+		return m_source->getn(dst, nbytes);
 	}
 
 	size_type
 	getn(byte_type* dst, size_type nbytes, std::error_code& err)
 	{
-		return m_strmbuf->getn(dst, nbytes, err);
+		return m_source->getn(dst, nbytes, err);
 	}
 
 	template<class T>
@@ -256,16 +256,16 @@ public:
 
 	template<class T>
 	typename std::enable_if_t<is_ibstream_constructible<T>::value && std::is_default_constructible<T>::value, T>
-	read_as(std::error_code& ec)
+	read_as(std::error_code& err)
 	{
-		ec.clear();
+		err.clear();
 		try
 		{
 			return T(*this);
 		}
 		catch (std::system_error const& e)
 		{
-			ec = e.code();
+			err = e.code();
 			return T{};
 		}
 	}
@@ -279,16 +279,16 @@ public:
 
 	template<class T>
 	typename std::enable_if_t<use_value_deserializer<T>::value && std::is_default_constructible<T>::value, T>
-	read_as(std::error_code& ec)
+	read_as(std::error_code& err)
 	{
-		ec.clear();
+		err.clear();
 		try
 		{
 			return value_deserializer<T>::get(*this);
 		}
 		catch (std::system_error const& e)
 		{
-			ec = e.code();
+			err = e.code();
 			return T{};
 		}
 	}
@@ -304,9 +304,9 @@ public:
 
 	template<class T>
 	typename std::enable_if_t<use_ref_deserializer<T>::value, T>
-	read_as(std::error_code& ec)
+	read_as(std::error_code& err)
 	{
-		ec.clear();
+		err.clear();
 		T obj;
 		try
 		{
@@ -314,7 +314,7 @@ public:
 		}
 		catch (std::system_error const& e)
 		{
-			ec = e.code();
+			err = e.code();
 		}
 		return obj;
 	}
@@ -328,16 +328,16 @@ public:
 
 	template<class T>
 	typename std::enable_if_t<has_ref_deserializer<T>::value, ibstream&>
-	read_as(T& obj, std::error_code& ec)
+	read_as(T& obj, std::error_code& err)
 	{
-		ec.clear();
+		err.clear();
 		try
 		{
 			ref_deserializer<T>::get(*this, obj);
 		}
 		catch (std::system_error const& e)
 		{
-			ec = e.code();
+			err = e.code();
 		}
 		return *this;
 	}
@@ -356,16 +356,16 @@ public:
 	typename std::enable_if_t<
 			!has_ref_deserializer<T>::value && is_ibstream_constructible<T>::value && std::is_assignable<T&, T>::value,
 			ibstream&>
-	read_as(T& obj, std::error_code& ec)
+	read_as(T& obj, std::error_code& err)
 	{
-		ec.clear();
+		err.clear();
 		try
 		{
 			obj = T(*this);
 		}
 		catch (std::system_error const& e)
 		{
-			ec = e.code();
+			err = e.code();
 		}
 		return *this;
 	}
@@ -386,16 +386,16 @@ public:
 			!has_ref_deserializer<T>::value && !is_ibstream_constructible<T>::value && has_value_deserializer<T>::value
 					&& std::is_assignable<T&, T>::value,
 			ibstream&>
-	read_as(T& obj, std::error_code& ec)
+	read_as(T& obj, std::error_code& err)
 	{
-		ec.clear();
+		err.clear();
 		try
 		{
 			obj = value_deserializer<T>::get(*this);
 		}
 		catch (std::system_error const& e)
 		{
-			ec = e.code();
+			err = e.code();
 		}
 		return *this;
 	}
@@ -404,43 +404,43 @@ public:
 	read_string_header();
 
 	std::size_t
-	read_string_header(std::error_code& ec);
+	read_string_header(std::error_code& err);
 
 	std::size_t
 	read_array_header();
 
 	std::size_t
-	read_array_header(std::error_code& ec);
+	read_array_header(std::error_code& err);
 
 	std::size_t
 	read_map_header();
 
 	std::size_t
-	read_map_header(std::error_code& ec);
+	read_map_header(std::error_code& err);
 
 	ibstream&
 	check_map_key(std::string const& key);
 
 	ibstream&
-	check_map_key(std::string const& key, std::error_code& ec);
+	check_map_key(std::string const& key, std::error_code& err);
 
 	ibstream&
 	check_array_header(std::size_t expected);
 
 	ibstream&
-	check_array_header(std::size_t expected, std::error_code& ec);
+	check_array_header(std::size_t expected, std::error_code& err);
 
 	ibstream&
 	check_map_header(std::size_t expected);
 
 	ibstream&
-	check_map_header(std::size_t expected, std::error_code& ec);
+	check_map_header(std::size_t expected, std::error_code& err);
 
 	std::size_t
 	read_blob_header();
 
 	std::size_t
-	read_blob_header(std::error_code& ec);
+	read_blob_header(std::error_code& err);
 
 	util::shared_buffer
 	read_blob_body_shared(std::size_t nbytes)
@@ -449,9 +449,9 @@ public:
 	}
 
 	util::shared_buffer
-	read_blob_body_shared(std::size_t nbytes, std::error_code& ec)
+	read_blob_body_shared(std::size_t nbytes, std::error_code& err)
 	{
-		return get_shared_slice(nbytes, ec);
+		return get_shared_slice(nbytes, err);
 	}
 
 	util::const_buffer
@@ -461,9 +461,9 @@ public:
 	}
 
 	util::const_buffer
-	read_blob_body(std::size_t nbytes, std::error_code& ec)
+	read_blob_body(std::size_t nbytes, std::error_code& err)
 	{
-		return get_slice(nbytes, ec);
+		return get_slice(nbytes, err);
 	}
 
 	util::shared_buffer
@@ -474,7 +474,7 @@ public:
 	}
 
 	util::shared_buffer
-	read_blob_shared(std::error_code& ec);
+	read_blob_shared(std::error_code& err);
 
 	util::const_buffer
 	read_blob(as_const_buffer tag)
@@ -484,13 +484,13 @@ public:
 	}
 
 	util::const_buffer
-	read_blob(std::error_code& ec);
+	read_blob(std::error_code& err);
 
 	std::size_t
 	read_ext_header(std::uint8_t& ext_type);
 
 	std::size_t
-	read_ext_header(std::uint8_t& ext_type, std::error_code& ec);
+	read_ext_header(std::uint8_t& ext_type, std::error_code& err);
 
 	util::shared_buffer
 	read_ext_body_shared(std::size_t nbytes)
@@ -499,9 +499,9 @@ public:
 	}
 
 	util::shared_buffer
-	read_ext_body_shared(std::size_t nbytes, std::error_code& ec)
+	read_ext_body_shared(std::size_t nbytes, std::error_code& err)
 	{
-		return get_shared_slice(nbytes, ec);
+		return get_shared_slice(nbytes, err);
 	}
 
 	util::const_buffer
@@ -511,9 +511,9 @@ public:
 	}
 
 	util::const_buffer
-	read_ext_body(std::size_t nbytes, std::error_code& ec)
+	read_ext_body(std::size_t nbytes, std::error_code& err)
 	{
-		return get_slice(nbytes, ec);
+		return get_slice(nbytes, err);
 	}
 
 	void
@@ -527,13 +527,13 @@ public:
 	}
 
 	void
-	read_nil(std::error_code& ec)
+	read_nil(std::error_code& err)
 	{
-		ec.clear();
+		err.clear();
 		auto tcode = get();
 		if (tcode != typecode::nil)
 		{
-			ec = make_error_code(bstream::errc::expected_nil);
+			err = make_error_code(bstream::errc::expected_nil);
 		}
 	}
 
@@ -561,32 +561,32 @@ public:
 	get_msgpack_obj_buf();
 
 	util::const_buffer
-	get_msgpack_obj_buf(std::error_code& ec)
+	get_msgpack_obj_buf(std::error_code& err)
 	{
-		ec.clear();
+		err.clear();
 		try
 		{
 			return get_msgpack_obj_buf();
 		}
 		catch (std::system_error const& e)
 		{
-			ec = e.code();
+			err = e.code();
 			return util::const_buffer{};
 		}
 	}
 
 protected:
 	void
-	use(std::unique_ptr<bstream::source> strmbuf)
+	use(std::unique_ptr<bstream::source> source)
 	{
-		m_strmbuf = std::move(strmbuf);
+		m_source = std::move(source);
 	}
 
 	template<class T, class... Args>
 	typename std::enable_if_t<std::is_base_of<bstream::source, T>::value>
 	use(Args&&... args)
 	{
-		m_strmbuf = std::make_unique<T>(std::forward<Args>(args)...);
+		m_source = std::make_unique<T>(std::forward<Args>(args)...);
 	}
 
 	/*
@@ -705,7 +705,7 @@ protected:
 	std::unique_ptr<util::bufwriter> m_bufwriter = nullptr;
 	context_base const&              m_context;
 	std::unique_ptr<ptr_deduper>     m_ptr_deduper;
-	std::unique_ptr<bstream::source> m_strmbuf;
+	std::unique_ptr<bstream::source> m_source;
 };
 
 template<class T>

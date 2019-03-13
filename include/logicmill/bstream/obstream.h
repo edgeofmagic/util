@@ -88,70 +88,70 @@ public:
 		std::unordered_map<std::shared_ptr<void>, saved_ptr_info> m_saved_ptrs;
 	};
 
-	obstream(std::unique_ptr<bstream::sink> strmbuf, context_base const& cntxt = get_default_context())
-		: m_context{cntxt},
+	obstream(std::unique_ptr<bstream::sink> sink, context_base const& context = get_default_context())
+		: m_context{context},
 		  m_ptr_deduper{m_context.dedup_shared_ptrs() ? std::make_unique<ptr_deduper>() : nullptr},
-		  m_strmbuf{std::move(strmbuf)}
+		  m_sink{std::move(sink)}
 	{}
 
 	bstream::sink&
-	get_streambuf()
+	get_sink()
 	{
-		return *m_strmbuf.get();
+		return *m_sink.get();
 	}
 
 	bstream::sink const&
-	get_streambuf() const
+	get_sink() const
 	{
-		return *m_strmbuf.get();
+		return *m_sink.get();
 	}
 
 	std::unique_ptr<bstream::sink>
-	release_streambuf()
+	release_sink()
 	{
-		return std::move(m_strmbuf);
-		m_strmbuf = nullptr;
+		return std::move(m_sink);
+		m_sink = nullptr;
 	}
 
 	obstream&
 	put(std::uint8_t byte)
 	{
-		m_strmbuf->put(byte);
+		m_sink->put(byte);
 		return *this;
 	}
 
 	obstream&
 	put(std::uint8_t byte, std::error_code& err)
 	{
-		m_strmbuf->put(byte, err);
+		m_sink->put(byte, err);
 		return *this;
 	}
 
 	obstream&
 	putn(util::buffer const& buf)
 	{
-		m_strmbuf->putn(buf.data(), buf.size());
+		m_sink->putn(buf.data(), buf.size());
 		return *this;
 	}
 
 	obstream&
 	putn(util::buffer const& buf, std::error_code& err)
 	{
-		m_strmbuf->putn(buf.data(), buf.size(), err);
+		m_sink->putn(buf.data(), buf.size(), err);
 		return *this;
 	}
 
 	obstream&
 	putn(const void* src, size_type nbytes)
 	{
-		m_strmbuf->putn(reinterpret_cast<const byte_type*>(src), nbytes);
+		m_sink->putn(reinterpret_cast<const byte_type*>(src), nbytes);
 		return *this;
 	}
 
 	obstream&
 	putn(const void* src, size_type nbytes, std::error_code& err)
 	{
-		m_strmbuf->putn(reinterpret_cast<const byte_type*>(src), nbytes, err);
+		m_sink->putn(reinterpret_cast<const byte_type*>(src), nbytes, err);
 		return *this;
 	}
 
@@ -176,7 +176,7 @@ public:
 		constexpr std::size_t usize = sizeof(U);
 		using ctype                 = typename detail::canonical_type<usize>::type;
 
-		m_strmbuf->put_num(value);
+		m_sink->put_num(value);
 
 		return *this;
 	}
@@ -185,44 +185,44 @@ public:
 	typename std::enable_if<std::is_arithmetic<U>::value && (sizeof(U) > 1), obstream&>::type
 	put_num(U value, std::error_code& err)
 	{
-		m_strmbuf->put_num(value, err);
+		m_sink->put_num(value, err);
 		return *this;
 	}
 
 	size_type
 	size()
 	{
-		return static_cast<size_type>(m_strmbuf->size());
+		return static_cast<size_type>(m_sink->size());
 	}
 
 	position_type
 	position() const
 	{
-		return m_strmbuf->position();
+		return m_sink->position();
 	}
 
 	position_type
 	position(position_type pos)
 	{
-		return m_strmbuf->position(pos);
+		return m_sink->position(pos);
 	}
 
 	position_type
 	position(position_type pos, std::error_code& err)
 	{
-		return m_strmbuf->position(pos, err);
+		return m_sink->position(pos, err);
 	}
 
 	position_type
 	position(offset_type offset, seek_anchor where)
 	{
-		return m_strmbuf->position(offset, where);
+		return m_sink->position(offset, where);
 	}
 
 	position_type
 	position(offset_type offset, seek_anchor where, std::error_code& err)
 	{
-		return m_strmbuf->position(offset, where, err);
+		return m_sink->position(offset, where, err);
 	}
 
 	void
@@ -406,16 +406,16 @@ public:
 
 protected:
 	void
-	use(std::unique_ptr<bstream::sink> strmbuf)
+	use(std::unique_ptr<bstream::sink> sink)
 	{
-		m_strmbuf = std::move(strmbuf);
+		m_sink = std::move(sink);
 	}
 
 	template<class T, class... Args>
 	typename std::enable_if_t<std::is_base_of<bstream::sink, T>::value>
 	use(Args&&... args)
 	{
-		m_strmbuf = std::make_unique<T>(std::forward<Args>(args)...);
+		m_sink = std::make_unique<T>(std::forward<Args>(args)...);
 	}
 
 	template<class T>
@@ -477,7 +477,7 @@ protected:
 
 	context_base const&            m_context;
 	std::unique_ptr<ptr_deduper>   m_ptr_deduper;
-	std::unique_ptr<bstream::sink> m_strmbuf;
+	std::unique_ptr<bstream::sink> m_sink;
 };
 
 template<class T>

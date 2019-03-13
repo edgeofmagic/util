@@ -363,14 +363,14 @@ public:
 
 	client() : m_top{this}, m_bottom{this}, m_context{}, m_server_info{}, m_tls_client{} {}
 
-	client(util::shared_ptr<context_base> cntxt)
-		: m_top{this}, m_bottom{this}, m_context{cntxt}, m_server_info{}, m_tls_client{}
+	client(util::shared_ptr<context_base> context)
+		: m_top{this}, m_bottom{this}, m_context{context}, m_server_info{}, m_tls_client{}
 	{}
 
-	client(util::shared_ptr<context_base> cntxt, std::string const& server_name, std::uint16_t port = 0)
+	client(util::shared_ptr<context_base> context, std::string const& server_name, std::uint16_t port = 0)
 		: m_top{this},
 		  m_bottom{this},
-		  m_context{cntxt},
+		  m_context{context},
 		  m_server_info{std::make_unique<Botan::TLS::Server_Information>(server_name, port)},
 		  m_tls_client{}
 	{}
@@ -391,9 +391,9 @@ public:
 	}
 
 	void
-	config(util::shared_ptr<context_base> cntxt, std::string const& server_name, std::uint16_t port = 0)
+	config(util::shared_ptr<context_base> context, std::string const& server_name, std::uint16_t port = 0)
 	{
-		m_context     = cntxt;
+		m_context     = context;
 		m_server_info = std::make_unique<Botan::TLS::Server_Information>(server_name, port);
 	}
 
@@ -577,7 +577,7 @@ public:
 
 	server() : m_top{this}, m_bottom{this}, m_context{}, m_tls_server{} {}
 
-	server(util::shared_ptr<context_base> cntxt) : m_top{this}, m_bottom{this}, m_context{cntxt}, m_tls_server{} {}
+	server(util::shared_ptr<context_base> context) : m_top{this}, m_bottom{this}, m_context{context}, m_tls_server{} {}
 
 	server(server const& rhs) = delete;
 
@@ -591,9 +591,9 @@ public:
 	}
 
 	void
-	config(util::shared_ptr<context_base> cntxt)
+	config(util::shared_ptr<context_base> context)
 	{
-		m_context = cntxt;
+		m_context = context;
 	}
 
 	void

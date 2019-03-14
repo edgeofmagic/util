@@ -26,11 +26,14 @@
 #include <iostream>
 #include <logicmill/util/membuf.h>
 #include <sstream>
+#include <fstream>
 
 using namespace logicmill;
 
 TEST_CASE("logicmill::util::membuf [ smoke ] { basic functionality }")
 {
+	std::char_traits<char> ct;
+
 	util::omembuf mbuf{util::mutable_buffer{1024}};
 	std::ostream os{&mbuf};
 	os << "some buffer content";
@@ -58,6 +61,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { basic functionality }")
 
 TEST_CASE("logicmill::util::membuf [ smoke ] { sstream behavior check }")
 {
+	std::ostringstream ostrstrm;
     std::stringbuf strbuf{std::ios_base::out};
     std::ostream oss{&strbuf};
 	oss << "abcdefg";

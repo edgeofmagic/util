@@ -373,7 +373,7 @@ tcp_framed_channel_uv::read_to_frame(ptr channel_ptr, util::const_buffer&& buf)
 			{
 				nbytes_to_move = buf.size();
 			}
-			util::mutable_buffer hbuf{&m_header_buf, 8};
+			util::mutable_buffer hbuf{const_cast<const byte_type*>(m_header_buf), 8};
 			::memcpy(&m_header_buf[m_header_byte_count], buf.data() + current_buffer_position, nbytes_to_move);
 			m_header_byte_count += nbytes_to_move;
 			current_buffer_position += nbytes_to_move;

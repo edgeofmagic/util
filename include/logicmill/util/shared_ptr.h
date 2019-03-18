@@ -29,6 +29,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <logicmill/traits.h>
 
 #define LOGICMILL_UTIL_USE_STD_SHARED_PTR 0
 
@@ -76,6 +77,55 @@ static_pointer_cast(shared_ptr<U> const& uptr)
 	return std::static_pointer_cast<T>(uptr);
 }
 
+template<class Alloc>
+class alloc_deleter : protected Alloc
+{
+	using alloc_traits = std::allocator_traits<Alloc>;
+	static_assert(!std::is_array<typename alloc_traits::value_type>::value, "alloc_deleter does not support array types");
+
+public:
+	using pointer   = typename alloc_traits::pointer;
+	using size_type = typename alloc_traits::size_type;
+
+private:
+	Alloc    m_alloc;
+
+public:
+
+	alloc_deleter(Alloc const& a) : Alloc{a} {}
+
+	void
+	operator()(pointer p) const
+	{
+		Alloc alloc{static_cast<Alloc const&>(*this)};
+		alloc_traits::destroy(alloc, std::addressof(*p));
+		alloc_traits::deallocate(alloc, p, 1);
+	}
+};
+
+template<class T, class Alloc, class... Args>
+auto
+allocate_unique(const Alloc& alloc, Args&&... args)
+{
+	using alloc_traits = std::allocator_traits<Alloc>;
+	static_assert(std::is_same<typename alloc_traits::value_type, std::remove_cv_t<T>>::value, "Allocator has the wrong value_type");
+
+  Alloc a(alloc);
+  auto p = alloc_traits::allocate(a, 1);
+  try {
+    alloc_traits::construct(a, std::addressof(*p), std::forward<Args>(args)...);
+    using deleter_type = alloc_deleter<Alloc>;
+    return std::unique_ptr<T, deleter_type>(p, deleter_type{a});
+  }
+  catch (...)
+  {
+    alloc_traits::deallocate(a, p, 1);
+    throw;
+  }
+}
+
+
+
 }    // namespace util
 }    // namespace logicmill
 #else
@@ -84,31 +134,58 @@ namespace logicmill
 {
 namespace util
 {
-namespace detail
-{
 
 template<class Alloc>
-class allocator_deleter
+class alloc_deleter // : protected Alloc
 {
-	typedef std::allocator_traits<Alloc> alloc_traits;
+	using alloc_traits = std::allocator_traits<Alloc>;
+	static_assert(!std::is_array<typename alloc_traits::value_type>::value, "alloc_deleter does not support array types");
 
 public:
 	using pointer   = typename alloc_traits::pointer;
 	using size_type = typename alloc_traits::size_type;
 
 private:
-	Alloc&    m_alloc;
-	size_type m_size;
+	Alloc    m_alloc;
 
 public:
-	allocator_deleter(Alloc& a, size_type s) noexcept : m_alloc(a), m_size(s) {}
+
+	alloc_deleter(Alloc const& a) : /* Alloc{a} */ m_alloc{a} {}
+
 	void
-	operator()(pointer p) noexcept
+	operator()(pointer p) const
 	{
-		alloc_traits::destroy(m_alloc, p);
-		alloc_traits::deallocate(m_alloc, p, m_size);
+		// Alloc alloc{static_cast<Alloc const&>(*this)};
+		Alloc alloc{m_alloc};
+		alloc_traits::destroy(alloc, std::addressof(*p));
+		alloc_traits::deallocate(alloc, p, 1);
 	}
 };
+
+template<class T, class Alloc, class... Args>
+inline auto
+allocate_unique(const Alloc& alloc, Args&&... args)
+{
+	using alloc_traits = std::allocator_traits<Alloc>;
+	static_assert(std::is_same<typename alloc_traits::value_type, std::remove_cv_t<T>>::value, "Allocator has the wrong value_type");
+
+  Alloc a(alloc);
+  auto p = alloc_traits::allocate(a, 1);
+  try {
+    alloc_traits::construct(a, std::addressof(*p), std::forward<Args>(args)...);
+    using deleter_type = alloc_deleter<Alloc>;
+    return std::unique_ptr<T, deleter_type>(p, deleter_type{a});
+  }
+  catch (...)
+  {
+    alloc_traits::deallocate(a, p, 1);
+    throw;
+  }
+}
+
+
+namespace detail
+{
 
 class ctrl_blk
 {
@@ -500,17 +577,36 @@ public:
 	shared_ptr(element_type* ep) : m_state{ep}
 	{
 		using allocator_type      = std::allocator<element_type>;
-		using deleter_type        = detail::allocator_deleter<allocator_type>;
+		using deleter_type        = alloc_deleter<allocator_type>;
 		using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
 		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
 		allocator_type alloc{};
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
-		new (cblk_ptr) ctrl_blk_type(ep, deleter_type{alloc, 1}, std::move(alloc));
+		new (cblk_ptr) ctrl_blk_type(ep, deleter_type{alloc}, alloc);
 		// m_cblk_ptr = cblk_ptr;
 		m_state.ctrl(cblk_ptr);
 		enable_weak_this(ep, ep);
 	}
+
+#if 0
+	// well, that didnt' work out...
+
+	template<class _Alloc, class = std::enable_if_t<traits::is_allocator<_Alloc>::value>>
+	shared_ptr(element_type* ep, _Alloc&& alloc) : m_state{ep}
+	{
+		using allocator_type      = _Alloc;
+		using deleter_type        = alloc_deleter<allocator_type>;
+		using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
+
+		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
+		new (cblk_ptr) ctrl_blk_type(ep, deleter_type{alloc}, alloc);
+		// m_cblk_ptr = cblk_ptr;
+		m_state.ctrl(cblk_ptr);
+		enable_weak_this(ep, ep);
+	}
+#endif
 
 	template<class _Del>
 	shared_ptr(element_type* ep, _Del&& del) : m_state{ep}
@@ -522,7 +618,7 @@ public:
 
 		allocator_type alloc{};
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
-		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), std::move(alloc));
+		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), alloc);
 		// m_cblk_ptr = cblk_ptr;
 		m_state.ctrl(cblk_ptr);
 		enable_weak_this(ep, ep);
@@ -532,10 +628,13 @@ public:
 	shared_ptr(element_type* ep, _Del&& del, _Alloc&& alloc) : m_state{ep}
 	{
 
-		using allocator_type      = _Alloc;
+		using allocator_type      = std::remove_reference_t<_Alloc>;
 		using deleter_type        = _Del;
 		using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
-		using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
+
+		using ctrl_blk_alloc_type = typename std::allocator_traits<allocator_type>::template rebind_alloc<ctrl_blk_type>;
+
+		// using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
 		ctrl_blk_type* cblk_ptr = ctrl_blk_alloc_type{alloc}.allocate(1);
 		new (cblk_ptr) ctrl_blk_type(ep, std::forward<_Del>(del), std::forward<_Alloc>(alloc));

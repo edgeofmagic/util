@@ -210,6 +210,132 @@ struct remove_member_func_cv_noexcept<Return (Target::*)(Args...) const volatile
 	using type = Return (Target::*)(Args...);
 };
 
+namespace detail
+{
+
+template<class T>
+static auto
+test_has_allocate(int)
+		-> traits::sfinae_true_if<decltype(std::declval<T>().allocate(0))>;
+template<class>
+static auto
+test_has_allocate(long) -> std::false_type;
+}    // namespace detail
+
+template<class T>
+struct has_allocate : decltype(detail::test_has_allocate<T>(0))
+{};
+
+
+
+// template <class T>
+// struct has_allocate
+// {
+// private:
+//     template <class U> static std::false_type test(...);
+//     template <class U> static std::true_type test(decltype(std::declval<U>().allocate(0)));
+// public:
+//     enum { value = decltype(test<T>(0))::value };
+// };
+
+
+namespace detail
+{
+
+template<class T>
+static auto
+test_has_value_type(int)
+		-> traits::sfinae_true_if<typename T::value_type>;
+template<class>
+static auto
+test_has_value_type(long) -> std::false_type;
+}    // namespace detail
+
+template<class T>
+struct has_value_type : decltype(detail::test_has_value_type<T>(0))
+{};
+
+
+// template <class T>
+// struct __has_value_type
+// {
+// private:
+//     template <class U> static std::false_type test(...);
+//     template <class U> static std::true_type test(typename U::value_type*);
+// public:
+//     enum { value = decltype(test<T>(0))::value };
+// };
+
+namespace detail
+{
+
+template<class Alloc, class Pointer>
+static auto
+test_has_deallocate(int)
+		-> traits::sfinae_true_if<decltype(std::declval<Alloc>().deallocate(std::declval<Pointer>(), 0))>;
+
+template<class>
+static auto
+test_has_deallocate(long) -> std::false_type;
+}    // namespace detail
+
+template<class T, class Enable = void>
+struct has_deallocate : public std::false_type {};
+
+template<class T>
+struct has_deallocate<T, typename std::enable_if_t<has_allocate<T>::value>>
+    : decltype(detail::test_has_deallocate<T, decltype(std::declval<T>().allocate(0))>(0))
+{};
+
+
+// template <class T, bool HasAllocate = has_allocate<T>::value>
+// struct __has_deallocate
+// {
+// private:
+
+//     typedef decltype(std::declval<T>().allocate(0)) pointer;
+
+//     template <class Alloc, class Pointer>
+//     static auto
+//     test(Alloc&& a, Pointer&& p)
+//     -> decltype(a.deallocate(p,0), std::true_type());
+
+//     template <class Alloc, class Pointer>
+//     static auto
+//     test(const Alloc& a, Pointer&& p)
+//     -> std::false_type;
+
+// public:
+//     enum { value = decltype(test<T>(std::declval<T>(), std::declval<pointer>()))::value };
+// };
+
+
+// template <class T>
+// struct __has_deallocate<T, false>
+// {
+//     enum { value = false };
+// };
+
+template <class T, class Enable = void>
+struct is_allocator : public std::false_type {};
+
+template<class T>
+struct is_allocator<T, typename std::enable_if_t<
+	has_allocate<T>::value && has_deallocate<T>::value && has_value_type<T>::value
+>> : public std::true_type {};
+
+
+// template <class T>
+// struct is_allocator
+// {
+//     enum { value =  __has_value_type<T>::value
+//                 and __has_allocate<T>::value
+//                 and __has_deallocate<T>::value
+//     };
+// };
+
+
+
 }    // namespace traits
 }    // namespace logicmill
 

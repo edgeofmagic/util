@@ -440,7 +440,7 @@ private:
 	static mutable_buffer
 	pack_frame_header(std::uint64_t frame_size)
 	{
-		std::uint64_t packed_frame_size = boost::endian::native_to_big(frame_size);
+		const std::uint64_t packed_frame_size = boost::endian::native_to_big(frame_size);
 		return mutable_buffer{&packed_frame_size, sizeof(frame_size)};
 	}
 

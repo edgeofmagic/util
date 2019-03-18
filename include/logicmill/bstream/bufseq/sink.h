@@ -61,9 +61,9 @@ public:
 		  m_segment_capacity{size},
 		  m_current{0},
 		  m_bufs{},
-		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
+		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<_Alloc>>(size, std::forward<_Alloc>(alloc))}
 	{
-		m_bufs.emplace_back(m_factory->create(size));
+		m_bufs.emplace_back(m_factory->create());
 		reset_ptrs();
 	}
 
@@ -73,9 +73,9 @@ public:
 		  m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
 		  m_current{0},
 		  m_bufs{},
-		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<_Alloc>>(std::forward<_Alloc>(alloc))}
+		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<_Alloc>>(LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE, std::forward<_Alloc>(alloc))}
 	{
-		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
+		m_bufs.emplace_back(m_factory->create());
 		reset_ptrs();
 	}
 
@@ -84,9 +84,9 @@ public:
 		  m_segment_capacity{size},
 		  m_current{0},
 		  m_bufs{},
-		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<default_alloc>>()}
+		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<default_alloc>>(size)}
 	{
-		m_bufs.emplace_back(m_factory->create(size));
+		m_bufs.emplace_back(m_factory->create());
 		reset_ptrs();
 	}
 
@@ -95,9 +95,9 @@ public:
 		  m_segment_capacity{LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE},
 		  m_current{0},
 		  m_bufs{},
-		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<default_alloc>>()}
+		  m_factory{std::make_unique<util::mutable_buffer_alloc_factory<default_alloc>>(LOGICMILL_BSTREAM_MEMORY_DEFAULT_BUFFER_SIZE)}
 	{
-		m_bufs.emplace_back(m_factory->create(m_segment_capacity));
+		m_bufs.emplace_back(m_factory->create());
 		reset_ptrs();
 	}
 

@@ -392,3 +392,50 @@ TEST_CASE("logicmill::util::buffer [ smoke ] { consolidating ctor shared_buffer 
 		CHECK(consolidated.size() == 0);
 	}
 }
+
+TEST_CASE("logicmill::util::buffer [ smoke ] { fixed region }")
+{
+	util::mutable_buffer mbuf{util::buffer::fixed_region_factory<1024>{}};
+	CHECK(mbuf.capacity() == 1024 );
+	std::error_code err;
+	mbuf.expand(1025, err);
+	CHECK(err);
+	CHECK(err == std::errc::operation_not_supported);
+	CHECK(!mbuf.is_expandable());
+}
+
+TEST_CASE("logicmill::util::buffer [ smoke ] { binned fixed region factory }")
+{
+	util::buffer::binned_fixed_region_factory factory;
+	auto reg = factory.create(1);
+	CHECK(reg->capacity() == 16);
+	reg = factory.create(16);
+	CHECK(reg->capacity() == 16);
+	reg = factory.create(17);
+	CHECK(reg->capacity() == 24);
+	reg = factory.create(24);
+	CHECK(reg->capacity() == 24);
+	reg = factory.create(25);
+	CHECK(reg->capacity() == 32);
+	reg = factory.create(32);
+	CHECK(reg->capacity() == 32);
+	reg = factory.create(33);
+	CHECK(reg->capacity() == 48);
+
+	reg = factory.create(1048576);
+	CHECK(reg->capacity() == 1048576);
+	reg = factory.create(1048577);
+	CHECK(reg->capacity() == 1572864);
+
+	reg = factory.create(16777216);
+	CHECK(reg->capacity() == 16777216);
+	try
+	{
+		reg = factory.create(16777217);
+		CHECK(false);
+	}
+	catch(const std::invalid_argument& e)
+	{
+		CHECK(std::string{e.what()} == "size exceeds maximum");
+	}
+}

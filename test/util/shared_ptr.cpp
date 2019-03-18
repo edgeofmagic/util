@@ -52,6 +52,25 @@ free_mem(void* p, unsigned long bytes)
 
 UTIL_ALLOCATOR_POLICY(malloc_policy, get_mem, free_mem);
 
+
+class life_cycle_counter
+{
+public:
+	static int ctor_count;
+	static int dtor_count;
+	life_cycle_counter() 
+	{
+		++ctor_count;
+	}
+	~life_cycle_counter()
+	{
+		++dtor_count;
+	}
+};
+
+int life_cycle_counter::ctor_count{0};
+int life_cycle_counter::dtor_count{0};
+
 class foo
 {
 public:
@@ -137,11 +156,14 @@ private:
 	double m_fpnum;
 };
 
+static int int_malloc_call_count{0};
+
 struct int_malloc
 {
 	int*
 	operator()() const
 	{
+		++int_malloc_call_count;
 		return static_cast<int*>(::malloc(sizeof(int)));
 	}
 };
@@ -458,6 +480,39 @@ TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with deleter
 			  << sizeof(util::detail::value_ctrl_blk<std::string, std::allocator<std::string>>) << std::endl;
 	std::cout << "size of control_blk is " << sizeof(util::detail::ctrl_blk) << std::endl;
 #endif
+}
+
+TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr with allocator }")
+{
+	shared_ptr_test::life_cycle_counter::ctor_count = 0;
+	shared_ptr_test::life_cycle_counter::dtor_count = 0;
+
+	using zallocator                     = util::allocator<shared_ptr_test::life_cycle_counter, 
+											shared_ptr_test::malloc_policy<shared_ptr_test::life_cycle_counter>>;
+
+	shared_ptr_test::life_cycle_counter* lccp = new shared_ptr_test::life_cycle_counter;
+	CHECK(shared_ptr_test::life_cycle_counter::ctor_count == 1);
+	CHECK(shared_ptr_test::life_cycle_counter::dtor_count == 0);
+
+	zallocator zalloc{};
+
+	util::shared_ptr<shared_ptr_test::life_cycle_counter> p = 
+		util::shared_ptr<shared_ptr_test::life_cycle_counter>{lccp, util::alloc_deleter<zallocator>{zalloc}, zalloc};
+	util::shared_ptr<shared_ptr_test::life_cycle_counter> p_copy{p};
+	CHECK(p.use_count() == 2);
+	CHECK(p_copy == p);
+	p_copy.reset();
+
+	CHECK(shared_ptr_test::life_cycle_counter::ctor_count == 1);
+	CHECK(shared_ptr_test::life_cycle_counter::dtor_count == 0);
+
+	CHECK(!p_copy);
+	CHECK(p.use_count() == 1);
+
+	p.reset();
+
+	CHECK(shared_ptr_test::life_cycle_counter::ctor_count == 1);
+	CHECK(shared_ptr_test::life_cycle_counter::dtor_count == 1);
 }
 
 TEST_CASE("logicmill::util::shared_ptr [ smoke ] { util::shared_ptr construct from unique_ptr }")

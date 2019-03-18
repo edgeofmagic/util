@@ -35,17 +35,28 @@
 #include <logicmill/util/macros.h>
 #include <logicmill/util/shared_ptr.h>
 #include <system_error>
+#include <cmath>
+#include <stdexcept>
 
 #ifndef NDEBUG
 
 #define ASSERT_MUTABLE_BUFFER_INVARIANTS(_buf_)                                                                        \
 	{                                                                                                                  \
-		assert((_buf_).m_region != nullptr);                                                                           \
-		assert((_buf_).m_data == (_buf_).m_region->data());                                                            \
-		assert((_buf_).m_size <= (_buf_).m_region->capacity());                                                        \
-		assert((_buf_).m_capacity == (_buf_).m_region->capacity());                                                    \
-	}                                                                                                                  \
-	/**/
+		if ((_buf_).m_region)                                                                                          \
+		{                                                                                                              \
+			assert((_buf_).m_region != nullptr);                                                                       \
+			assert((_buf_).m_data == (_buf_).m_region->data());                                                        \
+			assert((_buf_).m_size <= (_buf_).m_region->capacity());                                                    \
+			assert((_buf_).m_capacity == (_buf_).m_region->capacity());                                                \
+		}                                                                                                              \
+		else                                                                                                           \
+		{                                                                                                              \
+			assert((_buf_).m_data == nullptr);                                                                         \
+			assert((_buf_).m_capacity == 0);                                                                           \
+			assert((_buf_).m_size == 0);                                                                               \
+		}                                                                                                              \
+	}
+/**/
 
 #if 0
 
@@ -160,14 +171,39 @@ public:
 	using checksum_type = std::uint32_t;
 
 protected:
+
 	class region
 	{
-	public:
-		region(byte_type* data, size_type capacity) : m_data{data}, m_capacity{capacity} {}
+	protected:
 
+		region(byte_type* data, size_type capacity) : m_data{data}, m_capacity{capacity} {}
+	
+	public:
 		virtual ~region() {}
 
+		byte_type*
+		data()
+		{
+			return m_data;
+		}
+
+		size_type
+		capacity()
+		{
+			return m_capacity;
+		}
+
 	protected:
+		byte_type* m_data;
+		size_type  m_capacity;
+	
+	};
+
+	class dynamic_region : public region
+	{
+	protected:
+		dynamic_region(byte_type* data, size_type capacity) : region{data, capacity} {}
+
 		virtual byte_type*
 		alloc(size_type capacity)
 				= 0;
@@ -177,19 +213,12 @@ protected:
 				= 0;
 
 	public:
-		virtual bool
-		can_allocate() const = 0;
 
 		byte_type*
 		allocate(size_type capacity, std::error_code& err)
 		{
 			err.clear();
 			byte_type* p{nullptr};
-			if (!can_allocate())
-			{
-				err = make_error_code(std::errc::operation_not_supported);
-				goto exit;
-			}
 			p = alloc(capacity);
 			if (!p)
 			{
@@ -253,11 +282,6 @@ protected:
 		reallocate(size_type current_size, size_type new_capacity, std::error_code& err)
 		{
 			err.clear();
-			if (!can_allocate())
-			{
-				err = make_error_code(std::errc::operation_not_supported);
-				goto exit;
-			}
 
 			if (!m_data && new_capacity > 0)
 			{
@@ -288,21 +312,6 @@ protected:
 			return m_data;
 		}
 
-		byte_type*
-		data()
-		{
-			return m_data;
-		}
-
-		size_type
-		capacity()
-		{
-			return m_capacity;
-		}
-
-	protected:
-		byte_type* m_data;
-		size_type  m_capacity;
 	};
 
 	template<class Del>
@@ -312,41 +321,35 @@ protected:
 		using deleter_base = Del;
 		using deleter_type = Del;
 
-		template<class _Del>
-		del_region(byte_type* data, size_type capacity, _Del&& del)
-			: deleter_base{std::forward<_Del>(del)}, region{data, capacity}
+		del_region(byte_type* data, size_type capacity, deleter_type const& del)
+			: deleter_base{del}, region{data, capacity}
 		{}
 
+		del_region(byte_type* data, size_type capacity, deleter_type&& del)
+			: deleter_base{std::move(del)}, region{data, capacity}
+		{}
+
+		template<class = std::enable_if_t<std::is_default_constructible<deleter_type>::value>>
 		del_region(byte_type* data, size_type capacity) : deleter_base{deleter_type{}}, region{data, capacity} {}
 
 		virtual ~del_region()
 		{
-			dealloc(m_data, m_capacity);
+			destroy();
 			m_data = nullptr;
 		}
 
-		virtual bool
-		can_allocate() const override
-		{
-			return false;
-		}
-
 	protected:
-		virtual byte_type* alloc(size_type) override
-		{
-			return nullptr;
-		}
 
-		virtual void
-		dealloc(byte_type* p, size_type) override
+		void
+		destroy()
 		{
-			deleter_base::operator()(p);
+			deleter_base::operator()(m_data);
 		}
 	};
 
 
 	template<class Alloc = std::allocator<byte_type>>
-	class alloc_region : protected Alloc, public region
+	class alloc_region : protected Alloc, public dynamic_region
 	{
 	public:
 		using sptr = util::shared_ptr<alloc_region>;
@@ -356,12 +359,12 @@ protected:
 		using allocator_base = Alloc;
 
 
-		alloc_region() : allocator_base{allocator_type{}}, region{nullptr, 0} {}
+		alloc_region() : allocator_base{allocator_type{}}, dynamic_region{nullptr, 0} {}
 
 		template<
 				class _Alloc,
 				class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-		alloc_region(_Alloc&& alloc) : allocator_base{std::forward<_Alloc>(alloc)}, region{nullptr, 0}
+		alloc_region(_Alloc&& alloc) : allocator_base{std::forward<_Alloc>(alloc)}, dynamic_region{nullptr, 0}
 		{}
 
 		template<
@@ -369,19 +372,19 @@ protected:
 				class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 		alloc_region(size_type capacity, _Alloc&& alloc)
 			: allocator_base{std::forward<_Alloc>(alloc)},
-			  region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
+			  dynamic_region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
 		{}
 
 		alloc_region(size_type capacity)
 			: allocator_base{allocator_type{}},
-			  region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
+			  dynamic_region{((capacity > 0) ? allocator_base::allocate(capacity) : nullptr), capacity}
 		{}
 
 		template<
 				class _Alloc,
 				class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 		alloc_region(const byte_type* data, size_type size, _Alloc&& alloc)
-			: allocator_base{std::forward<_Alloc>(alloc)}, region{allocator_base::allocate(size), size}
+			: allocator_base{std::forward<_Alloc>(alloc)}, dynamic_region{allocator_base::allocate(size), size}
 		{
 			if (m_data && data && size > 0)
 			{
@@ -390,7 +393,7 @@ protected:
 		}
 
 		alloc_region(const byte_type* data, size_type size)
-			: allocator_base{allocator_type{}}, region{allocator_base::allocate(size), size}
+			: allocator_base{allocator_type{}}, dynamic_region{allocator_base::allocate(size), size}
 		{
 			if (m_data && data && size > 0)
 			{
@@ -402,10 +405,10 @@ protected:
 				class _Alloc,
 				class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 		alloc_region(byte_type* data, size_type capacity, _Alloc&& alloc)
-			: allocator_base{std::forward<_Alloc>(alloc)}, region{data, capacity}
+			: allocator_base{std::forward<_Alloc>(alloc)}, dynamic_region{data, capacity}
 		{}
 
-		alloc_region(byte_type* data, size_type capacity) : allocator_base{allocator_type{}}, region{data, capacity} {}
+		alloc_region(byte_type* data, size_type capacity) : allocator_base{allocator_type{}}, dynamic_region{data, capacity} {}
 
 		virtual ~alloc_region()
 		{
@@ -414,13 +417,8 @@ protected:
 			m_capacity = 0;
 		}
 
-		virtual bool
-		can_allocate() const override
-		{
-			return true;
-		}
-
 	protected:
+
 		virtual byte_type*
 		alloc(size_type capacity) override
 		{
@@ -434,11 +432,19 @@ protected:
 		}
 	};
 
-	class region_factory
+	
+	template<size_type Size>
+	class fixed_region : public region
 	{
 	public:
-		virtual std::unique_ptr<region>
-		create(size_type capacity) = 0;
+		using sptr = util::shared_ptr<fixed_region>;
+		using uptr = std::unique_ptr<fixed_region>;
+
+		fixed_region() : region{m_bytes, Size}
+		{}
+
+	private:
+		byte_type m_bytes[Size];
 	};
 
 	template<class Alloc = std::allocator<byte_type>, class Enable = void>
@@ -447,24 +453,120 @@ protected:
 	template<class Alloc>
 	class alloc_region_factory<
 			Alloc,
-			typename std::enable_if_t<std::is_same<typename Alloc::pointer, byte_type*>::value>>
-		: public region_factory, public Alloc
+			typename std::enable_if_t<
+					traits::is_allocator<Alloc>::value && std::is_same<typename Alloc::pointer, byte_type*>::value>>
+		: public Alloc
 	{
 	public:
-		template<class _Alloc>
-		alloc_region_factory(_Alloc&& alloc) : Alloc{std::forward<_Alloc>(alloc)}
+		alloc_region_factory(Alloc&& alloc) : Alloc{std::move(alloc)}
+		{}
+
+		alloc_region_factory(Alloc const& alloc) : Alloc{alloc}
 		{}
 
 		alloc_region_factory() : Alloc{} {}
 
-		virtual std::unique_ptr<region>
-		create(size_type capacity) override
+		std::unique_ptr<region>
+		create(size_type capacity)
 		{
 			return std::make_unique<alloc_region<Alloc>>(capacity, static_cast<Alloc>(*this));
 		}
 	};
 
+	static dynamic_region*
+	get_dynamic_region(region* rptr)
+	{
+		return dynamic_cast<dynamic_region*>(rptr);
+	}
+
 public:
+
+	class binned_fixed_region_factory
+	{
+	public:
+
+		binned_fixed_region_factory()
+		{}
+
+		std::unique_ptr<region>
+		create(size_type size) const
+		{
+			size = (size < 16) ? 16 : size;
+			std::size_t index{0};
+			auto blog = std::ilogb(size - 1);
+			std::uint64_t mask = (size - 1) >> (blog - 1);
+			if (mask == 3)
+				index = blog * 2 - 6;
+			else if (mask == 2)
+				index = blog * 2 - 7;
+			else
+				throw std::invalid_argument{"unexpected mask result"};
+
+			switch(index)
+			{
+				case 0: return std::make_unique<fixed_region<16>>();
+				case 1: return std::make_unique<fixed_region<24>>();
+				case 2: return std::make_unique<fixed_region<32>>();
+				case 3: return std::make_unique<fixed_region<48>>();
+				case 4: return std::make_unique<fixed_region<64>>();
+				case 5: return std::make_unique<fixed_region<96>>();
+				case 6: return std::make_unique<fixed_region<128>>();
+				case 7: return std::make_unique<fixed_region<192>>();
+				case 8: return std::make_unique<fixed_region<256>>();
+				case 9: return std::make_unique<fixed_region<384>>();
+				case 10: return std::make_unique<fixed_region<512>>();
+				case 11: return std::make_unique<fixed_region<768>>();
+				case 12: return std::make_unique<fixed_region<1024>>();
+				case 13: return std::make_unique<fixed_region<1536>>();
+				case 14: return std::make_unique<fixed_region<2048>>();
+				case 15: return std::make_unique<fixed_region<3072>>();
+				case 16: return std::make_unique<fixed_region<4096>>();
+				case 17: return std::make_unique<fixed_region<6144>>();
+				case 18: return std::make_unique<fixed_region<8192>>();
+				case 19: return std::make_unique<fixed_region<12288>>();
+				case 20: return std::make_unique<fixed_region<16384>>();
+				case 21: return std::make_unique<fixed_region<24576>>();
+				case 22: return std::make_unique<fixed_region<32768>>();
+				case 23: return std::make_unique<fixed_region<49152>>();
+				case 24: return std::make_unique<fixed_region<65536>>();
+				case 25: return std::make_unique<fixed_region<98304>>();
+				case 26: return std::make_unique<fixed_region<131072>>();
+				case 27: return std::make_unique<fixed_region<196608>>();
+				case 28: return std::make_unique<fixed_region<262144>>();
+				case 29: return std::make_unique<fixed_region<393216>>();
+				case 30: return std::make_unique<fixed_region<524288>>();
+				case 31: return std::make_unique<fixed_region<786432>>();
+				case 32: return std::make_unique<fixed_region<1048576>>();
+				case 33: return std::make_unique<fixed_region<1572864>>();
+				case 34: return std::make_unique<fixed_region<2097152>>();
+				case 35: return std::make_unique<fixed_region<3145728>>();
+				case 36: return std::make_unique<fixed_region<4194304>>();
+				case 37: return std::make_unique<fixed_region<6291456>>();
+				case 38: return std::make_unique<fixed_region<8388608>>();
+				case 39: return std::make_unique<fixed_region<12582912>>();
+				case 40: return std::make_unique<fixed_region<16777216>>();
+				default:
+					throw std::invalid_argument{"size exceeds maximum"};
+			};
+		}
+	};
+
+	template<size_type Size>
+	class fixed_region_factory
+	{
+	public:
+		using region_type = fixed_region<Size>;
+
+		fixed_region_factory()
+		{}
+
+		std::unique_ptr<region>
+		create() const
+		{
+			return std::make_unique<region_type>();
+		}
+	};
+
 	friend class const_buffer;
 
 	/** \brief Destructor.
@@ -758,7 +860,10 @@ public:
 	 * in particular, an allocator with value_type logicmill::byte_type.
 	 * \param capacity the number of bytes in the initial allocation.
 	 */
-	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
+	template<
+			class _Alloc,
+			class = typename std::enable_if_t<
+					traits::is_allocator<_Alloc>::value && std::is_same<typename _Alloc::pointer, byte_type*>::value>>
 	mutable_buffer(size_type capacity, _Alloc&& alloc)
 		: m_region{std::make_unique<alloc_region<_Alloc>>(capacity, std::forward<_Alloc>(alloc))}, m_capacity{capacity}
 	{
@@ -799,6 +904,39 @@ public:
 		  m_capacity{capacity}
 	{
 		m_data = m_region->data();
+		m_size = 0;
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
+	}
+
+	// this is probably evil:
+	// mutable_buffer(void* data, size_type size)
+	// 	: m_region{std::make_unique<del_region<null_delete<byte_type>>>(
+	// 			  reinterpret_cast<byte_type*>(data),
+	// 			  size)},
+	// 	  m_capacity{size}
+	// {
+	// 	assert(false);
+	// 	m_data = m_region->data();
+	// 	m_size = 0;
+	// 	ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
+	// }
+
+	template<size_type Size>
+	mutable_buffer(fixed_region_factory<Size> const& factory)
+	: m_region{factory.create()},
+	m_capacity{Size}
+	{
+		m_data = m_region->data();
+		m_size = 0;
+		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
+	}
+
+	template<class SizeType, SizeType Size>
+	mutable_buffer(std::integral_constant<SizeType, Size> const&)
+	: m_region{std::make_unique<fixed_region<Size>>()}, m_capacity{Size}
+	{
+		m_data = m_region->data();
+		
 		m_size = 0;
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 	}
@@ -1023,7 +1161,7 @@ public:
 	bool
 	is_expandable() const
 	{
-		return m_region->can_allocate();
+		return (get_dynamic_region(m_region.get()) != nullptr);
 	}
 
 	mutable_buffer&
@@ -1031,8 +1169,16 @@ public:
 	{
 		if (!m_region)
 		{
-			*this = std::move(mutable_buffer{new_cap});
+			*this = std::move(mutable_buffer{new_cap}); // TODO: WTF?
 		}
+
+		auto dyn_region = get_dynamic_region(m_region.get());
+		if (!dyn_region)
+		{
+			err = make_error_code(std::errc::operation_not_supported);
+			goto exit;
+		}
+
 
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 
@@ -1044,38 +1190,25 @@ public:
 			{
 				assert(m_capacity == 0);
 				assert(m_size == 0);
-				assert(m_region->data() == nullptr);
-				assert(m_region->capacity() == 0);
-				if (m_region->can_allocate())
-				{
-					m_data = m_region->allocate(new_cap, err);
-					if (err)
-						goto exit;
-
-					m_capacity = m_region->capacity();
-				}
-				else
-				{
-					err = make_error_code(std::errc::operation_not_supported);
-					goto exit;
-				}
-			}
-			else if (m_region->can_allocate())
-			{
-				assert(m_capacity > 0);
-				m_data = m_region->reallocate(m_size, new_cap, err);
+				assert(dyn_region->data() == nullptr);
+				assert(dyn_region->capacity() == 0);
+				m_data = dyn_region->allocate(new_cap, err);
 				if (err)
 					goto exit;
 
-				m_capacity = m_region->capacity();
+				m_capacity = dyn_region->capacity();
 			}
 			else
 			{
-				err = make_error_code(std::errc::operation_not_supported);
-				goto exit;
+				assert(m_capacity > 0);
+				m_data = dyn_region->reallocate(m_size, new_cap, err);
+				if (err)
+					goto exit;
+
+				m_capacity = dyn_region->capacity();
 			}
-			m_data     = m_region->data();
-			m_capacity = m_region->capacity();
+			// m_data     = m_region->data();
+			// m_capacity = m_region->capacity();
 		}
 
 	exit:
@@ -1228,9 +1361,34 @@ class mutable_buffer_factory
 {
 public:
 	virtual ~mutable_buffer_factory() {}
+	virtual std::unique_ptr<mutable_buffer_factory> dup() const = 0;
+	virtual size_type size() const = 0;
 	virtual mutable_buffer
-	create(size_type size)
-			= 0;
+	create() = 0;
+};
+
+template<size_type Size>
+class mutable_buffer_fixed_factory : private buffer::fixed_region_factory<Size>, public mutable_buffer_factory
+{
+public:
+	using factory_type = buffer::fixed_region_factory<Size>;
+
+	virtual std::unique_ptr<mutable_buffer_factory> dup() const override
+	{
+		return std::make_unique<mutable_buffer_fixed_factory>();
+	}
+
+	virtual mutable_buffer
+	create() override
+	{
+		return mutable_buffer{static_cast<factory_type&>(*this)};
+	}
+
+	virtual size_type
+	size() const override
+	{
+		return Size;
+	}
 };
 
 template<class Alloc = std::allocator<byte_type>, class Enable = void>
@@ -1243,17 +1401,39 @@ class mutable_buffer_alloc_factory<
 	: public Alloc, public mutable_buffer_factory
 {
 public:
-	template<class _Alloc, class = typename std::enable_if_t<std::is_same<typename _Alloc::pointer, byte_type*>::value>>
-	mutable_buffer_alloc_factory(_Alloc&& alloc) : Alloc{std::forward<_Alloc>(alloc)}
+	mutable_buffer_alloc_factory(size_type size, Alloc&& alloc) : Alloc{std::move(alloc)}, m_alloc_size{size}
 	{}
 
-	mutable_buffer_alloc_factory() : Alloc{} {}
+	mutable_buffer_alloc_factory(size_type size, Alloc const& alloc) : Alloc{alloc}, m_alloc_size{size}
+	{}
+
+	template<class = std::enable_if_t<std::is_default_constructible<Alloc>::value>>
+	mutable_buffer_alloc_factory(size_type size) : Alloc{Alloc{}}, m_alloc_size{size}
+	{}
+
+	mutable_buffer_alloc_factory(mutable_buffer_alloc_factory const& rhs)
+	: Alloc{static_cast<Alloc>(rhs)}, m_alloc_size{rhs.m_alloc_size}
+	{}
+
+	virtual std::unique_ptr<mutable_buffer_factory> dup() const override
+	{
+		return std::make_unique<mutable_buffer_alloc_factory>(*this);
+	}
 
 	virtual mutable_buffer
-	create(size_type size) override
+	create() override
 	{
-		return mutable_buffer{size, static_cast<Alloc>(*this)};
+		return mutable_buffer{m_alloc_size, static_cast<Alloc>(*this)};
 	}
+
+	virtual size_type
+	size() const override
+	{
+		return m_alloc_size;
+	}
+
+private:
+	size_type m_alloc_size;
 };
 
 class const_buffer : public buffer
@@ -1397,14 +1577,24 @@ private:
 			goto exit;
 		}
 
-		m_data = m_region->allocate(length, err);
-		if (err)
-			goto exit;
+		{
+			auto dyn_region = get_dynamic_region(m_region.get());
+			if (!dyn_region)
+			{
+				err = make_error_code(std::errc::operation_not_supported);
+				goto exit;
+			}
 
-		::memcpy(m_data, data + offset, length);
-		m_size = length;
+			m_data = dyn_region->allocate(length, err);
+			if (err)
+				goto exit;
 
-		ASSERT_CONST_BUFFER_INVARIANTS(*this);
+			::memcpy(m_data, data + offset, length);
+			m_size = length;
+
+			ASSERT_CONST_BUFFER_INVARIANTS(*this);
+		}
+
 
 	exit:
 		return;
@@ -1782,7 +1972,9 @@ public:
 		{
 			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
-		m_data = m_region->allocate(length);
+		auto dyn_region = get_dynamic_region(m_region.get());
+		assert(dyn_region != nullptr);
+		m_data = dyn_region->allocate(length);
 		::memcpy(m_data, rhs.data() + offset, length);
 		m_size = length;
 		// announce();
@@ -1796,7 +1988,9 @@ public:
 		{
 			throw std::system_error{make_error_code(std::errc::invalid_argument)};
 		}
-		m_data = m_region->allocate(length);
+		auto dyn_region = get_dynamic_region(m_region.get());
+		assert(dyn_region != nullptr);
+		m_data = dyn_region->allocate(length);
 		::memcpy(m_data, rhs.data() + offset, length);
 		m_size = length;
 		// announce();
@@ -1813,13 +2007,17 @@ public:
 			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
-		m_data = m_region->allocate(length, err);
-		if (err)
-			goto exit;
-		::memcpy(m_data, rhs.data() + offset, length);
-		m_size = length;
-		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
+		{
+			auto dyn_region = get_dynamic_region(m_region.get());
+			assert(dyn_region != nullptr);
+			m_data = dyn_region->allocate(length, err);
+			if (err)
+				goto exit;
+			::memcpy(m_data, rhs.data() + offset, length);
+			m_size = length;
+			// announce();
+			ASSERT_SHARED_BUFFER_INVARIANTS(*this);
+		}
 	exit:
 		return;
 	}
@@ -1832,13 +2030,17 @@ public:
 			err = make_error_code(std::errc::invalid_argument);
 			goto exit;
 		}
-		m_data = m_region->allocate(length, err);
-		if (err)
-			goto exit;
-		::memcpy(m_data, rhs.data() + offset, length);
-		m_size = length;
-		// announce();
-		ASSERT_SHARED_BUFFER_INVARIANTS(*this);
+		{
+			auto dyn_region = get_dynamic_region(m_region.get());
+			assert(dyn_region != nullptr);
+			m_data = dyn_region->allocate(length, err);
+			if (err)
+				goto exit;
+			::memcpy(m_data, rhs.data() + offset, length);
+			m_size = length;
+			// announce();
+			ASSERT_SHARED_BUFFER_INVARIANTS(*this);
+		}
 	exit:
 		return;
 	}

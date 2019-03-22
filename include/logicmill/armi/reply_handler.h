@@ -33,68 +33,74 @@ namespace logicmill
 namespace armi
 {
 
-template<class PromiseType, class Enable = void>
+template<class SerializationTraits, class PromiseType, class Enable = void>
 class reply_handler;
 
-template<class PromiseType>
-class reply_handler<util::promise<PromiseType>, typename std::enable_if_t<!std::is_void<PromiseType>::value>>
-	: public reply_handler_base
+template<class SerializationTraits, class PromiseType>
+class reply_handler<SerializationTraits, util::promise<PromiseType>, typename std::enable_if_t<!std::is_void<PromiseType>::value>>
+	: public reply_handler_base<SerializationTraits>
 {
 public:
+	using serialization_traits = SerializationTraits;
+	using deserializer_type = typename serialization_traits::deserializer_type;
+
 	reply_handler(util::promise<PromiseType> p) : m_promise{p} {}
 
 	virtual void
-	handle_reply(bstream::ibstream& is) override
+	handle_reply(deserializer_type& reply) override
 	{
-		reply_kind rk = is.read_as<reply_kind>();
+		reply_kind rk = serialization_traits::template read<reply_kind>(reply);
+		// reply_kind rk = is.read_as<reply_kind>();
+
 		if (rk == reply_kind::fail)
 		{
-			auto item_count = is.read_array_header();
+			auto item_count = serialization_traits::read_sequence_prefix(reply);
+
+			// auto item_count = is.read_array_header();
 			if (!expected_count<1>(item_count))
 			{
 				cancel(make_error_code(armi::errc::invalid_argument_count));
 			}
 			else
 			{
-				cancel(is.read_as<std::error_code>());
+				// cancel(is.read_as<std::error_code>());
+				cancel(serialization_traits::template read<std::error_code>(reply));
 			}
 		}
 		else
 		{
-			resolve(is);
+			resolve(reply);
 		}
 	}
 
 	void
-	resolve(bstream::ibstream& is)
+	resolve(deserializer_type& reply)
 	{
 		std::error_code err;
-		auto            item_count = is.read_array_header(err);
-		if (err)
+
+		// auto            item_count = is.read_array_header(err);
+		auto item_count = serialization_traits::read_sequence_prefix(reply);
+
+		if (!expected_count<1>(item_count))
 		{
-			cancel(err);
+			cancel(make_error_code(armi::errc::invalid_argument_count));
 		}
 		else
 		{
-			if (!expected_count<1>(item_count))
+			try
 			{
-				cancel(make_error_code(armi::errc::invalid_argument_count));
+				m_promise.resolve(
+						serialization_traits::template read<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>(reply)
+						// is.read_as<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>()
+						);
 			}
-			else
+			catch (std::system_error const& e)
 			{
-				try
-				{
-					m_promise.resolve(
-							is.read_as<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>());
-				}
-				catch (std::system_error const& e)
-				{
-					cancel(e.code());
-				}
-				catch (std::exception const& e)
-				{
-					cancel(make_error_code(armi::errc::exception_thrown_by_reply_handler));
-				}
+				cancel(e.code());
+			}
+			catch (std::exception const& e)
+			{
+				cancel(make_error_code(armi::errc::exception_thrown_by_reply_handler));
 			}
 		}
 	}
@@ -109,6 +115,75 @@ private:
 	util::promise<PromiseType> m_promise;
 };
 
+// template<class SerializationTraits, class PromiseType, class Enable = void>
+// class reply_handler;
+
+template<class SerializationTraits, class PromiseType>
+class reply_handler<SerializationTraits, util::promise<PromiseType>, typename std::enable_if_t<std::is_void<PromiseType>::value>>
+	: public reply_handler_base<SerializationTraits>
+{
+public:
+	using serialization_traits = SerializationTraits;
+	using deserializer_type = typename serialization_traits::deserializer_type;
+
+	reply_handler(util::promise<PromiseType> p) : m_promise{p} {}
+
+	virtual void
+	handle_reply(deserializer_type& reply) override
+	{
+		reply_kind rk = serialization_traits::template read<reply_kind>(reply);
+		// reply_kind rk = is.read_as<reply_kind>();
+
+		if (rk == reply_kind::fail)
+		{
+			auto item_count = serialization_traits::read_sequence_prefix(reply);
+
+			// auto item_count = is.read_array_header();
+			if (!expected_count<1>(item_count))
+			{
+				cancel(make_error_code(armi::errc::invalid_argument_count));
+			}
+			else
+			{
+				// cancel(is.read_as<std::error_code>());
+				cancel(serialization_traits::template read<std::error_code>(reply));
+			}
+		}
+		else
+		{
+			resolve(reply);
+		}
+	}
+
+	void
+	resolve(deserializer_type& reply)
+	{
+		std::error_code err;
+
+		// auto            item_count = is.read_array_header(err);
+		auto item_count = serialization_traits::read_sequence_prefix(reply);
+
+		if (!expected_count<0>(item_count))
+		{
+			cancel(make_error_code(armi::errc::invalid_argument_count));
+		}
+		else
+		{
+			m_promise.resolve();
+		}
+	}
+
+	virtual void
+	cancel(std::error_code err) override
+	{
+		m_promise.reject(err);
+	}
+
+private:
+	util::promise<void> m_promise;
+};
+
+#if 0
 template<class PromiseType>
 class reply_handler<util::promise<PromiseType>, typename std::enable_if_t<std::is_void<PromiseType>::value>>
 	: public reply_handler_base
@@ -169,6 +244,7 @@ public:
 private:
 	util::promise<void> m_promise;
 };
+#endif
 
 }    // namespace armi
 }    // namespace logicmill

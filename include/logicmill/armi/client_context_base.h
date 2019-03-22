@@ -27,10 +27,9 @@
 
 #include <chrono>
 #include <logicmill/armi/reply_handler_base.h>
-#include <logicmill/armi/transport.h>
+#include <logicmill/armi/serialization_traits.h>
+#include <logicmill/armi/transport_traits.h>
 #include <logicmill/armi/types.h>
-#include <logicmill/bstream/imbstream.h>
-#include <logicmill/bstream/ombstream.h>
 #include <memory>
 #include <set>
 #include <unordered_map>
@@ -40,20 +39,37 @@ namespace logicmill
 namespace armi
 {
 
-template<class U>
+template<class U, class V>
 class member_func_proxy;
 
+template<class SerializationTraits, class TransportTraits>
 class client_context_base
 {
 public:
+	using serialization_traits = SerializationTraits;
+	using deserializer_type    = typename serialization_traits::deserializer_type;
+	using serializer_type      = typename serialization_traits::serializer_type;
+	using serializer_uptr      = std::unique_ptr<serializer_type>;
+
+	using transport_traits         = TransportTraits;
+	using channel_type             = typename transport_traits::channel_type;
+	using channel_param_type       = typename transport_traits::channel_param_type;
+	using channel_const_param_type = typename transport_traits::channel_const_param_type;
+
 	using close_handler           = std::function<void()>;
 	using transport_error_handler = std::function<void(std::error_code err)>;
 
-	using reply_handler_map_type
-			= std::unordered_map<request_id_type, std::pair<channel_id_type, reply_handler_base::ptr>>;
-	using channel_request_map_type = std::unordered_map<channel_id_type, std::set<request_id_type>>;
+	using reply_handler_map_type = std::unordered_map<
+			request_id_type,
+			std::pair<channel_type, typename reply_handler_base<serialization_traits>::ptr>>;
+	using channel_request_map_type = std::unordered_map<channel_type, std::set<request_id_type>>;
 
-	client_context_base(transport::client& tclient, bstream::context_base const& stream_context);
+	client_context_base()
+		: m_next_request_id{1},
+		  m_default_timeout{millisecs{0}},
+		  m_transient_timeout{millisecs{0}},
+		  m_transient_channel{}
+	{}
 
 	virtual ~client_context_base()
 	{
@@ -61,61 +77,109 @@ public:
 	}
 
 	void
-	cancel_request(request_id_type request_id, std::error_code err);
-
-	void
-	cancel_all_requests(std::error_code ec);
-
-	void
-	cancel_channel_requests(channel_id_type channel_id, std::error_code err);
-
-	void
-	handle_reply(util::const_buffer&& buf)
+	cancel_request(request_id_type request_id, std::error_code err)
 	{
-		bstream::imbstream is{std::move(buf), m_stream_context};
-		invoke_handler(is);
+		visit_handler(
+				request_id, [=](typename reply_handler_map_type::iterator it) { it->second.second->cancel(err); });
+	}
+
+	void
+	cancel_all_requests(std::error_code err)
+	{
+		// use the crowbar
+		for (auto it = m_reply_handler_map.begin(); it != m_reply_handler_map.end(); ++it)
+		{
+			it->second.second->cancel(err);
+		}
+		m_reply_handler_map.clear();
+		m_channel_request_map.clear();
+	}
+
+	void
+	cancel_channel_requests(channel_param_type channel, std::error_code err)
+	{
+		auto it = m_channel_request_map.find(channel);
+		if (it != m_channel_request_map.end())
+		{
+			for (auto request_id : it->second)
+			{
+				auto rit = m_reply_handler_map.find(request_id);
+				if (rit != m_reply_handler_map.end())
+				{
+					rit->second.second->cancel(err);
+					m_reply_handler_map.erase(rit);
+				}
+			}
+			m_channel_request_map.erase(it);
+		}
+	}
+
+	void
+	handle_reply(deserializer_type& reply)
+	{
+		invoke_handler(reply);
 	}
 
 protected:
-	template<class U>
+	template<class U, class V>
 	friend class logicmill::armi::member_func_proxy;
 
-	bstream::context_base const&
-	stream_context() const
-	{
-		return m_stream_context;
-	}
+	virtual bool
+	is_valid_channel(channel_param_type channel)
+			= 0;
+
+	virtual void
+	close(channel_param_type channel)
+			= 0;
+
+	virtual void
+	send_request(
+			channel_param_type        channel,
+			request_id_type           request_id,
+			std::chrono::milliseconds timeout,
+			serializer_uptr&&         req)
+			= 0;
 
 	void
-	add_handler(request_id_type request_id, reply_handler_base::ptr&& handler)
+	add_handler(request_id_type request_id, typename reply_handler_base<serialization_traits>::ptr&& handler)
 	{
-		auto channel_id = get_transient_channel_id();
-		auto it         = m_channel_request_map.find(channel_id);
+		auto channel = get_transient_channel();
+		auto it      = m_channel_request_map.find(channel);
 		if (it == m_channel_request_map.end())
 		{
-			m_channel_request_map.emplace(channel_id, std::set<request_id_type>{request_id});
+			m_channel_request_map.emplace(channel, std::set<request_id_type>{request_id});
 		}
 		else
 		{
 			it->second.insert(request_id);
 		}
 
-		auto result = m_reply_handler_map.emplace(request_id, std::make_pair(channel_id, std::move(handler)));
+		auto result = m_reply_handler_map.emplace(request_id, std::make_pair(channel, std::move(handler)));
 
 		assert(result.second);
 	}
 
-	std::unique_ptr<bstream::ombstream>
-	create_request_stream()
+	serializer_uptr
+	create_request_serializer()
 	{
-		return std::make_unique<bstream::ombstream>(m_stream_context);
+		return serialization_traits::create_serializer();
 	}
 
 	void
-	send_request(channel_id_type channel_id, request_id_type request_id, util::mutable_buffer&& req, millisecs timeout);
+	send_request(request_id_type request_id, millisecs timeout, serializer_uptr&& req)
+	{
+		send_request(get_and_clear_transient_channel(), request_id, timeout, std::move(req));
+	}
 
 	void
-	invoke_handler(bstream::ibstream& is);
+	invoke_handler(deserializer_type& reply)
+	{
+		auto request_id = serialization_traits::template read<request_id_type>(reply);
+		visit_handler(request_id, [=, &reply](typename reply_handler_map_type::iterator it) {
+			it->second.second->handle_reply(reply);
+		});
+	}
+
 
 	request_id_type
 	next_request_id()
@@ -123,17 +187,6 @@ protected:
 		return m_next_request_id++;
 	}
 
-	bool
-	is_valid_channel_id(channel_id_type id)
-	{
-		return m_transport.is_valid_channel(id);
-	}
-
-	void
-	close(channel_id_type channel_id)
-	{
-		m_transport.close(channel_id);
-	}
 
 	millisecs
 	get_default_timeout() const
@@ -168,22 +221,22 @@ protected:
 	}
 
 	void
-	set_transient_channel_id(channel_id_type id) const
+	set_transient_channel(channel_const_param_type channel) const
 	{
-		m_transient_channel_id = id;
+		m_transient_channel = channel;
 	}
 
-	channel_id_type
-	get_transient_channel_id() const
+	channel_type
+	get_transient_channel() const
 	{
-		return m_transient_channel_id;
+		return m_transient_channel;
 	}
 
-	channel_id_type
-	get_and_clear_transient_channel_id()
+	channel_type
+	get_and_clear_transient_channel()
 	{
-		channel_id_type result{m_transient_channel_id};
-		m_transient_channel_id = 0;
+		channel_type result{m_transient_channel};
+		m_transient_channel = transport_traits::null_channel;
 		return result;
 	}
 
@@ -194,11 +247,11 @@ protected:
 		auto it = m_reply_handler_map.find(request_id);
 		if (it != m_reply_handler_map.end())
 		{
-			auto channel_id = it->second.first;
+			auto channel = it->second.first;
 			visitor(it);
 			m_reply_handler_map.erase(it);
 
-			auto cit = m_channel_request_map.find(channel_id);
+			auto cit = m_channel_request_map.find(channel);
 			if (cit != m_channel_request_map.end())
 			{
 				cit->second.erase(request_id);
@@ -210,14 +263,12 @@ protected:
 		}
 	}
 
-	bstream::context_base const& m_stream_context;
-	request_id_type              m_next_request_id;
-	reply_handler_map_type       m_reply_handler_map;
-	channel_request_map_type     m_channel_request_map;
-	millisecs                    m_default_timeout;
-	millisecs                    m_transient_timeout;
-	mutable channel_id_type      m_transient_channel_id;
-	transport::client&           m_transport;
+	request_id_type          m_next_request_id;
+	reply_handler_map_type   m_reply_handler_map;
+	channel_request_map_type m_channel_request_map;
+	millisecs                m_default_timeout;
+	millisecs                m_transient_timeout;
+	mutable channel_type     m_transient_channel;
 };
 
 }    // namespace armi

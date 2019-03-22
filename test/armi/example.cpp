@@ -23,9 +23,8 @@
  */
 
 #include <doctest.h>
+#include <logicmill/armi/adapters/async/adapter.h>
 #include <logicmill/armi/armi.h>
-#include <logicmill/armi/adapters/async/client_adapter.h>
-#include <logicmill/armi/adapters/async/server_adapter.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
 
@@ -34,6 +33,7 @@ using namespace util;
 
 namespace example
 {
+using channel_type = async::transport_traits::channel_type;
 class up_down_counter
 {
 public:
@@ -72,18 +72,17 @@ template<class ServantType>
 class servant_manager
 {
 public:
-
 	void
-	new_servant(armi::channel_id_type channel_id)
+	new_servant(channel_type channel_id)
 	{
 		m_servants.emplace(channel_id, std::make_shared<ServantType>());
 	}
 
 	std::shared_ptr<ServantType>
-	get_servant(armi::channel_id_type channel_id)
+	get_servant(channel_type channel_id)
 	{
 		std::shared_ptr<ServantType> result;
-		auto it = m_servants.find(channel_id);
+		auto                         it = m_servants.find(channel_id);
 		if (it != m_servants.end())
 		{
 			result = it->second;
@@ -92,16 +91,17 @@ public:
 	}
 
 	void
-	remove_servant(armi::channel_id_type channel_id)
+	remove_servant(channel_type channel_id)
 	{
-		m_servants.erase(channel_id);		
+		m_servants.erase(channel_id);
 	}
 
 private:
-	std::unordered_map<armi::channel_id_type, std::shared_ptr<ServantType>> m_servants;
+	std::unordered_map<channel_type, std::shared_ptr<ServantType>> m_servants;
 };
 
-ARMI_CONTEXT(remote, up_down_counter, armi::default_stream_context, increment, decrement, get_value);
+ARMI_CONTEXT(remote, up_down_counter, increment, decrement, get_value);
+
 }    // namespace example
 
 using namespace armi;
@@ -110,97 +110,89 @@ using namespace async;
 
 TEST_CASE("logicmill::armi [ smoke ] { example 1 }")
 {
+	using adapter_type = async::adapter<remote>;
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
-	using counter_ref   = remote::client_context_type::client_channel;
-	client_adapter<remote::client_context_type> client{lp};
-	server_adapter<remote::server_context_type> server{lp};
+	using counter_ref   = adapter_type::client_context_type::target_reference;
+	adapter_type::client_adapter client{lp};
+	adapter_type::server_adapter server{lp};
 
 	auto impl = std::make_shared<up_down_counter>();
 
-	server.on_request([=](channel_id_type id) { return impl; });
+	server.on_request([=](channel_type id) { return impl; });
 
 	server.bind(options{async::ip::endpoint{async::ip::address::v4_any(), 7001}}, err);
 
 	client.connect(options{async::ip::endpoint{async::ip::address::v4_loopback(), 7001}})
-	.then([=] (counter_ref cp)
-	{
-		cp->increment()
-				.then([=](int result) {
-					std::cout << result << std::endl;
-					cp->decrement().then([=](int result)
-					{
-						std::cout << result << std::endl;
-						lp->stop();
-					});
-				});
-	}, [=](std::error_code err)
-	{
-		std::cout << err.message() << std::endl;
-	});
+			.then(
+					[=](counter_ref cp) {
+						cp->increment().then([=](int result) {
+							std::cout << result << std::endl;
+							cp->decrement().then([=](int result) {
+								std::cout << result << std::endl;
+								lp->stop();
+							});
+						});
+					},
+					[=](std::error_code err) { std::cout << err.message() << std::endl; });
 
 	lp->run();
 }
 
 TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
 {
+	using adapter_type = async::adapter<remote>;
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
-	using counter_ref   = remote::client_context_type::client_channel;
-	client_adapter<remote::client_context_type> client{lp};
-	server_adapter<remote::server_context_type> server{lp};
+	using counter_ref   = adapter_type::client_context_type::target_reference;
+	adapter_type::client_adapter client{lp};
+	adapter_type::server_adapter server{lp};
+	auto                         impl = std::make_shared<up_down_counter>();
 
-	auto impl = std::make_shared<up_down_counter>();
-
-	server.on_request([=](channel_id_type id) { return impl; });
+	server.on_request([=](channel_type id) { return impl; });
 
 	server.bind(options{async::ip::endpoint{async::ip::address::v4_any(), 7001}}, err);
 
 	client.connect(options{async::ip::endpoint{async::ip::address::v4_loopback(), 7001}})
-	.then([=] (counter_ref cp)
-	{
-		cp->increment()
-				.then([=](int n) 
-				{
-					std::cout << n << std::endl;
-					return cp->decrement();
-				})
-				.then([=](int n) 
-				{
-					std::cout << n << std::endl;
-					return cp->increment();
-				})
-				.then([=](int n)
-				{
-					std::cout << n << std::endl;
-					lp->stop();
-				});
-
-	}, [=](std::error_code err)
-	{
-		std::cout << err.message() << std::endl;
-	});
+			.then(
+					[=](counter_ref cp) {
+						cp->increment()
+								.then([=](int n) {
+									std::cout << n << std::endl;
+									return cp->decrement();
+								})
+								.then([=](int n) {
+									std::cout << n << std::endl;
+									return cp->increment();
+								})
+								.then([=](int n) {
+									std::cout << n << std::endl;
+									lp->stop();
+								});
+					},
+					[=](std::error_code err) { std::cout << err.message() << std::endl; });
 
 	lp->run();
 }
 
 TEST_CASE("logicmill::armi [ smoke ] { example 3 }")
 {
+	using adapter_type = async::adapter<remote>;
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
-	using counter_ref   = remote::client_context_type::client_channel;
-	client_adapter<remote::client_context_type> client{lp};
-	server_adapter<remote::server_context_type> server{lp};
+	using counter_ref   = adapter_type::client_context_type::target_reference;
+	adapter_type::client_adapter     client{lp};
+	adapter_type::server_adapter     server{lp};
 	servant_manager<up_down_counter> smgr;
 
-	server.on_request([&smgr](channel_id_type id) { return smgr.get_servant(id); })
-			.on_channel_connect([&smgr](channel_id_type channel_id) { smgr.new_servant(channel_id); })
-			.on_channel_error([=, &server](channel_id_type channel_id, std::error_code err) {
+	server.on_request([&smgr](channel_type id) { return smgr.get_servant(id); })
+			.on_channel_connect([&smgr](channel_type channel_id) { smgr.new_servant(channel_id); })
+			.on_channel_error([=, &server](channel_type channel_id, std::error_code err) {
 				std::cout << "server channel error, channel id: " << channel_id << ", error: " << err.message()
 						  << std::endl;
 				server.close(channel_id);
 			})
-			.on_channel_close([&smgr](channel_id_type channel_id) {
+			.on_channel_close([&smgr](channel_type channel_id) {
 				std::cout << "server channel closing, channel id: " << channel_id << std::endl;
 				smgr.remove_servant(channel_id);
 			});
@@ -208,58 +200,45 @@ TEST_CASE("logicmill::armi [ smoke ] { example 3 }")
 	server.bind(options{async::ip::endpoint{async::ip::address::v4_any(), 7001}}, err);
 
 	client.connect(options{async::ip::endpoint{async::ip::address::v4_loopback(), 7001}})
-	.then([=] (counter_ref cp)
-	{
-		cp->decrement()
-				.then([=](int n) 
-				{
-					std::cout << n << std::endl;
-					return cp->decrement();
-				})
-				.then([=](int n) 
-				{
-					std::cout << n << std::endl;
-					return cp->decrement();
-				})
-				.then([=](int n) mutable
-				{
-					std::cout << n << std::endl;
-					cp.close();
-				});
-
-	}, [=](std::error_code err)
-	{
-		std::cout << err.message() << std::endl;
-	});
+			.then(
+					[=](counter_ref cp) {
+						cp->decrement()
+								.then([=](int n) {
+									std::cout << n << std::endl;
+									return cp->decrement();
+								})
+								.then([=](int n) {
+									std::cout << n << std::endl;
+									return cp->decrement();
+								})
+								.then([=](int n) mutable {
+									std::cout << n << std::endl;
+									cp.close();
+								});
+					},
+					[=](std::error_code err) { std::cout << err.message() << std::endl; });
 
 	client.connect(options{async::ip::endpoint{async::ip::address::v4_loopback(), 7001}})
-	.then([=] (counter_ref cp)
-	{
-		cp->increment()
-				.then([=](int n) 
-				{
-					std::cout << n << std::endl;
-					return cp->increment();
-				})
-				.then([=](int n) 
-				{
-					std::cout << n << std::endl;
-					return cp->increment();
-				})
-				.then([=](int n) mutable
-				{
-					std::cout << n << std::endl;
-					cp.close();
-					lp->schedule(std::chrono::milliseconds{100}, [=](async::loop::ptr const& lp)
-					{
-						lp->stop();
-					});
-				});
-
-	}, [=](std::error_code err)
-	{
-		std::cout << err.message() << std::endl;
-	});
+			.then(
+					[=](counter_ref cp) {
+						cp->increment()
+								.then([=](int n) {
+									std::cout << n << std::endl;
+									return cp->increment();
+								})
+								.then([=](int n) {
+									std::cout << n << std::endl;
+									return cp->increment();
+								})
+								.then([=](int n) mutable {
+									std::cout << n << std::endl;
+									cp.close();
+									lp->schedule(std::chrono::milliseconds{100}, [=](async::loop::ptr const& lp) {
+										lp->stop();
+									});
+								});
+					},
+					[=](std::error_code err) { std::cout << err.message() << std::endl; });
 
 	lp->run();
 }

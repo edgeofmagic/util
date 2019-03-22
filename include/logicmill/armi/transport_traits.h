@@ -22,39 +22,62 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_TYPES_H
-#define LOGICMILL_ARMI_TYPES_H
+#ifndef LOGICMILL_ARMI_TRANSPORT_TRAITS_H
+#define LOGICMILL_ARMI_TRANSPORT_TRAITS_H
 
 #include <chrono>
 #include <cstdint>
+#include <deque>
 #include <functional>
-#include <logicmill/armi/error.h>
-#include <logicmill/bstream/context.h>
-#include <logicmill/bstream/macros.h>
+#include <limits>
+#include <logicmill/armi/types.h>
+#include <logicmill/armi/serialization_traits.h>
 #include <system_error>
 
 namespace logicmill
 {
 namespace armi
 {
-using fail_reply      = std::function<void(std::error_code err)>;
-using millisecs       = std::chrono::milliseconds;
-using request_id_type = std::uint64_t;
-
-enum class reply_kind
+namespace transport
 {
-	normal,
-	fail
+
+template<class Transport>
+struct traits;
+
+/*
+{
+	using client_type = ...;
+	using server_type = ...;
+	using channel_type = ...;
+	using request_id_type = std::uint64_t;
+	using timeout_type = std::chrono::milliseconds;
+	using serialization_traits_type = logicmill::armi::serialization::traits<Serialization>;
+	using serializer_type = serialization_traits_type::serializer_type;
+
+	static boolean
+	is_valid_channel(client_type const&, channel_type const&);
+
+	static void
+	close(client_type&, channel_type&);
+
+	static void
+	send_request(client_type&, channel_type& channel, timeout_type timeout, std::unique_ptr<serializer_type>&& request);
+
+	static boolean
+	is_valid_channel(server_type const&, channel_type const& channel);
+
+	static void
+	close(server_type&, channel_type&);
+
+	static void
+	send_reply(server_type&, channel_type& channel, timeout_type timeout, std::unique_ptr<serializer_type>&& reply);
+
+
 };
+*/
 
-template<std::size_t N>
-inline bool
-expected_count(std::size_t count)
-{
-	return count == N;
-}
-
+}    // namespace serialization
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_TYPES_H
+#endif    // LOGICMILL_ARMI_TRANSPORT_TRAITS_H

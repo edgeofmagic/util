@@ -32,32 +32,52 @@ namespace logicmill
 namespace armi
 {
 
-template<class Target>
-class interface_stub : public interface_stub_builder<Target>
+template<class Target, class ServerContextBase>
+class interface_stub;
+
+template<
+		class Target,
+		template<class...> class ServerContextBaseTemplate,
+		class SerializationTraits,
+		class TransportTraits>
+class interface_stub<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
+	: public interface_stub_builder<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
 {
 public:
-	using impl_ptr = std::shared_ptr<Target>;
-	using interface_stub_builder<Target>::member_func_count;
-	using interface_stub_builder<Target>::get_member_func_stub;
-	using interface_stub_base<Target>::request_failed;
+	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using base                     = interface_stub_builder<Target, server_context_base_type>;
+	using impl_ptr                 = std::shared_ptr<Target>;
+	using base::member_func_count;
+	using base::get_member_func_stub;
+	using interface_stub_base<Target, server_context_base_type>::request_failed;
+
+	using serialization_traits = SerializationTraits;
+	using deserializer_type    = typename serialization_traits::deserializer_type;
+	using serializer_type      = typename serialization_traits::serializer_type;
+
+	using transport_traits         = TransportTraits;
+	using channel_type             = typename transport_traits::channel_type;
+	using channel_param_type       = typename transport_traits::channel_param_type;
+	using channel_const_param_type = typename transport_traits::channel_const_param_type;
 
 	template<class... Args>
-	interface_stub(server_context_base& context, Args... args)
-		: interface_stub_builder<Target>(context, typename make_indices<sizeof...(Args)>::type(), args...)
+	interface_stub(server_context_base_type* context_base, Args... args)
+		: base{context_base, typename make_indices<sizeof...(Args)>::type(), args...}
 	{}
 
 	void
-	process(channel_id_type channel_id, bstream::ibstream& is, impl_ptr impl)
+	process(channel_param_type channel, deserializer_type& request, impl_ptr impl)
 	{
-		auto request_id     = is.read_as<request_id_type>();
-		auto member_func_id = is.read_as<std::size_t>();
+		auto request_id     = serialization_traits::template read<request_id_type>(request);
+		auto member_func_id = serialization_traits::template read<std::size_t>(request);
+
 		if (member_func_id >= member_func_count())
 		{
-			request_failed(request_id, channel_id, make_error_code(armi::errc::invalid_member_func_id));
+			request_failed(request_id, channel, make_error_code(armi::errc::invalid_member_func_id));
 		}
 		else
 		{
-			get_member_func_stub(member_func_id).dispatch(request_id, channel_id, is, impl);
+			get_member_func_stub(member_func_id).dispatch(request_id, channel, request, impl);
 		}
 	}
 };

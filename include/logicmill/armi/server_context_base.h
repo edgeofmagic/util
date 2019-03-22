@@ -27,7 +27,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <logicmill/armi/transport.h>
 #include <logicmill/armi/types.h>
 #include <logicmill/bstream/ombstream.h>
 #include <memory>
@@ -38,33 +37,55 @@ namespace logicmill
 namespace armi
 {
 
+template<class SerializationTraits, class TransportTraits>
 class server_context_base
 {
 public:
-	template<class _T, class _U, class _V>
+
+	using serialization_traits = SerializationTraits;
+	using deserializer_type = typename serialization_traits::deserializer_type;
+	using serializer_type = typename serialization_traits::serializer_type;
+
+	using transport_traits = TransportTraits;
+	using channel_type = typename transport_traits::channel_type;
+	using channel_param_type = typename transport_traits::channel_param_type;
+	using channel_const_param_type = typename transport_traits::channel_const_param_type;
+
+	template<class _T, class _U, class _V, class _Enable>
 	friend class member_func_stub;
 
-	server_context_base(transport::server& transport_server, bstream::context_base const& stream_context)
-		: m_transport{transport_server}, m_stream_context{stream_context}
+	template<class Target, class ServerContextBase>
+	friend class member_func_stub_base;
+
+	template<class Target, class ServerContextBase>
+	friend class interface_stub_base;
+
+	server_context_base()
 	{}
 
 	virtual ~server_context_base() {}
 
-	bstream::context_base const&
-	stream_context()
+	std::unique_ptr<serializer_type>
+	create_reply_serializer()
 	{
-		return m_stream_context;
+		return serialization_traits::create_serializer();
 	}
 
-	transport::server&
-	get_transport() const
-	{
-		return m_transport;
-	}
 
 protected:
-	transport::server&           m_transport;
-	bstream::context_base const& m_stream_context;
+
+	virtual void
+	send_reply(channel_param_type channel, std::unique_ptr<serializer_type>&& reply)
+			= 0;
+
+	virtual bool
+	is_valid_channel(channel_const_param_type channel)
+			= 0;
+
+	virtual void
+	close(channel_param_type channel)
+			= 0;
+
 };
 
 }    // namespace armi

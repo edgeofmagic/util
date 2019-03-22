@@ -34,16 +34,20 @@ namespace logicmill
 namespace armi
 {
 
+template<class SerializationTraits>
 class reply_handler_base
 {
 public:
+	using serialization_traits = SerializationTraits;
+	using deserializer_type = typename serialization_traits::deserializer_type;
+
 	virtual ~reply_handler_base() {}
 	using ptr = std::unique_ptr<reply_handler_base>;
 	virtual void
-	handle_reply(bstream::ibstream& is)
+	handle_reply(deserializer_type& reply)
 			= 0;
 	virtual void
-	cancel(std::error_code ec)
+	cancel(std::error_code err)
 			= 0;
 };
 

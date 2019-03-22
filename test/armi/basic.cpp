@@ -23,8 +23,7 @@
  */
 
 #include <doctest.h>
-#include <logicmill/armi/adapters/async/client_adapter.h>
-#include <logicmill/armi/adapters/async/server_adapter.h>
+#include <logicmill/armi/adapters/async/adapter.h>
 #include <logicmill/armi/armi.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
@@ -214,9 +213,9 @@ public:
 	}
 };
 
-ARMI_CONTEXT(bar_remote, foo::bar, foo_stream_context, increment, freak_out);
-ARMI_CONTEXT(boo_remote, foo::boo, foo_stream_context, decrement);
-ARMI_CONTEXT(bfail_remote, foo::bfail, foo_stream_context, bonk);
+ARMI_CONTEXT(bar_remote, foo::bar, increment, freak_out);
+ARMI_CONTEXT(boo_remote, foo::boo, decrement);
+ARMI_CONTEXT(bfail_remote, foo::bfail, bonk);
 
 
 }    // namespace rfoo
@@ -383,7 +382,7 @@ private:
 ARMI_CONTEXT(
 		test_remote,
 		target,
-		test_stream_context,
+		//		test_stream_context,
 		form_6_fail,
 		form_6_pass,
 		form_7_fail,
@@ -396,23 +395,23 @@ ARMI_CONTEXT(
 class test_fixture
 {
 public:
-	using ref_type = test_remote::client_context_type::client_channel;
+	using adapter_type = async::adapter<test_remote, test_stream_context>;
+	using ref_type     = adapter_type::client_context_type::target_reference;
+	using channel_type = async::transport_traits::channel_type;    //  TODO: this should come from adapter_type?
 
 	test_fixture()
 		: m_loop{async::loop::create()}, m_target{std::make_shared<target>(*this)}, m_client{m_loop}, m_server{m_loop}
 	{
-		m_server.on_request([&](armi::channel_id_type channel_id) {
+		m_server.on_request([&](channel_type channel_id) {
 					m_server_request_handler_visited = true;
 					return m_target;
 				})
-				.on_channel_connect(
-						[=](armi::channel_id_type channel_id) { m_server_channel_connect_handler_visited = true; })
+				.on_channel_connect([=](channel_type channel_id) { m_server_channel_connect_handler_visited = true; })
 				.on_accept_error([=](std::error_code err) { m_server_accept_error_handler_visited = true; })
-				.on_channel_error([=](armi::channel_id_type channel_id, std::error_code err) {
+				.on_channel_error([=](channel_type channel_id, std::error_code err) {
 					m_server_channel_error_handler_visited = true;
 				})
-				.on_channel_close(
-						[=](armi::channel_id_type channel_id) { m_server_channel_close_handler_visited = true; })
+				.on_channel_close([=](channel_type channel_id) { m_server_channel_close_handler_visited = true; })
 				.on_server_close([=]() { m_server_close_handler_visited = true; });
 	}
 
@@ -510,10 +509,10 @@ public:
 		CHECK(!err);
 	}
 
-	async::loop::ptr                                        m_loop;
-	std::shared_ptr<target>                                 m_target;
-	async::client_adapter<test_remote::client_context_type> m_client;
-	async::server_adapter<test_remote::server_context_type> m_server;
+	async::loop::ptr             m_loop;
+	std::shared_ptr<target>      m_target;
+	adapter_type::client_adapter m_client;
+	adapter_type::server_adapter m_server;
 
 	bool m_client_connect_handler_visited{false};
 	bool m_server_request_handler_visited{false};
@@ -545,30 +544,33 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 	bool client_connect_handler_visited{false};
 	bool increment_resolve_visited{false};
 
+	using adapter_type = async::adapter<rfoo::bar_remote, rfoo::foo_stream_context>;
+	using channel_type = async::transport_traits::channel_type;    // should come from adapter_type
+
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
-	using bar_ref       = rfoo::bar_remote::client_context_type::client_channel;
-	async::client_adapter<rfoo::bar_remote::client_context_type> client{lp};
-	async::server_adapter<rfoo::bar_remote::server_context_type> server{lp};
-	auto                                                         impl = std::make_shared<foo::bar>();
+	using bar_ref       = adapter_type::client_context_type::target_reference;
+	adapter_type::client_adapter client{lp};
+	adapter_type::server_adapter server{lp};
+	auto                         impl = std::make_shared<foo::bar>();
 
 	server
 
-			.on_request([&](armi::channel_id_type channel_id) {
+			.on_request([&](channel_type channel_id) {
 				std::cout << "request handler called with channel id " << channel_id << std::endl;
 				return impl;
 			})
-			.on_channel_connect([=](armi::channel_id_type channel_id) {
+			.on_channel_connect([=](channel_type channel_id) {
 				std::cout << "channel connection handler called with channel id " << channel_id << std::endl;
 			})
 			.on_accept_error([=](std::error_code err) {
 				std::cout << "accept error handler called with error code " << err.message() << std::endl;
 			})
-			.on_channel_error([=](armi::channel_id_type channel_id, std::error_code err) {
+			.on_channel_error([=](channel_type channel_id, std::error_code err) {
 				std::cout << "accept error handler called with channel id " << channel_id << ", error code "
 						  << err.message() << std::endl;
 			})
-			.on_channel_close([=](armi::channel_id_type channel_id) {
+			.on_channel_close([=](channel_type channel_id) {
 				std::cout << "channel close handler called with channel id " << channel_id << std::endl;
 			})
 			.on_server_close([=]() { std::cout << "server close handler called" << std::endl; });
@@ -616,30 +618,32 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply without error }")
 	bool fail_handler_visited{false};
 	bool reply_handler_visited{false};
 
+	using adapter_type = async::adapter<rfoo::bfail_remote, rfoo::foo_stream_context>;
+	using channel_type = async::transport_traits::channel_type;    // should come from adapter_type
+
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
-	using bfail_ref     = rfoo::bfail_remote::client_context_type::client_channel;
-	async::client_adapter<rfoo::bfail_remote::client_context_type> client{lp};
-	async::server_adapter<rfoo::bfail_remote::server_context_type> server{lp};
-	auto                                                           impl = std::make_shared<foo::bfail>();
+	using bfail_ref     = adapter_type::client_context_type::target_reference;
+	adapter_type::client_adapter client{lp};
+	adapter_type::server_adapter server{lp};
+	auto                         impl = std::make_shared<foo::bfail>();
 
 	server
-
-			.on_request([&](armi::channel_id_type channel_id) {
+			.on_request([&](channel_type channel_id) {
 				std::cout << "request handler called with channel id " << channel_id << std::endl;
 				return impl;
 			})
-			.on_channel_connect([=](armi::channel_id_type channel_id) {
+			.on_channel_connect([=](channel_type channel_id) {
 				std::cout << "channel connection handler called with channel id " << channel_id << std::endl;
 			})
 			.on_accept_error([=](std::error_code err) {
 				std::cout << "accept error handler called with error code " << err.message() << std::endl;
 			})
-			.on_channel_error([=](armi::channel_id_type channel_id, std::error_code err) {
+			.on_channel_error([=](channel_type channel_id, std::error_code err) {
 				std::cout << "accept error handler called with channel id " << channel_id << ", error code "
 						  << err.message() << std::endl;
 			})
-			.on_channel_close([=](armi::channel_id_type channel_id) {
+			.on_channel_close([=](channel_type channel_id) {
 				std::cout << "channel close handler called with channel id " << channel_id << std::endl;
 			})
 			.on_server_close([=]() { std::cout << "server close handler called" << std::endl; });
@@ -693,30 +697,33 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply with error }")
 	bool fail_handler_visited{false};
 	bool reply_handler_visited{false};
 
+
+	using adapter_type = async::adapter<rfoo::bfail_remote, rfoo::foo_stream_context>;
+	using channel_type = async::transport_traits::channel_type;    // should come from adapter_type
+
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
-	using bfail_ref     = rfoo::bfail_remote::client_context_type::client_channel;
-	async::client_adapter<rfoo::bfail_remote::client_context_type> client{lp};
-	async::server_adapter<rfoo::bfail_remote::server_context_type> server{lp};
-	auto                                                           impl = std::make_shared<foo::bfail>();
+	using bfail_ref     = adapter_type::client_context_type::target_reference;
+	adapter_type::client_adapter client{lp};
+	adapter_type::server_adapter server{lp};
+	auto                         impl = std::make_shared<foo::bfail>();
 
 	server
-
-			.on_request([&](armi::channel_id_type channel_id) {
+			.on_request([&](channel_type channel_id) {
 				std::cout << "request handler called with channel id " << channel_id << std::endl;
 				return impl;
 			})
-			.on_channel_connect([=](armi::channel_id_type channel_id) {
+			.on_channel_connect([=](channel_type channel_id) {
 				std::cout << "channel connection handler called with channel id " << channel_id << std::endl;
 			})
 			.on_accept_error([=](std::error_code err) {
 				std::cout << "accept error handler called with error code " << err.message() << std::endl;
 			})
-			.on_channel_error([=](armi::channel_id_type channel_id, std::error_code err) {
+			.on_channel_error([=](channel_type channel_id, std::error_code err) {
 				std::cout << "accept error handler called with channel id " << channel_id << ", error code "
 						  << err.message() << std::endl;
 			})
-			.on_channel_close([=](armi::channel_id_type channel_id) {
+			.on_channel_close([=](channel_type channel_id) {
 				std::cout << "channel close handler called with channel id " << channel_id << std::endl;
 			})
 			.on_server_close([=]() { std::cout << "server close handler called" << std::endl; });
@@ -805,7 +812,7 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality, static connect }")
 			lp,
 			async::options{endpoint{address::v4_loopback(), 7001}},
 			err,
-			[&](armi::transport::client_channel::ptr chan, std::error_code err) {
+			[&](armi::transport::target_reference::ptr chan, std::error_code err) {
 				client_context->use(chan);
 				client_context->proxy().increment(
 						[](std::error_code err, int result) {
@@ -894,7 +901,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 		cp->connect(
 				async::options{endpoint{address::v4_loopback(), 7001}},
 				err,
-				[&](armi::transport::client_channel::ptr chan, std::error_code err) {
+				[&](armi::transport::target_reference::ptr chan, std::error_code err) {
 					client_context->use(chan);
 					client_context->proxy<foo::bar>().freak_out(
 							[](std::error_code err) { CHECK(err == foo::errc::sun_exploded); });

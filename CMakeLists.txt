@@ -4,6 +4,7 @@ project(logicmill VERSION 0.1.0)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
+message(STATUS "CMAKE_HOME_DIRECTORY = ${CMAKE_HOME_DIRECTORY}")
 
 	if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
@@ -18,7 +19,13 @@ add_subdirectory( ext/libuv )
 # INCLUDE_DIRECTORIES(/Users/dcurtis/botan-install/include/botan-2)
 LINK_DIRECTORIES(/Users/dcurtis/botan-install/lib)
 
-include_directories( include ext/boost ext/libuv/include ext/doctest/include /Users/dcurtis/botan-install/include/botan-2 )
+include_directories( 
+	include 
+	ext/boost 
+	ext/libuv/include 
+	ext/doctest/include 
+	/Users/dcurtis/botan-install/include/botan-2 
+	${CMAKE_HOME_DIRECTORY}/../cereal/cereal/include)
 
 set(LOGICMILL_SRCS
 	include/logicmill/bstream.h
@@ -83,8 +90,8 @@ set(LOGICMILL_SRCS
 	include/logicmill/armi/server_context.h
 	include/logicmill/armi/server_context_base.h
 	include/logicmill/armi/types.h
-	include/logicmill/armi/adapters/async/client_adapter.h
-	include/logicmill/armi/adapters/async/server_adapter.h
+	include/logicmill/armi/adapters/async/adapter.h
+#	include/logicmill/armi/adapters/async/server_adapter.h
 	include/logicmill/armi/adapters/async/channel_manager.h
 
 	include/logicmill/laps/channel_anchor.h
@@ -125,11 +132,11 @@ set(LOGICMILL_SRCS
 	src/async/address.cpp
 	src/async/error.cpp
 
-	src/armi/client_context_base.cpp
+#	src/armi/client_context_base.cpp
 	src/armi/error.cpp
 	src/armi/adapters/async/channel_manager.cpp
-	src/armi/adapters/async/client_adapter.cpp
-	src/armi/adapters/async/server_adapter.cpp
+#	src/armi/adapters/async/client_adapter.cpp
+#	src/armi/adapters/async/server_adapter.cpp
 
 	src/laps/error.cpp
 	src/laps/tls.cpp

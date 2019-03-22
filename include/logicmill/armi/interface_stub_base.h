@@ -27,7 +27,6 @@
 
 #include <cstdint>
 #include <logicmill/armi/server_context_base.h>
-#include <logicmill/armi/transport.h>
 #include <logicmill/bstream/ibstream.h>
 #include <logicmill/bstream/ombstream.h>
 
@@ -35,48 +34,57 @@ namespace logicmill
 {
 namespace armi
 {
+template<class SerializationTraits, class TransportTraits>
 class server_context_base;
 
-template<class T>
+template<class Target, class ServerContextBase>
 class member_func_stub_base;
 
-template<class Target>
-class interface_stub_base
+template<class Target, class ServerContextBase>
+class interface_stub_base;
+
+template<
+		class Target,
+		template<class...> class ServerContextBaseTemplate,
+		class SerializationTraits,
+		class TransportTraits>
+class interface_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
 {
 public:
-	virtual ~interface_stub_base() {}
+	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using serialization_traits     = SerializationTraits;
+	using deserializer_type        = typename serialization_traits::deserializer_type;
+	using serializer_type          = typename serialization_traits::serializer_type;
+	using serializer_uptr          = std::unique_ptr<serializer_type>;
+
+	using transport_traits         = TransportTraits;
+	using channel_type             = typename transport_traits::channel_type;
+	using channel_param_type       = typename transport_traits::channel_param_type;
+	using channel_const_param_type = typename transport_traits::channel_const_param_type;
 
 protected:
-	friend class server_context_base;
+	friend class server_context_type;
 
-	interface_stub_base(server_context_base& context) : m_context{context} {}
+	interface_stub_base(server_context_base_type* context_base) : m_context{context_base} {}
 
-	server_context_base&
+	server_context_base_type*
 	context()
 	{
 		return m_context;
 	}
 
-	virtual std::size_t
-	member_func_count() const noexcept
-			= 0;
-
-	virtual member_func_stub_base<Target>&
-	get_member_func_stub(std::size_t index)
-			= 0;
-
 	void
-	request_failed(request_id_type request_id, channel_id_type channel_id, std::error_code err)
+	request_failed(request_id_type request_id, channel_param_type channel, std::error_code err)
 	{
-		bstream::ombstream os{m_context.stream_context()};
-		os << request_id;
-		os << reply_kind::fail;
-		os.write_array_header(1);
-		os << err;
-		m_context.get_transport().send_reply(channel_id, os.release_mutable_buffer());
+		serializer_uptr reply{m_context->create_reply_serializer()};
+		serialization_traits::write(*reply, request_id);
+		serialization_traits::write(*reply, reply_kind::fail);
+		serialization_traits::write_sequence_prefix(*reply, 1);
+		serialization_traits::write(*reply, err);
+		m_context->send_reply(channel, std::move(reply));
 	}
 
-	server_context_base& m_context;
+	server_context_base_type* m_context;
 };
 
 }    // namespace armi

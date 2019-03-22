@@ -22,52 +22,71 @@
  * THE SOFTWARE.
  */
 
-#ifndef SERVER_CONTEXT_BUILDER_H
-#define SERVER_CONTEXT_BUILDER_H
+#ifndef LOGICMILL_ARMI_ADAPTER_CEREAL_TRAITS_H
+#define LOGICMILL_ARMI_ADAPTER_CEREAL_TRAITS_H
 
-#include <logicmill/armi/server_context_base.h>
+#include <cereal/archives/binary.hpp>
+#include <cereal/cereal.hpp>
+#include <cereal/types/memory.hpp>
+#include <functional>
+#include <logicmill/armi/serialization_traits.h>
+#include <logicmill/armi/types.h>
 
 namespace logicmill
 {
 namespace armi
 {
-
-template<class SerializationContext, class TransportContext, class... Args>
-class server_context_builder : public server_context_base<SerializationContext, TransportContext>
+namespace adapters
 {
-public:
-	server_context_builder() : server_context_base{}
-	{
-		m_stubs.reserve(sizeof...(Args));
-		append_stubs<Args...>();
-	}
-
-	template<class T>
-	void
-	append_stubs()
-	{
-		append_stub<T>();
-	}
-
-	template<class First_, class... Args_>
-	typename std::enable_if_t<(sizeof...(Args_) > 0)>
-	append_stubs()
-	{
-		append_stub<First_>();
-		append_stubs<Args_...>();
-	}
-
-	template<class T>
-	void
-	append_stub()
-	{
-
-		std::size_t index = m_stubs.size();
-		m_stubs.emplace_back(std::unique_ptr<interface_stub_base>(new T{*this, index}));
-	}
-};
-
+namespace serialization
+{
+struct cereal {};
+}    // namespace serialization
+}    // namespace adapters
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // SERVER_CONTEXT_BUILDER_H
+template<>
+struct logicmill::armi::serialization::traits<logicmill::armi::adapters::serialization::cereal>
+{
+	using serializer_type = cereal::BinaryOutputArchive;
+	using deserializer_type = cereal::BinaryInputArchive;
+
+	template<class T>
+	static T
+	read(deserializer_type& arch)
+	{
+		T value arch(value);
+		return value;
+	}
+
+	template<class T>
+	static void
+	read(deserializer_type& arch, T& value)
+	{
+		arch(value);
+	}
+
+	template<class T>
+	static T
+	write(serializer_type& arch, T const& value)
+	{
+		arch(value);
+	}
+
+	static void
+	write_sequence_prefix(serializer_type& arch, std::size_t count)
+	{
+		arch(count);
+	}
+
+	static std::size_t
+	read_sequence_prefix(deserializer_type& arch)
+	{
+		std::size_t count;
+		arch(count);
+		return count;
+	}
+};
+
+#endif    // LOGICMILL_ARMI_ADAPTER_CEREAL_TRAITS_H

@@ -26,6 +26,7 @@
 #define LOGICMILL_ARMI_ADAPTER_ASYNC_CHANNEL_MANAGER_H
 
 #include <functional>
+#include <logicmill/armi/adapters/async/traits.h>
 #include <logicmill/armi/types.h>
 #include <logicmill/async/channel.h>
 #include <unordered_map>
@@ -39,28 +40,30 @@ namespace async
 class channel_manager
 {
 public:
+	using channel_type = transport_traits::channel_const_param_type;
+
 	async::channel::ptr
-	get_channel(armi::channel_id_type channel_id);
+	get_channel(channel_type channel_id);
 
 protected:
-	using channel_map_type         = std::unordered_map<armi::channel_id_type, async::channel::ptr>;
+	using channel_map_type         = std::unordered_map<channel_type, async::channel::ptr>;
 	using channel_map_iterator     = channel_map_type::iterator;
 	using channel_map_element_type = channel_map_type::value_type;
 
 	channel_manager() : m_next_channel_id{1} {}
 
-	armi::channel_id_type
+	channel_type
 	new_channel(async::channel::ptr const& chan);
 
 	void
-	remove(armi::channel_id_type channel_id)
+	remove(channel_type channel_id)
 	{
 		m_channel_map.erase(channel_id);
 	}
 
 	template<class Visitor>
 	void
-	visit(armi::channel_id_type channel_id, Visitor visitor)
+	visit(channel_type channel_id, Visitor visitor)
 	{
 		auto it = m_channel_map.find(channel_id);
 		if (it != m_channel_map.end())
@@ -69,7 +72,7 @@ protected:
 
 	template<class Visitor>
 	channel_map_iterator
-	visit_and_remove(armi::channel_id_type channel_id, Visitor visitor)
+	visit_and_remove(channel_type channel_id, Visitor visitor)
 	{
 		auto it = m_channel_map.find(channel_id);
 		if (it != m_channel_map.end())
@@ -113,15 +116,15 @@ protected:
 		return m_channel_map.size();
 	}
 
-	armi::channel_id_type
+	channel_type
 	get_next_channel_id()
 	{
 		return m_next_channel_id++;
 	}
 
 private:
-	armi::channel_id_type m_next_channel_id;
-	channel_map_type      m_channel_map;
+	channel_type     m_next_channel_id;
+	channel_map_type m_channel_map;
 };
 
 }    // namespace async

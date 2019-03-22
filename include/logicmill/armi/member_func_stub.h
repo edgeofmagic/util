@@ -33,42 +33,62 @@ namespace logicmill
 {
 namespace armi
 {
-template<class T, class U, class Enable = void>
+template<class ServerContextBase, class MemberFuncPtr, class StrippedMemberFuncPtr, class Enable = void>
 class member_func_stub;
 
 /*
  * specialization for non-void promise return value
  */
-template<class Actual, class Target, class PromiseType, class... Args>
+
+template<
+		template<class...> class ServerContextBaseTemplate,
+		class SerializationTraits,
+		class TransportTraits,
+		class MemberFuncPtr,
+		class Target,
+		class PromiseType,
+		class... Args>
 class member_func_stub<
-		Actual,
+		ServerContextBaseTemplate<SerializationTraits, TransportTraits>,
+		MemberFuncPtr,
 		util::promise<PromiseType> (Target::*)(Args...),
-		std::enable_if_t<!std::is_void<PromiseType>::value>> : public member_func_stub_base<Target>
+		std::enable_if_t<!std::is_void<PromiseType>::value>>
+	: public member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
 {
 public:
-	using member_func_ptr_type = Actual;
+	using member_func_ptr_type = MemberFuncPtr;
 	using target_ptr_type      = std::shared_ptr<Target>;
-	using member_func_stub_base<Target>::request_failed;
-	using member_func_stub_base<Target>::context;
+	using base = member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>;
+	using base::request_failed;
+	using base::context;
+	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+
+	using serialization_traits = SerializationTraits;
+	using deserializer_type    = typename serialization_traits::deserializer_type;
+	using serializer_type      = typename serialization_traits::serializer_type;
+	using serializer_uptr      = std::unique_ptr<serializer_type>;
+
+	using transport_traits         = TransportTraits;
+	using channel_type             = typename transport_traits::channel_type;
+	using channel_param_type       = typename transport_traits::channel_param_type;
+	using channel_const_param_type = typename transport_traits::channel_const_param_type;
 
 	inline member_func_stub(
-			server_context_base& context,
-			member_func_ptr_type member_func_ptr,
-			std::size_t          member_func_id)
-		: member_func_stub_base<Target>{context}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
+			server_context_base_type* context_base,
+			member_func_ptr_type      member_func_ptr,
+			std::size_t               member_func_id)
+		: base{context_base}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
 	{}
 
 	virtual void
 	dispatch(
 			request_id_type        request_id,
-			channel_id_type        channel_id,
-			bstream::ibstream&     is,
+			channel_param_type     channel,
+			deserializer_type&     request,
 			target_ptr_type const& target) const override
 	{
 		std::error_code err;
-		auto            item_count = is.read_array_header(err);
-		if (err)
-			goto exit;
+		auto            item_count = serialization_traits::read_sequence_prefix(request);
 
 		if (!expected_count<sizeof...(Args)>(item_count))
 		{
@@ -84,18 +104,19 @@ public:
 
 		try
 		{
-			((*target)
-			 .*m_member_func_ptr)(is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...)
+			((*target).*m_member_func_ptr)(
+					serialization_traits::template read<
+							typename std::remove_cv_t<typename std::remove_reference_t<Args>>>(request)...)
 					.then(
-							[=](PromiseType value) {
-								bstream::ombstream os{context().stream_context()};
-								os << request_id;
-								os << reply_kind::normal;
-								os.write_array_header(1);
-								os << value;
-								context().get_transport().send_reply(channel_id, os.release_mutable_buffer());
+							[=](PromiseType value) mutable {
+								serializer_uptr reply = context()->create_reply_serializer();
+								serialization_traits::write(*reply, request_id);
+								serialization_traits::write(*reply, reply_kind::normal);
+								serialization_traits::write_sequence_prefix(*reply, 1);
+								serialization_traits::write(*reply, value);
+								context()->send_reply(channel, std::move(reply));
 							},
-							[=](std::error_code err) { request_failed(request_id, channel_id, err); });
+							[=](std::error_code err) { request_failed(request_id, channel, err); });
 		}
 		catch (std::system_error const& e)
 		{
@@ -108,7 +129,7 @@ public:
 
 	exit:
 		if (err)
-			request_failed(request_id, channel_id, err);
+			request_failed(request_id, channel, err);
 	}
 
 private:
@@ -119,36 +140,56 @@ private:
 /*
  * specialization for void promise return value
  */
-template<class Actual, class Target, class PromiseType, class... Args>
+
+template<
+		template<class...> class ServerContextBaseTemplate,
+		class SerializationTraits,
+		class TransportTraits,
+		class MemberFuncPtr,
+		class Target,
+		class PromiseType,
+		class... Args>
 class member_func_stub<
-		Actual,
+		ServerContextBaseTemplate<SerializationTraits, TransportTraits>,
+		MemberFuncPtr,
 		util::promise<PromiseType> (Target::*)(Args...),
-		std::enable_if_t<std::is_void<PromiseType>::value>> : public member_func_stub_base<Target>
+		std::enable_if_t<std::is_void<PromiseType>::value>>
+	: public member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
 {
 public:
-	using member_func_ptr_type = Actual;
+	using member_func_ptr_type = MemberFuncPtr;
 	using target_ptr_type      = std::shared_ptr<Target>;
-	using member_func_stub_base<Target>::request_failed;
-	using member_func_stub_base<Target>::context;
+	using base = member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>;
+	using base::request_failed;
+	using base::context;
+	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+
+	using serialization_traits = SerializationTraits;
+	using deserializer_type    = typename serialization_traits::deserializer_type;
+	using serializer_type      = typename serialization_traits::serializer_type;
+	using serializer_uptr      = std::unique_ptr<serializer_type>;
+
+	using transport_traits         = TransportTraits;
+	using channel_type             = typename transport_traits::channel_type;
+	using channel_param_type       = typename transport_traits::channel_param_type;
+	using channel_const_param_type = typename transport_traits::channel_const_param_type;
 
 	inline member_func_stub(
-			server_context_base& context,
-			member_func_ptr_type member_func_ptr,
-			std::size_t          member_func_id)
-		: member_func_stub_base<Target>{context}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
+			server_context_base_type* context_base,
+			member_func_ptr_type      member_func_ptr,
+			std::size_t               member_func_id)
+		: base{context_base}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
 	{}
 
 	virtual void
 	dispatch(
 			request_id_type        request_id,
-			channel_id_type        channel_id,
-			bstream::ibstream&     is,
+			channel_param_type     channel,
+			deserializer_type&     request,
 			target_ptr_type const& target) const override
 	{
 		std::error_code err;
-		auto            item_count = is.read_array_header(err);
-		if (err)
-			goto exit;
+		auto item_count = serialization_traits::read_sequence_prefix(request);
 
 		if (!expected_count<sizeof...(Args)>(item_count))
 		{
@@ -164,17 +205,18 @@ public:
 
 		try
 		{
-			((*target)
-			 .*m_member_func_ptr)(is.read_as<typename std::remove_cv_t<typename std::remove_reference_t<Args>>>()...)
+			((*target).*m_member_func_ptr)(
+					serialization_traits::template read<
+							typename std::remove_cv_t<typename std::remove_reference_t<Args>>>(request)...)
 					.then(
 							[=]() {
-								bstream::ombstream os{context().stream_context()};
-								os << request_id;
-								os << reply_kind::normal;
-								os.write_array_header(0);
-								context().get_transport().send_reply(channel_id, os.release_mutable_buffer());
+								serializer_uptr reply = context()->create_reply_serializer();
+								serialization_traits::write(*reply, request_id);
+								serialization_traits::write(*reply, reply_kind::normal);
+								serialization_traits::write_sequence_prefix(*reply, 0);
+								context()->send_reply(channel, std::move(reply));
 							},
-							[=](std::error_code err) { request_failed(request_id, channel_id, err); });
+							[=](std::error_code err) { request_failed(request_id, channel, err); });
 		}
 		catch (std::system_error const& e)
 		{
@@ -186,7 +228,7 @@ public:
 		}
 	exit:
 		if (err)
-			request_failed(request_id, channel_id, err);
+			request_failed(request_id, channel, err);
 	}
 
 private:

@@ -32,26 +32,38 @@ namespace logicmill
 {
 namespace armi
 {
-template<class T, class StreamContext>
+template<class Stub>
 class server_context;
 
-template<template<class...> class Stub, class U, class StreamContext>
-class server_context<Stub<U>, StreamContext> : public logicmill::armi::server_context_base
+template<
+		template<class...> class StubTemplate,
+		class Target,
+		template<class...> class ServerContextBaseTemplate,
+		class SerializationTraits,
+		class TransportTraits>
+class server_context<StubTemplate<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>>
+	: public ServerContextBaseTemplate<SerializationTraits, TransportTraits>
 {
 public:
-	using base        = logicmill::armi::server_context_base;
-	using stub_type   = Stub<U>;
-	using target_type = U;
-	using impl_ptr    = std::shared_ptr<target_type>;
+	using base                     = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using stub_type                = StubTemplate<Target, base>;
+	using target_type              = Target;
+	using impl_ptr                 = std::shared_ptr<target_type>;
+	using serialization_traits     = SerializationTraits;
+	using deserializer_type        = typename serialization_traits::deserializer_type;
+	using serializer_type          = typename serialization_traits::serializer_type;
+	using transport_traits         = TransportTraits;
+	using channel_type             = typename transport_traits::channel_type;
+	using channel_param_type       = typename transport_traits::channel_param_type;
+	using channel_const_param_type = typename transport_traits::channel_const_param_type;
+	using ptr                      = util::shared_ptr<server_context>;
 
-	using ptr = util::shared_ptr<server_context>;
-
-	server_context(transport::server& transport_server) : base{transport_server, StreamContext::get()}, m_stub{*this} {}
+	server_context() : base{}, m_stub{this} {}
 
 	void
-	handle_request(channel_id_type channel_id, bstream::ibstream& is, impl_ptr const& impl)
+	handle_request(channel_param_type channel, deserializer_type& request, impl_ptr const& impl)
 	{
-		m_stub.process(channel_id, is, impl);
+		m_stub.process(channel, request, impl);
 	}
 
 private:

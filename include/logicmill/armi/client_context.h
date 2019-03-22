@@ -33,35 +33,51 @@ namespace logicmill
 namespace armi
 {
 
-template<class Proxy, class StreamContext>
-class client_context : public client_context_base
+template<class Proxy>
+class client_context;
+
+template<
+		template<class...> class ProxyTemplate,
+		class Target,
+		template<class...> class ClientContextBaseTemplate,
+		class SerializationTraits,
+		class TransportTraits>
+class client_context<ProxyTemplate<Target, ClientContextBaseTemplate<SerializationTraits, TransportTraits>>>
+	: public ClientContextBaseTemplate<SerializationTraits, TransportTraits>
 {
 public:
-	using base       = client_context_base;
-	using proxy_type = Proxy;
+	using base                     = ClientContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using serialization_traits     = SerializationTraits;
+	using transport_traits         = TransportTraits;
+	using channel_type             = typename transport_traits::channel_type;
+	using channel_param_type       = typename transport_traits::channel_param_type;
+	using channel_const_param_type = typename transport_traits::channel_const_param_type;
+	using proxy_type               = ProxyTemplate<Target, base>;
 
-	class client_channel
+	class target_reference
 	{
 	public:
 		friend class client_context;
 
 	protected:
-		client_channel(client_context& context, channel_id_type id) : m_context{&context}, m_id{id} {}
+		target_reference(client_context* context, channel_const_param_type channel)
+			: m_context{context}, m_channel{channel}
+		{}
 
 	public:
-		client_channel() : m_context{nullptr}, m_id{0} {}
+		target_reference() : m_context{nullptr}, m_channel{transport_traits::null_channel} {}
 
-		client_channel(client_channel const& other) : m_context{other.m_context}, m_id{other.m_id} {}
+		target_reference(target_reference const& other) : m_context{other.m_context}, m_channel{other.m_channel} {}
 
-		client_channel&
-		operator=(client_channel const& other)
+		target_reference&
+		operator=(target_reference const& other)
 		{
 			m_context = other.m_context;
-			m_id      = other.m_id;
+			m_channel = other.m_channel;
 			return *this;
 		}
 
-		client_channel&
+		target_reference&
 		timeout(std::chrono::milliseconds t)
 		{
 			m_context->set_transient_timeout(t);
@@ -69,19 +85,19 @@ public:
 
 		const proxy_type* operator->() const
 		{
-			return m_context->proxy(m_id);
+			return m_context->proxy(m_channel);
 		}
 
 		bool
 		is_valid()
 		{
-			return m_context->is_valid_channel_id(m_id);
+			return m_context->is_valid_channel(m_channel);
 		}
 
 		void
 		close()
 		{
-			m_context->close(m_id);
+			m_context->close(m_channel);
 		}
 
 		explicit operator bool() const
@@ -91,23 +107,22 @@ public:
 
 	private:
 		client_context* m_context;
-		channel_id_type m_id;
+		channel_type    m_channel;
 	};
 
-	client_channel
-	create_channel(channel_id_type id)
+	target_reference
+	create_target_reference(channel_const_param_type channel)
 	{
-		return client_channel(*this, id);
+		return target_reference(this, channel);
 	}
 
-	client_context(transport::client& transport_client) : base{transport_client, StreamContext::get()}, m_proxy{*this}
-	{}
+	client_context() : base{}, m_proxy{this} {}
 
 private:
 	const proxy_type*
-	proxy(channel_id_type channel_id) const
+	proxy(channel_const_param_type channel) const
 	{
-		set_transient_channel_id(channel_id);
+		base::set_transient_channel(channel);
 		return &m_proxy;
 	}
 

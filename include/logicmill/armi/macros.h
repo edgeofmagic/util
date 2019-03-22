@@ -49,56 +49,71 @@
 #include <logicmill/util/preprocessor.h>
 #include <type_traits>
 
-#define ARMI_CONTEXT(context_name, target_class, stream_context, ...)                                                  \
-	ARMI_CONTEXT_(context_name, target_class, stream_context, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+#define ARMI_CONTEXT(REMOTE_CONTEXT, TARGET_TYPE, ...)                                                                 \
+	ARMI_CONTEXT_(REMOTE_CONTEXT, TARGET_TYPE, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
-#define ARMI_CONTEXT_(context_name, target_class, stream_context, member_func_list)                                    \
-	class context_name                                                                                                 \
-	{                                                                                                                  \
-	public:                                                                                                            \
-		template<class T>                                                                                              \
-		class _proxy;                                                                                                  \
-		template<class T>                                                                                              \
-		class _stub;                                                                                                   \
-		using target_interface    = target_class;                                                                      \
-		using client_context_type = logicmill::armi::client_context<_proxy<target_class>, stream_context>;             \
-		using server_context_type = logicmill::armi::server_context<_stub<target_class>, stream_context>;              \
-	};                                                                                                                 \
-	ARMI_PROXY_STUB_SPEC_(context_name, target_class, member_func_list)
+#define ARMI_CONTEXT_(REMOTE_CONTEXT, TARGET_TYPE, MEMBER_FUNC_LIST)                                                     \
+	template<class SerializationTraits, class TransportTraits>                                                           \
+	class REMOTE_CONTEXT                                                                                                 \
+	{                                                                                                                    \
+	public:                                                                                                              \
+		using serialization_traits = SerializationTraits;                                                                \
+		using transport_traits     = TransportTraits;                                                                    \
+		template<class _Target, class _ClientContextBase>                                                                \
+		class _proxy;                                                                                                    \
+		template<class _Target, class _ServerContextBase>                                                                \
+		class _stub;                                                                                                     \
+		using target_type              = TARGET_TYPE;                                                                    \
+		using client_context_base_type = logicmill::armi::client_context_base<serialization_traits, transport_traits>;   \
+		using client_context_type      = logicmill::armi::client_context<_proxy<TARGET_TYPE, client_context_base_type>>; \
+		using server_context_base_type = logicmill::armi::server_context_base<serialization_traits, transport_traits>;   \
+		using server_context_type      = logicmill::armi::server_context<_stub<TARGET_TYPE, server_context_base_type>>;  \
+	};                                                                                                                   \
+	ARMI_PROXY_STUB_SPEC_(REMOTE_CONTEXT, TARGET_TYPE, MEMBER_FUNC_LIST)
 /**/
 
-#define ARMI_PROXY_STUB_SPEC_(context_name, target_class, member_func_list)                                            \
-	template<>                                                                                                         \
-	class context_name::_proxy<target_class>                                                                           \
+#define ARMI_PROXY_STUB_SPEC_(REMOTE_CONTEXT, TARGET_TYPE, MEMBER_FUNC_LIST)                                           \
+	template<class SerializationTraits, class TransportTraits>                                                         \
+	template<template<class...> class ClientContextBaseTemplate, class _SerTraits, class _TransTraits>                 \
+	class REMOTE_CONTEXT<SerializationTraits, TransportTraits>::                                                       \
+			_proxy<TARGET_TYPE, ClientContextBaseTemplate<_SerTraits, _TransTraits>>                                   \
 	{                                                                                                                  \
+	public:                                                                                                            \
+		using client_context_base_type = ClientContextBaseTemplate<_SerTraits, _TransTraits>;                          \
+		using target_type              = TARGET_TYPE;                                                                  \
+		_proxy(client_context_base_type* context_base) : m_context{context_base} {}                                    \
+                                                                                                                       \
 	private:                                                                                                           \
-		context_name::client_context_type& m_context;                                                                  \
+		client_context_base_type* m_context;                                                                           \
                                                                                                                        \
 	public:                                                                                                            \
-		using target_type = target_class;                                                                              \
-		_proxy(context_name::client_context_type& context) : m_context{context} {}                                     \
-		BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_FUNCTION_PROXY_, target_class, member_func_list)                               \
+		BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_FUNCTION_PROXY_, TARGET_TYPE, MEMBER_FUNC_LIST)                                \
 	};                                                                                                                 \
-	template<>                                                                                                         \
-	class context_name::_stub<target_class> : public logicmill::armi::interface_stub<target_class>                     \
+	template<class SerializationTraits, class TransportTraits>                                                         \
+	template<template<class...> class ServerContextBaseTemplate, class _SerTraits, class _TransTraits>                 \
+	class REMOTE_CONTEXT<SerializationTraits, TransportTraits>::                                                       \
+			_stub<TARGET_TYPE, ServerContextBaseTemplate<_SerTraits, _TransTraits>>                                    \
+		: public logicmill::armi::interface_stub<TARGET_TYPE, ServerContextBaseTemplate<_SerTraits, _TransTraits>>     \
 	{                                                                                                                  \
 	public:                                                                                                            \
-		using target_type = target_class;                                                                              \
-		_stub(logicmill::armi::server_context_base& context)                                                           \
-			: logicmill::armi::interface_stub<target_type>(                                                            \
-					  context,                                                                                         \
-					  BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_FUNCTION_PTR_, target_class, member_func_list))                  \
+		using server_context_base_type = ServerContextBaseTemplate<_SerTraits, _TransTraits>;                          \
+		using target_type              = TARGET_TYPE;                                                                  \
+		using base                                                                                                     \
+				= logicmill::armi::interface_stub<TARGET_TYPE, ServerContextBaseTemplate<_SerTraits, _TransTraits>>;   \
+		_stub(server_context_base_type* context_base)                                                                  \
+			: base{context_base, BOOST_PP_SEQ_FOR_EACH_I(ARMI_DO_FUNCTION_PTR_, TARGET_TYPE, MEMBER_FUNC_LIST)}        \
 		{}                                                                                                             \
 	};
 /**/
 
-#define ARMI_DO_FUNCTION_PTR_(r, target_class, n, member_func) BOOST_PP_COMMA_IF(n) & target_class ::member_func
+#define ARMI_DO_FUNCTION_PTR_(r, TARGET_TYPE, N, MEMBER_FUNC) BOOST_PP_COMMA_IF(N) & TARGET_TYPE::MEMBER_FUNC
 /**/
 
-#define ARMI_DO_FUNCTION_PROXY_(r, target_class, n, member_func)                                                       \
+#define ARMI_DO_FUNCTION_PROXY_(r, TARGET_TYPE, N, MEMBER_FUNC)                                                        \
 	logicmill::armi::member_func_proxy<                                                                                \
-			logicmill::traits::remove_member_func_cv_noexcept<decltype(&target_class ::member_func)>::type>            \
-			member_func{m_context, n};
+			client_context_base_type,                                                                                  \
+			logicmill::traits::remove_member_func_cv_noexcept<decltype(&TARGET_TYPE::MEMBER_FUNC)>::type>              \
+			MEMBER_FUNC{m_context, N};
 /**/
 
 #endif    // LOGICMILL_ARMI_MACROS_H

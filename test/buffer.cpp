@@ -439,3 +439,16 @@ TEST_CASE("logicmill::util::buffer [ smoke ] { binned fixed region factory }")
 		CHECK(std::string{e.what()} == "size exceeds maximum");
 	}
 }
+
+TEST_CASE("logicmill::util::buffer [ smoke ] { buffer traits }")
+{
+	using traits_type = util::buf::traits<util::mutable_buffer>;
+	CHECK(traits_type::is_mutable::value);
+	CHECK(traits_type::is_constructible_from<util::const_buffer&&>::value);
+	CHECK(traits_type::is_constructible_from<traits_type::size_type>::value);
+	util::mutable_buffer mbuf{1024};
+	CHECK(traits_type::capacity(mbuf) == 1024);
+	CHECK(traits_type::size(mbuf) == 0);
+	traits_type::set_size(mbuf, 100);
+	CHECK(traits_type::size(mbuf) == 100);
+}

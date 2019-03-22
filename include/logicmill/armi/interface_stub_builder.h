@@ -54,19 +54,32 @@ struct make_indices<0>
 	typedef indices<> type;
 };
 
-template<class Target>
-class interface_stub_builder : public interface_stub_base<Target>
+template<class Target, class ServerContextBase>
+class interface_stub_builder;
+
+template<
+		class Target,
+		template<class...> class ServerContextBaseTemplate,
+		class SerializationTraits,
+		class TransportTraits>
+class interface_stub_builder<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
+	: public interface_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
 {
+public:
+	using base = interface_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>;
+	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+
 protected:
 	template<class... Args, std::size_t... Ns>
-	interface_stub_builder(server_context_base& context, indices<Ns...> _i, Args... args)
-		: interface_stub_base<Target>(context)
+	interface_stub_builder(server_context_base_type* context_base, indices<Ns...> _i, Args... args) : base{context_base}
 	{
 		m_member_func_stubs.reserve(sizeof...(Args));
-		append(std::unique_ptr<member_func_stub_base<Target>>(
+		append(std::unique_ptr<member_func_stub_base<Target, server_context_base_type>>(
 				new armi::member_func_stub<
+						server_context_base_type,
 						decltype(args),
-						typename traits::remove_member_func_cv_noexcept<decltype(args)>::type>(context, args, Ns))...);
+						typename traits::remove_member_func_cv_noexcept<decltype(args)>::type>(
+						context_base, args, Ns))...);
 	}
 
 	template<class First, class... Args>
@@ -81,20 +94,20 @@ protected:
 	append()
 	{}
 
-	virtual std::size_t
-	member_func_count() const noexcept override
+	std::size_t
+	member_func_count() const noexcept
 	{
 		return m_member_func_stubs.size();
 	}
 
-	virtual member_func_stub_base<Target>&
-	get_member_func_stub(std::size_t index) override
+	member_func_stub_base<Target, server_context_base_type>&
+	get_member_func_stub(std::size_t index)
 	{
 		return *m_member_func_stubs[index];
 	}
 
 protected:
-	std::vector<std::unique_ptr<member_func_stub_base<Target>>> m_member_func_stubs;
+	std::vector<std::unique_ptr<member_func_stub_base<Target, server_context_base_type>>> m_member_func_stubs;
 };
 
 }    // namespace armi

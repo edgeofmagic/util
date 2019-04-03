@@ -22,42 +22,21 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_TYPES_H
-#define LOGICMILL_ARMI_TYPES_H
-
-#include <chrono>
-#include <cstdint>
-#include <functional>
-#include <logicmill/armi/error.h>
-#include <logicmill/bstream/context.h>
-#include <logicmill/bstream/macros.h>
-#include <system_error>
+#ifndef LOGICMILL_ARMI_ADAPTERS_BRIDGE_H
+#define LOGICMILL_ARMI_ADAPTERS_BRIDGE_H
 
 namespace logicmill
 {
 namespace armi
 {
-using fail_reply      = std::function<void(std::error_code err)>;
-using millisecs       = std::chrono::milliseconds;
-using request_id_type = std::uint64_t;
-using channel_id_type = std::uint64_t;
-
-static constexpr channel_id_type null_channel = 0ULL;
-
-enum class reply_kind
+namespace adapters
 {
-	normal,
-	fail
-};
 
-template<std::size_t N>
-inline bool
-expected_count(std::size_t count)
-{
-	return count == N;
+template<class SerializationTraits, class TransportTraits>
+struct bridge;
+
 }
-
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_TYPES_H
+#endif    // LOGICMILL_ARMI_ADAPTERS_BRIDGE_H

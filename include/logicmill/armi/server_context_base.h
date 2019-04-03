@@ -27,8 +27,10 @@
 
 #include <cstdint>
 #include <functional>
+#include <logicmill/armi/serialization_traits.h>
+#include <logicmill/armi/transport_traits.h>
+#include <logicmill/armi/adapters/bridge.h>
 #include <logicmill/armi/types.h>
-#include <logicmill/bstream/ombstream.h>
 #include <memory>
 #include <unordered_set>
 
@@ -43,13 +45,9 @@ class server_context_base
 public:
 
 	using serialization_traits = SerializationTraits;
-	using deserializer_type = typename serialization_traits::deserializer_type;
-	using serializer_type = typename serialization_traits::serializer_type;
-
 	using transport_traits = TransportTraits;
-	using channel_type = typename transport_traits::channel_type;
-	using channel_param_type = typename transport_traits::channel_param_type;
-	using channel_const_param_type = typename transport_traits::channel_const_param_type;
+	using bridge_type = typename armi::adapters::bridge<serialization_traits, transport_traits>;
+	using serializer_param_type = typename bridge_type::serializer_param_type;
 
 	template<class _T, class _U, class _V, class _Enable>
 	friend class member_func_stub;
@@ -65,25 +63,19 @@ public:
 
 	virtual ~server_context_base() {}
 
-	std::unique_ptr<serializer_type>
-	create_reply_serializer()
-	{
-		return serialization_traits::create_serializer();
-	}
-
 
 protected:
 
 	virtual void
-	send_reply(channel_param_type channel, std::unique_ptr<serializer_type>&& reply)
+	send_reply(channel_id_type channel, serializer_param_type reply)
 			= 0;
 
 	virtual bool
-	is_valid_channel(channel_const_param_type channel)
+	is_valid_channel(channel_id_type channel)
 			= 0;
 
 	virtual void
-	close(channel_param_type channel)
+	close(channel_id_type channel)
 			= 0;
 
 };

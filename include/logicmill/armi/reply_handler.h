@@ -37,33 +37,33 @@ template<class SerializationTraits, class PromiseType, class Enable = void>
 class reply_handler;
 
 template<class SerializationTraits, class PromiseType>
-class reply_handler<SerializationTraits, util::promise<PromiseType>, typename std::enable_if_t<!std::is_void<PromiseType>::value>>
-	: public reply_handler_base<SerializationTraits>
+class reply_handler<
+		SerializationTraits,
+		util::promise<PromiseType>,
+		typename std::enable_if_t<!std::is_void<PromiseType>::value>> : public reply_handler_base<SerializationTraits>
 {
 public:
-	using serialization_traits = SerializationTraits;
-	using deserializer_type = typename serialization_traits::deserializer_type;
+	using serialization_traits    = SerializationTraits;
+	using deserializer_type       = typename serialization_traits::deserializer_type;
+	using deserializer_param_type = deserializer_type&;
 
 	reply_handler(util::promise<PromiseType> p) : m_promise{p} {}
 
 	virtual void
-	handle_reply(deserializer_type& reply) override
+	handle_reply(deserializer_param_type reply) override
 	{
 		reply_kind rk = serialization_traits::template read<reply_kind>(reply);
-		// reply_kind rk = is.read_as<reply_kind>();
 
 		if (rk == reply_kind::fail)
 		{
 			auto item_count = serialization_traits::read_sequence_prefix(reply);
 
-			// auto item_count = is.read_array_header();
 			if (!expected_count<1>(item_count))
 			{
 				cancel(make_error_code(armi::errc::invalid_argument_count));
 			}
 			else
 			{
-				// cancel(is.read_as<std::error_code>());
 				cancel(serialization_traits::template read<std::error_code>(reply));
 			}
 		}
@@ -74,12 +74,10 @@ public:
 	}
 
 	void
-	resolve(deserializer_type& reply)
+	resolve(deserializer_param_type reply)
 	{
 		std::error_code err;
-
-		// auto            item_count = is.read_array_header(err);
-		auto item_count = serialization_traits::read_sequence_prefix(reply);
+		auto            item_count = serialization_traits::read_sequence_prefix(reply);
 
 		if (!expected_count<1>(item_count))
 		{
@@ -89,10 +87,8 @@ public:
 		{
 			try
 			{
-				m_promise.resolve(
-						serialization_traits::template read<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>(reply)
-						// is.read_as<typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>()
-						);
+				m_promise.resolve(serialization_traits::template read<
+								  typename std::remove_const_t<typename std::remove_reference_t<PromiseType>>>(reply));
 			}
 			catch (std::system_error const& e)
 			{
@@ -115,37 +111,34 @@ private:
 	util::promise<PromiseType> m_promise;
 };
 
-// template<class SerializationTraits, class PromiseType, class Enable = void>
-// class reply_handler;
-
 template<class SerializationTraits, class PromiseType>
-class reply_handler<SerializationTraits, util::promise<PromiseType>, typename std::enable_if_t<std::is_void<PromiseType>::value>>
-	: public reply_handler_base<SerializationTraits>
+class reply_handler<
+		SerializationTraits,
+		util::promise<PromiseType>,
+		typename std::enable_if_t<std::is_void<PromiseType>::value>> : public reply_handler_base<SerializationTraits>
 {
 public:
 	using serialization_traits = SerializationTraits;
-	using deserializer_type = typename serialization_traits::deserializer_type;
+	using deserializer_type    = typename serialization_traits::deserializer_type;
+	using deserializer_param_type = deserializer_type&;
 
 	reply_handler(util::promise<PromiseType> p) : m_promise{p} {}
 
 	virtual void
-	handle_reply(deserializer_type& reply) override
+	handle_reply(deserializer_param_type reply) override
 	{
 		reply_kind rk = serialization_traits::template read<reply_kind>(reply);
-		// reply_kind rk = is.read_as<reply_kind>();
 
 		if (rk == reply_kind::fail)
 		{
 			auto item_count = serialization_traits::read_sequence_prefix(reply);
 
-			// auto item_count = is.read_array_header();
 			if (!expected_count<1>(item_count))
 			{
 				cancel(make_error_code(armi::errc::invalid_argument_count));
 			}
 			else
 			{
-				// cancel(is.read_as<std::error_code>());
 				cancel(serialization_traits::template read<std::error_code>(reply));
 			}
 		}
@@ -156,12 +149,10 @@ public:
 	}
 
 	void
-	resolve(deserializer_type& reply)
+	resolve(deserializer_param_type reply)
 	{
 		std::error_code err;
-
-		// auto            item_count = is.read_array_header(err);
-		auto item_count = serialization_traits::read_sequence_prefix(reply);
+		auto            item_count = serialization_traits::read_sequence_prefix(reply);
 
 		if (!expected_count<0>(item_count))
 		{

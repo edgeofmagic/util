@@ -25,6 +25,7 @@
 #ifndef LOGICMILL_ARMI_METHOD_PROXY_H
 #define LOGICMILL_ARMI_METHOD_PROXY_H
 
+#include <logicmill/armi/adapters/bridge.h>
 #include <logicmill/armi/client_context_base.h>
 #include <logicmill/armi/reply_handler.h>
 #include <logicmill/armi/types.h>
@@ -56,8 +57,8 @@ public:
 	using serialization_traits     = SerializationTraits;
 	using transport_traits         = TransportTraits;
 	using reply_handler_type       = reply_handler<serialization_traits, util::promise<PromiseType>>;
-	using serializer_type          = typename serialization_traits::serializer_type;
-	using serializer_uptr          = std::unique_ptr<serializer_type>;
+	using bridge_type              = logicmill::armi::adapters::bridge<serialization_traits, transport_traits>;
+	using serializer_param_type    = typename bridge_type::serializer_param_type;
 
 
 	member_func_proxy(client_context_base_type* context_base, std::size_t member_func_id)
@@ -71,14 +72,16 @@ public:
 		util::promise<PromiseType> p;
 		auto                       request_id = m_context->next_request_id();
 		m_context->add_handler(request_id, std::make_unique<reply_handler_type>(p));
-		serializer_uptr request{serialization_traits::create_serializer()};
-		serialization_traits::write(*request, request_id);
-		serialization_traits::write(*request, m_member_func_id);
-		serialization_traits::write_sequence_prefix(*request, sizeof...(Args));
 
-		append(*request, args...);
+		bridge_type::new_serializer([=](typename bridge_type::serializer_param_type request) {
+			serialization_traits::write(request, request_id);
+			serialization_traits::write(request, m_member_func_id);
+			serialization_traits::write_sequence_prefix(request, sizeof...(Args));
 
-		m_context->send_request(request_id, timeout, std::move(request));
+			append(request, args...);
+
+			m_context->send_request(request_id, timeout, request);
+		});
 		return p;
 	}
 
@@ -95,12 +98,12 @@ public:
 
 private:
 	void
-	append(serializer_type& request) const
+	append(serializer_param_type request) const
 	{}
 
 	template<class First_, class... More_>
 	void
-	append(serializer_type& request, First_ first, More_... more) const
+	append(serializer_param_type request, First_ first, More_... more) const
 	{
 		serialization_traits::write(request, first);
 		append(request, more...);

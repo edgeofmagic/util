@@ -28,6 +28,10 @@
 #include <functional>
 #include <logicmill/armi/adapters/async/channel_manager.h>
 #include <logicmill/armi/adapters/async/traits.h>
+
+#include <logicmill/armi/adapters/async/bstream_bridge.h>
+#include <logicmill/armi/adapters/bstream/traits.h>
+
 #include <logicmill/armi/client_context.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
@@ -38,21 +42,29 @@ namespace logicmill
 namespace async
 {
 
-template<template<class...> class RemoteContext, class StreamContext = bstream::default_armi_stream_context>
-class adapter
+template<class T>
+class adapter;
+
+template<template<class...> class RemoteContext, class SerializationTraits, class TransportTraits>
+class adapter<RemoteContext<SerializationTraits, TransportTraits>>
 {
 public:
-	using remote_type              = RemoteContext<bstream::serialization_traits<StreamContext>, transport_traits>;
+	using serialization_traits = SerializationTraits;
+	using transport_traits     = TransportTraits;
+
+	using remote_type = RemoteContext<serialization_traits, transport_traits>;
+
+	using bridge_type = armi::adapters::bridge<serialization_traits, transport_traits>;
+
 	using client_context_type      = typename remote_type::client_context_type;
 	using client_context_base_type = typename remote_type::client_context_base_type;
-	using serialization_traits     = bstream::serialization_traits<StreamContext>;
-	using stream_context_type      = StreamContext;
+	using target_type              = typename remote_type::target_type;
 
 	class client_adapter_base : public remote_type::client_context_type, public channel_manager
 	{
 	public:
-		using channel_error_handler = std::function<void(transport_traits::channel_type channel, std::error_code err)>;
-		using channel_type          = transport_traits::channel_type;
+		using channel_error_handler = std::function<void(channel_id_type channel, std::error_code err)>;
+		using channel_id_type       = armi::channel_id_type;
 
 		/* public interface for client_adapter */
 
@@ -61,7 +73,7 @@ public:
 		virtual ~client_adapter_base() {}
 
 		void
-		close(channel_type channel_id, std::error_code err)
+		close(channel_id_type channel_id, std::error_code err)
 		{
 			if (is_valid_channel(channel_id))
 				m_loop->dispatch([=]() { really_close(channel_id, err); });
@@ -78,7 +90,7 @@ public:
 		}
 
 		virtual bool
-		is_valid_channel(channel_type channel_id) override
+		is_valid_channel(channel_id_type channel_id) override
 		{
 			bool result{false};
 			auto chan = get_channel(channel_id);
@@ -88,17 +100,17 @@ public:
 		}
 
 		virtual void
-		close(channel_type channel_id) override
+		close(channel_id_type channel_id) override
 		{
 			close(channel_id, make_error_code(armi::errc::channel_closed));
 		}
 
 		virtual void
 		send_request(
-				channel_type                          channel_id,
-				armi::request_id_type                 request_id,
-				std::chrono::milliseconds             timeout,
-				std::unique_ptr<bstream::ombstream>&& req) override
+				channel_id_type                             channel_id,
+				armi::request_id_type                       request_id,
+				std::chrono::milliseconds                   timeout,
+				typename bridge_type::serializer_param_type req) override
 		{
 			std::error_code err;
 
@@ -118,7 +130,8 @@ public:
 					goto exit;
 			}
 
-			chan->write(std::move(req)->release_mutable_buffer(), err);
+			bridge_type::mutable_buffer_from_serializer(
+					req, [&](util::mutable_buffer&& buf) { chan->write(std::move(buf), err); });
 			if (err)
 				goto exit;
 
@@ -157,7 +170,7 @@ public:
 
 	protected:
 		void
-		really_close(channel_type channel_id, std::error_code err)
+		really_close(channel_id_type channel_id, std::error_code err)
 		{
 			auto chan = get_channel(channel_id);
 			if (chan)
@@ -179,7 +192,7 @@ public:
 		{
 			if (m_loop->is_alive())
 			{
-				visit_and_remove_all([](channel_type channel_id, async::channel::ptr const& chan) {
+				visit_and_remove_all([](channel_id_type channel_id, async::channel::ptr const& chan) {
 					if (chan)
 						chan->close();
 				});
@@ -193,7 +206,7 @@ public:
 		}
 
 		async::loop::ptr      m_loop;
-		channel_type          m_next_channel_id;
+		channel_id_type       m_next_channel_id;
 		channel_error_handler m_on_channel_read_error;
 		bool                  m_is_closing;
 	};
@@ -203,8 +216,8 @@ public:
 	public:
 		using client_context_type      = typename remote_type::client_context_type;
 		using client_context_base_type = typename remote_type::client_context_base_type;
-		using channel_type             = transport_traits::channel_type;
-		using channel_error_handler    = std::function<void(channel_type channel_id, std::error_code err)>;
+		using channel_id_type          = armi::channel_id_type;
+		using channel_error_handler    = std::function<void(channel_id_type channel_id, std::error_code err)>;
 		using client_connect_handler
 				= std::function<void(typename client_context_type::target_reference, std::error_code)>;
 
@@ -243,9 +256,11 @@ public:
 										}
 										else
 										{
-											// TODO: fix the ham-fisted insertion of stream_context_type
-											bstream::imbstream reply{std::move(buf), stream_context_type::get()};
-											client_context_base_type::handle_reply(reply);
+											bridge_type::deserializer_from_const_buffer(
+													std::move(buf),
+													[&](typename bridge_type::deserializer_param_type reply) {
+														client_context_base_type::handle_reply(reply);
+													});
 										}
 									});
 							if (err)
@@ -289,8 +304,13 @@ public:
 										else
 										{
 											// TODO: fix the ham-fisted insertion of stream_context_type
-											bstream::imbstream reply{std::move(buf), stream_context_type::get()};
-											client_context_base_type::handle_reply(reply);
+											bridge_type::deserializer_from_const_buffer(
+													std::move(buf),
+													[&](typename bridge_type::deserializer_param_type reply) {
+														client_context_base_type::handle_reply(reply);
+													});
+											// bstream::imbstream reply{std::move(buf), stream_context_type::get()};
+											// client_context_base_type::handle_reply(reply);
 										}
 									});
 							handler(client_context_type::create_target_reference(id), std::error_code{});
@@ -303,13 +323,13 @@ public:
 	class server_adapter_base : public remote_type::server_context_type, public channel_manager
 	{
 	public:
-		using channel_type = transport_traits::channel_type;
+		using channel_id_type = armi::channel_id_type;
 
-		using channel_error_handler = std::function<void(channel_type, std::error_code)>;
+		using channel_error_handler = std::function<void(channel_id_type, std::error_code)>;
 		using accept_error_handler  = std::function<void(std::error_code err)>;
 		using server_close_handler  = std::function<void()>;
-		using channel_close_handler = std::function<void(channel_type)>;
-		using connection_handler    = std::function<void(channel_type)>;
+		using channel_close_handler = std::function<void(channel_id_type)>;
+		using connection_handler    = std::function<void(channel_id_type)>;
 
 		using server_context_type = typename remote_type::server_context_type;
 
@@ -371,7 +391,7 @@ public:
 
 
 		virtual bool
-		is_valid_channel(channel_type channel_id) override
+		is_valid_channel(channel_id_type channel_id) override
 		{
 			bool result{false};
 			auto chan = get_channel(channel_id);
@@ -381,7 +401,7 @@ public:
 		}
 
 		virtual void
-		send_reply(channel_type channel_id, std::unique_ptr<bstream::ombstream>&& req) override
+		send_reply(channel_id_type channel_id, typename bridge_type::serializer_param_type rep) override
 		{
 			auto chan = get_channel(channel_id);
 			if (!chan)
@@ -389,14 +409,18 @@ public:
 			else
 			{
 				std::error_code err;
-				chan->write(std::move(req->release_mutable_buffer()), err);
+
+				bridge_type::mutable_buffer_from_serializer(
+						rep, [&](util::mutable_buffer&& buf) { chan->write(std::move(buf), err); });
+
+				// chan->write(std::move(req->release_mutable_buffer()), err);
 				if (err)
 					channel_error(channel_id, err);
 			}
 		}
 
 		virtual void
-		close(channel_type channel_id) override
+		close(channel_id_type channel_id) override
 		{
 			really_close(channel_id);
 		}
@@ -412,7 +436,7 @@ public:
 		}
 
 		void
-		channel_error(channel_type channel_id, std::error_code err)
+		channel_error(channel_id_type channel_id, std::error_code err)
 		{
 			if (m_on_channel_error)
 				m_on_channel_error(channel_id, err);
@@ -431,7 +455,7 @@ public:
 		}
 
 		void
-		default_channel_error_handler(channel_type channel_id, std::error_code err)
+		default_channel_error_handler(channel_id_type channel_id, std::error_code err)
 		{
 			close(channel_id);
 		}
@@ -447,9 +471,9 @@ public:
 				= 0;
 
 		void
-		really_close(channel_type channel_id)
+		really_close(channel_id_type channel_id)
 		{
-			visit_and_remove(channel_id, [](channel_type channel_id, async::channel::ptr chan) {
+			visit_and_remove(channel_id, [](channel_id_type channel_id, async::channel::ptr chan) {
 				if (chan)
 					chan->close();
 			});
@@ -470,9 +494,9 @@ public:
 					if (m_on_server_close)
 						m_on_server_close();
 				}
-				std::vector<channel_type> closed_channels;
+				std::vector<channel_id_type> closed_channels;
 				closed_channels.reserve(active_channel_count());
-				visit_and_remove_all([&closed_channels](channel_type channel_id, async::channel::ptr chan) {
+				visit_and_remove_all([&closed_channels](channel_id_type channel_id, async::channel::ptr chan) {
 					closed_channels.push_back(channel_id);
 					if (chan)
 						chan->close();
@@ -490,10 +514,10 @@ public:
 	class server_adapter : public server_adapter_base
 	{
 	public:
-		using channel_type        = async::transport_traits::channel_type;
+		using channel_id_type     = armi::channel_id_type;
 		using server_context_type = typename remote_type::server_context_type;
 		using target_ptr_type     = std::shared_ptr<typename server_context_type::target_type>;
-		using request_handler     = std::function<target_ptr_type(channel_type)>;
+		using request_handler     = std::function<target_ptr_type(channel_id_type)>;
 
 	private:
 		request_handler m_on_request;

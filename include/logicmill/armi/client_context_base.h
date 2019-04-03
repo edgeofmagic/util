@@ -26,6 +26,7 @@
 #define LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H
 
 #include <chrono>
+#include <logicmill/armi/adapters/bridge.h>
 #include <logicmill/armi/reply_handler_base.h>
 #include <logicmill/armi/serialization_traits.h>
 #include <logicmill/armi/transport_traits.h>
@@ -47,22 +48,23 @@ class client_context_base
 {
 public:
 	using serialization_traits = SerializationTraits;
-	using deserializer_type    = typename serialization_traits::deserializer_type;
-	using serializer_type      = typename serialization_traits::serializer_type;
-	using serializer_uptr      = std::unique_ptr<serializer_type>;
+	using transport_traits     = TransportTraits;
 
-	using transport_traits         = TransportTraits;
-	using channel_type             = typename transport_traits::channel_type;
-	using channel_param_type       = typename transport_traits::channel_param_type;
-	using channel_const_param_type = typename transport_traits::channel_const_param_type;
+	// using deserializer_type = typename serialization_traits::deserializer_type;
+	// using serializer_type   = typename serialization_traits::serializer_type;
+
+	using bridge_type = adapters::bridge<serialization_traits, transport_traits>;
+
+	using deserializer_param_type = typename bridge_type::deserializer_param_type;
+	using serializer_param_type   = typename bridge_type::serializer_param_type;
 
 	using close_handler           = std::function<void()>;
 	using transport_error_handler = std::function<void(std::error_code err)>;
 
 	using reply_handler_map_type = std::unordered_map<
 			request_id_type,
-			std::pair<channel_type, typename reply_handler_base<serialization_traits>::ptr>>;
-	using channel_request_map_type = std::unordered_map<channel_type, std::set<request_id_type>>;
+			std::pair<channel_id_type, typename reply_handler_base<serialization_traits>::ptr>>;
+	using channel_request_map_type = std::unordered_map<channel_id_type, std::set<request_id_type>>;
 
 	client_context_base()
 		: m_next_request_id{1},
@@ -96,7 +98,7 @@ public:
 	}
 
 	void
-	cancel_channel_requests(channel_param_type channel, std::error_code err)
+	cancel_channel_requests(channel_id_type channel, std::error_code err)
 	{
 		auto it = m_channel_request_map.find(channel);
 		if (it != m_channel_request_map.end())
@@ -115,7 +117,7 @@ public:
 	}
 
 	void
-	handle_reply(deserializer_type& reply)
+	handle_reply(deserializer_param_type reply)
 	{
 		invoke_handler(reply);
 	}
@@ -125,19 +127,19 @@ protected:
 	friend class logicmill::armi::member_func_proxy;
 
 	virtual bool
-	is_valid_channel(channel_param_type channel)
+	is_valid_channel(channel_id_type channel)
 			= 0;
 
 	virtual void
-	close(channel_param_type channel)
+	close(channel_id_type channel)
 			= 0;
 
 	virtual void
 	send_request(
-			channel_param_type        channel,
+			channel_id_type           channel,
 			request_id_type           request_id,
 			std::chrono::milliseconds timeout,
-			serializer_uptr&&         req)
+			serializer_param_type     req)
 			= 0;
 
 	void
@@ -159,20 +161,14 @@ protected:
 		assert(result.second);
 	}
 
-	serializer_uptr
-	create_request_serializer()
+	void
+	send_request(request_id_type request_id, millisecs timeout, serializer_param_type req)
 	{
-		return serialization_traits::create_serializer();
+		send_request(get_and_clear_transient_channel(), request_id, timeout, req);
 	}
 
 	void
-	send_request(request_id_type request_id, millisecs timeout, serializer_uptr&& req)
-	{
-		send_request(get_and_clear_transient_channel(), request_id, timeout, std::move(req));
-	}
-
-	void
-	invoke_handler(deserializer_type& reply)
+	invoke_handler(deserializer_param_type reply)
 	{
 		auto request_id = serialization_traits::template read<request_id_type>(reply);
 		visit_handler(request_id, [=, &reply](typename reply_handler_map_type::iterator it) {
@@ -221,22 +217,22 @@ protected:
 	}
 
 	void
-	set_transient_channel(channel_const_param_type channel) const
+	set_transient_channel(channel_id_type channel) const
 	{
 		m_transient_channel = channel;
 	}
 
-	channel_type
+	channel_id_type
 	get_transient_channel() const
 	{
 		return m_transient_channel;
 	}
 
-	channel_type
+	channel_id_type
 	get_and_clear_transient_channel()
 	{
-		channel_type result{m_transient_channel};
-		m_transient_channel = transport_traits::null_channel;
+		channel_id_type result{m_transient_channel};
+		m_transient_channel = null_channel;
 		return result;
 	}
 
@@ -268,7 +264,7 @@ protected:
 	channel_request_map_type m_channel_request_map;
 	millisecs                m_default_timeout;
 	millisecs                m_transient_timeout;
-	mutable channel_type     m_transient_channel;
+	mutable channel_id_type  m_transient_channel;
 };
 
 }    // namespace armi

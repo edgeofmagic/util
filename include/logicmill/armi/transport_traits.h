@@ -42,7 +42,16 @@ namespace transport
 {
 
 template<class Transport>
-struct traits;
+struct traits
+{
+/*
+	using channel_type             = ...; // Type that represents a channel (e.g., a socket)
+	using channel_param_type       = channel_type;
+	using channel_const_param_type = channel_type;
+
+	static constexpr channel_type null_channel = 0ULL;
+*/
+};
 
 /*
 {

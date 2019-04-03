@@ -25,101 +25,15 @@
 #ifndef LOGICMILL_ARMI_ASYNC_ADAPTER_TRAITS_H
 #define LOGICMILL_ARMI_ASYNC_ADAPTER_TRAITS_H
 
-// #include <logicmill/armi/types.h>
-#include <logicmill/async/loop.h>
-#include <logicmill/bstream.h>
-#include <logicmill/bstream/ombstream.h>
-#include <logicmill/bstream/imbstream.h>
-#include <logicmill/armi/error.h>
-
 namespace logicmill
 {
 namespace async
 {
 
 struct transport_traits
-{
-	using channel_type             = std::uint64_t;
-	using channel_param_type       = channel_type;
-	using channel_const_param_type = channel_type;
-
-	static constexpr channel_type null_channel = 0ULL;
-};
+{};
 
 }    // namespace async
-
-namespace bstream
-{
-
-class default_armi_stream_context
-{
-public:
-	using context_type = bstream::context<>;
-
-	static bstream::context_options
-	options()
-	{
-		return bstream::context_options{}.error_categories({&armi::error_category()});
-	}
-
-	BSTRM_CONTEXT_ACCESSOR();
-};
-
-
-template<class StreamContext = default_armi_stream_context>
-struct serialization_traits
-{
-	using serializer_type = logicmill::bstream::ombstream;
-	using deserializer_type = logicmill::bstream::imbstream;
-	using stream_context_type = StreamContext;
-
-	template<class T>
-	static T
-	read(deserializer_type& is)
-	{
-		return is.read_as<T>();
-	}
-
-	template<class T>
-	static void
-	read(deserializer_type& is, T& value)
-	{
-		is.read_as(value);
-	}
-
-	template<class T>
-	static void
-	write(serializer_type& os, T const& value)
-	{
-		os << value;
-	}
-
-	static void
-	write_sequence_prefix(serializer_type& os, std::size_t count)
-	{
-		os.write_array_header(count);
-	}
-
-	static std::size_t
-	read_sequence_prefix(deserializer_type& is)
-	{
-		return is.read_array_header();
-	}
-
-	static std::unique_ptr<serializer_type>
-	create_serializer()
-	{
-		return std::make_unique<serializer_type>(stream_context_type::get());
-	}
-
-	static void
-	clear(serializer_type& os)
-	{
-		os.clear();
-	}
-};
-
-}    // namespace bstream
 }    // namespace logicmill
 
 #endif    // LOGICMILL_ARMI_ASYNC_ADAPTER_TRAITS_H

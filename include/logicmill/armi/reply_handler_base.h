@@ -38,13 +38,14 @@ template<class SerializationTraits>
 class reply_handler_base
 {
 public:
-	using serialization_traits = SerializationTraits;
-	using deserializer_type = typename serialization_traits::deserializer_type;
+	using serialization_traits    = SerializationTraits;
+	using deserializer_type       = typename serialization_traits::deserializer_type;
+	using deserializer_param_type = deserializer_type&;
 
 	virtual ~reply_handler_base() {}
 	using ptr = std::unique_ptr<reply_handler_base>;
 	virtual void
-	handle_reply(deserializer_type& reply)
+	handle_reply(deserializer_param_type reply)
 			= 0;
 	virtual void
 	cancel(std::error_code err)

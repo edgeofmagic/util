@@ -40,8 +40,65 @@ namespace armi
 namespace serialization
 {
 
-template<class Serialization>
-struct traits;
+struct traits
+{
+/*	
+	using serializer_type     = ...; // output archive/stream
+	using deserializer_type   = ...; // input archive/stream
+
+	template<class T>
+	static T
+	read(deserializer_type& input)
+	{
+		// Deserialize type T from input and return it by value.
+		// Should be the equivalent of (assuming T is default-constructible):
+		T value;
+		read(intput, value);
+		return value;
+	}
+
+	template<class T>
+	static void
+	read(deserializer_type& input, T& value)
+	{
+		// Deserialize type T from input into the value parameter.
+	}
+
+	template<class T>
+	static T
+	write(serializer_type& output, T const& value)
+	{
+		// Serialize value to output.
+	}
+
+	static void
+	write_sequence_prefix(serializer_type& os, std::size_t count)
+	{
+		// Some serialization frameworks want to encapsulate sequence by
+		// inserting a prefix that includes a count of the items in the sequence.
+		// Minimally, just write the count as an integer.
+	}
+
+	static std::size_t
+	read_sequence_prefix(deserializer_type& is)
+	{
+		// See write_sequence_prefix; read the prefix and 
+		// return the count. Minimally, read an integer.
+	}
+
+	static std::unique_ptr<serializer_type>
+	create_serializer()
+	{
+		// Create a unique pointer to a serializer and return it.
+	}
+
+	static void
+	clear(deserializer_type& is)
+	{
+		// Reset the state of the deserializer to the same as newly-constructed.
+	}
+*/
+};
 
 }    // namespace serialization
 }    // namespace armi

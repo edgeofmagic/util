@@ -46,19 +46,18 @@ class interface_stub<Target, ServerContextBaseTemplate<SerializationTraits, Tran
 public:
 	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
 	using base                     = interface_stub_builder<Target, server_context_base_type>;
-	using impl_ptr                 = std::shared_ptr<Target>;
+	using target_ptr                 = std::shared_ptr<Target>;
 	using base::member_func_count;
 	using base::get_member_func_stub;
 	using interface_stub_base<Target, server_context_base_type>::request_failed;
 
-	using serialization_traits = SerializationTraits;
-	using deserializer_type    = typename serialization_traits::deserializer_type;
-	using serializer_type      = typename serialization_traits::serializer_type;
+	using serialization_traits    = SerializationTraits;
+	using transport_traits        = TransportTraits;
+	using deserializer_type       = typename serialization_traits::deserializer_type;
+	using serializer_type         = typename serialization_traits::serializer_type;
+	using bridge_type             = logicmill::armi::adapters::bridge<serialization_traits, transport_traits>;
+	using deserializer_param_type = typename bridge_type::deserializer_param_type;
 
-	using transport_traits         = TransportTraits;
-	using channel_type             = typename transport_traits::channel_type;
-	using channel_param_type       = typename transport_traits::channel_param_type;
-	using channel_const_param_type = typename transport_traits::channel_const_param_type;
 
 	template<class... Args>
 	interface_stub(server_context_base_type* context_base, Args... args)
@@ -66,7 +65,7 @@ public:
 	{}
 
 	void
-	process(channel_param_type channel, deserializer_type& request, impl_ptr impl)
+	process(channel_id_type channel, deserializer_param_type request, target_ptr impl)
 	{
 		auto request_id     = serialization_traits::template read<request_id_type>(request);
 		auto member_func_id = serialization_traits::template read<std::size_t>(request);

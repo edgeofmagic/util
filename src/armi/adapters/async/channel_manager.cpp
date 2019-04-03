@@ -28,7 +28,7 @@ using namespace logicmill;
 using namespace armi;
 
 async::channel::ptr
-async::channel_manager::get_channel(channel_type channel_id)
+async::channel_manager::get_channel(channel_id_type channel_id)
 {
 	async::channel::ptr chan;
 	auto                it = m_channel_map.find(channel_id);
@@ -37,7 +37,7 @@ async::channel_manager::get_channel(channel_type channel_id)
 	return chan;
 }
 
-async::channel_manager::channel_type
+async::channel_manager::channel_id_type
 async::channel_manager::new_channel(async::channel::ptr const& chan)
 {
 	auto id = get_next_channel_id();

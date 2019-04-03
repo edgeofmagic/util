@@ -51,10 +51,12 @@ struct logicmill::armi::serialization::traits<logicmill::armi::adapters::seriali
 {
 	using serializer_type = cereal::BinaryOutputArchive;
 	using deserializer_type = cereal::BinaryInputArchive;
+	using serializer_param_type = serializer_type&;
+	using deserializer_param_type = deserializer_type&;
 
 	template<class T>
 	static T
-	read(deserializer_type& arch)
+	read(deserializer_param_type arch)
 	{
 		T value arch(value);
 		return value;
@@ -62,26 +64,26 @@ struct logicmill::armi::serialization::traits<logicmill::armi::adapters::seriali
 
 	template<class T>
 	static void
-	read(deserializer_type& arch, T& value)
+	read(deserializer_param_type arch, T& value)
 	{
 		arch(value);
 	}
 
 	template<class T>
 	static T
-	write(serializer_type& arch, T const& value)
+	write(serializer_param_type arch, T const& value)
 	{
 		arch(value);
 	}
 
 	static void
-	write_sequence_prefix(serializer_type& arch, std::size_t count)
+	write_sequence_prefix(serializer_param_type arch, std::size_t count)
 	{
 		arch(count);
 	}
 
 	static std::size_t
-	read_sequence_prefix(deserializer_type& arch)
+	read_sequence_prefix(deserializer_param_type arch)
 	{
 		std::size_t count;
 		arch(count);

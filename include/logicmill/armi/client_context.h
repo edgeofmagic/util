@@ -46,13 +46,10 @@ class client_context<ProxyTemplate<Target, ClientContextBaseTemplate<Serializati
 	: public ClientContextBaseTemplate<SerializationTraits, TransportTraits>
 {
 public:
-	using base                     = ClientContextBaseTemplate<SerializationTraits, TransportTraits>;
-	using serialization_traits     = SerializationTraits;
-	using transport_traits         = TransportTraits;
-	using channel_type             = typename transport_traits::channel_type;
-	using channel_param_type       = typename transport_traits::channel_param_type;
-	using channel_const_param_type = typename transport_traits::channel_const_param_type;
-	using proxy_type               = ProxyTemplate<Target, base>;
+	using base                 = ClientContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using serialization_traits = SerializationTraits;
+	using transport_traits     = TransportTraits;
+	using proxy_type           = ProxyTemplate<Target, base>;
 
 	class target_reference
 	{
@@ -60,12 +57,10 @@ public:
 		friend class client_context;
 
 	protected:
-		target_reference(client_context* context, channel_const_param_type channel)
-			: m_context{context}, m_channel{channel}
-		{}
+		target_reference(client_context* context, channel_id_type channel) : m_context{context}, m_channel{channel} {}
 
 	public:
-		target_reference() : m_context{nullptr}, m_channel{transport_traits::null_channel} {}
+		target_reference() : m_context{nullptr}, m_channel{null_channel} {}
 
 		target_reference(target_reference const& other) : m_context{other.m_context}, m_channel{other.m_channel} {}
 
@@ -107,11 +102,11 @@ public:
 
 	private:
 		client_context* m_context;
-		channel_type    m_channel;
+		channel_id_type m_channel;
 	};
 
 	target_reference
-	create_target_reference(channel_const_param_type channel)
+	create_target_reference(channel_id_type channel)
 	{
 		return target_reference(this, channel);
 	}
@@ -120,7 +115,7 @@ public:
 
 private:
 	const proxy_type*
-	proxy(channel_const_param_type channel) const
+	proxy(channel_id_type channel) const
 	{
 		base::set_transient_channel(channel);
 		return &m_proxy;

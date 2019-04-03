@@ -43,11 +43,11 @@ struct transport
 
 struct logicmill::armi::transport::traits<logicmill::async::transport>
 {
-	using channel_type = std::uint64_t;
-	using channel_param_type = channel_type;
-	using channel_const_param_type = channel_type;
+	// using channel_type = std::uint64_t;
+	// using channel_param_type = channel_type;
+	// using channel_const_param_type = channel_type;
 	
-	static constexpr channel_type null_channel = 0;
+	// static constexpr channel_type null_channel = 0;
 
 };
 

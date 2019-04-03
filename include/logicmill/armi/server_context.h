@@ -45,23 +45,20 @@ class server_context<StubTemplate<Target, ServerContextBaseTemplate<Serializatio
 	: public ServerContextBaseTemplate<SerializationTraits, TransportTraits>
 {
 public:
-	using base                     = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
-	using stub_type                = StubTemplate<Target, base>;
-	using target_type              = Target;
-	using impl_ptr                 = std::shared_ptr<target_type>;
-	using serialization_traits     = SerializationTraits;
-	using deserializer_type        = typename serialization_traits::deserializer_type;
-	using serializer_type          = typename serialization_traits::serializer_type;
-	using transport_traits         = TransportTraits;
-	using channel_type             = typename transport_traits::channel_type;
-	using channel_param_type       = typename transport_traits::channel_param_type;
-	using channel_const_param_type = typename transport_traits::channel_const_param_type;
-	using ptr                      = util::shared_ptr<server_context>;
+	using base                    = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using stub_type               = StubTemplate<Target, base>;
+	using target_type             = Target;
+	using target_ptr              = std::shared_ptr<target_type>;
+	using serialization_traits    = SerializationTraits;
+	using transport_traits        = TransportTraits;
+	using bridge_type             = armi::adapters::bridge<serialization_traits, transport_traits>;
+	using deserializer_param_type = typename bridge_type::deserializer_param_type;
+	using ptr                     = util::shared_ptr<server_context>;
 
 	server_context() : base{}, m_stub{this} {}
 
 	void
-	handle_request(channel_param_type channel, deserializer_type& request, impl_ptr const& impl)
+	handle_request(channel_id_type channel, deserializer_param_type request, target_ptr const& impl)
 	{
 		m_stub.process(channel, request, impl);
 	}

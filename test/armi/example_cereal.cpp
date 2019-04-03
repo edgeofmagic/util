@@ -24,7 +24,6 @@
 
 #include <doctest.h>
 #include <logicmill/armi/adapters/async/adapter.h>
-#include <logicmill/armi/adapters/async/bstream_bridge.h>
 #include <logicmill/armi/armi.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
@@ -111,9 +110,7 @@ using namespace async;
 
 TEST_CASE("logicmill::armi [ smoke ] { example 1 }")
 {
-	// using adapter_type = async::adapter<remote, bstream::serialization_traits<>>;
-	using adapter_type = async::adapter<remote<bstream::serialization_traits<>, async::transport_traits>>;
-
+	using adapter_type = async::adapter<remote>;
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
 	using counter_ref   = adapter_type::client_context_type::target_reference;
@@ -144,7 +141,7 @@ TEST_CASE("logicmill::armi [ smoke ] { example 1 }")
 
 TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
 {
-	using adapter_type = async::adapter<remote<bstream::serialization_traits<>,async::transport_traits>>;
+	using adapter_type = async::adapter<remote>;
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
 	using counter_ref   = adapter_type::client_context_type::target_reference;
@@ -180,7 +177,7 @@ TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
 
 TEST_CASE("logicmill::armi [ smoke ] { example 3 }")
 {
-	using adapter_type = async::adapter<remote<bstream::serialization_traits<>, async::transport_traits>>;
+	using adapter_type = async::adapter<remote>;
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
 	using counter_ref   = adapter_type::client_context_type::target_reference;

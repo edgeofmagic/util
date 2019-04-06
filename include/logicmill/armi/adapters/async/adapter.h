@@ -29,8 +29,8 @@
 #include <logicmill/armi/adapters/async/channel_manager.h>
 #include <logicmill/armi/adapters/async/traits.h>
 
-#include <logicmill/armi/adapters/async/bstream_bridge.h>
-#include <logicmill/armi/adapters/bstream/traits.h>
+// #include <logicmill/armi/adapters/async/bstream_bridge.h>
+// #include <logicmill/armi/adapters/bstream/traits.h>
 
 #include <logicmill/armi/client_context.h>
 #include <logicmill/async/channel.h>
@@ -576,10 +576,16 @@ public:
 											else
 											{
 												// TODO: check to see if channel_id is still in channel_map first
-												bstream::imbstream is{std::move(buf),
-																	  serialization_traits::stream_context_type::get()};
-												server_context_type::handle_request(
-														channel_id, is, m_on_request(channel_id));
+
+												bridge_type::deserializer_from_const_buffer(std::move(buf),
+												[&](typename bridge_type::deserializer_param_type is)
+												{
+													server_context_type::handle_request(channel_id, is, m_on_request(channel_id));
+												});
+												// bstream::imbstream is{std::move(buf),
+												// 					  serialization_traits::stream_context_type::get()};
+												// server_context_type::handle_request(
+												// 		channel_id, is, m_on_request(channel_id));
 											}
 										}
 									});

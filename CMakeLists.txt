@@ -25,7 +25,7 @@ include_directories(
 	ext/libuv/include 
 	ext/doctest/include 
 	/Users/dcurtis/botan-install/include/botan-2 
-	${CMAKE_HOME_DIRECTORY}/../cereal/cereal/include)
+	${CMAKE_HOME_DIRECTORY}/../cereal/include)
 
 set(LOGICMILL_SRCS
 	include/logicmill/bstream.h
@@ -164,7 +164,9 @@ set(LOGICMILL_TEST_SRCS
 	test/async/udp.cpp
  	test/async/event_flow.cpp
 	test/armi/basic.cpp
+	test/armi/basic_cereal.cpp
 	test/armi/example.cpp
+	test/armi/example_cereal.cpp
 	test/laps/layers.cpp
 	test/laps/tls_layer.cpp
 #	test/util/shareable.cpp

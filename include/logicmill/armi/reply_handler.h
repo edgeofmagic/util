@@ -33,19 +33,21 @@ namespace logicmill
 namespace armi
 {
 
-template<class SerializationTraits, class PromiseType, class Enable = void>
+template<class Bridge, class PromiseType, class Enable = void>
 class reply_handler;
 
-template<class SerializationTraits, class PromiseType>
+template<class Bridge, class PromiseType>
 class reply_handler<
-		SerializationTraits,
+		Bridge,
 		util::promise<PromiseType>,
-		typename std::enable_if_t<!std::is_void<PromiseType>::value>> : public reply_handler_base<SerializationTraits>
+		typename std::enable_if_t<!std::is_void<PromiseType>::value>>
+	: public reply_handler_base<Bridge>
 {
 public:
-	using serialization_traits    = SerializationTraits;
+	using bridge_type             = Bridge;
+	using serialization_traits    = typename bridge_type::serialization_traits;
 	using deserializer_type       = typename serialization_traits::deserializer_type;
-	using deserializer_param_type = deserializer_type&;
+	using deserializer_param_type = typename bridge_type::deserializer_param_type;
 
 	reply_handler(util::promise<PromiseType> p) : m_promise{p} {}
 
@@ -111,16 +113,18 @@ private:
 	util::promise<PromiseType> m_promise;
 };
 
-template<class SerializationTraits, class PromiseType>
+template<class Bridge, class PromiseType>
 class reply_handler<
-		SerializationTraits,
+		Bridge,
 		util::promise<PromiseType>,
-		typename std::enable_if_t<std::is_void<PromiseType>::value>> : public reply_handler_base<SerializationTraits>
+		typename std::enable_if_t<std::is_void<PromiseType>::value>>
+	: public reply_handler_base<Bridge>
 {
 public:
-	using serialization_traits = SerializationTraits;
-	using deserializer_type    = typename serialization_traits::deserializer_type;
-	using deserializer_param_type = deserializer_type&;
+	using bridge_type             = Bridge;
+	using serialization_traits    = typename bridge_type::serialization_traits;
+	using deserializer_type       = typename serialization_traits::deserializer_type;
+	using deserializer_param_type = typename bridge_type::deserializer_param_type;
 
 	reply_handler(util::promise<PromiseType> p) : m_promise{p} {}
 

@@ -24,12 +24,10 @@
 
 #include <doctest.h>
 #include <logicmill/armi/adapters/async/adapter.h>
-#include <logicmill/armi/adapters/async/bstream_bridge.h>
+#include <logicmill/armi/adapters/async/cereal_bridge.h>
 #include <logicmill/armi/armi.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
-#include <logicmill/bstream/stdlib/pair.h>
-#include <logicmill/bstream/stdlib/vector.h>
 #include <logicmill/util/error_context.h>
 
 #define END_LOOP(loop_ptr, delay_ms)                                                                                   \
@@ -59,6 +57,7 @@
 	}
 
 using namespace logicmill;
+using namespace armi;
 
 namespace foo
 {
@@ -200,25 +199,11 @@ using async::ip::address;
 namespace rfoo
 {
 
-class foo_stream_context : public bstream::context<>
-{
-public:
-	foo_stream_context()
-		: bstream::context<>{
-				  bstream::context_options{}.error_categories({&armi::error_category(), &foo::error_category()})}
-	{}
-	static bstream::context_base const&
-	get()
-	{
-		static const foo_stream_context instance;
-		return instance;
-	}
-};
+UTIL_DEFINE_ERROR_CONTEXT(foo_error_context, armi::error_category, foo::error_category);
 
 ARMI_CONTEXT(bar_remote, foo::bar, increment, freak_out);
 ARMI_CONTEXT(boo_remote, foo::boo, decrement);
 ARMI_CONTEXT(bfail_remote, foo::bfail, bonk);
-
 
 }    // namespace rfoo
 
@@ -291,21 +276,7 @@ make_error_code(errc e)
 	return std::error_code(static_cast<int>(e), armi_test::error_category());
 }
 
-class test_stream_context : public bstream::context<>
-{
-public:
-	test_stream_context()
-		: bstream::context<>{
-				  bstream::context_options{}.error_categories({&armi::error_category(), &armi_test::error_category()})}
-	{}
-	static bstream::context_base const&
-	get()
-	{
-		static const test_stream_context instance;
-		return instance;
-	}
-};
-
+UTIL_DEFINE_ERROR_CONTEXT(test_error_context, armi::error_category, armi_test::error_category);
 
 class test_fixture;
 
@@ -384,7 +355,6 @@ private:
 ARMI_CONTEXT(
 		test_remote,
 		target,
-		//		test_stream_context,
 		form_6_fail,
 		form_6_pass,
 		form_7_fail,
@@ -397,7 +367,7 @@ ARMI_CONTEXT(
 class test_fixture
 {
 public:
-	using adapter_type = async::adapter<test_remote<bstream::serialization_traits<test_stream_context>, async::transport_traits>>;
+	using adapter_type = async::adapter<test_remote<adapters::cereal::serialization_traits<test_error_context>, async::transport_traits>>;
 	using ref_type     = adapter_type::client_context_type::target_reference;
 	using channel_id_type = armi::channel_id_type;    //  TODO: this should come from adapter_type?
 
@@ -546,7 +516,7 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 	bool client_connect_handler_visited{false};
 	bool increment_resolve_visited{false};
 
-	using adapter_type = async::adapter<rfoo::bar_remote<bstream::serialization_traits<rfoo::foo_stream_context>, async::transport_traits>>;
+	using adapter_type = async::adapter<rfoo::bar_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::transport_traits>>;
 	using channel_id_type = armi::channel_id_type;    // should come from adapter_type
 
 	std::error_code  err;
@@ -620,7 +590,7 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply without error }")
 	bool fail_handler_visited{false};
 	bool reply_handler_visited{false};
 
-	using adapter_type = async::adapter<rfoo::bfail_remote<bstream::serialization_traits<rfoo::foo_stream_context>, async::transport_traits>>;
+	using adapter_type = async::adapter<rfoo::bfail_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::transport_traits>>;
 	using channel_id_type = armi::channel_id_type;    // should come from adapter_type
 
 	std::error_code  err;
@@ -700,7 +670,7 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply with error }")
 	bool reply_handler_visited{false};
 
 
-	using adapter_type = async::adapter<rfoo::bfail_remote<bstream::serialization_traits<rfoo::foo_stream_context>, async::transport_traits>>;
+	using adapter_type = async::adapter<rfoo::bfail_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::transport_traits>>;
 	using channel_id_type = armi::channel_id_type;    // should come from adapter_type
 
 	std::error_code  err;

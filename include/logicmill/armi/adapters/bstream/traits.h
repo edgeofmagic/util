@@ -100,11 +100,11 @@ struct serialization_traits
 		return is.read_array_header();
 	}
 
-	static std::unique_ptr<serializer_type>
-	create_serializer()
-	{
-		return std::make_unique<serializer_type>(stream_context_type::get());
-	}
+	// static std::unique_ptr<serializer_type>
+	// create_serializer()
+	// {
+	// 	return std::make_unique<serializer_type>(stream_context_type::get());
+	// }
 
 	static void
 	clear(serializer_type& os)

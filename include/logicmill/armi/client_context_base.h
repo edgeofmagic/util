@@ -63,7 +63,7 @@ public:
 
 	using reply_handler_map_type = std::unordered_map<
 			request_id_type,
-			std::pair<channel_id_type, typename reply_handler_base<serialization_traits>::ptr>>;
+			std::pair<channel_id_type, typename reply_handler_base<bridge_type>::ptr>>;
 	using channel_request_map_type = std::unordered_map<channel_id_type, std::set<request_id_type>>;
 
 	client_context_base()
@@ -143,7 +143,7 @@ protected:
 			= 0;
 
 	void
-	add_handler(request_id_type request_id, typename reply_handler_base<serialization_traits>::ptr&& handler)
+	add_handler(request_id_type request_id, typename reply_handler_base<bridge_type>::ptr&& handler)
 	{
 		auto channel = get_transient_channel();
 		auto it      = m_channel_request_map.find(channel);

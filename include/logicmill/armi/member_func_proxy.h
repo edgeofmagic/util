@@ -56,8 +56,8 @@ public:
 	using client_context_base_type = ClientContextBaseTemplate<SerializationTraits, TransportTraits>;
 	using serialization_traits     = SerializationTraits;
 	using transport_traits         = TransportTraits;
-	using reply_handler_type       = reply_handler<serialization_traits, util::promise<PromiseType>>;
 	using bridge_type              = logicmill::armi::adapters::bridge<serialization_traits, transport_traits>;
+	using reply_handler_type       = reply_handler<bridge_type, util::promise<PromiseType>>;
 	using serializer_param_type    = typename bridge_type::serializer_param_type;
 
 

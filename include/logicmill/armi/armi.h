@@ -25,10 +25,10 @@
 #ifndef LOGICMILL_ARMI_ARMI_H
 #define LOGICMILL_ARMI_ARMI_H
 
-#include <logicmill/armi/client_context.h>
+#include <logicmill/armi/client_proxy.h>
 #include <logicmill/armi/interface_stub.h>
 #include <logicmill/armi/macros.h>
 #include <logicmill/armi/member_func_proxy.h>
-#include <logicmill/armi/server_context.h>
+#include <logicmill/armi/server_stub.h>
 
 #endif    // LOGICMILL_ARMI_ARMI_H

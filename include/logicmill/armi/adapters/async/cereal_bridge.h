@@ -38,14 +38,14 @@ namespace armi
 namespace adapters
 {
 
-template<class SerializationTraits, class TransportTraits>
+template<class SerializationTraits, class AsyncIOTraits>
 struct bridge;
 
 template<class ErrorContext>
-struct bridge<cereal::serialization_traits<ErrorContext>, async::transport_traits>
+struct bridge<cereal::serialization_traits<ErrorContext>, async::async_io_traits>
 {
 	using serialization_traits = logicmill::armi::adapters::cereal::serialization_traits<ErrorContext>;
-	using transport_traits     = logicmill::async::transport_traits;
+	using async_io_traits     = logicmill::async::async_io_traits;
 
 	using mutable_buffer_type       = logicmill::util::mutable_buffer;
 	using mutable_buffer_param_type = logicmill::util::mutable_buffer&&;

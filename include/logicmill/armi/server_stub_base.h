@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_SERVER_CONTEXT_BASE_H
-#define LOGICMILL_ARMI_SERVER_CONTEXT_BASE_H
+#ifndef LOGICMILL_ARMI_SERVER_STUB_BASE_H
+#define LOGICMILL_ARMI_SERVER_STUB_BASE_H
 
 #include <cstdint>
 #include <functional>
 #include <logicmill/armi/serialization_traits.h>
-#include <logicmill/armi/transport_traits.h>
+#include <logicmill/armi/async_io_traits.h>
 #include <logicmill/armi/adapters/bridge.h>
 #include <logicmill/armi/types.h>
 #include <memory>
@@ -39,29 +39,29 @@ namespace logicmill
 namespace armi
 {
 
-template<class SerializationTraits, class TransportTraits>
-class server_context_base
+template<class SerializationTraits, class AsyncIOTraits>
+class server_stub_base
 {
 public:
 
 	using serialization_traits = SerializationTraits;
-	using transport_traits = TransportTraits;
-	using bridge_type = typename armi::adapters::bridge<serialization_traits, transport_traits>;
+	using async_io_traits = AsyncIOTraits;
+	using bridge_type = typename armi::adapters::bridge<serialization_traits, async_io_traits>;
 	using serializer_param_type = typename bridge_type::serializer_param_type;
 
 	template<class _T, class _U, class _V, class _Enable>
 	friend class member_func_stub;
 
-	template<class Target, class ServerContextBase>
+	template<class Target, class ServerStubBase>
 	friend class member_func_stub_base;
 
-	template<class Target, class ServerContextBase>
+	template<class Target, class ServerStubBase>
 	friend class interface_stub_base;
 
-	server_context_base()
+	server_stub_base()
 	{}
 
-	virtual ~server_context_base() {}
+	virtual ~server_stub_base() {}
 
 
 protected:
@@ -83,4 +83,4 @@ protected:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_SERVER_CONTEXT_BASE_H
+#endif    // LOGICMILL_ARMI_SERVER_STUB_BASE_H

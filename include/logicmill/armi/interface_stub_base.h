@@ -27,7 +27,7 @@
 
 #include <cstdint>
 #include <logicmill/armi/adapters/bridge.h>
-#include <logicmill/armi/server_context_base.h>
+#include <logicmill/armi/server_stub_base.h>
 #include <logicmill/bstream/ibstream.h>
 #include <logicmill/bstream/ombstream.h>
 
@@ -35,40 +35,40 @@ namespace logicmill
 {
 namespace armi
 {
-template<class SerializationTraits, class TransportTraits>
-class server_context_base;
+template<class SerializationTraits, class AsyncIOTraits>
+class server_stub_base;
 
-template<class Target, class ServerContextBase>
+template<class Target, class ServerStubBase>
 class member_func_stub_base;
 
-template<class Target, class ServerContextBase>
+template<class Target, class ServerStubBase>
 class interface_stub_base;
 
 template<
 		class Target,
-		template<class...> class ServerContextBaseTemplate,
+		template<class...> class ServerStubBaseTemplate,
 		class SerializationTraits,
-		class TransportTraits>
-class interface_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
+		class AsyncIOTraits>
+class interface_stub_base<Target, ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>>
 {
 public:
-	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using server_stub_base_type = ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>;
 	using serialization_traits     = SerializationTraits;
-	using transport_traits         = TransportTraits;
+	using async_io_traits         = AsyncIOTraits;
 	using deserializer_type        = typename serialization_traits::deserializer_type;
 	using serializer_type          = typename serialization_traits::serializer_type;
-	using bridge_type              = logicmill::armi::adapters::bridge<serialization_traits, transport_traits>;
+	using bridge_type              = logicmill::armi::adapters::bridge<serialization_traits, async_io_traits>;
 	using serializer_param_type    = typename bridge_type::serializer_param_type;
 
 protected:
-	friend class server_context_type;
+	friend class server_stub_type;
 
-	interface_stub_base(server_context_base_type* context_base) : m_context{context_base} {}
+	interface_stub_base(server_stub_base_type* server) : m_server{server} {}
 
-	server_context_base_type*
-	context()
+	server_stub_base_type*
+	server_stub()
 	{
-		return m_context;
+		return m_server;
 	}
 
 	void
@@ -79,11 +79,11 @@ protected:
 			serialization_traits::write(reply, reply_kind::fail);
 			serialization_traits::write_sequence_prefix(reply, 1);
 			serialization_traits::write(reply, err);
-			m_context->send_reply(channel, reply);
+			m_server->send_reply(channel, reply);
 		});
 	}
 
-	server_context_base_type* m_context;
+	server_stub_base_type* m_server;
 };
 
 }    // namespace armi

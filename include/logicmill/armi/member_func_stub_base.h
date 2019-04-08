@@ -26,7 +26,7 @@
 #define LOGICMILL_ARMI_METHOD_STUB_BASE_H
 
 #include <cstdint>
-#include <logicmill/armi/server_context_base.h>
+#include <logicmill/armi/server_stub_base.h>
 #include <logicmill/bstream/ibstream.h>
 #include <logicmill/bstream/ombstream.h>
 
@@ -35,25 +35,25 @@ namespace logicmill
 namespace armi
 {
 
-template<class Target, class ServerContextBase>
+template<class Target, class ServerStubBase>
 class member_func_stub_base;
 
 template<
 		class Target,
-		template<class...> class ServerContextBaseTemplate,
+		template<class...> class ServerStubBaseTemplate,
 		class SerializationTraits,
-		class TransportTraits>
-class member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
+		class AsyncIOTraits>
+class member_func_stub_base<Target, ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>>
 {
 public:
 	using target_ptr_type          = std::shared_ptr<Target>;
-	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using server_stub_base_type = ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>;
 	using serialization_traits     = SerializationTraits;
-	using transport_traits         = TransportTraits;
-	using bridge_type              = adapters::bridge<serialization_traits, transport_traits>;
+	using async_io_traits         = AsyncIOTraits;
+	using bridge_type              = adapters::bridge<serialization_traits, async_io_traits>;
 	using deserializer_param_type  = typename bridge_type::deserializer_param_type;
 
-	member_func_stub_base(server_context_base_type* context_base) : m_context{context_base} {}
+	member_func_stub_base(server_stub_base_type* server) : m_server{server} {}
 
 	virtual ~member_func_stub_base() {}
 
@@ -74,18 +74,18 @@ protected:
 			serialization_traits::write(reply, reply_kind::fail);
 			serialization_traits::write_sequence_prefix(reply, 1);
 			serialization_traits::write(reply, err);
-			m_context->send_reply(channel, reply);
+			m_server->send_reply(channel, reply);
 		});
 	}
 
-	server_context_base_type*
-	context() const
+	server_stub_base_type*
+	server() const
 	{
-		return m_context;
+		return m_server;
 	}
 
 private:
-	server_context_base_type* m_context;
+	server_stub_base_type* m_server;
 };
 
 }    // namespace armi

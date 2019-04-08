@@ -33,7 +33,6 @@
 #include <iostream>
 #include <limits>
 #include <logicmill/types.h>
-#include <logicmill/util/buffer_traits.h>
 #include <logicmill/util/macros.h>
 #include <logicmill/util/shared_ptr.h>
 #include <stdexcept>
@@ -59,39 +58,17 @@
 	}
 /**/
 
-#if 0
-
-#define ASSERT_MUTABLE_BUFFER_INVARIANTS(_buf_)                                                                        \
-	{                                                                                                                  \
-		if ((_buf_).m_alloc != nullptr)                                                                                \
-		{                                                                                                              \
-			assert((_buf_).m_data == (_buf_).m_alloc->data());                                                         \
-			assert((_buf_).m_size <= (_buf_).m_alloc->capacity());                                                     \
-			assert((_buf_).m_capacity == (_buf_).m_alloc->capacity());                                                 \
-		}                                                                                                              \
-		else                                                                                                           \
-		{                                                                                                              \
-			assert((_buf_).m_data == nullptr);                                                                         \
-			assert((_buf_).m_capacity == 0);                                                                           \
-			assert((_buf_).m_size == 0);                                                                               \
-		}                                                                                                              \
-	}                                                                                                                  \
-	/**/
-
-#endif
-
 #define ASSERT_CONST_BUFFER_INVARIANTS(_buf_)                                                                          \
 	{                                                                                                                  \
 		assert((_buf_).m_region != nullptr);                                                                           \
 		assert((_buf_).m_data >= (_buf_).m_region->data());                                                            \
 		assert((_buf_).m_data <= ((_buf_).m_region->data() + (_buf_).m_region->capacity()));                           \
 		assert(((_buf_).m_data + (_buf_).m_size) <= ((_buf_).m_region->data() + (_buf_).m_region->capacity()));        \
-	}                                                                                                                  \
-	/**/
+	}
+/**/
 
-#define ASSERT_SHARED_BUFFER_INVARIANTS(_buf_)                                                                         \
-	ASSERT_CONST_BUFFER_INVARIANTS(_buf_)                                                                              \
-	/**/
+#define ASSERT_SHARED_BUFFER_INVARIANTS(_buf_) ASSERT_CONST_BUFFER_INVARIANTS(_buf_)
+/**/
 
 #else
 
@@ -2413,86 +2390,5 @@ logicmill::util::total_size<logicmill::util::shared_buffer>(std::deque<logicmill
 	}
 	return result;
 }
-
-template<>
-struct logicmill::util::buf::traits<logicmill::util::mutable_buffer>
-{
-	using buffer_type            = mutable_buffer;
-	using buffer_ref_type        = buffer_type&;
-	using buffer_rvalue_ref_type = buffer_type&&;
-	using buffer_const_ref_type  = buffer_type const&;
-	using element_type           = std::uint8_t;
-	using pointer_type           = std::uint8_t*;
-	using size_type              = std::size_t;
-	using const_pointer_type     = void;
-
-	struct is_mutable : public std::true_type
-	{};
-	struct has_capacity : public std::true_type
-	{};
-	struct can_set_size : public std::true_type
-	{};
-	struct can_realloc : public std::true_type
-	{};
-	struct owns_memory : public std::true_type
-	{};
-	struct scoped_release : public std::true_type
-	{};
-	struct data_may_return_null : public std::true_type
-	{};
-	struct is_copy_constructible : public std::false_type
-	{};
-	struct is_move_constructible : public std::true_type
-	{};
-	struct is_copy_assignable : public std::false_type
-	{};
-	struct is_move_assignable : public std::true_type
-	{};
-	struct has_explicit_release : public std::false_type
-	{};
-
-	template<class... Args>
-	struct is_constructible_from : public std::is_constructible<buffer_type, Args...>
-	{};
-
-	static std::enable_if_t<is_mutable::value, pointer_type>
-	data(buffer_ref_type buf)
-	{
-		return buf.data();
-	}
-
-	// static std::enable_if_t<!is_mutable::value, const_pointer_type> data(buffer_const_ref_type)
-	// {
-
-	// }
-	static size_type
-	size(buffer_const_ref_type buf)
-	{
-		return buf.size();
-	}
-
-	static std::enable_if_t<has_capacity::value, size_type>
-	capacity(buffer_const_ref_type buf)
-	{
-		return buf.capacity();
-	}
-
-	static std::enable_if_t<can_set_size::value, void>
-	set_size(buffer_ref_type buf, size_type new_size)
-	{
-		buf.size(new_size);
-	}
-
-	static std::enable_if_t<can_realloc::value, void>
-	realloc(buffer_ref_type buf, size_type new_cap)
-	{
-		buf.expand(new_cap);
-	}
-
-	static_assert(!(!is_mutable::value && can_realloc::value), "non-mutable buffer types can't realloc");
-	static_assert(!(!is_mutable::value && can_set_size::value), "non-mutable buffer types can't set_size");
-	static_assert(!(!owns_memory::value && scoped_release::value), "non-mutable buffer types can't set_size");
-	static_assert(!(!owns_memory::value && has_explicit_release::value), "non-mutable buffer types can't set_size");
-};
 
 #endif    // LOGICMILL_UTIL_BUFFER_H

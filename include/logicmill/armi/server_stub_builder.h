@@ -22,21 +22,21 @@
  * THE SOFTWARE.
  */
 
-#ifndef SERVER_CONTEXT_BUILDER_H
-#define SERVER_CONTEXT_BUILDER_H
+#ifndef SERVER_STUB_BUILDER_H
+#define SERVER_STUB_BUILDER_H
 
-#include <logicmill/armi/server_context_base.h>
+#include <logicmill/armi/server_stub_base.h>
 
 namespace logicmill
 {
 namespace armi
 {
 
-template<class SerializationContext, class TransportContext, class... Args>
-class server_context_builder : public server_context_base<SerializationContext, TransportContext>
+template<class SerializationContext, class AsyncIOContext, class... Args>
+class server_stub_builder : public server_stub_base<SerializationContext, AsyncIOContext>
 {
 public:
-	server_context_builder() : server_context_base{}
+	server_stub_builder() : server_stub_base{}
 	{
 		m_stubs.reserve(sizeof...(Args));
 		append_stubs<Args...>();
@@ -70,4 +70,4 @@ public:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // SERVER_CONTEXT_BUILDER_H
+#endif    // SERVER_STUB_BUILDER_H

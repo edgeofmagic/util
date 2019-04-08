@@ -32,7 +32,7 @@ namespace armi
 namespace adapters
 {
 
-template<class SerializationTraits, class TransportTraits>
+template<class SerializationTraits, class AsyncIOTraits>
 struct bridge;
 
 }

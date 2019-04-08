@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_CLIENT_CONTEXT_H
-#define LOGICMILL_ARMI_CLIENT_CONTEXT_H
+#ifndef LOGICMILL_ARMI_CLIENT_PROXY_H
+#define LOGICMILL_ARMI_CLIENT_PROXY_H
 
-#include <logicmill/armi/client_context_base.h>
+#include <logicmill/armi/client_proxy_base.h>
 #include <logicmill/traits.h>
 
 namespace logicmill
@@ -34,40 +34,40 @@ namespace armi
 {
 
 template<class Proxy>
-class client_context;
+class client_proxy;
 
 template<
 		template<class...> class ProxyTemplate,
 		class Target,
-		template<class...> class ClientContextBaseTemplate,
+		template<class...> class ClientProxyBaseTemplate,
 		class SerializationTraits,
-		class TransportTraits>
-class client_context<ProxyTemplate<Target, ClientContextBaseTemplate<SerializationTraits, TransportTraits>>>
-	: public ClientContextBaseTemplate<SerializationTraits, TransportTraits>
+		class AsyncIOTraits>
+class client_proxy<ProxyTemplate<Target, ClientProxyBaseTemplate<SerializationTraits, AsyncIOTraits>>>
+	: public ClientProxyBaseTemplate<SerializationTraits, AsyncIOTraits>
 {
 public:
-	using base                 = ClientContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using base                 = ClientProxyBaseTemplate<SerializationTraits, AsyncIOTraits>;
 	using serialization_traits = SerializationTraits;
-	using transport_traits     = TransportTraits;
+	using async_io_traits     = AsyncIOTraits;
 	using proxy_type           = ProxyTemplate<Target, base>;
 
 	class target_reference
 	{
 	public:
-		friend class client_context;
+		friend class client_proxy;
 
 	protected:
-		target_reference(client_context* context, channel_id_type channel) : m_context{context}, m_channel{channel} {}
+		target_reference(client_proxy* client, channel_id_type channel) : m_client{client}, m_channel{channel} {}
 
 	public:
-		target_reference() : m_context{nullptr}, m_channel{null_channel} {}
+		target_reference() : m_client{nullptr}, m_channel{null_channel} {}
 
-		target_reference(target_reference const& other) : m_context{other.m_context}, m_channel{other.m_channel} {}
+		target_reference(target_reference const& other) : m_client{other.m_client}, m_channel{other.m_channel} {}
 
 		target_reference&
 		operator=(target_reference const& other)
 		{
-			m_context = other.m_context;
+			m_client = other.m_client;
 			m_channel = other.m_channel;
 			return *this;
 		}
@@ -75,24 +75,24 @@ public:
 		target_reference&
 		timeout(std::chrono::milliseconds t)
 		{
-			m_context->set_transient_timeout(t);
+			m_client->set_transient_timeout(t);
 		}
 
 		const proxy_type* operator->() const
 		{
-			return m_context->proxy(m_channel);
+			return m_client->proxy(m_channel);
 		}
 
 		bool
 		is_valid()
 		{
-			return m_context->is_valid_channel(m_channel);
+			return m_client->is_valid_channel(m_channel);
 		}
 
 		void
 		close()
 		{
-			m_context->close(m_channel);
+			m_client->close(m_channel);
 		}
 
 		explicit operator bool() const
@@ -101,7 +101,7 @@ public:
 		}
 
 	private:
-		client_context* m_context;
+		client_proxy* m_client;
 		channel_id_type m_channel;
 	};
 
@@ -111,7 +111,7 @@ public:
 		return target_reference(this, channel);
 	}
 
-	client_context() : base{}, m_proxy{this} {}
+	client_proxy() : base{}, m_proxy{this} {}
 
 private:
 	const proxy_type*
@@ -127,4 +127,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_CLIENT_CONTEXT_H
+#endif    // LOGICMILL_ARMI_CLIENT_PROXY_H

@@ -22,35 +22,35 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_TRANSPORT_TRAITS_H
-#define LOGICMILL_ARMI_TRANSPORT_TRAITS_H
+#ifndef LOGICMILL_ARMI_ASYNC_IO_TRAITS_H
+#define LOGICMILL_ARMI_ASYNC_IO_TRAITS_H
 
 #include <chrono>
 #include <cstdint>
 #include <deque>
 #include <functional>
 #include <limits>
-#include <logicmill/armi/types.h>
 #include <logicmill/armi/serialization_traits.h>
+#include <logicmill/armi/types.h>
 #include <system_error>
 
 namespace logicmill
 {
 namespace armi
 {
-namespace transport
+namespace async_io
 {
 
-template<class Transport>
+template<class AsyncIO>
 struct traits
 {
-/*
+	/*
 	using channel_type             = ...; // Type that represents a channel (e.g., a socket)
 	using channel_param_type       = channel_type;
 	using channel_const_param_type = channel_type;
 
 	static constexpr channel_type null_channel = 0ULL;
-*/
+	*/
 };
 
 /*
@@ -85,8 +85,8 @@ struct traits
 };
 */
 
-}    // namespace serialization
+}    // namespace async_io
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_TRANSPORT_TRAITS_H
+#endif    // LOGICMILL_ARMI_ASYNC_IO_TRAITS_H

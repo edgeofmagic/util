@@ -40,14 +40,14 @@ namespace armi
 namespace adapters
 {
 
-template<class SerializationTraits, class TransportTraits>
+template<class SerializationTraits, class AsyncIOTraits>
 struct bridge;
 
 template<class StreamContext>
-struct bridge<bstream::serialization_traits<StreamContext>, async::transport_traits>
+struct bridge<bstream::serialization_traits<StreamContext>, async::async_io_traits>
 {
 	using serialization_traits = logicmill::bstream::serialization_traits<StreamContext>;
-	using transport_traits     = logicmill::async::transport_traits;
+	using async_io_traits     = logicmill::async::async_io_traits;
 
 	using mutable_buffer_type       = logicmill::util::mutable_buffer;
 	using mutable_buffer_param_type = logicmill::util::mutable_buffer&&;

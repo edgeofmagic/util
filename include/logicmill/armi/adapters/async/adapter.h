@@ -32,7 +32,7 @@
 // #include <logicmill/armi/adapters/async/bstream_bridge.h>
 // #include <logicmill/armi/adapters/bstream/traits.h>
 
-#include <logicmill/armi/client_context.h>
+#include <logicmill/armi/client_proxy.h>
 #include <logicmill/async/channel.h>
 #include <logicmill/async/loop.h>
 #include <logicmill/util/promise.h>
@@ -45,22 +45,22 @@ namespace async
 template<class T>
 class adapter;
 
-template<template<class...> class RemoteContext, class SerializationTraits, class TransportTraits>
-class adapter<RemoteContext<SerializationTraits, TransportTraits>>
+template<template<class...> class RemoteContext, class SerializationTraits, class AsyncIOTraits>
+class adapter<RemoteContext<SerializationTraits, AsyncIOTraits>>
 {
 public:
 	using serialization_traits = SerializationTraits;
-	using transport_traits     = TransportTraits;
+	using async_io_traits     = AsyncIOTraits;
 
-	using remote_type = RemoteContext<serialization_traits, transport_traits>;
+	using remote_type = RemoteContext<serialization_traits, async_io_traits>;
 
-	using bridge_type = armi::adapters::bridge<serialization_traits, transport_traits>;
+	using bridge_type = armi::adapters::bridge<serialization_traits, async_io_traits>;
 
-	using client_context_type      = typename remote_type::client_context_type;
-	using client_context_base_type = typename remote_type::client_context_base_type;
+	using client_proxy_type      = typename remote_type::client_proxy_type;
+	using client_proxy_base_type = typename remote_type::client_proxy_base_type;
 	using target_type              = typename remote_type::target_type;
 
-	class client_adapter_base : public remote_type::client_context_type, public channel_manager
+	class client_adapter_base : public remote_type::client_proxy_type, public channel_manager
 	{
 	public:
 		using channel_error_handler = std::function<void(channel_id_type channel, std::error_code err)>;
@@ -85,7 +85,7 @@ public:
 			if (!m_is_closing)
 			{
 				m_is_closing = true;
-				really_close(make_error_code(armi::errc::context_closed));
+				really_close(make_error_code(armi::errc::client_closed));
 			}
 		}
 
@@ -124,7 +124,7 @@ public:
 			if (timeout.count() > 0)
 			{
 				m_loop->schedule(timeout, err, [=]() {
-					client_context_base_type::cancel_request(request_id, make_error_code(std::errc::timed_out));
+					client_proxy_base_type::cancel_request(request_id, make_error_code(std::errc::timed_out));
 				});
 				if (err)
 					goto exit;
@@ -149,9 +149,9 @@ public:
 			if (err)
 			{
 				if (m_loop->is_alive())
-					m_loop->dispatch([=]() { client_context_base_type::cancel_request(request_id, err); });
+					m_loop->dispatch([=]() { client_proxy_base_type::cancel_request(request_id, err); });
 				else
-					client_context_base_type::cancel_request(request_id, make_error_code(armi::errc::no_event_loop));
+					client_proxy_base_type::cancel_request(request_id, make_error_code(armi::errc::no_event_loop));
 			}
 			return;
 		}
@@ -165,7 +165,7 @@ public:
 		void
 		close()
 		{
-			close(make_error_code(armi::errc::context_closed));
+			close(make_error_code(armi::errc::client_closed));
 		}
 
 	protected:
@@ -179,10 +179,10 @@ public:
 				if (m_loop->is_alive())
 				{
 					chan->close();
-					m_loop->dispatch([=]() { client_context_base_type::cancel_channel_requests(channel_id, err); });
+					m_loop->dispatch([=]() { client_proxy_base_type::cancel_channel_requests(channel_id, err); });
 				}
 				else
-					client_context_base_type::cancel_channel_requests(
+					client_proxy_base_type::cancel_channel_requests(
 							channel_id, make_error_code(armi::errc::no_event_loop));
 			}
 		}
@@ -196,12 +196,12 @@ public:
 					if (chan)
 						chan->close();
 				});
-				m_loop->dispatch([=]() { client_context_base_type::cancel_all_requests(err); });
+				m_loop->dispatch([=]() { client_proxy_base_type::cancel_all_requests(err); });
 			}
 			else
 			{
 				clear_map();
-				client_context_base_type::cancel_all_requests(make_error_code(armi::errc::no_event_loop));
+				client_proxy_base_type::cancel_all_requests(make_error_code(armi::errc::no_event_loop));
 			}
 		}
 
@@ -214,12 +214,12 @@ public:
 	class client_adapter : public client_adapter_base
 	{
 	public:
-		using client_context_type      = typename remote_type::client_context_type;
-		using client_context_base_type = typename remote_type::client_context_base_type;
+		using client_proxy_type      = typename remote_type::client_proxy_type;
+		using client_proxy_base_type = typename remote_type::client_proxy_base_type;
 		using channel_id_type          = armi::channel_id_type;
 		using channel_error_handler    = std::function<void(channel_id_type channel_id, std::error_code err)>;
 		using client_connect_handler
-				= std::function<void(typename client_context_type::target_reference, std::error_code)>;
+				= std::function<void(typename client_proxy_type::target_reference, std::error_code)>;
 
 		client_adapter(loop::ptr lp) : client_adapter_base{lp} {}
 
@@ -228,12 +228,12 @@ public:
 			client_adapter_base::close();
 		}
 
-		util::promise<typename client_context_type::target_reference>
+		util::promise<typename client_proxy_type::target_reference>
 		connect(async::options const& opts)
 		{
 			async::options options_override{opts};
 			options_override.framing(true);
-			util::promise<typename client_context_type::target_reference> p;
+			util::promise<typename client_proxy_type::target_reference> p;
 			std::error_code                                               err;
 			client_adapter_base::m_loop->connect_channel(
 					options_override, err, [=](async::channel::ptr chan, std::error_code err) mutable {
@@ -259,14 +259,14 @@ public:
 											bridge_type::deserializer_from_const_buffer(
 													std::move(buf),
 													[&](typename bridge_type::deserializer_param_type reply) {
-														client_context_base_type::handle_reply(reply);
+														client_proxy_base_type::handle_reply(reply);
 													});
 										}
 									});
 							if (err)
 								p.reject(err);
 							else
-								p.resolve(client_context_type::create_target_reference(id));
+								p.resolve(client_proxy_type::create_target_reference(id));
 						}
 					});
 			if (err)
@@ -285,7 +285,7 @@ public:
 					err,
 					[=, handler{std::move(handler)}](async::channel::ptr chan, std::error_code err) {
 						if (err)
-							handler(client_context_type::create_target_reference(0), err);
+							handler(client_proxy_type::create_target_reference(0), err);
 						else
 						{
 							auto id = channel_manager::new_channel(chan);
@@ -303,24 +303,21 @@ public:
 										}
 										else
 										{
-											// TODO: fix the ham-fisted insertion of stream_context_type
 											bridge_type::deserializer_from_const_buffer(
 													std::move(buf),
 													[&](typename bridge_type::deserializer_param_type reply) {
-														client_context_base_type::handle_reply(reply);
+														client_proxy_base_type::handle_reply(reply);
 													});
-											// bstream::imbstream reply{std::move(buf), stream_context_type::get()};
-											// client_context_base_type::handle_reply(reply);
 										}
 									});
-							handler(client_context_type::create_target_reference(id), std::error_code{});
+							handler(client_proxy_type::create_target_reference(id), std::error_code{});
 						}
 					});
 		}
 	};
 
 
-	class server_adapter_base : public remote_type::server_context_type, public channel_manager
+	class server_adapter_base : public remote_type::server_stub_type, public channel_manager
 	{
 	public:
 		using channel_id_type = armi::channel_id_type;
@@ -331,7 +328,7 @@ public:
 		using channel_close_handler = std::function<void(channel_id_type)>;
 		using connection_handler    = std::function<void(channel_id_type)>;
 
-		using server_context_type = typename remote_type::server_context_type;
+		using server_stub_type = typename remote_type::server_stub_type;
 
 	protected:
 		async::loop::ptr      m_loop;
@@ -515,8 +512,8 @@ public:
 	{
 	public:
 		using channel_id_type     = armi::channel_id_type;
-		using server_context_type = typename remote_type::server_context_type;
-		using target_ptr_type     = std::shared_ptr<typename server_context_type::target_type>;
+		using server_stub_type = typename remote_type::server_stub_type;
+		using target_ptr_type     = std::shared_ptr<typename server_stub_type::target_type>;
 		using request_handler     = std::function<target_ptr_type(channel_id_type)>;
 
 	private:
@@ -580,12 +577,8 @@ public:
 												bridge_type::deserializer_from_const_buffer(std::move(buf),
 												[&](typename bridge_type::deserializer_param_type is)
 												{
-													server_context_type::handle_request(channel_id, is, m_on_request(channel_id));
+													server_stub_type::handle_request(channel_id, is, m_on_request(channel_id));
 												});
-												// bstream::imbstream is{std::move(buf),
-												// 					  serialization_traits::stream_context_type::get()};
-												// server_context_type::handle_request(
-												// 		channel_id, is, m_on_request(channel_id));
 											}
 										}
 									});

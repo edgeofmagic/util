@@ -74,8 +74,8 @@ set(LOGICMILL_SRCS
 	include/logicmill/async/event_flow.h
 	include/logicmill/async/channel.h
 
-	include/logicmill/armi/client_context.h
-	include/logicmill/armi/client_context_base.h
+	include/logicmill/armi/client_proxy.h
+	include/logicmill/armi/client_proxy_base.h
 	include/logicmill/armi/error.h
 	include/logicmill/armi/interface_stub.h
 	include/logicmill/armi/interface_stub_base.h
@@ -87,8 +87,8 @@ set(LOGICMILL_SRCS
 	include/logicmill/armi/armi.h
 	include/logicmill/armi/reply_handler.h
 	include/logicmill/armi/reply_handler_base.h
-	include/logicmill/armi/server_context.h
-	include/logicmill/armi/server_context_base.h
+	include/logicmill/armi/server_stub.h
+	include/logicmill/armi/server_stub_base.h
 	include/logicmill/armi/types.h
 	include/logicmill/armi/adapters/async/adapter.h
 #	include/logicmill/armi/adapters/async/server_adapter.h
@@ -132,7 +132,7 @@ set(LOGICMILL_SRCS
 	src/async/address.cpp
 	src/async/error.cpp
 
-#	src/armi/client_context_base.cpp
+#	src/armi/client_proxy_base.cpp
 	src/armi/error.cpp
 	src/armi/adapters/async/channel_manager.cpp
 #	src/armi/adapters/async/client_adapter.cpp

@@ -26,14 +26,14 @@
 #define LOGICMILL_ARMI_METHOD_STUB_H
 
 #include <logicmill/armi/member_func_stub_base.h>
-#include <logicmill/armi/server_context_base.h>
+#include <logicmill/armi/server_stub_base.h>
 #include <logicmill/util/promise.h>
 
 namespace logicmill
 {
 namespace armi
 {
-template<class ServerContextBase, class MemberFuncPtr, class StrippedMemberFuncPtr, class Enable = void>
+template<class ServerStubBase, class MemberFuncPtr, class StrippedMemberFuncPtr, class Enable = void>
 class member_func_stub;
 
 /*
@@ -41,38 +41,38 @@ class member_func_stub;
  */
 
 template<
-		template<class...> class ServerContextBaseTemplate,
+		template<class...> class ServerStubBaseTemplate,
 		class SerializationTraits,
-		class TransportTraits,
+		class AsyncIOTraits,
 		class MemberFuncPtr,
 		class Target,
 		class PromiseType,
 		class... Args>
 class member_func_stub<
-		ServerContextBaseTemplate<SerializationTraits, TransportTraits>,
+		ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>,
 		MemberFuncPtr,
 		util::promise<PromiseType> (Target::*)(Args...),
 		std::enable_if_t<!std::is_void<PromiseType>::value>>
-	: public member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
+	: public member_func_stub_base<Target, ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>>
 {
 public:
 	using member_func_ptr_type = MemberFuncPtr;
 	using target_ptr_type      = std::shared_ptr<Target>;
-	using base = member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>;
+	using base = member_func_stub_base<Target, ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>>;
 	using base::request_failed;
-	using base::context;
-	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using base::server;
+	using server_stub_base_type = ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>;
 
 	using serialization_traits    = SerializationTraits;
-	using transport_traits        = TransportTraits;
-	using bridge_type             = adapters::bridge<serialization_traits, transport_traits>;
+	using async_io_traits        = AsyncIOTraits;
+	using bridge_type             = adapters::bridge<serialization_traits, async_io_traits>;
 	using deserializer_param_type = typename bridge_type::deserializer_param_type;
 
 	inline member_func_stub(
-			server_context_base_type* context_base,
+			server_stub_base_type* server,
 			member_func_ptr_type      member_func_ptr,
 			std::size_t               member_func_id)
-		: base{context_base}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
+		: base{server}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
 	{}
 
 	virtual void
@@ -109,7 +109,7 @@ public:
 									serialization_traits::write(reply, reply_kind::normal);
 									serialization_traits::write_sequence_prefix(reply, 1);
 									serialization_traits::write(reply, value);
-									context()->send_reply(channel, reply);
+									server()->send_reply(channel, reply);
 								});
 							},
 							[&](std::error_code err) { request_failed(request_id, channel, err); });
@@ -138,38 +138,38 @@ private:
  */
 
 template<
-		template<class...> class ServerContextBaseTemplate,
+		template<class...> class ServerStubBaseTemplate,
 		class SerializationTraits,
-		class TransportTraits,
+		class AsyncIOTraits,
 		class MemberFuncPtr,
 		class Target,
 		class PromiseType,
 		class... Args>
 class member_func_stub<
-		ServerContextBaseTemplate<SerializationTraits, TransportTraits>,
+		ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>,
 		MemberFuncPtr,
 		util::promise<PromiseType> (Target::*)(Args...),
 		std::enable_if_t<std::is_void<PromiseType>::value>>
-	: public member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
+	: public member_func_stub_base<Target, ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>>
 {
 public:
 	using member_func_ptr_type = MemberFuncPtr;
 	using target_ptr_type      = std::shared_ptr<Target>;
-	using base = member_func_stub_base<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>;
+	using base = member_func_stub_base<Target, ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>>;
 	using base::request_failed;
-	using base::context;
-	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using base::server;
+	using server_stub_base_type = ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>;
 
 	using serialization_traits    = SerializationTraits;
-	using transport_traits        = TransportTraits;
-	using bridge_type             = adapters::bridge<serialization_traits, transport_traits>;
+	using async_io_traits        = AsyncIOTraits;
+	using bridge_type             = adapters::bridge<serialization_traits, async_io_traits>;
 	using deserializer_param_type = typename bridge_type::deserializer_param_type;
 
 	inline member_func_stub(
-			server_context_base_type* context_base,
+			server_stub_base_type* server,
 			member_func_ptr_type      member_func_ptr,
 			std::size_t               member_func_id)
-		: base{context_base}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
+		: base{server}, m_member_func_id{member_func_id}, m_member_func_ptr{member_func_ptr}
 	{}
 
 	virtual void
@@ -205,7 +205,7 @@ public:
 									serialization_traits::write(reply, request_id);
 									serialization_traits::write(reply, reply_kind::normal);
 									serialization_traits::write_sequence_prefix(reply, 0);
-									context()->send_reply(channel, reply);
+									server()->send_reply(channel, reply);
 								});
 							},
 							[=](std::error_code err) { request_failed(request_id, channel, err); });

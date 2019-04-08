@@ -1,3 +1,4 @@
+
 /*
  * The MIT License
  *
@@ -22,14 +23,14 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H
-#define LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H
+#ifndef LOGICMILL_ARMI_CLIENT_PROXY_BASE_H
+#define LOGICMILL_ARMI_CLIENT_PROXY_BASE_H
 
 #include <chrono>
 #include <logicmill/armi/adapters/bridge.h>
 #include <logicmill/armi/reply_handler_base.h>
 #include <logicmill/armi/serialization_traits.h>
-#include <logicmill/armi/transport_traits.h>
+#include <logicmill/armi/async_io_traits.h>
 #include <logicmill/armi/types.h>
 #include <memory>
 #include <set>
@@ -43,39 +44,36 @@ namespace armi
 template<class U, class V>
 class member_func_proxy;
 
-template<class SerializationTraits, class TransportTraits>
-class client_context_base
+template<class SerializationTraits, class AsyncIOTraits>
+class client_proxy_base
 {
 public:
 	using serialization_traits = SerializationTraits;
-	using transport_traits     = TransportTraits;
+	using async_io_traits     = AsyncIOTraits;
 
-	// using deserializer_type = typename serialization_traits::deserializer_type;
-	// using serializer_type   = typename serialization_traits::serializer_type;
-
-	using bridge_type = adapters::bridge<serialization_traits, transport_traits>;
+	using bridge_type = adapters::bridge<serialization_traits, async_io_traits>;
 
 	using deserializer_param_type = typename bridge_type::deserializer_param_type;
 	using serializer_param_type   = typename bridge_type::serializer_param_type;
 
 	using close_handler           = std::function<void()>;
-	using transport_error_handler = std::function<void(std::error_code err)>;
+	using async_io_error_handler = std::function<void(std::error_code err)>;
 
 	using reply_handler_map_type = std::unordered_map<
 			request_id_type,
 			std::pair<channel_id_type, typename reply_handler_base<bridge_type>::ptr>>;
 	using channel_request_map_type = std::unordered_map<channel_id_type, std::set<request_id_type>>;
 
-	client_context_base()
+	client_proxy_base()
 		: m_next_request_id{1},
 		  m_default_timeout{millisecs{0}},
 		  m_transient_timeout{millisecs{0}},
 		  m_transient_channel{}
 	{}
 
-	virtual ~client_context_base()
+	virtual ~client_proxy_base()
 	{
-		cancel_all_requests(make_error_code(armi::errc::context_closed));
+		cancel_all_requests(make_error_code(armi::errc::client_closed));
 	}
 
 	void
@@ -270,4 +268,4 @@ protected:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_CLIENT_CONTEXT_BASE_H
+#endif    // LOGICMILL_ARMI_CLIENT_PROXY_BASE_H

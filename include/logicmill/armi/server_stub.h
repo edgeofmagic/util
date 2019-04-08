@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 
-#ifndef LOGICMILL_ARMI_SERVER_CONTEXT_H
-#define LOGICMILL_ARMI_SERVER_CONTEXT_H
+#ifndef LOGICMILL_ARMI_SERVER_STUB_H
+#define LOGICMILL_ARMI_SERVER_STUB_H
 
-#include <logicmill/armi/server_context_base.h>
+#include <logicmill/armi/server_stub_base.h>
 #include <logicmill/traits.h>
 
 namespace logicmill
@@ -33,29 +33,29 @@ namespace logicmill
 namespace armi
 {
 template<class Stub>
-class server_context;
+class server_stub;
 
 template<
 		template<class...> class StubTemplate,
 		class Target,
-		template<class...> class ServerContextBaseTemplate,
+		template<class...> class ServerStiubBaseTemplate,
 		class SerializationTraits,
-		class TransportTraits>
-class server_context<StubTemplate<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>>
-	: public ServerContextBaseTemplate<SerializationTraits, TransportTraits>
+		class AsyncIOTraits>
+class server_stub<StubTemplate<Target, ServerStiubBaseTemplate<SerializationTraits, AsyncIOTraits>>>
+	: public ServerStiubBaseTemplate<SerializationTraits, AsyncIOTraits>
 {
 public:
-	using base                    = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
+	using base                    = ServerStiubBaseTemplate<SerializationTraits, AsyncIOTraits>;
 	using stub_type               = StubTemplate<Target, base>;
 	using target_type             = Target;
 	using target_ptr              = std::shared_ptr<target_type>;
 	using serialization_traits    = SerializationTraits;
-	using transport_traits        = TransportTraits;
-	using bridge_type             = armi::adapters::bridge<serialization_traits, transport_traits>;
+	using async_io_traits         = AsyncIOTraits;
+	using bridge_type             = armi::adapters::bridge<serialization_traits, async_io_traits>;
 	using deserializer_param_type = typename bridge_type::deserializer_param_type;
-	using ptr                     = util::shared_ptr<server_context>;
+	using ptr                     = util::shared_ptr<server_stub>;
 
-	server_context() : base{}, m_stub{this} {}
+	server_stub() : base{}, m_stub{this} {}
 
 	void
 	handle_request(channel_id_type channel, deserializer_param_type request, target_ptr const& impl)
@@ -70,4 +70,4 @@ private:
 }    // namespace armi
 }    // namespace logicmill
 
-#endif    // LOGICMILL_ARMI_SERVER_CONTEXT_H
+#endif    // LOGICMILL_ARMI_SERVER_STUB_H

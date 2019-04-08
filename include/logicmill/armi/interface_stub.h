@@ -32,36 +32,36 @@ namespace logicmill
 namespace armi
 {
 
-template<class Target, class ServerContextBase>
+template<class Target, class ServerStubBase>
 class interface_stub;
 
 template<
 		class Target,
-		template<class...> class ServerContextBaseTemplate,
+		template<class...> class ServerStubBaseTemplate,
 		class SerializationTraits,
-		class TransportTraits>
-class interface_stub<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
-	: public interface_stub_builder<Target, ServerContextBaseTemplate<SerializationTraits, TransportTraits>>
+		class AsyncIOTraits>
+class interface_stub<Target, ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>>
+	: public interface_stub_builder<Target, ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>>
 {
 public:
-	using server_context_base_type = ServerContextBaseTemplate<SerializationTraits, TransportTraits>;
-	using base                     = interface_stub_builder<Target, server_context_base_type>;
+	using server_stub_base_type = ServerStubBaseTemplate<SerializationTraits, AsyncIOTraits>;
+	using base                     = interface_stub_builder<Target, server_stub_base_type>;
 	using target_ptr                 = std::shared_ptr<Target>;
 	using base::member_func_count;
 	using base::get_member_func_stub;
-	using interface_stub_base<Target, server_context_base_type>::request_failed;
+	using interface_stub_base<Target, server_stub_base_type>::request_failed;
 
 	using serialization_traits    = SerializationTraits;
-	using transport_traits        = TransportTraits;
+	using async_io_traits        = AsyncIOTraits;
 	using deserializer_type       = typename serialization_traits::deserializer_type;
 	using serializer_type         = typename serialization_traits::serializer_type;
-	using bridge_type             = logicmill::armi::adapters::bridge<serialization_traits, transport_traits>;
+	using bridge_type             = logicmill::armi::adapters::bridge<serialization_traits, async_io_traits>;
 	using deserializer_param_type = typename bridge_type::deserializer_param_type;
 
 
 	template<class... Args>
-	interface_stub(server_context_base_type* context_base, Args... args)
-		: base{context_base, typename make_indices<sizeof...(Args)>::type(), args...}
+	interface_stub(server_stub_base_type* server, Args... args)
+		: base{server, typename make_indices<sizeof...(Args)>::type(), args...}
 	{}
 
 	void

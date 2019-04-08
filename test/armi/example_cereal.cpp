@@ -112,11 +112,11 @@ using namespace async;
 TEST_CASE("logicmill::armi [ smoke ] { example 1 }")
 {
 	// using adapter_type = async::adapter<remote, bstream::serialization_traits<>>;
-	using adapter_type = async::adapter<remote<adapters::cereal::serialization_traits<>, async::transport_traits>>;
+	using adapter_type = async::adapter<remote<adapters::cereal::serialization_traits<>, async::async_io_traits>>;
 
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
-	using counter_ref   = adapter_type::client_context_type::target_reference;
+	using counter_ref   = adapter_type::client_proxy_type::target_reference;
 	adapter_type::client_adapter client{lp};
 	adapter_type::server_adapter server{lp};
 
@@ -144,10 +144,10 @@ TEST_CASE("logicmill::armi [ smoke ] { example 1 }")
 
 TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
 {
-	using adapter_type = async::adapter<remote<adapters::cereal::serialization_traits<>,async::transport_traits>>;
+	using adapter_type = async::adapter<remote<adapters::cereal::serialization_traits<>,async::async_io_traits>>;
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
-	using counter_ref   = adapter_type::client_context_type::target_reference;
+	using counter_ref   = adapter_type::client_proxy_type::target_reference;
 	adapter_type::client_adapter client{lp};
 	adapter_type::server_adapter server{lp};
 	auto                         impl = std::make_shared<up_down_counter>();
@@ -180,10 +180,10 @@ TEST_CASE("logicmill::armi [ smoke ] { example 2 }")
 
 TEST_CASE("logicmill::armi [ smoke ] { example 3 }")
 {
-	using adapter_type = async::adapter<remote<adapters::cereal::serialization_traits<>, async::transport_traits>>;
+	using adapter_type = async::adapter<remote<adapters::cereal::serialization_traits<>, async::async_io_traits>>;
 	std::error_code  err;
 	async::loop::ptr lp = loop::create();
-	using counter_ref   = adapter_type::client_context_type::target_reference;
+	using counter_ref   = adapter_type::client_proxy_type::target_reference;
 	adapter_type::client_adapter     client{lp};
 	adapter_type::server_adapter     server{lp};
 	servant_manager<up_down_counter> smgr;

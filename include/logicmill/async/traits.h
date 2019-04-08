@@ -26,7 +26,7 @@
 #define LOGICMILL_ASYNC_TRAITS_H
 
 #include <logicmill/armi/serialization_traits.h>
-#include <logicmill/armi/transport_traits.h>
+#include <logicmill/armi/async_io_traits.h>
 #include <logicmill/armi/types.h>
 #include <logicmill/async/loop.h>
 #include <logicmill/bsstream/traits.h>
@@ -36,12 +36,12 @@ namespace logicmill
 namespace async
 {
 
-struct transport
+struct async_io
 {};
 }    // namespace async
 }    // namespace logicmill
 
-struct logicmill::armi::transport::traits<logicmill::async::transport>
+struct logicmill::armi::async_io::traits<logicmill::async::async_io>
 {
 	// using channel_type = std::uint64_t;
 	// using channel_param_type = channel_type;
@@ -65,16 +65,16 @@ struct logicmill::armi::async_io::traits<logicmill::async::async_io>
 
 /*
 template<class StreamContext, class RemoteContext>
-struct logicmill::armi::transport::
-		traits<logicmill::async::transport, logicmill::bstream::serialization<StreamContext>, RemoteContext>
+struct logicmill::armi::async_io::
+		traits<logicmill::async::async_io, logicmill::bstream::serialization<StreamContext>, RemoteContext>
 {
 	using serialization_traits_type
 			= logicmill::armi::serialization::traits<logicmill::bstream::serialization<StreamContext>>;
 	using remote_context_type = RemoteContext;
-	using client_context_type = remote_context_type::client_context_type;
-	using server_context_type = remote_context_type::server_context_type;
-	using client_type         = logicmill::async::client_adapter<client_context_type>;
-	using server_type         = logicmill::async::server_adapter<server_context_type>;
+	using client_proxy_type = remote_context_type::client_proxy_type;
+	using server_stub_type = remote_context_type::server_stub_type;
+	using client_type         = logicmill::async::client_adapter<client_proxy_type>;
+	using server_type         = logicmill::async::server_adapter<server_stub_type>;
 	using serializer_type     = serialization_traits_type::serializer_type;
 
 	using channel_type = std::uint64_t;

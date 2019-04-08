@@ -40,7 +40,7 @@ class reply_handler_base
 public:
 	using bridge_type = Bridge;
 	using serialization_traits    = typename bridge_type::serialization_traits;
-	using transport_traits = typename bridge_type::transport_traits;
+	using async_io_traits = typename bridge_type::async_io_traits;
 	using deserializer_param_type = typename bridge_type::deserializer_param_type;
 
 	virtual ~reply_handler_base() {}

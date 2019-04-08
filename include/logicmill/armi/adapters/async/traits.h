@@ -30,7 +30,7 @@ namespace logicmill
 namespace async
 {
 
-struct transport_traits
+struct async_io_traits
 {};
 
 }    // namespace async

@@ -367,8 +367,8 @@ ARMI_CONTEXT(
 class test_fixture
 {
 public:
-	using adapter_type = async::adapter<test_remote<adapters::cereal::serialization_traits<test_error_context>, async::transport_traits>>;
-	using ref_type     = adapter_type::client_context_type::target_reference;
+	using adapter_type = async::adapter<test_remote<adapters::cereal::serialization_traits<test_error_context>, async::async_io_traits>>;
+	using ref_type     = adapter_type::client_proxy_type::target_reference;
 	using channel_id_type = armi::channel_id_type;    //  TODO: this should come from adapter_type?
 
 	test_fixture()
@@ -516,12 +516,12 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality }")
 	bool client_connect_handler_visited{false};
 	bool increment_resolve_visited{false};
 
-	using adapter_type = async::adapter<rfoo::bar_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::transport_traits>>;
+	using adapter_type = async::adapter<rfoo::bar_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::async_io_traits>>;
 	using channel_id_type = armi::channel_id_type;    // should come from adapter_type
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
-	using bar_ref       = adapter_type::client_context_type::target_reference;
+	using bar_ref       = adapter_type::client_proxy_type::target_reference;
 	adapter_type::client_adapter client{lp};
 	adapter_type::server_adapter server{lp};
 	auto                         impl = std::make_shared<foo::bar>();
@@ -590,12 +590,12 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply without error }")
 	bool fail_handler_visited{false};
 	bool reply_handler_visited{false};
 
-	using adapter_type = async::adapter<rfoo::bfail_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::transport_traits>>;
+	using adapter_type = async::adapter<rfoo::bfail_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::async_io_traits>>;
 	using channel_id_type = armi::channel_id_type;    // should come from adapter_type
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
-	using bfail_ref     = adapter_type::client_context_type::target_reference;
+	using bfail_ref     = adapter_type::client_proxy_type::target_reference;
 	adapter_type::client_adapter client{lp};
 	adapter_type::server_adapter server{lp};
 	auto                         impl = std::make_shared<foo::bfail>();
@@ -670,12 +670,12 @@ TEST_CASE("logicmill::armi [ smoke ] { fail reply with error }")
 	bool reply_handler_visited{false};
 
 
-	using adapter_type = async::adapter<rfoo::bfail_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::transport_traits>>;
+	using adapter_type = async::adapter<rfoo::bfail_remote<adapters::cereal::serialization_traits<rfoo::foo_error_context>, async::async_io_traits>>;
 	using channel_id_type = armi::channel_id_type;    // should come from adapter_type
 
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
-	using bfail_ref     = adapter_type::client_context_type::target_reference;
+	using bfail_ref     = adapter_type::client_proxy_type::target_reference;
 	adapter_type::client_adapter client{lp};
 	adapter_type::server_adapter server{lp};
 	auto                         impl = std::make_shared<foo::bfail>();
@@ -765,12 +765,12 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality, static connect }")
 	std::error_code  err;
 	async::loop::ptr lp = async::loop::create();
 	// rfoo::bar_remote context;
-	auto server_context = rfoo::bar_remote::create_server();
-	server_context->register_impl(std::make_shared<foo::bar>());
+	auto server_stub = rfoo::bar_remote::create_server();
+	server_stub->register_impl(std::make_shared<foo::bar>());
 
 	END_LOOP(lp, 500);
 
-	async::server_impl::ptr sp = util::make_shared<async::server_impl>(server_context, lp);
+	async::server_impl::ptr sp = util::make_shared<async::server_impl>(server_stub, lp);
 	sp->on_server_error([=](async::server_impl::ptr const& srvrp, std::error_code err)
 	{
 		std::cout << "server error handler called: " << err.message() << std::endl;
@@ -795,16 +795,16 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality, static connect }")
 	sp->bind(async::options{endpoint{address::v4_any(), 7001}}, err);
 	CHECK(!err);
 
-	auto client_context = rfoo::bar_remote::create_client();
+	auto client_proxy = rfoo::bar_remote::create_client();
 
 	async::client_channel_impl::connect(
-			client_context,
+			client_proxy,
 			lp,
 			async::options{endpoint{address::v4_loopback(), 7001}},
 			err,
-			[&](armi::transport::target_reference::ptr chan, std::error_code err) {
-				client_context->use(chan);
-				client_context->proxy().increment(
+			[&](armi::async_io::target_reference::ptr chan, std::error_code err) {
+				client_proxy->use(chan);
+				client_proxy->proxy().increment(
 						[](std::error_code err, int result) {
 							std::cout << "in increment callback";
 							if (err)
@@ -827,7 +827,7 @@ TEST_CASE("logicmill::armi [ smoke ] { basic functionality, static connect }")
 	std::cout << "loop run finished" << std::endl;
 
 	CHECK(client_connect_handler_visited);
-	CHECK(server_context->get_impl()->increment_called);
+	CHECK(server_stub->get_impl()->increment_called);
 
 	lp->close(err);
 	CHECK(!err);
@@ -849,12 +849,12 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 	async::loop::ptr lp = async::loop::create();
 
 	rfoo::remote context{rfoo::foo_stream_context::get()};
-	auto server_context = context.create_server();
-	server_context->register_impl(std::make_shared<foo::bar>());
+	auto server_stub = context.create_server();
+	server_stub->register_impl(std::make_shared<foo::bar>());
 
 	END_LOOP(lp, 5000);
 
-	async::server_impl::ptr sp = util::make_shared<async::server_impl>(server_context, lp);
+	async::server_impl::ptr sp = util::make_shared<async::server_impl>(server_stub, lp);
 	sp->on_server_error([=](async::server_impl::ptr const& srvrp, std::error_code err)
 	{
 		std::cout << "server error handler called: " << err.message() << std::endl;
@@ -882,18 +882,18 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 	sp->bind(async::options{endpoint{address::v4_any(), 7001}}, err);
 	CHECK(!err);
 
-	auto client_context = context.create_client();
+	auto client_proxy = context.create_client();
 
-	async::client_channel_impl::ptr cp = util::make_shared<async::client_channel_impl>(client_context, lp);
+	async::client_channel_impl::ptr cp = util::make_shared<async::client_channel_impl>(client_proxy, lp);
 
 	auto client_connect_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
 		std::error_code err;
 		cp->connect(
 				async::options{endpoint{address::v4_loopback(), 7001}},
 				err,
-				[&](armi::transport::target_reference::ptr chan, std::error_code err) {
-					client_context->use(chan);
-					client_context->proxy<foo::bar>().freak_out(
+				[&](armi::async_io::target_reference::ptr chan, std::error_code err) {
+					client_proxy->use(chan);
+					client_proxy->proxy<foo::bar>().freak_out(
 							[](std::error_code err) { CHECK(err == foo::errc::sun_exploded); });
 					client_connect_handler_visited = true;
 				});
@@ -907,7 +907,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 	CHECK(!err);
 
 	auto client_close_timer = lp->create_timer(err, [&](async::timer::ptr tp) {
-		client_context->close([&](){
+		client_proxy->close([&](){
 			client_close_handler_visited = true;
 			std::cout << "client closed completed" << std::endl;
 		});
@@ -924,7 +924,7 @@ TEST_CASE("logicmill::armi [ smoke ] { error handling }")
 	CHECK(channel_error_handler_visited);
 	CHECK(client_close_handler_visited);
 	CHECK(channel_close_handler_visited);
-	CHECK(server_context->get_impl<foo::bar>()->freak_out_called);
+	CHECK(server_stub->get_impl<foo::bar>()->freak_out_called);
 
 	lp->close(err);
 	CHECK(!err);
@@ -955,7 +955,7 @@ TEST_CASE("logicmill::armi [ smoke ] { bad error category }")
 	context.server().bind(
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
-			[&](rfoo::remote::server_context_type& server, std::error_code err) {
+			[&](rfoo::remote::server_stub_type& server, std::error_code err) {
 				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				CHECK(!err);
 				server.close([]() { std::cout << "server close handler called on acceptor error" << std::endl; });
@@ -971,7 +971,7 @@ TEST_CASE("logicmill::armi [ smoke ] { bad error category }")
 		context.client().connect(
 				async::options{endpoint{address::v4_loopback(), 7001}},
 				err,
-				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+				[&](rfoo::remote::client_proxy_type& client, std::error_code err) {
 					CHECK(!err);
 					client.proxy<foo::bar>().freak_out(
 							[](std::error_code err) { CHECK(err == bstream::errc::invalid_err_category); });
@@ -1017,7 +1017,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close re-open client }")
 	context.server().bind(
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
-			[&](rfoo::remote::server_context_type& server, std::error_code err) {
+			[&](rfoo::remote::server_stub_type& server, std::error_code err) {
 				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close([]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
@@ -1035,7 +1035,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close re-open client }")
 		context.client().connect(
 				async::options{endpoint{address::v4_loopback(), 7001}},
 				err,
-				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+				[&](rfoo::remote::client_proxy_type& client, std::error_code err) {
 					CHECK(!err);
 					client.proxy<foo::bar>().increment(
 							[=, &client_reply_handler_count](std::error_code err, int result) {
@@ -1056,7 +1056,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close re-open client }")
 			context.client().connect(
 					async::options{endpoint{address::v4_loopback(), 7001}},
 					err,
-					[&](rfoo::remote::client_context_type& client, std::error_code err) {
+					[&](rfoo::remote::client_proxy_type& client, std::error_code err) {
 						CHECK(!err);
 						client.proxy<foo::bar>().increment(
 								[=, &client_reply_handler_count](std::error_code err, int result) {
@@ -1104,7 +1104,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close server before client request }")
 	context.server().bind(
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
-			[&](rfoo::remote::server_context_type& server, std::error_code err) {
+			[&](rfoo::remote::server_stub_type& server, std::error_code err) {
 				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close([]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
@@ -1122,7 +1122,7 @@ TEST_CASE("logicmill::armi [ smoke ] { close server before client request }")
 		context.client().connect(
 				async::options{endpoint{address::v4_loopback(), 7001}},
 				err,
-				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+				[&](rfoo::remote::client_proxy_type& client, std::error_code err) {
 					CHECK(!err);
 					client.proxy<foo::bar>().increment(
 							[=, &client_reply_handler_count](std::error_code err, int result) {
@@ -1179,7 +1179,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client closes before server sends reply }
 	context.server().bind(
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
-			[](rfoo::remote::server_context_type& server, std::error_code err) {
+			[](rfoo::remote::server_stub_type& server, std::error_code err) {
 				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close([]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
@@ -1206,7 +1206,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client closes before server sends reply }
 		context.client().connect(
 				async::options{endpoint{address::v4_loopback(), 7001}},
 				err,
-				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+				[&](rfoo::remote::client_proxy_type& client, std::error_code err) {
 					CHECK(!err);
 					auto& boop = client.proxy<foo::boo>();
 
@@ -1259,7 +1259,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 	context.server().bind(
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
-			[](rfoo::remote::server_context_type& server, std::error_code err) {
+			[](rfoo::remote::server_stub_type& server, std::error_code err) {
 				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close([]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
@@ -1277,7 +1277,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 		context.client().connect(
 				async::options{endpoint{address::v4_loopback(), 7001}},
 				err,
-				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+				[&](rfoo::remote::client_proxy_type& client, std::error_code err) {
 					CHECK(!err);
 					auto& boop = client.proxy<foo::boo>();
 
@@ -1321,7 +1321,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 	context.server().bind(
 			async::options{endpoint{address::v4_any(), 7001}},
 			err,
-			[](rfoo::remote::server_context_type& server, std::error_code err) {
+			[](rfoo::remote::server_stub_type& server, std::error_code err) {
 				std::cout << "acceptor error handler: " << err.message() << std::endl;
 				server.close([]() { std::cout << "server close handler called on acceptor error" << std::endl; });
 			},
@@ -1339,7 +1339,7 @@ TEST_CASE("logicmill::armi [ smoke ] { client timeout }")
 		context.client().connect(
 				async::options{endpoint{address::v4_loopback(), 7001}},
 				err,
-				[&](rfoo::remote::client_context_type& client, std::error_code err) {
+				[&](rfoo::remote::client_proxy_type& client, std::error_code err) {
 					CHECK(!err);
 					auto& boop = client.proxy<foo::boo>();
 

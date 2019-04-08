@@ -38,7 +38,7 @@ namespace logicmill
 {
 namespace armi
 {
-namespace transport
+namespace async_io
 {
 
 class client
@@ -77,7 +77,7 @@ public:
 			= 0;
 };
 
-}    // namespace transport
+}    // namespace async_io
 }    // namespace armi
 }    // namespace logicmill
 

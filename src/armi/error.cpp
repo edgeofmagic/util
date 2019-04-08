@@ -67,15 +67,17 @@ armi_category_impl::message(int ev) const noexcept
 		case armi::errc::invalid_argument_count:
 			return "invalid argument count in marshaled member function or reply";
 		case armi::errc::invalid_error_category:
-			return "error category not found in context error category map";
+			return "error category not found in error context";
 		case armi::errc::invalid_channel_id:
 			return "invalid channel id";
-		case armi::errc::context_closed:
-			return "context closed";
+		case armi::errc::client_closed:
+			return "client closed";
+		case armi::errc::server_closed:
+			return "server closed";
 		case armi::errc::channel_closed:
 			return "channel closed";
-		case armi::errc::transport_closed:
-			return "transport closed";
+		case armi::errc::async_io_closed:
+			return "async_io closed";
 		default:
 			return "unknown armi error";
 	}

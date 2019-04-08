@@ -24,10 +24,9 @@
 
 #include <doctest.h>
 #include <iostream>
-#include <logicmill/util/allocator.h>
+#include <util/allocator.h>
 #include <unordered_map>
 
-using namespace logicmill;
 using namespace util;
 
 namespace alloc_test
@@ -47,7 +46,7 @@ free_mem(void* p, unsigned long /* bytes */)
 UTIL_ALLOCATOR_POLICY(test_policy, get_mem, free_mem);
 }    // namespace alloc_test
 
-TEST_CASE("logicmill::util::allocators [ smoke ] {}")
+TEST_CASE("util::allocators [ smoke ] {}")
 {
 	using falloc = allocator<std::uint8_t, alloc_test::test_policy<std::uint8_t>>;
 	falloc f;
@@ -55,27 +54,27 @@ TEST_CASE("logicmill::util::allocators [ smoke ] {}")
 	f.deallocate(p, 1024);
 }
 
-TEST_CASE("logicmill::util::allocators [ smoke ] { macro policy }")
+TEST_CASE("util::allocators [ smoke ] { macro policy }")
 {
 	using map_type = std::unordered_map<
 			std::string,
 			int,
 			std::hash<std::string>,
 			std::equal_to<std::string>,
-			logicmill::util::allocator<
+			util::allocator<
 					std::pair<const std::string, int>,
 					alloc_test::test_policy<std::pair<const std::string, int>>>>;
 
 	UTIL_ALLOCATOR_ALIAS(alloc_type, alloc_test::test_policy, std::pair<const std::string, int>);
 
-	// using alloc_type = logicmill::util::allocator<
+	// using alloc_type = util::allocator<
 	// 		std::pair<const std::string, int>,
 	// 		alloc_test::test_policy<std::pair<const std::string, int>>>;
 
 	CHECK(std::is_same<std::pair<const std::string, int>, map_type::value_type>::value);
 	CHECK(std::is_same<std::pair<const std::string, int>, alloc_type::value_type>::value);
 
-	using other_alloc_type     = logicmill::util::allocator<std::string, alloc_test::test_policy<std::string>>;
+	using other_alloc_type     = util::allocator<std::string, alloc_test::test_policy<std::string>>;
 	using different_alloc_type = std::allocator<std::string>;
 
 	alloc_type           a1;
@@ -98,21 +97,21 @@ TEST_CASE("logicmill::util::allocators [ smoke ] { macro policy }")
 	CHECK(it->second == 2);
 }
 
-TEST_CASE("logicmill::util::allocators [ smoke ] { heap policy }")
+TEST_CASE("util::allocators [ smoke ] { heap policy }")
 {
 	using map_type = std::unordered_map<
 			std::string,
 			int,
 			std::hash<std::string>,
 			std::equal_to<std::string>,
-			logicmill::util::allocator<std::pair<const std::string, int>>>;
+			util::allocator<std::pair<const std::string, int>>>;
 
-	using alloc_type = logicmill::util::allocator<std::pair<const std::string, int>>;
+	using alloc_type = util::allocator<std::pair<const std::string, int>>;
 
 	CHECK(std::is_same<std::pair<const std::string, int>, map_type::value_type>::value);
 	CHECK(std::is_same<std::pair<const std::string, int>, alloc_type::value_type>::value);
 
-	using other_alloc_type     = logicmill::util::allocator<std::string>;
+	using other_alloc_type     = util::allocator<std::string>;
 	using different_alloc_type = std::allocator<std::string>;
 
 	alloc_type           a1;

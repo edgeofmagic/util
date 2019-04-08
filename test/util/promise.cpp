@@ -24,19 +24,21 @@
 
 #include <doctest.h>
 #include <iostream>
-#include <logicmill/util/promise.h>
-#include <logicmill/async/loop.h>
+#include <util/promise.h>
+// #include <async/loop.h>
 #include <unordered_map>
 
-using namespace logicmill;
-using namespace util;
+#define TEST_ASYNC 0
 
+using namespace util;
 
 static int
 func()
 {
 	return 42;
 }
+
+#if (TEST_ASYNC)
 
 static promise< void >
 make_v( std::chrono::milliseconds delay )
@@ -54,7 +56,6 @@ make_v( std::chrono::milliseconds delay )
 
 	return p;
 }
-
 
 static promise< int >
 make_p( int i, std::chrono::milliseconds delay )
@@ -88,6 +89,8 @@ make_e( int err_value, std::chrono::milliseconds delay )
 
 	return p;
 }
+
+#endif
 
 TEST_CASE( "nodeoze/smoke/promise" )
 {
@@ -203,7 +206,9 @@ TEST_CASE( "nodeoze/smoke/promise" )
 
 		CHECK( *done );
 	}
-	
+
+#if (TEST_ASYNC)
+
 	SUBCASE( "asynchronous chaining" )
 	{
 		auto count = std::make_shared< std::uint8_t >( 0 );
@@ -564,7 +569,9 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			async::loop::get_default()->run_once(err);
 		}
 	}
-	
+
+#endif
+
 	SUBCASE( "all with no promises" )
 	{
 		promise< int >::all( {} )
@@ -902,7 +909,9 @@ TEST_CASE( "nodeoze/smoke/promise" )
 
 		p.resolve();
 	}
-	
+
+#if (TEST_ASYNC)
+
 	SUBCASE( "leaks" )
 	{
 		auto clean = std::make_shared< bool >( false );
@@ -1059,4 +1068,8 @@ TEST_CASE( "nodeoze/smoke/promise" )
 
 		CHECK( err == std::errc::timed_out );
 	}
+
+#endif
+
 }
+

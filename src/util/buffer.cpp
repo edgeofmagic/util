@@ -23,10 +23,9 @@
  */
 
 #include <boost/crc.hpp>
-#include <logicmill/util/buffer.h>
-#include <logicmill/util/dumpster.h>
+#include <util/buffer.h>
+#include <util/dumpster.h>
 
-using namespace logicmill;
 using namespace util;
 
 buffer::checksum_type

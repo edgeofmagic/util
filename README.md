@@ -1,2 +1,2 @@
-# logicmill
-Massively-parallel inference engine
+# util
+Miscellaneous utilities common to other projects

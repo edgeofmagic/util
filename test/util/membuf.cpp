@@ -24,13 +24,12 @@
 
 #include <doctest.h>
 #include <iostream>
-#include <logicmill/util/membuf.h>
+#include <util/membuf.h>
 #include <sstream>
 #include <fstream>
 
-using namespace logicmill;
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { basic functionality }")
+TEST_CASE("util::membuf [ smoke ] { basic functionality }")
 {
 	std::char_traits<char> ct;
 
@@ -59,7 +58,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { basic functionality }")
 	
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { sstream behavior check }")
+TEST_CASE("util::membuf [ smoke ] { sstream behavior check }")
 {
 	std::ostringstream ostrstrm;
     std::stringbuf strbuf{std::ios_base::out};
@@ -146,7 +145,7 @@ int_type overflow (int_type c = traits_type::eof()) override
 };
 
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { sstream behavior check 2 }")
+TEST_CASE("util::membuf [ smoke ] { sstream behavior check 2 }")
 {
 	// std::stringbuf sbuf{"hello, there."};
 	mystrbuf sbuf{"hello, there."};
@@ -159,7 +158,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { sstream behavior check 2 }")
 	CHECK(ch == util::imemqbuf::traits_type::eof());
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { duplicate sstream behavior }")
+TEST_CASE("util::membuf [ smoke ] { duplicate sstream behavior }")
 {
     util::omembuf strbuf{std::ios_base::out};
     std::ostream oss{&strbuf};
@@ -185,7 +184,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { duplicate sstream behavior }")
 
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf }")
 {
     util::omemqbuf strbuf{16};
     std::ostream oss{&strbuf};
@@ -211,7 +210,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf }")
 
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf with mutable_buffer_alloc_factory }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf with mutable_buffer_alloc_factory }")
 {
     util::omemqbuf strbuf{16};
     std::ostream oss{&strbuf};
@@ -268,7 +267,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf with mutable_buffer_allo
 	CHECK(strbuf.get_buffer()[1].to_string() == "hgfedcbaIJKLMNOP");
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf with mutable_buffer_fixed_factory }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf with mutable_buffer_fixed_factory }")
 {
     util::omemqbuf strbuf{std::integral_constant<std::size_t, 16>{}};
     std::ostream oss{&strbuf};
@@ -325,7 +324,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf with mutable_buffer_fixe
 	CHECK(strbuf.get_buffer()[1].to_string() == "hgfedcbaIJKLMNOP");
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { imemqbuf basic }")
+TEST_CASE("util::membuf [ smoke ] { imemqbuf basic }")
 {
 	std::deque<util::const_buffer> bufs;
 	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"hello "}}); // 6
@@ -410,7 +409,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { imemqbuf basic }")
 	}
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf null ctor }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf null ctor }")
 {
 	util::omembuf omb{};
 
@@ -436,7 +435,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf null ctor }")
 	CHECK(omb.get_buffer().size() == 1);
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf mutable_buffer ctor with non-zero size }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf mutable_buffer ctor with non-zero size }")
 {
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 	util::mutable_buffer buf{content};
@@ -446,12 +445,12 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf mutable_buffer ctor with
 	CHECK(pos == content.size());
 	pos = omb.pubseekoff(0, std::ios_base::beg);
 	CHECK(pos == 0);
-	std::string buf_content{reinterpret_cast<char*>(const_cast<byte_type*>(omb.get_buffer().data())),
+	std::string buf_content{reinterpret_cast<char*>(const_cast<util::byte_type*>(omb.get_buffer().data())),
 							omb.get_buffer().size()};
 	CHECK(buf_content == content);
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf mutable_buffer ctor with zero size }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf mutable_buffer ctor with zero size }")
 {
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 
@@ -470,12 +469,12 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf mutable_buffer ctor with
 	pos = omb.pubseekoff(0, std::ios_base::beg);
 	CHECK(pos == 0);
 
-	std::string buf_content{reinterpret_cast<char*>(const_cast<byte_type*>(omb.get_buffer().data())),
+	std::string buf_content{reinterpret_cast<char*>(const_cast<util::byte_type*>(omb.get_buffer().data())),
 							omb.get_buffer().size()};
 	CHECK(buf_content == content);
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf move ctor }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf move ctor }")
 {
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 
@@ -506,7 +505,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf move ctor }")
 	pos = moved_omb.pubseekoff(0, std::ios_base::beg);
 	CHECK(pos == 0);
 
-	std::string buf_content{reinterpret_cast<char*>(const_cast<byte_type*>(moved_omb.get_buffer().data())),
+	std::string buf_content{reinterpret_cast<char*>(const_cast<util::byte_type*>(moved_omb.get_buffer().data())),
 							moved_omb.get_buffer().size()};
 	CHECK(buf_content == content);
 
@@ -518,7 +517,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf move ctor }")
 	CHECK(omb.get_buffer().capacity() == 0);
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf move assignment }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf move assignment }")
 {
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 
@@ -551,7 +550,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf move assignment }")
 	pos = moved_omb.pubseekoff(0, std::ios_base::beg);
 	CHECK(pos == 0);
 
-	std::string buf_content{reinterpret_cast<char*>(const_cast<byte_type*>(moved_omb.get_buffer().data())),
+	std::string buf_content{reinterpret_cast<char*>(const_cast<util::byte_type*>(moved_omb.get_buffer().data())),
 							moved_omb.get_buffer().size()};
 	CHECK(buf_content == content);
 
@@ -563,7 +562,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf move assignment }")
 	CHECK(omb.get_buffer().capacity() == 0);
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf buffer assignment }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf buffer assignment }")
 {
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 
@@ -588,7 +587,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf buffer assignment }")
 	auto gotc = omb.sgetc();
 	std::cout << "sgetc is " << gotc << std::endl;
 
-	std::string buf_content{reinterpret_cast<char*>(const_cast<byte_type*>(omb.get_buffer().data())),
+	std::string buf_content{reinterpret_cast<char*>(const_cast<util::byte_type*>(omb.get_buffer().data())),
 							omb.get_buffer().size()};
 	CHECK(buf_content == content);
 
@@ -597,7 +596,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf buffer assignment }")
 	CHECK(buf.capacity() == 0);
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf empty buffer assignment }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf empty buffer assignment }")
 {
 	util::mutable_buffer buf;
 	util::omembuf omb;
@@ -615,7 +614,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf empty buffer assignment 
 	CHECK(omb.get_buffer().capacity() == 0);
 }
 
-TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf setbuf }")
+TEST_CASE("util::membuf [ smoke ] { omemqbuf setbuf }")
 {
 	char space[32];
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
@@ -644,7 +643,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf setbuf }")
 	pos = omb.pubseekoff(0, std::ios_base::end);
 	CHECK(pos == content.size());
 
-	std::string buf_content{reinterpret_cast<char*>(const_cast<byte_type*>(omb.get_buffer().data())),
+	std::string buf_content{reinterpret_cast<char*>(const_cast<util::byte_type*>(omb.get_buffer().data())),
 							omb.get_buffer().size()};
 	CHECK(buf_content == content);
 
@@ -654,7 +653,7 @@ TEST_CASE("logicmill::util::membuf [ smoke ] { omemqbuf setbuf }")
 
 	CHECK(n == sizeof(space) - content.size());
 
-	std::string full_buf_content{reinterpret_cast<char*>(const_cast<byte_type*>(omb.get_buffer().data())),
+	std::string full_buf_content{reinterpret_cast<char*>(const_cast<util::byte_type*>(omb.get_buffer().data())),
 							omb.get_buffer().size()};
 	CHECK(full_buf_content == expected);
 

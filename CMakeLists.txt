@@ -33,8 +33,7 @@ set(UTIL_SRCS
 	include/util/buffer.h
 	include/util/promise.h
 	include/util/membuf.h
-
-	src/util/buffer.cpp	
+	src/util/buffer.cpp
 	src/fs_impl.cpp)
 
 set(UTIL_TEST_SRCS

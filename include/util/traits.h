@@ -29,6 +29,8 @@
 #include <type_traits>
 #include <utility>
 
+namespace util
+{
 namespace traits
 {
 
@@ -213,8 +215,7 @@ namespace detail
 
 template<class T>
 static auto
-test_has_allocate(int)
-		-> traits::sfinae_true_if<decltype(std::declval<T>().allocate(0))>;
+test_has_allocate(int) -> traits::sfinae_true_if<decltype(std::declval<T>().allocate(0))>;
 template<class>
 static auto
 test_has_allocate(long) -> std::false_type;
@@ -223,7 +224,6 @@ test_has_allocate(long) -> std::false_type;
 template<class T>
 struct has_allocate : decltype(detail::test_has_allocate<T>(0))
 {};
-
 
 
 // template <class T>
@@ -242,8 +242,7 @@ namespace detail
 
 template<class T>
 static auto
-test_has_value_type(int)
-		-> traits::sfinae_true_if<typename T::value_type>;
+test_has_value_type(int) -> traits::sfinae_true_if<typename T::value_type>;
 template<class>
 static auto
 test_has_value_type(long) -> std::false_type;
@@ -278,11 +277,12 @@ test_has_deallocate(long) -> std::false_type;
 }    // namespace detail
 
 template<class T, class Enable = void>
-struct has_deallocate : public std::false_type {};
+struct has_deallocate : public std::false_type
+{};
 
 template<class T>
 struct has_deallocate<T, typename std::enable_if_t<has_allocate<T>::value>>
-    : decltype(detail::test_has_deallocate<T, decltype(std::declval<T>().allocate(0))>(0))
+	: decltype(detail::test_has_deallocate<T, decltype(std::declval<T>().allocate(0))>(0))
 {};
 
 
@@ -314,13 +314,16 @@ struct has_deallocate<T, typename std::enable_if_t<has_allocate<T>::value>>
 //     enum { value = false };
 // };
 
-template <class T, class Enable = void>
-struct is_allocator : public std::false_type {};
+template<class T, class Enable = void>
+struct is_allocator : public std::false_type
+{};
 
 template<class T>
-struct is_allocator<T, typename std::enable_if_t<
-	has_allocate<T>::value && has_deallocate<T>::value && has_value_type<T>::value
->> : public std::true_type {};
+struct is_allocator<
+		T,
+		typename std::enable_if_t<has_allocate<T>::value && has_deallocate<T>::value && has_value_type<T>::value>>
+	: public std::true_type
+{};
 
 // template <class T>
 // struct is_allocator
@@ -332,5 +335,6 @@ struct is_allocator<T, typename std::enable_if_t<
 // };
 
 }    // namespace traits
+}    // namespace util
 
 #endif    // UTIL_TRAITS_H

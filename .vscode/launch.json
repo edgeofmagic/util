@@ -1,0 +1,56 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "(lldb) Launch promise",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/util_test",
+			"args": ["--test-case=*promise*"],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/build",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb"
+		},
+		{
+			"name": "(lldb) Launch membuf",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/util_test",
+			"args": ["--test-case=*membuf*"],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/build",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb"
+		},
+		{
+			"name": "(lldb) Launch buffer",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/util_test",
+			"args": ["--test-case=*buffer*"],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/build",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb"
+		},
+		{
+			"name": "(lldb) Launch",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/util_test",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/build",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb"
+		}
+	]
+}

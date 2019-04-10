@@ -901,7 +901,7 @@ EXCLUDE_PATTERNS       =
 # Note that the wildcards are matched against the file with absolute path, so to
 # exclude all test directories use the pattern */test/*
 
-# EXCLUDE_SYMBOLS        = logicmill::bstream::buffer::allocation
+# EXCLUDE_SYMBOLS        = bstream::buffer::allocation
 
 # EXCLUDE_SYMBOLS        = 	utils::euclidean_distance \
 #				utils::magnitude  \

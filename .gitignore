@@ -38,10 +38,6 @@
 .LSOverride
 
 build/
-.vscode/
 
-# test output
-fbstream_test_file
-filebuftest
+.vscode/ipch/
 
-logicmill.code-workspace

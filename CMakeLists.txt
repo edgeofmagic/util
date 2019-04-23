@@ -43,6 +43,7 @@ set(UTIL_TEST_SRCS
 	test/util/shared_ptr.cpp
 	test/util/promise.cpp
 	test/util/membuf.cpp
+	test/util/error_context.cpp
 	test/test_main.cpp)
 
 add_library(util ${UTIL_SRCS})

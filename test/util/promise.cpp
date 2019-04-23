@@ -207,6 +207,28 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		CHECK( *done );
 	}
 
+	SUBCASE( "synchronous with build" )
+	{
+		auto done = std::make_shared< bool >( false );
+		promise< void > p;
+		
+		p.then( [=]()
+		{
+			return promise<int>::build(7);
+		} )
+		.then( [=]( int i )
+		{
+			CHECK( i == 7 );
+			*done = true;
+		} );
+
+		CHECK( !*done );
+
+		p.resolve();
+
+		CHECK( *done );
+	}
+
 #if (TEST_ASYNC)
 
 	SUBCASE( "asynchronous chaining" )

@@ -91,6 +91,28 @@
             },
             "problemMatcher": []
         },
+        {
+            "label": "Test Error Context",
+            "type": "process",
+            "command": "./util_test",
+            "args": [
+				"--test-case=*error_context*"
+            ],
+            "group": "test",
+            "options": 
+            {
+				"cwd": "${workspaceFolder}/build",
+				"env": {
+					"ASAN_OPTIONS" : "detect_leaks=1"
+				}
+            },
+            "presentation": 
+            {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+		},
     	{
             "label": "Build Doxygen Docs",
             "type": "process",

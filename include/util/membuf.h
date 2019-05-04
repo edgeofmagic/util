@@ -80,11 +80,20 @@
 #define ASSERT_VALID_GPTRS(target)                                                                                     \
 	{                                                                                                                  \
 		auto& b = (target);                                                                                            \
-		assert(b.eback() != nullptr);                                                                                  \
-		assert(b.gptr() >= b.eback());                                                                                 \
-		assert(b.egptr() >= b.gptr());                                                                                 \
-		assert(reinterpret_cast<const char*>(b.m_buf.data()) == b.eback());                                            \
-		assert(b.egptr() == (reinterpret_cast<const char*>(b.m_buf.data()) + b.m_buf.size()));                         \
+		if (b.eback() != nullptr)                                                                                      \
+		{                                                                                                              \
+			assert(b.gptr() >= b.eback());                                                                             \
+			assert(b.egptr() >= b.gptr());                                                                             \
+			assert(reinterpret_cast<const char*>(b.m_buf.data()) == b.eback());                                        \
+			assert(b.egptr() == (reinterpret_cast<const char*>(b.m_buf.data()) + b.m_buf.size()));                     \
+		}                                                                                                              \
+		else                                                                                                           \
+		{                                                                                                              \
+			b.gptr() == nullptr;                                                                                       \
+			b.egptr() == nullptr;                                                                                      \
+			b.m_buf.data() == nullptr;                                                                                 \
+			b.m_buf.size() == 0;                                                                                       \
+		}                                                                                                              \
 	}
 /**/
 

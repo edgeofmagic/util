@@ -107,7 +107,7 @@
 	class CONTEXT_NAME                                                                                                 \
 	{                                                                                                                  \
 	public:                                                                                                            \
-		using index_type      = int;                                                                           \
+		using index_type      = int;                                                                                   \
 		using category_vector = std::vector<const std::error_category*>;                                               \
 		using category_map    = std::unordered_map<const std::error_category*, index_type>;                            \
 		static std::error_category const&                                                                              \

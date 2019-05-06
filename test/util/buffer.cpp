@@ -394,7 +394,7 @@ TEST_CASE("util::buffer [ smoke ] { consolidating ctor shared_buffer }")
 
 TEST_CASE("util::buffer [ smoke ] { fixed region }")
 {
-	util::mutable_buffer mbuf{util::buffer::fixed_region_factory<1024>{}};
+	util::mutable_buffer mbuf{util::fixed_region_factory<1024>{}};
 	CHECK(mbuf.capacity() == 1024 );
 	std::error_code err;
 	mbuf.expand(1025, err);
@@ -405,7 +405,7 @@ TEST_CASE("util::buffer [ smoke ] { fixed region }")
 
 TEST_CASE("util::buffer [ smoke ] { binned fixed region factory }")
 {
-	util::buffer::binned_fixed_region_factory factory;
+	util::binned_fixed_region_factory factory;
 	auto reg = factory.create(1);
 	CHECK(reg->capacity() == 16);
 	reg = factory.create(16);

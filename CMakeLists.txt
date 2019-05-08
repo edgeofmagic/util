@@ -14,25 +14,15 @@ message(STATUS "CMAKE_HOME_DIRECTORY = ${CMAKE_HOME_DIRECTORY}")
 
 enable_testing()
 
-# add_subdirectory( ext/libuv )
-
-# INCLUDE_DIRECTORIES(/Users/dcurtis/botan-install/include/botan-2)
-# LINK_DIRECTORIES(/Users/dcurtis/botan-install/lib)
+LINK_DIRECTORIES(${CMAKE_HOME_DIRECTORY}/../boost_1_66_0/stage/lib)
 
 include_directories( 
 	include 
-	ext/boost 
+	${CMAKE_HOME_DIRECTORY}/../boost_1_66_0
+#	ext/boost 
 	ext/doctest/include)
 
 set(UTIL_SRCS
-	include/util/allocator.h
-	include/util/dumpster.h
-	include/util/macros.h
-	include/util/preprocessor.h
-	include/util/shared_ptr.h
-	include/util/buffer.h
-	include/util/promise.h
-	include/util/membuf.h
 	src/util/buffer.cpp
 	src/fs_impl.cpp)
 
@@ -49,10 +39,7 @@ set(UTIL_TEST_SRCS
 add_library(util ${UTIL_SRCS})
 
 add_executable(util_test ${UTIL_TEST_SRCS})
-target_link_libraries(util_test util)
-
-#add_test(NAME test_bstream COMMAND util_test --test-case=*bstream*)
-#add_test(NAME test_async COMMAND util_test --test-case=*async*)
+target_link_libraries(util_test util boost_system)
 
 add_test(NAME util_test COMMAND util_test )
 

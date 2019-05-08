@@ -22,70 +22,70 @@
  * THE SOFTWARE.
  */
 
+#define TEST_ASYNC 1
+
 #include <doctest.h>
 #include <iostream>
 #include <util/promise.h>
-// #include <async/loop.h>
 #include <unordered_map>
 
-#define TEST_ASYNC 0
+#if (TEST_ASYNC)
+	#include <util/promise_timer.h>
+	#include "asio_adapter.h"
+	using async_io = asio_adapter::async_adapter;
 
-using namespace util;
+	#define STOP_LOOP(_loop_, _millisecs_)                                                                                 \
+		async_io::schedule(_loop_, std::chrono::milliseconds{_millisecs_}, [=](std::error_code const& err) mutable {       \
+			async_io::stop_loop(_loop_);                                                                                   \
+		});
+#endif
 
-static int
-func()
-{
-	return 42;
+	using namespace util;
+
+	static int
+	func()
+	{
+		return 42;
 }
 
 #if (TEST_ASYNC)
 
 static promise< void >
-make_v( std::chrono::milliseconds delay )
+make_v( async_io::loop_param_type lp, std::chrono::milliseconds delay )
 {
 	auto p = promise< void >();
 
-	std::error_code err;
-
-	auto tp = async::loop::get_default()->create_timer(err, [=]( async::timer::ptr ) mutable
+	async_io::schedule(lp, delay, [=](std::error_code const& err) mutable
 	{
 		p.resolve();
 	} );
 
-	tp->start(delay, err);
-
 	return p;
 }
 
 static promise< int >
-make_p( int i, std::chrono::milliseconds delay )
+make_p( int i, async_io::loop_param_type lp, std::chrono::milliseconds delay )
 {
 	auto p = promise< int >();
 
-	std::error_code err;
-	auto tp = async::loop::get_default()->create_timer(err, [=]( async::timer::ptr /* unused */ ) mutable
+	async_io::schedule(lp, delay, [=](std::error_code const& err) mutable
 	{
 		p.resolve( std::move( i ) );
 	});
 
-	tp->start(delay, err);
-
 	return p;
 }
 
 
 static promise< int >
-make_e( int err_value, std::chrono::milliseconds delay )
+make_e( int err_value, async_io::loop_param_type lp, std::chrono::milliseconds delay )
 {
 	auto p = promise< int >();
 
-	std::error_code err;
-	auto tp = async::loop::get_default()->create_timer(err, [=]( async::timer::ptr /* unused */ ) mutable
+	async_io::schedule(lp, delay, [=](std::error_code const& err) mutable
 	{
 		p.reject( std::error_code( err_value, std::generic_category() ) );
 	});
-
-	tp->start(delay, err);
 
 	return p;
 }
@@ -233,6 +233,8 @@ TEST_CASE( "nodeoze/smoke/promise" )
 
 	SUBCASE( "asynchronous chaining" )
 	{
+		auto lp = async_io::create_loop();
+
 		auto count = std::make_shared< std::uint8_t >( 0 );
 		promise< int > p;
 
@@ -253,11 +255,11 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			promise< bool > p1;
 
 			std::error_code err;
-			async::loop::get_default()->dispatch(err, [=](async::loop::ptr) mutable
+
+			async_io::dispatch(lp, [=]() mutable
 			{
 				p1.resolve( true );
-			} );
-
+			});
 			return p1;
 		} )
 		.then( [=]( bool b )
@@ -280,22 +282,22 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		} );
 
 		std::error_code err;
-		async::loop::get_default()->dispatch(err, [=](async::loop::ptr) mutable
+
+		async_io::dispatch(lp, [=]() mutable
 		{
 			p.resolve( 7 );
-		} );
+		});
 
-		async::loop::get_default()->run_nowait(err);
-		async::loop::get_default()->run_nowait(err);
-		async::loop::get_default()->run_nowait(err);
-		async::loop::get_default()->run_nowait(err);
-		async::loop::get_default()->run_nowait(err);
+		STOP_LOOP(lp, 100);
+		async_io::run_loop(lp);
 
 		CHECK( *count == 2 );
 	}
 
 	SUBCASE( "asynchronous chaining with error hander" )
 	{
+		auto lp = async_io::create_loop();
+
 		auto count = std::make_shared< std::uint8_t >( 0 );
 		promise< int > p;
 
@@ -305,12 +307,10 @@ TEST_CASE( "nodeoze/smoke/promise" )
 
 			promise< std::string > p1;
 
-			std::error_code err;
-			async::loop::get_default()->dispatch(err, [=](async::loop::ptr) mutable
+			async_io::dispatch(lp, [=]() mutable
 			{
 				p1.reject( std::error_code( 42, std::generic_category() ) );
-			} );
-
+			});
 			return p1;
 		} )
 		.then( [=]( const std::string & /* unused */ )
@@ -348,17 +348,13 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			( *count )++;
 		} );
 
-		std::error_code err;
-		async::loop::get_default()->dispatch(err, [=](async::loop::ptr) mutable
+		async_io::dispatch(lp, [=]() mutable
 		{
 			p.resolve( 7 );
 		});
 
-		async::loop::get_default()->run_nowait(err);
-		async::loop::get_default()->run_nowait(err);
-		async::loop::get_default()->run_nowait(err);
-		async::loop::get_default()->run_nowait(err);
-		async::loop::get_default()->run_nowait(err);
+		STOP_LOOP(lp, 100);
+		async_io::run_loop(lp);
 
 		CHECK( *count == 2 );
 	}
@@ -367,11 +363,13 @@ TEST_CASE( "nodeoze/smoke/promise" )
 	{
 		auto count = std::make_shared< std::uint8_t >( 0 );
 
+		auto lp = async_io::create_loop();
+
 		promise< void >::all(
 		{
-			make_v( std::chrono::milliseconds( 300 ) ),
-			make_v( std::chrono::milliseconds( 200 ) ),
-			make_v( std::chrono::milliseconds( 100 ) )
+			make_v( lp, std::chrono::milliseconds( 300 ) ),
+			make_v( lp, std::chrono::milliseconds( 200 ) ),
+			make_v( lp, std::chrono::milliseconds( 100 ) )
 		} ).then( [=]() mutable
 		{
 			( *count )++;
@@ -385,11 +383,9 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			( *count )++;
 		} );
 
-		while ( *count == 0 )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+		STOP_LOOP(lp, 400);
+
+		async_io::run_loop(lp);
 
 		CHECK( *count == 2 );
 	}
@@ -398,11 +394,13 @@ TEST_CASE( "nodeoze/smoke/promise" )
 	{
 		auto count = std::make_shared< std::uint8_t >( 0 );
 
+		auto lp = async_io::create_loop();
+
 		promise< int >::all(
 		{
-			make_p( 10, std::chrono::milliseconds( 300 ) ),
-			make_p( 20, std::chrono::milliseconds( 200 ) ),
-			make_p( 30, std::chrono::milliseconds( 100 ) )
+			make_p( 10, lp, std::chrono::milliseconds( 300 ) ),
+			make_p( 20, lp, std::chrono::milliseconds( 200 ) ),
+			make_p( 30, lp, std::chrono::milliseconds( 100 ) )
 		} ).then( [=]( auto results ) mutable
 		{
 			CHECK( results.size() == 3 );
@@ -421,11 +419,8 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			( *count )++;
 		} );
 
-		while ( *count == 0 )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+		STOP_LOOP(lp, 400);
+		async_io::run_loop(lp);
 
 		CHECK( *count == 2 );
 	}
@@ -434,11 +429,13 @@ TEST_CASE( "nodeoze/smoke/promise" )
 	{
 		auto count = std::make_shared< std::uint8_t >( 0 );
 
+		auto lp = async_io::create_loop();
+
 		promise< int >::any(
 		{
-			make_p( 10, std::chrono::milliseconds( 300 ) ),
-			make_p( 20, std::chrono::milliseconds( 100 ) ),
-			make_p( 30, std::chrono::milliseconds( 200 ) )
+			make_p( 10, lp, std::chrono::milliseconds( 300 ) ),
+			make_p( 20, lp, std::chrono::milliseconds( 100 ) ),
+			make_p( 30, lp, std::chrono::milliseconds( 200 ) )
 		} )
 		.then( [=]( int val ) mutable
 		{
@@ -454,11 +451,8 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			( *count )++;
 		} );
 
-		while ( *count == 0 )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+		STOP_LOOP(lp, 400);
+		async_io::run_loop(lp);
 
 		CHECK( *count == 2 );
 	}
@@ -467,11 +461,13 @@ TEST_CASE( "nodeoze/smoke/promise" )
 	{
 		auto done = std::make_shared< bool >( false );
 
+		auto lp = async_io::create_loop();
+
 		promise< int >::any(
 		{
-			make_e( 70, std::chrono::milliseconds( 300 ) ),
-			make_e( 71, std::chrono::milliseconds( 200 ) ),
-			make_e( 72, std::chrono::milliseconds( 100 ) )
+			make_e( 70, lp, std::chrono::milliseconds( 300 ) ),
+			make_e( 71, lp, std::chrono::milliseconds( 200 ) ),
+			make_e( 72, lp, std::chrono::milliseconds( 100 ) )
 		} ).then( [=]( int /* unused */ ) mutable
 		{
 			assert( 0 );
@@ -482,22 +478,22 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			*done = true;
 		} );
 
-		while ( !*done )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+		STOP_LOOP(lp, 400);
+		async_io::run_loop(lp);
+
 	}
 
 	SUBCASE( "any with errors" )
 	{
 		auto done = std::make_shared< bool >( false );
 
+		auto lp = async_io::create_loop();
+
 		promise< int >::any(
 		{
-			make_e( 72, std::chrono::milliseconds( 100 ) ),
-			make_p( 20, std::chrono::milliseconds( 200 ) ),
-			make_e( 72, std::chrono::milliseconds( 100 ) )
+			make_e( 72, lp, std::chrono::milliseconds( 100 ) ), // TODO: should the delay be 300 ms?
+			make_p( 20, lp, std::chrono::milliseconds( 200 ) ),
+			make_e( 72, lp, std::chrono::milliseconds( 100 ) )
 		} ).then( [=]( int val ) mutable
 		{
 			CHECK( val == 20 );
@@ -508,22 +504,21 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			assert( 0 );
 		} );
 
-		while ( !*done )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+		STOP_LOOP(lp, 400);
+		async_io::run_loop(lp);
 	}
 	
 	SUBCASE( "race with no errors< void >" )
 	{
 		auto done = std::make_shared< bool >( false );
 
+		auto lp = async_io::create_loop();
+
 		promise< void >::race(
 		{
-			make_v( std::chrono::milliseconds( 300 ) ),
-			make_v( std::chrono::milliseconds( 100 ) ),
-			make_v( std::chrono::milliseconds( 200 ) )
+			make_v( lp, std::chrono::milliseconds( 300 ) ),
+			make_v( lp, std::chrono::milliseconds( 100 ) ),
+			make_v( lp, std::chrono::milliseconds( 200 ) )
 		} ).then( [=]() mutable
 		{
 			*done = true;
@@ -533,22 +528,21 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			assert( 0 );
 		} );
 
-		while ( !*done )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+		STOP_LOOP(lp, 400);
+		async_io::run_loop(lp);
 	}
 
 	SUBCASE( "race with no errors< int >" )
 	{
 		auto done = std::make_shared< bool >( false );
 
+		auto lp = async_io::create_loop();
+
 		promise< int >::race(
 		{
-			make_p( 10, std::chrono::milliseconds( 300 ) ),
-			make_p( 20, std::chrono::milliseconds( 100 ) ),
-			make_p( 30, std::chrono::milliseconds( 200 ) )
+			make_p( 10, lp, std::chrono::milliseconds( 300 ) ),
+			make_p( 20, lp, std::chrono::milliseconds( 100 ) ),
+			make_p( 30, lp, std::chrono::milliseconds( 200 ) )
 		} ).then( [=]( int val ) mutable
 		{
 			CHECK( val == 20 );
@@ -559,22 +553,21 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			assert( 0 );
 		} );
 
-		while ( !*done )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+		STOP_LOOP(lp, 400);
+		async_io::run_loop(lp);
 	}
 
 	SUBCASE( "race with errors" )
 	{
 		auto done = std::make_shared< bool >( false );
 
+		auto lp = async_io::create_loop();
+
 		promise< int >::race(
 		{
-			make_e( 72, std::chrono::milliseconds( 300 ) ),
-			make_p( 20, std::chrono::milliseconds( 200 ) ),
-			make_e( 75, std::chrono::milliseconds( 100 ) )
+			make_e( 72, lp, std::chrono::milliseconds( 300 ) ),
+			make_p( 20, lp, std::chrono::milliseconds( 200 ) ),
+			make_e( 75, lp, std::chrono::milliseconds( 100 ) )
 		} ).then( [=]( int /* unused */ ) mutable
 		{
 			assert( 0 );
@@ -585,11 +578,8 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			*done = true;
 		} );
 
-		while ( !*done )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+		STOP_LOOP(lp, 400);
+		async_io::run_loop(lp);
 	}
 
 #endif
@@ -937,7 +927,9 @@ TEST_CASE( "nodeoze/smoke/promise" )
 	SUBCASE( "leaks" )
 	{
 		auto clean = std::make_shared< bool >( false );
-		
+
+		auto lp = async_io::create_loop();
+
 		struct leaker
 		{
 			std::shared_ptr< bool > m_flag;
@@ -962,51 +954,36 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			auto ptr = std::make_shared< leaker >( clean );
 			
-			auto func1 = []() mutable
+			auto func1 = [lp]() mutable
 			{
 				auto ret = promise< void >();
 				
-				std::error_code err;
-
-				auto tp = async::loop::get_default()->create_timer(err, [=]( async::timer::ptr /* unused */ ) mutable
+				async_io::schedule(lp, std::chrono::milliseconds{10}, [=] (std::error_code const& err) mutable
 				{
 					ret.resolve();
-				} );
-
-				tp->start(std::chrono::milliseconds{ 10 }, err);
-
+				});
 				return ret;
 			};
 			
-			auto func2 = []() mutable
+			auto func2 = [lp]() mutable
 			{
 				auto ret = promise< void >();
 				
-				std::error_code err;
-
-				auto tp = async::loop::get_default()->create_timer(err, [=]( async::timer::ptr /* unused */ ) mutable
+				async_io::schedule(lp, std::chrono::milliseconds{10}, [=] (std::error_code const& err) mutable
 				{
 					ret.resolve();
-				} );
-
-				tp->start(std::chrono::milliseconds{ 10 }, err);
-
+				});
 				return ret;
 			};
 			
-			auto func3 = []() mutable
+			auto func3 = [lp]() mutable
 			{
 				auto ret = promise< void >();
 
-				std::error_code err;
-
-				auto tp = async::loop::get_default()->create_timer(err, [=]( async::timer::ptr /* unused */ ) mutable
+				async_io::schedule(lp, std::chrono::milliseconds{10}, [=] (std::error_code const& err) mutable
 				{
 					ret.resolve();
-				} );
-
-				tp->start(std::chrono::milliseconds{ 10 }, err);
-
+				});
 				return ret;
 			};
 
@@ -1034,11 +1011,8 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			REQUIRE( !ret.is_finished() );
 			REQUIRE( *clean == false );
 			
-			while ( !ret.is_finished() )
-			{
-				std::error_code err;
-				async::loop::get_default()->run_once(err);
-			}
+			STOP_LOOP(lp, 100);
+			async_io::run_loop(lp);
 		}
 		
 		REQUIRE( *clean == true );
@@ -1046,24 +1020,19 @@ TEST_CASE( "nodeoze/smoke/promise" )
 
 	SUBCASE( "timeout" )
 	{
-		using timer = util::promise_timer<async::loop::ptr>;
+
+		auto lp = async_io::create_loop();
+
 		auto err	= std::error_code();
-		auto func	= []()
+		auto func	= [lp]()
 		{
 			auto ret = promise< void >();
 
 
-			std::error_code err;
-
-			auto tp = async::loop::get_default()->create_timer(err, [=]( async::timer::ptr /* unused */ ) mutable
+			async_io::schedule(lp, std::chrono::milliseconds{20}, [=] (std::error_code const& err) mutable
 			{
-				if ( !ret.is_finished() )
-				{
-					ret.resolve();
-				}
-			} );
-
-			tp->start(std::chrono::milliseconds{ 20 }, err);
+				ret.resolve();
+			});
 
 			return ret;
 		};
@@ -1071,7 +1040,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		auto done = false;
 
 		func()
-		.timeout( timer{std::chrono::milliseconds( 10 )} )
+		.timeout( util::promise_timer<async_io>{std::chrono::milliseconds( 10 ), lp} )
 		.then( [&]() mutable
 		{
 			done = true;
@@ -1082,11 +1051,8 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			err = _err;
 		} );
 
-		while ( !done )
-		{
-			std::error_code err;
-			async::loop::get_default()->run_once(err);
-		}
+			STOP_LOOP(lp, 100);
+			async_io::run_loop(lp);
 
 		CHECK( err == std::errc::timed_out );
 	}

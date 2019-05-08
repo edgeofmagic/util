@@ -133,7 +133,7 @@ struct __promise_shared<void>
 	typedef std::function<void(std::error_code)> reject_f;
 	typedef std::function<void()>                finally_f;
 	typedef void                                 maybe_array_type;
-	using timeout_f = std::function<void(std::error_code const&)>;
+	using timeout_f      = std::function<void(std::error_code const&)>;
 	using cancel_timer_f = std::function<void()>;
 
 	bool            resolved;
@@ -142,7 +142,7 @@ struct __promise_shared<void>
 	reject_f        reject;
 	finally_f       finally;
 	cancel_timer_f  cancel_timer;
-	timeout_f on_timeout;
+	timeout_f       on_timeout;
 	std::uint32_t   refs;
 	std::error_code err;
 };
@@ -156,7 +156,7 @@ public:
 	typedef __promise_shared<T>                    shared_type;
 	typedef typename shared_type::maybe_array_type maybe_array_type;
 
-	using timeout_f      = std::function<void(std::error_code const&)>;
+	using timeout_f = std::function<void(std::error_code const&)>;
 
 	template<class U>
 	friend class promise_timer;
@@ -236,9 +236,9 @@ public:
 		m_shared->rejected     = false;
 		m_shared->resolve      = nullptr;
 		m_shared->reject       = nullptr;
-		m_shared->finally = nullptr;
+		m_shared->finally      = nullptr;
 		m_shared->cancel_timer = nullptr;
-		m_shared->on_timeout = nullptr;
+		m_shared->on_timeout   = nullptr;
 		m_shared->refs         = 1;
 	}
 
@@ -248,9 +248,9 @@ public:
 		m_shared->rejected     = false;
 		m_shared->resolve      = nullptr;
 		m_shared->reject       = nullptr;
-		m_shared->finally = nullptr;
+		m_shared->finally      = nullptr;
 		m_shared->cancel_timer = nullptr;
-		m_shared->on_timeout = std::move(tf);
+		m_shared->on_timeout   = std::move(tf);
 		m_shared->refs         = 1;
 	}
 
@@ -549,14 +549,14 @@ public:
 
 		m_shared = new __promise_shared<T>;
 
-		m_shared->resolved = false;
-		m_shared->rejected = false;
-		m_shared->resolve  = nullptr;
-		m_shared->reject   = nullptr;
-		m_shared->finally  = nullptr;
+		m_shared->resolved     = false;
+		m_shared->rejected     = false;
+		m_shared->resolve      = nullptr;
+		m_shared->reject       = nullptr;
+		m_shared->finally      = nullptr;
 		m_shared->cancel_timer = nullptr;
-		m_shared->on_timeout = nullptr;
-		m_shared->refs     = 1;
+		m_shared->on_timeout   = nullptr;
+		m_shared->refs         = 1;
 	}
 
 private:

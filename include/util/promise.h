@@ -111,7 +111,7 @@ struct __promise_shared
 	typedef std::function<void(std::error_code)> reject_f;
 	typedef std::function<void()>                finally_f;
 	typedef boost::container::deque<T>           maybe_array_type;
-	using timeout_f      = std::function<void()>;
+	using timeout_f      = std::function<void(std::error_code const&)>;
 	using cancel_timer_f = std::function<void()>;
 
 	bool            resolved;

@@ -111,6 +111,7 @@ struct __promise_shared
 	typedef std::function<void(std::error_code)> reject_f;
 	typedef std::function<void()>                finally_f;
 	typedef boost::container::deque<T>           maybe_array_type;
+	using timeout_f      = std::function<void()>;
 	using cancel_timer_f = std::function<void()>;
 
 	bool            resolved;
@@ -119,6 +120,7 @@ struct __promise_shared
 	reject_f        reject;
 	finally_f       finally;
 	cancel_timer_f  cancel_timer;
+	timeout_f       on_timeout;
 	std::uint32_t   refs;
 	T               val;
 	std::error_code err;
@@ -131,6 +133,7 @@ struct __promise_shared<void>
 	typedef std::function<void(std::error_code)> reject_f;
 	typedef std::function<void()>                finally_f;
 	typedef void                                 maybe_array_type;
+	using timeout_f = std::function<void()>;
 	using cancel_timer_f = std::function<void()>;
 
 	bool            resolved;
@@ -139,6 +142,7 @@ struct __promise_shared<void>
 	reject_f        reject;
 	finally_f       finally;
 	cancel_timer_f  cancel_timer;
+	timeout_f on_timeout;
 	std::uint32_t   refs;
 	std::error_code err;
 };
@@ -151,6 +155,8 @@ public:
 	typedef boost::container::deque<promise<T>>    array_type;
 	typedef __promise_shared<T>                    shared_type;
 	typedef typename shared_type::maybe_array_type maybe_array_type;
+
+	using timeout_f      = std::function<void()>;
 
 	template<class U>
 	friend class promise_timer;
@@ -230,9 +236,24 @@ public:
 		m_shared->rejected     = false;
 		m_shared->resolve      = nullptr;
 		m_shared->reject       = nullptr;
+		m_shared->finally = nullptr;
 		m_shared->cancel_timer = nullptr;
+		m_shared->on_timeout = nullptr;
 		m_shared->refs         = 1;
 	}
+
+	promise(timeout_f tf) : m_shared(new __promise_shared<T>)
+	{
+		m_shared->resolved     = false;
+		m_shared->rejected     = false;
+		m_shared->resolve      = nullptr;
+		m_shared->reject       = nullptr;
+		m_shared->finally = nullptr;
+		m_shared->cancel_timer = nullptr;
+		m_shared->on_timeout = std::move(tf);
+		m_shared->refs         = 1;
+	}
+
 
 	promise(const promise& rhs) : m_shared(nullptr)
 	{
@@ -269,7 +290,7 @@ public:
 	{
 		assert(m_shared);
 
-		if (m_shared && !m_shared->resolved && !m_shared->rejected)
+		if (m_shared && !is_finished())
 		{
 			m_shared->resolved = true;
 
@@ -278,6 +299,7 @@ public:
 				auto resolve = std::move(m_shared->resolve);
 				resolve();
 				m_shared->reject = nullptr;
+				cancel_timer();
 
 				if (m_shared->finally)
 				{
@@ -285,6 +307,7 @@ public:
 					finally();
 				}
 			}
+			m_shared->on_timeout = nullptr;
 		}
 	}
 
@@ -294,7 +317,7 @@ public:
 	{
 		assert(m_shared);
 
-		if (m_shared && !m_shared->resolved && !m_shared->rejected)
+		if (m_shared && !is_finished())
 		{
 			m_shared->resolved = true;
 
@@ -303,6 +326,7 @@ public:
 				auto resolve = std::move(m_shared->resolve);
 				resolve(std::move(val));
 				m_shared->reject = nullptr;
+				cancel_timer();
 
 				if (m_shared->finally)
 				{
@@ -314,6 +338,7 @@ public:
 			{
 				m_shared->val = std::move(val);
 			}
+			m_shared->on_timeout = nullptr;
 		}
 	}
 
@@ -323,7 +348,7 @@ public:
 	{
 		assert(m_shared);
 
-		if (m_shared && !m_shared->resolved && !m_shared->rejected)
+		if (m_shared && !is_finished())
 		{
 			m_shared->resolved = true;
 
@@ -332,6 +357,7 @@ public:
 				auto resolve = std::move(m_shared->resolve);
 				resolve(val);
 				m_shared->reject = nullptr;
+				cancel_timer();
 
 				if (m_shared->finally)
 				{
@@ -343,6 +369,7 @@ public:
 			{
 				m_shared->val = val;
 			}
+			m_shared->on_timeout = nullptr;
 		}
 	}
 
@@ -351,7 +378,7 @@ public:
 	{
 		assert(m_shared);
 
-		if (m_shared && !m_shared->resolved && !m_shared->rejected)
+		if (m_shared && !is_finished())
 		{
 			m_shared->err      = err;
 			m_shared->rejected = true;
@@ -361,6 +388,7 @@ public:
 				auto reject = std::move(m_shared->reject);
 				reject(err);
 				m_shared->resolve = nullptr;
+				cancel_timer();
 
 				if (m_shared->finally)
 				{
@@ -372,6 +400,7 @@ public:
 			{
 				m_shared->err = err;
 			}
+			m_shared->on_timeout = nullptr;
 		}
 	}
 
@@ -447,6 +476,7 @@ public:
 			assert(rhs.m_shared->resolve != nullptr);
 			m_shared->resolve = rhs.m_shared->resolve;
 			m_shared->reject  = rhs.m_shared->reject;
+			// TODO: copy finally? (and timer-related stuff)
 		}
 	}
 
@@ -467,6 +497,7 @@ public:
 			assert(rhs.m_shared->resolve != nullptr);
 			m_shared->resolve = rhs.m_shared->resolve;
 			m_shared->reject  = rhs.m_shared->reject;
+			// TODO: copy finally? (and timer-related stuff)
 		}
 	}
 
@@ -523,6 +554,8 @@ public:
 		m_shared->resolve  = nullptr;
 		m_shared->reject   = nullptr;
 		m_shared->finally  = nullptr;
+		m_shared->cancel_timer = nullptr;
+		m_shared->on_timeout = nullptr;
 		m_shared->refs     = 1;
 	}
 
@@ -718,6 +751,7 @@ private:
 		{
 			if (m_shared->reject)
 			{
+				// TOODO: why not move first?
 				m_shared->reject(m_shared->err);
 			}
 
@@ -731,6 +765,7 @@ private:
 		{
 			if (m_shared->resolve)
 			{
+				// TOODO: why not move first?
 				m_shared->resolve();
 			}
 
@@ -746,10 +781,12 @@ private:
 	typename std::enable_if_t<!std::is_void<Q>::value, void>
 	maybe_direct_resolve_reject()
 	{
+		// TODO: no finally?
 		if (is_rejected())
 		{
 			if (m_shared->reject)
 			{
+				// TOODO: why not move first?
 				m_shared->reject(m_shared->err);
 			}
 		}
@@ -757,6 +794,7 @@ private:
 		{
 			if (m_shared->resolve)
 			{
+				// TOODO: why not move first?
 				m_shared->resolve(std::move(m_shared->val));
 			}
 		}
@@ -805,8 +843,8 @@ private:
 	{
 		if (m_shared && m_shared->cancel_timer)
 		{
-			m_shared->cancel_timer();
-			m_shared->cancel_timer = nullptr;
+			auto can = std::move(m_shared->cancel_timer);
+			can();
 		}
 	}
 

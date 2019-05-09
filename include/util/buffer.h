@@ -584,6 +584,7 @@ private:
 	void
 	ctor_body(byte_type* data, size_type size, position_type offset, size_type length, std::error_code& err)
 	{
+		err.clear();
 		if (offset + length > size)
 		{
 			throw std::system_error{make_error_code(std::errc::invalid_argument)};
@@ -759,6 +760,7 @@ public:
 	mutable_buffer&
 	expand(size_type new_cap, std::error_code& err)
 	{
+		err.clear();
 		if (!m_region)
 		{
 			*this = std::move(mutable_buffer{new_cap});    // TODO: WTF?
@@ -825,6 +827,7 @@ public:
 	mutable_buffer&
 	fill(position_type offset, size_type length, byte_type value, std::error_code& err)
 	{
+		err.clear();
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		if (offset + length > m_capacity)
 		{
@@ -875,6 +878,7 @@ public:
 	mutable_buffer&
 	put(position_type offset, byte_type value, std::error_code& err)
 	{
+		err.clear();
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		err.clear();
 
@@ -906,6 +910,7 @@ public:
 	mutable_buffer&
 	putn(position_type offset, const void* src, size_type length, std::error_code& err)
 	{
+		err.clear();
 		ASSERT_MUTABLE_BUFFER_INVARIANTS(*this);
 		err.clear();
 
@@ -1276,6 +1281,7 @@ public:
 	const_buffer(mutable_buffer&& rhs, size_type offset, size_type length, std::error_code& err)
 		: m_region{std::move(rhs.m_region)}
 	{
+		err.clear();
 		if (offset + length > rhs.m_size)
 		{
 			err = make_error_code(std::errc::invalid_argument);
@@ -1657,6 +1663,7 @@ public:
 	shared_buffer(buffer const& rhs, position_type offset, size_type length, std::error_code& err)
 		: m_region{std::make_unique<alloc_region<default_alloc>>()}
 	{
+		err.clear();
 		if (offset + length > rhs.size())
 		{
 			err = make_error_code(std::errc::invalid_argument);

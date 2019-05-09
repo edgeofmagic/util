@@ -73,6 +73,7 @@ mutable_buffer::mutable_buffer(const_buffer&& rhs, size_type offset, size_type l
 mutable_buffer::mutable_buffer(const_buffer&& rhs, size_type offset, size_type length, std::error_code& err)
 	: m_region{std::move(rhs.m_region)}
 {
+	err.clear();
 	if (offset + length > rhs.m_size)
 	{
 		err = make_error_code(std::errc::invalid_argument);

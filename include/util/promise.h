@@ -108,7 +108,7 @@ template<class T>
 struct __promise_shared
 {
 	typedef std::function<void(T&&)>             resolve_f;
-	typedef std::function<void(std::error_code)> reject_f;
+	typedef std::function<void(std::error_code const&)> reject_f;
 	typedef std::function<void()>                finally_f;
 	typedef boost::container::deque<T>           maybe_array_type;
 	using timeout_f      = std::function<void(std::error_code const&)>;
@@ -130,7 +130,7 @@ template<>
 struct __promise_shared<void>
 {
 	typedef std::function<void()>                resolve_f;
-	typedef std::function<void(std::error_code)> reject_f;
+	typedef std::function<void(std::error_code const&)> reject_f;
 	typedef std::function<void()>                finally_f;
 	typedef void                                 maybe_array_type;
 	using timeout_f      = std::function<void(std::error_code const&)>;
@@ -195,7 +195,7 @@ public:
 	}
 
 	static promise<T>
-	build(std::error_code err)
+	build(std::error_code const& err)
 	{
 		auto ret = promise<T>();
 
@@ -374,7 +374,7 @@ public:
 	}
 
 	void
-	reject(std::error_code err)
+	reject(std::error_code const& err)
 	{
 		assert(m_shared);
 
@@ -613,7 +613,7 @@ private:
 
 		m_shared->resolve = [=]() mutable { ret.resolve(std::move(resolve_func())); };
 
-		m_shared->reject = [=](std::error_code err) mutable { ret.reject(err); };
+		m_shared->reject = [=](std::error_code const& err) mutable { ret.reject(err); };
 
 		maybe_direct_resolve_reject();
 
@@ -635,7 +635,7 @@ private:
 
 		m_shared->resolve = [=](Q&& val) mutable { ret.resolve(std::move(resolve_func(std::move(val)))); };
 
-		m_shared->reject = [=](std::error_code err) mutable { ret.reject(err); };
+		m_shared->reject = [=](std::error_code const& err) mutable { ret.reject(err); };
 
 		maybe_direct_resolve_reject();
 
@@ -655,10 +655,10 @@ private:
 
 		m_shared->resolve = [=]() mutable {
 			resolve_func().then(
-					[=]() mutable { ret.resolve(); }, [=](std::error_code err) mutable { ret.reject(err); });
+					[=]() mutable { ret.resolve(); }, [=](std::error_code const& err) mutable { ret.reject(err); });
 		};
 
-		m_shared->reject = [=](std::error_code err) mutable { ret.reject(err); };
+		m_shared->reject = [=](std::error_code const& err) mutable { ret.reject(err); };
 
 		maybe_direct_resolve_reject();
 
@@ -681,10 +681,10 @@ private:
 		m_shared->resolve = [=]() mutable {
 			resolve_func().then(
 					[=](auto answer) mutable { ret.resolve(std::move(answer)); },
-					[=](std::error_code err) mutable { ret.reject(err); });
+					[=](std::error_code const& err) mutable { ret.reject(err); });
 		};
 
-		m_shared->reject = [=](std::error_code err) mutable { ret.reject(err); };
+		m_shared->reject = [=](std::error_code const& err) mutable { ret.reject(err); };
 
 		maybe_direct_resolve_reject();
 
@@ -706,10 +706,10 @@ private:
 
 		m_shared->resolve = [=](Q&& val) mutable {
 			resolve_func(std::move(val))
-					.then([=]() mutable { ret.resolve(); }, [=](std::error_code err) mutable { ret.reject(err); });
+					.then([=]() mutable { ret.resolve(); }, [=](std::error_code const& err) mutable { ret.reject(err); });
 		};
 
-		m_shared->reject = [=](std::error_code err) mutable { ret.reject(err); };
+		m_shared->reject = [=](std::error_code const& err) mutable { ret.reject(err); };
 
 		maybe_direct_resolve_reject();
 
@@ -732,10 +732,10 @@ private:
 		m_shared->resolve = [=](Q&& val) mutable {
 			resolve_func(val).then(
 					[=](auto&& val) mutable { ret.resolve(std::move(val)); },
-					[=](std::error_code err) mutable { ret.reject(err); });
+					[=](std::error_code const& err) mutable { ret.reject(err); });
 		};
 
-		m_shared->reject = [=](std::error_code err) mutable { ret.reject(err); };
+		m_shared->reject = [=](std::error_code const& err) mutable { ret.reject(err); };
 
 		maybe_direct_resolve_reject();
 
@@ -960,7 +960,7 @@ util::promise<T>::race(promises_type promises)
 							ret.resolve(std::move(val));
 						}
 					},
-					[=](std::error_code err) mutable {
+					[=](std::error_code const& err) mutable {
 						if (!ret.is_finished())
 						{
 							ret.reject(err);
@@ -993,7 +993,7 @@ util::promise<void>::race(promises_type promises)
 							ret.resolve();
 						}
 					},
-					[=](std::error_code err) mutable {
+					[=](std::error_code const& err) mutable {
 						if (!ret.is_finished())
 						{
 							ret.reject(err);
@@ -1031,7 +1031,7 @@ util::promise<T>::any(promises_type promises)
 							ret.resolve(std::move(val));
 						}
 					},
-					[=](std::error_code err) mutable {
+					[=](std::error_code const& err) mutable {
 						(*count)++;
 
 						if (!ret.is_finished() && is_finished())

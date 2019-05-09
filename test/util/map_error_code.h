@@ -35,7 +35,7 @@ namespace asio_adapter
 {
 
 inline std::error_code
-map_error_code(boost::system::error_code error)
+map_error_code(boost::system::error_code const& error)
 {
 	struct category_adapter : public std::error_category
 	{

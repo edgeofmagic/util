@@ -132,7 +132,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			CHECK( i == 42 );
 		},
-		[=]( std::error_code /* unused */ )
+		[=]( std::error_code const& /* unused */ )
 		{
 			assert( 0 );
 		} )
@@ -190,7 +190,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			assert( 0 );
 		},
-		[=]( const std::error_code &err )
+		[=]( std::error_code const& err )
 		{
 			CHECK( err.value() == 42 );
 			CHECK( err.category() == std::generic_category() );
@@ -272,7 +272,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			CHECK( i == 42 );
 			( *count )++;
 		},
-		[=]( std::error_code  )
+		[=]( std::error_code const& )
 		{
 			assert( 0 );
 		} )
@@ -374,7 +374,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			( *count )++;
 		},
-		[=]( std::error_code  ) mutable
+		[=]( std::error_code const&  ) mutable
 		{
 			assert( 0 );
 		} )
@@ -410,7 +410,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 
 			( *count )++;
 		},
-		[=]( std::error_code  ) mutable
+		[=]( std::error_code const&  ) mutable
 		{
 			assert( 0 );
 		} )
@@ -472,7 +472,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			assert( 0 );
 		},
-		[=]( std::error_code err ) mutable
+		[=]( std::error_code const& err ) mutable
 		{
 			CHECK( err.value() == 70 );
 			*done = true;
@@ -499,7 +499,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			CHECK( val == 20 );
 			*done = true;
 		},
-		[=]( std::error_code /* unused */ ) mutable
+		[=]( std::error_code const& /* unused */ ) mutable
 		{
 			assert( 0 );
 		} );
@@ -523,7 +523,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			*done = true;
 		},
-		[=]( std::error_code /* unused */ ) mutable
+		[=]( std::error_code const& /* unused */ ) mutable
 		{
 			assert( 0 );
 		} );
@@ -548,7 +548,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 			CHECK( val == 20 );
 			*done = true;
 		},
-		[=]( std::error_code /* unused */ ) mutable
+		[=]( std::error_code const& /* unused */ ) mutable
 		{
 			assert( 0 );
 		} );
@@ -572,7 +572,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			assert( 0 );
 		},
-		[=]( std::error_code err) mutable
+		[=]( std::error_code const& err) mutable
 		{
 			CHECK( err.value() == 75 );
 			*done = true;
@@ -591,7 +591,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			CHECK( val.size() == 0 );
 		},
-		[=]( std::error_code err ) mutable
+		[=]( std::error_code const& err ) mutable
 		{
 			CHECK( err.value() == static_cast< int >( std::errc::invalid_argument ) );
 		} );
@@ -806,7 +806,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			assert( 0 );
 		},
-		[=]( std::error_code err ) mutable
+		[=]( std::error_code const& err ) mutable
 		{
 			CHECK( err.value() == static_cast< int >( std::errc::invalid_argument ) );
 		} );
@@ -818,7 +818,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		{
 			assert( 0 );
 		},
-		[=]( std::error_code err ) mutable
+		[=]( std::error_code const& err ) mutable
 		{
 			CHECK( err.value() == static_cast< int >( std::errc::invalid_argument ) );
 		} );
@@ -854,7 +854,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		.then( [=]()
 		{
 		},
-		[=]( std::error_code /* unused */ )
+		[=]( std::error_code const&/* unused */ )
 		{
 			assert( 0 );
 		} );
@@ -914,7 +914,7 @@ TEST_CASE( "nodeoze/smoke/promise" )
 		.then( [=]()
 		{
 		},
-		[=]( std::error_code /* unused */ )
+		[=]( std::error_code const&/* unused */ )
 		{
 			assert( 0 );
 		} );

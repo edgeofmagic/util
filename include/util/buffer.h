@@ -763,7 +763,7 @@ public:
 		err.clear();
 		if (!m_region)
 		{
-			*this = std::move(mutable_buffer{new_cap});    // TODO: WTF?
+			*this = std::move(mutable_buffer{new_cap});
 		}
 
 		auto dyn_region = get_dynamic_region(m_region.get());

@@ -855,7 +855,7 @@ protected:
 				next_segment();
 			}
 
-			if (remaining <= epptr() - pptr())    // optimize for common case ( no overflow )
+			if (remaining <= epptr() - pptr())    // optimized for common case ( no overflow )
 			{
 				::memcpy(pptr(), src, remaining);
 				pbump(remaining);
@@ -1214,7 +1214,7 @@ protected:
 		{
 			goto exit;
 		}
-		// optimize for the available case
+		// optimized for the available case
 		if (n < egptr() - gptr())
 		{
 			::memcpy(dst, gptr(), n);
@@ -1230,7 +1230,7 @@ protected:
 				if (gptr() >= egptr())
 				{
 					assert(gptr() == egptr());
-					if (traits_type::eq_int_type(underflow(), traits_type::eof()))    // TODO: HERE!!!
+					if (traits_type::eq_int_type(underflow(), traits_type::eof()))
 					{
 						goto exit;
 					}

@@ -25,8 +25,8 @@
 #ifndef ARMI_ADAPTER_ASIO_MAP_ERROR_CODE_H
 #define ARMI_ADAPTER_ASIO_MAP_ERROR_CODE_H
 
-#include <boost/system/system_error.hpp>
 #include <boost/asio/error.hpp>
+#include <boost/system/system_error.hpp>
 #include <iostream>
 #include <system_error>
 #include <unordered_map>

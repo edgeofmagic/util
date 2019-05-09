@@ -151,7 +151,7 @@ TEST_CASE( "util::mutable_buffer [ smoke ] { no_realloc_broker }" )
 
 TEST_CASE("util::mutable_buffer [ smoke ] { null_delete }")
 {
-	util::byte_type            blk[32];
+	util::byte_type      blk[32];
 	util::mutable_buffer mbuf{
 			&blk, 32, util::null_delete<util::byte_type[]>{}};    // sanitizer will go nuts if stack gets deallocated
 }
@@ -293,7 +293,7 @@ TEST_CASE("util::buffer [ smoke ] { consolidating ctor mutable_buffer }")
 
 	{
 		std::deque<util::shared_buffer> bufs;
-		util::mutable_buffer consolidated(bufs);
+		util::mutable_buffer            consolidated(bufs);
 		CHECK(consolidated.size() == 0);
 	}
 }
@@ -340,7 +340,7 @@ TEST_CASE("util::buffer [ smoke ] { consolidating ctor const_buffer }")
 
 	{
 		std::deque<util::mutable_buffer> bufs;
-		util::const_buffer consolidated(bufs);
+		util::const_buffer               consolidated(bufs);
 		CHECK(consolidated.size() == 0);
 	}
 }
@@ -387,7 +387,7 @@ TEST_CASE("util::buffer [ smoke ] { consolidating ctor shared_buffer }")
 
 	{
 		std::deque<util::shared_buffer> bufs;
-		util::shared_buffer consolidated(bufs);
+		util::shared_buffer             consolidated(bufs);
 		CHECK(consolidated.size() == 0);
 	}
 }
@@ -395,7 +395,7 @@ TEST_CASE("util::buffer [ smoke ] { consolidating ctor shared_buffer }")
 TEST_CASE("util::buffer [ smoke ] { fixed region }")
 {
 	util::mutable_buffer mbuf{util::fixed_region_factory<1024>{}};
-	CHECK(mbuf.capacity() == 1024 );
+	CHECK(mbuf.capacity() == 1024);
 	std::error_code err;
 	mbuf.expand(1025, err);
 	CHECK(err);
@@ -406,7 +406,7 @@ TEST_CASE("util::buffer [ smoke ] { fixed region }")
 TEST_CASE("util::buffer [ smoke ] { binned fixed region factory }")
 {
 	util::binned_fixed_region_factory factory;
-	auto reg = factory.create(1);
+	auto                              reg = factory.create(1);
 	CHECK(reg->capacity() == 16);
 	reg = factory.create(16);
 	CHECK(reg->capacity() == 16);
@@ -433,7 +433,7 @@ TEST_CASE("util::buffer [ smoke ] { binned fixed region factory }")
 		reg = factory.create(16777217);
 		CHECK(false);
 	}
-	catch(const std::invalid_argument& e)
+	catch (const std::invalid_argument& e)
 	{
 		CHECK(std::string{e.what()} == "size exceeds maximum");
 	}

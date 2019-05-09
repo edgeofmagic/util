@@ -4,11 +4,11 @@
 #include <functional>
 #include <iosfwd>
 #include <iostream>
-#include <util/buffer.h>
-#include <util/dumpster.h>
 #include <sstream>
 #include <streambuf>
 #include <system_error>
+#include <util/buffer.h>
+#include <util/dumpster.h>
 #include <vector>
 
 #ifndef UTIL_BUFFER_OUT_STREAMBUF_MIN_ALLOC_SIZE
@@ -158,7 +158,7 @@ private:
 			= (UTIL_BUFFER_OUT_STREAMBUF_MIN_ALLOC_SIZE > 16) ? UTIL_BUFFER_OUT_STREAMBUF_MIN_ALLOC_SIZE : 16;
 
 	util::mutable_buffer m_buf;
-	char*                           m_high_watermark;
+	char*                m_high_watermark;
 
 public:
 	omembuf() : m_buf{}, m_high_watermark{nullptr}
@@ -223,13 +223,12 @@ public:
 	omembuf&
 	operator=(mutable_buffer&& buf)
 	{
-		m_buf = std::move(buf);
+		m_buf   = std::move(buf);
 		char* p = reinterpret_cast<char*>(m_buf.data());
 		if (p)
 		{
 			setp(p, p + m_buf.capacity());
 			hwm(p + m_buf.size());
-
 		}
 		else
 		{
@@ -346,16 +345,16 @@ protected:
 
 	// inherited virtual overrides:
 
-	virtual std::streamsize 
+	virtual std::streamsize
 	showmanyc() override
 	{
 		return -1;
 	}
 
-	virtual omembuf* 
+	virtual omembuf*
 	setbuf(char_type* s, std::streamsize n) override
 	{
-		*this =  mutable_buffer{reinterpret_cast<byte_type*>(s), static_cast<size_type>(n), null_delete<byte_type>{}};
+		*this = mutable_buffer{reinterpret_cast<byte_type*>(s), static_cast<size_type>(n), null_delete<byte_type>{}};
 		return this;
 	}
 
@@ -583,7 +582,6 @@ public:
 	}
 
 protected:
-
 	void
 	reset_ptrs()
 	{
@@ -1087,7 +1085,7 @@ public:
 		}
 		else
 		{
-			m_current      = 0;
+			m_current = 0;
 			sync_current_segment();
 		}
 		ASSERT_VALID_QGPTRS(*this);

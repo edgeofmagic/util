@@ -23,10 +23,10 @@
  */
 
 #include <doctest.h>
-#include <iostream>
-#include <util/membuf.h>
-#include <sstream>
 #include <fstream>
+#include <iostream>
+#include <sstream>
+#include <util/membuf.h>
 
 
 TEST_CASE("util::membuf [ smoke ] { basic functionality }")
@@ -34,7 +34,7 @@ TEST_CASE("util::membuf [ smoke ] { basic functionality }")
 	std::char_traits<char> ct;
 
 	util::omembuf mbuf{util::mutable_buffer{1024}};
-	std::ostream os{&mbuf};
+	std::ostream  os{&mbuf};
 	os << "some buffer content";
 	std::cout << mbuf.get_buffer().to_string() << std::endl;
 	CHECK(mbuf.get_buffer().to_string() == "some buffer content");
@@ -45,7 +45,7 @@ TEST_CASE("util::membuf [ smoke ] { basic functionality }")
 	auto endoff = static_cast<std::streamoff>(endpos);
 	CHECK(endoff == 19);
 	std::istream is{&ibuf};
-	std::string s0, s1, s2;
+	std::string  s0, s1, s2;
 	is >> s0;
 	CHECK(ibuf.position() == 4);
 	CHECK(s0 == "some");
@@ -55,21 +55,19 @@ TEST_CASE("util::membuf [ smoke ] { basic functionality }")
 	is >> s2;
 	CHECK(ibuf.position() == 19);
 	CHECK(s2 == "content");
-	
 }
 
 TEST_CASE("util::membuf [ smoke ] { sstream behavior check }")
 {
 	std::ostringstream ostrstrm;
-    std::stringbuf strbuf{std::ios_base::out};
-    std::ostream oss{&strbuf};
+	std::stringbuf     strbuf{std::ios_base::out};
+	std::ostream       oss{&strbuf};
 	oss << "abcdefg";
 	auto pos = oss.tellp();
 	CHECK(static_cast<std::streamoff>(pos) == 7);
 	oss.seekp(pos - static_cast<std::streamoff>(2));
 	auto tell_after_seek = oss.tellp();
 	std::cout << static_cast<std::streamoff>(tell_after_seek) << std::endl;
-
 
 
 	// oss.seekp(pos + std::streamoff{8});
@@ -84,64 +82,63 @@ TEST_CASE("util::membuf [ smoke ] { sstream behavior check }")
 
 	auto there = strbuf.pubseekoff(0, std::ios_base::end, std::ios_base::out);
 	std::cout << static_cast<std::streamoff>(there) << std::endl;
-
 }
 
-class mystrbuf: public std::stringbuf
+class mystrbuf : public std::stringbuf
 {
 public:
-
-	mystrbuf(std::string const& s) : std::stringbuf{s}
-	{}
+	mystrbuf(std::string const& s) : std::stringbuf{s} {}
 
 protected:
-
-
-virtual int_type underflow() override
-{
-	std::cout << "underflow called:" << std::endl;
+	virtual int_type
+	underflow() override
 	{
-		void* eb = eback();
-		void* gp = gptr();
-		void* eg = egptr();
-		std::ptrdiff_t pos = gptr() - eback();
-		std::cout << "[" << eb << ", " << gp << ", " << eg << "] " << "pos=" << pos << std::endl;
+		std::cout << "underflow called:" << std::endl;
+		{
+			void*          eb  = eback();
+			void*          gp  = gptr();
+			void*          eg  = egptr();
+			std::ptrdiff_t pos = gptr() - eback();
+			std::cout << "[" << eb << ", " << gp << ", " << eg << "] "
+					  << "pos=" << pos << std::endl;
+		}
+		int_type result = std::stringbuf::underflow();
+		std::cout << "underflow result is " << result << std::endl;
+		{
+			void*          eb  = eback();
+			void*          gp  = gptr();
+			void*          eg  = egptr();
+			std::ptrdiff_t pos = gptr() - eback();
+			std::cout << "[" << eb << ", " << gp << ", " << eg << "] "
+					  << "pos=" << pos << std::endl;
+		}
+		return result;
 	}
-	int_type result = std::stringbuf::underflow();
-	std::cout << "underflow result is " << result << std::endl;
-	{
-		void* eb = eback();
-		void* gp = gptr();
-		void* eg = egptr();
-		std::ptrdiff_t pos = gptr() - eback();
-		std::cout << "[" << eb << ", " << gp << ", " << eg << "] " << "pos=" << pos << std::endl;
-	}
-	return result;	
-}
 
-virtual
-int_type overflow (int_type c = traits_type::eof()) override
-{
-	std::cout << "overflow called with c==" << c << std::endl;
+	virtual int_type
+	overflow(int_type c = traits_type::eof()) override
 	{
-		void* pb = pbase();
-		void* pp = pptr();
-		void* ep = epptr();
-		std::ptrdiff_t pos = pptr() - pbase();
-		std::cout << "[" << pb << ", " << pp << ", " << ep << "] " << "pos=" << pos << std::endl;
+		std::cout << "overflow called with c==" << c << std::endl;
+		{
+			void*          pb  = pbase();
+			void*          pp  = pptr();
+			void*          ep  = epptr();
+			std::ptrdiff_t pos = pptr() - pbase();
+			std::cout << "[" << pb << ", " << pp << ", " << ep << "] "
+					  << "pos=" << pos << std::endl;
+		}
+		int_type result = std::stringbuf::overflow(c);
+		std::cout << "overflow result is " << result << std::endl;
+		{
+			void*          pb  = pbase();
+			void*          pp  = pptr();
+			void*          ep  = epptr();
+			std::ptrdiff_t pos = pptr() - pbase();
+			std::cout << "[" << pb << ", " << pp << ", " << ep << "] "
+					  << "pos=" << pos << std::endl;
+		}
+		return result;
 	}
-	int_type result = std::stringbuf::overflow(c);
-	std::cout << "overflow result is " << result << std::endl;
-	{
-		void* pb = pbase();
-		void* pp = pptr();
-		void* ep = epptr();
-		std::ptrdiff_t pos = pptr() - pbase();
-		std::cout << "[" << pb << ", " << pp << ", " << ep << "] " << "pos=" << pos << std::endl;
-	}
-	return result;
-}
-
 };
 
 
@@ -149,8 +146,8 @@ TEST_CASE("util::membuf [ smoke ] { sstream behavior check 2 }")
 {
 	// std::stringbuf sbuf{"hello, there."};
 	mystrbuf sbuf{"hello, there."};
-	char rbuf[13];
-	auto got = sbuf.sgetn(rbuf, 13);
+	char     rbuf[13];
+	auto     got = sbuf.sgetn(rbuf, 13);
 	CHECK(got == 13);
 	std::string gotstr{rbuf, 13};
 	CHECK(gotstr == "hello, there.");
@@ -160,8 +157,8 @@ TEST_CASE("util::membuf [ smoke ] { sstream behavior check 2 }")
 
 TEST_CASE("util::membuf [ smoke ] { duplicate sstream behavior }")
 {
-    util::omembuf strbuf{std::ios_base::out};
-    std::ostream oss{&strbuf};
+	util::omembuf strbuf{std::ios_base::out};
+	std::ostream  oss{&strbuf};
 	oss << "abcdefg";
 	auto pos = oss.tellp();
 	CHECK(static_cast<std::streamoff>(pos) == 7);
@@ -181,13 +178,12 @@ TEST_CASE("util::membuf [ smoke ] { duplicate sstream behavior }")
 
 	auto there = strbuf.pubseekoff(0, std::ios_base::end, std::ios_base::out);
 	std::cout << static_cast<std::streamoff>(there) << std::endl;
-
 }
 
 TEST_CASE("util::membuf [ smoke ] { omemqbuf }")
 {
-    util::omemqbuf strbuf{16};
-    std::ostream oss{&strbuf};
+	util::omemqbuf strbuf{16};
+	std::ostream   oss{&strbuf};
 	oss << "abcdefg";
 	auto pos = oss.tellp();
 	CHECK(static_cast<std::streamoff>(pos) == 7);
@@ -207,13 +203,12 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf }")
 
 	auto there = strbuf.pubseekoff(0, std::ios_base::end, std::ios_base::out);
 	std::cout << static_cast<std::streamoff>(there) << std::endl;
-
 }
 
 TEST_CASE("util::membuf [ smoke ] { omemqbuf with mutable_buffer_alloc_factory }")
 {
-    util::omemqbuf strbuf{16};
-    std::ostream oss{&strbuf};
+	util::omemqbuf strbuf{16};
+	std::ostream   oss{&strbuf};
 	oss << "abcdefghijklmnop";
 	auto pos = oss.tellp();
 	CHECK(static_cast<std::streamoff>(pos) == 16);
@@ -269,8 +264,8 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf with mutable_buffer_alloc_factory }
 
 TEST_CASE("util::membuf [ smoke ] { omemqbuf with mutable_buffer_fixed_factory }")
 {
-    util::omemqbuf strbuf{std::integral_constant<std::size_t, 16>{}};
-    std::ostream oss{&strbuf};
+	util::omemqbuf strbuf{std::integral_constant<std::size_t, 16>{}};
+	std::ostream   oss{&strbuf};
 	oss << "abcdefghijklmnop";
 	auto pos = oss.tellp();
 	CHECK(static_cast<std::streamoff>(pos) == 16);
@@ -327,11 +322,11 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf with mutable_buffer_fixed_factory }
 TEST_CASE("util::membuf [ smoke ] { imemqbuf basic }")
 {
 	std::deque<util::const_buffer> bufs;
-	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"hello "}}); // 6
-	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"there you "}}); // 10
-	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"silly, silly "}}); // 13
-	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"little "}}); // 7
-	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"person, you."}}); // 12 = 48
+	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"hello "}});           // 6
+	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"there you "}});       // 10
+	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"silly, silly "}});    // 13
+	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"little "}});          // 7
+	bufs.emplace_back(util::const_buffer{util::mutable_buffer{"person, you."}});     // 12 = 48
 	util::imemqbuf imbuf{std::move(bufs)};
 	CHECK(imbuf.size() == 48);
 	char rbuf[48];
@@ -437,11 +432,11 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf null ctor }")
 
 TEST_CASE("util::membuf [ smoke ] { omemqbuf mutable_buffer ctor with non-zero size }")
 {
-	std::string content{"abcdefghijklmnopqrstuvwxyz"};
+	std::string          content{"abcdefghijklmnopqrstuvwxyz"};
 	util::mutable_buffer buf{content};
 	buf.size(content.size());
 	util::omembuf omb{std::move(buf)};
-	auto pos = omb.pubseekoff(0, std::ios_base::end);
+	auto          pos = omb.pubseekoff(0, std::ios_base::end);
 	CHECK(pos == content.size());
 	pos = omb.pubseekoff(0, std::ios_base::beg);
 	CHECK(pos == 0);
@@ -455,8 +450,8 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf mutable_buffer ctor with zero size 
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 
 	util::mutable_buffer buf{32};
-	util::omembuf omb{std::move(buf)};
-	auto pos = omb.pubseekoff(0, std::ios_base::end);
+	util::omembuf        omb{std::move(buf)};
+	auto                 pos = omb.pubseekoff(0, std::ios_base::end);
 	CHECK(pos == 0);
 	pos = omb.pubseekoff(0, std::ios_base::beg);
 	CHECK(pos == 0);
@@ -479,8 +474,8 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf move ctor }")
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 
 	util::mutable_buffer buf{32};
-	util::omembuf omb{std::move(buf)};
-	auto pos = omb.pubseekoff(0, std::ios_base::end);
+	util::omembuf        omb{std::move(buf)};
+	auto                 pos = omb.pubseekoff(0, std::ios_base::end);
 	CHECK(pos == 0);
 	pos = omb.pubseekoff(0, std::ios_base::beg);
 	CHECK(pos == 0);
@@ -522,8 +517,8 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf move assignment }")
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 
 	util::mutable_buffer buf{32};
-	util::omembuf omb{std::move(buf)};
-	auto pos = omb.pubseekoff(0, std::ios_base::end);
+	util::omembuf        omb{std::move(buf)};
+	auto                 pos = omb.pubseekoff(0, std::ios_base::end);
 	CHECK(pos == 0);
 	pos = omb.pubseekoff(0, std::ios_base::beg);
 	CHECK(pos == 0);
@@ -538,7 +533,7 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf move assignment }")
 	CHECK(pos == 13);
 
 	util::omembuf moved_omb{};
-	
+
 	moved_omb = std::move(omb);
 
 	pos = moved_omb.pubseekoff(0, std::ios_base::cur);
@@ -599,7 +594,7 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf buffer assignment }")
 TEST_CASE("util::membuf [ smoke ] { omemqbuf empty buffer assignment }")
 {
 	util::mutable_buffer buf;
-	util::omembuf omb;
+	util::omembuf        omb;
 	omb = std::move(buf);
 
 	auto pos = omb.pubseekoff(0, std::ios_base::end);
@@ -616,7 +611,7 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf empty buffer assignment }")
 
 TEST_CASE("util::membuf [ smoke ] { omemqbuf setbuf }")
 {
-	char space[32];
+	char        space[32];
 	std::string content{"abcdefghijklmnopqrstuvwxyz"};
 
 	util::omembuf omb;
@@ -654,7 +649,7 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf setbuf }")
 	CHECK(n == sizeof(space) - content.size());
 
 	std::string full_buf_content{reinterpret_cast<char*>(const_cast<util::byte_type*>(omb.get_buffer().data())),
-							omb.get_buffer().size()};
+								 omb.get_buffer().size()};
 	CHECK(full_buf_content == expected);
 
 	std::string from_space{space, sizeof(space)};
@@ -662,7 +657,4 @@ TEST_CASE("util::membuf [ smoke ] { omemqbuf setbuf }")
 
 	pos = omb.pubseekoff(0, std::ios_base::end);
 	CHECK(pos == sizeof(space));
-
 }
-
-

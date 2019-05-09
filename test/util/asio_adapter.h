@@ -29,8 +29,8 @@
 #include <boost/asio.hpp>
 #include <mutex>
 #include <unordered_map>
-#include <util/shared_ptr.h>
 #include <util/promise.h>
+#include <util/shared_ptr.h>
 
 namespace asio_adapter
 {
@@ -142,12 +142,12 @@ private:
 	};
 
 public:
-	using loop_type           = std::shared_ptr<loop_impl>;
-	using loop_param_type     = loop_type const&;
-	using timer_type          = util::shared_ptr<boost::asio::deadline_timer>;
-	using timer_param_type    = timer_type const&;
-	using scheduled_action    = std::function<void(std::error_code const&)>;
-	using dispatched_action   = std::function<void()>;
+	using loop_type         = std::shared_ptr<loop_impl>;
+	using loop_param_type   = loop_type const&;
+	using timer_type        = util::shared_ptr<boost::asio::deadline_timer>;
+	using timer_param_type  = timer_type const&;
+	using scheduled_action  = std::function<void(std::error_code const&)>;
+	using dispatched_action = std::function<void()>;
 
 	static void
 	clear(loop_type& loop)
@@ -202,8 +202,7 @@ public:
 		}
 		else
 		{
-			timer->async_wait([=, action{std::move(action)}](boost::system::error_code const& ec)
-			{
+			timer->async_wait([=, action{std::move(action)}](boost::system::error_code const& ec) {
 				if (ec)
 				{
 					auto err = map_error_code(ec);
@@ -255,7 +254,6 @@ public:
 	{
 		return loop->is_running();
 	}
-
 };
 
 }    // namespace asio_adapter

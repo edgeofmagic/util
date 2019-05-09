@@ -57,7 +57,7 @@ class life_cycle_counter
 public:
 	static int ctor_count;
 	static int dtor_count;
-	life_cycle_counter() 
+	life_cycle_counter()
 	{
 		++ctor_count;
 	}
@@ -200,14 +200,14 @@ struct contained_member : util::enable_shared_from_this<contained_member>
 	self();
 
 	containing_class& owner;
-	bool& destruct_flag;
+	bool&             destruct_flag;
 };
 
 struct containing_class : util::enable_shared_from_this<containing_class>
 {
 	containing_class(bool& flag, bool& member_flag) : destruct_flag{flag}, member{*this, member_flag} {}
 
-	~containing_class() 
+	~containing_class()
 	{
 		destruct_flag = true;
 	}
@@ -218,7 +218,7 @@ struct containing_class : util::enable_shared_from_this<containing_class>
 		return shared_from_this();
 	}
 
-	bool& destruct_flag;
+	bool&            destruct_flag;
 	contained_member member;
 };
 
@@ -486,8 +486,9 @@ TEST_CASE("util::shared_ptr [ smoke ] { util::shared_ptr with allocator }")
 	shared_ptr_test::life_cycle_counter::ctor_count = 0;
 	shared_ptr_test::life_cycle_counter::dtor_count = 0;
 
-	using zallocator                     = util::allocator<shared_ptr_test::life_cycle_counter, 
-											shared_ptr_test::malloc_policy<shared_ptr_test::life_cycle_counter>>;
+	using zallocator = util::allocator<
+			shared_ptr_test::life_cycle_counter,
+			shared_ptr_test::malloc_policy<shared_ptr_test::life_cycle_counter>>;
 
 	shared_ptr_test::life_cycle_counter* lccp = new shared_ptr_test::life_cycle_counter;
 	CHECK(shared_ptr_test::life_cycle_counter::ctor_count == 1);
@@ -495,8 +496,8 @@ TEST_CASE("util::shared_ptr [ smoke ] { util::shared_ptr with allocator }")
 
 	zallocator zalloc{};
 
-	util::shared_ptr<shared_ptr_test::life_cycle_counter> p = 
-		util::shared_ptr<shared_ptr_test::life_cycle_counter>{lccp, util::alloc_deleter<zallocator>{zalloc}, zalloc};
+	util::shared_ptr<shared_ptr_test::life_cycle_counter> p = util::shared_ptr<shared_ptr_test::life_cycle_counter>{
+			lccp, util::alloc_deleter<zallocator>{zalloc}, zalloc};
 	util::shared_ptr<shared_ptr_test::life_cycle_counter> p_copy{p};
 	CHECK(p.use_count() == 2);
 	CHECK(p_copy == p);
@@ -525,7 +526,7 @@ TEST_CASE("util::shared_ptr [ smoke ] { util::shared_ptr construct from unique_p
 #if (!UTIL_USE_STD_SHARED_PTR)
 TEST_CASE("util::shared_ptr [ smoke ] { weak_ptr construct from shared_ptr }")
 {
-	auto                        sp0 = util::make_shared<std::string>("zoot");
+	auto sp0 = util::make_shared<std::string>("zoot");
 	CHECK(sp0.weak_count() == 1);
 	util::weak_ptr<std::string> wp{sp0};
 	CHECK(wp.weak_count() == 2);
@@ -584,7 +585,7 @@ TEST_CASE("util::shared_ptr [ smoke ] { shared alias }")
 	CHECK(original.weak_count() == 2);
 
 	auto copy_of_original = original;
-	auto copy_of_member = member_alias;
+	auto copy_of_member   = member_alias;
 	CHECK(original.use_count() == 5);
 	CHECK(member_alias.use_count() == 5);
 	CHECK(copy_from_member.use_count() == 5);
@@ -593,7 +594,7 @@ TEST_CASE("util::shared_ptr [ smoke ] { shared alias }")
 	CHECK(original.weak_count() == 2);
 
 	auto copy_of_original_from_self = original->self();
-	auto copy_of_member_from_self = member_alias->self();
+	auto copy_of_member_from_self   = member_alias->self();
 	CHECK(original.use_count() == 7);
 	CHECK(member_alias.use_count() == 7);
 	CHECK(copy_from_member.use_count() == 7);
@@ -677,6 +678,5 @@ TEST_CASE("util::shared_ptr [ smoke ] { shared alias }")
 
 	CHECK(outer_destruct);
 	CHECK(inner_destruct);
-
 }
 #endif

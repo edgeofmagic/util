@@ -79,17 +79,18 @@ template<class Alloc>
 class alloc_deleter : protected Alloc
 {
 	using alloc_traits = std::allocator_traits<Alloc>;
-	static_assert(!std::is_array<typename alloc_traits::value_type>::value, "alloc_deleter does not support array types");
+	static_assert(
+			!std::is_array<typename alloc_traits::value_type>::value,
+			"alloc_deleter does not support array types");
 
 public:
 	using pointer   = typename alloc_traits::pointer;
 	using size_type = typename alloc_traits::size_type;
 
 private:
-	Alloc    m_alloc;
+	Alloc m_alloc;
 
 public:
-
 	alloc_deleter(Alloc const& a) : Alloc{a} {}
 
 	void
@@ -106,22 +107,24 @@ auto
 allocate_unique(const Alloc& alloc, Args&&... args)
 {
 	using alloc_traits = std::allocator_traits<Alloc>;
-	static_assert(std::is_same<typename alloc_traits::value_type, std::remove_cv_t<T>>::value, "Allocator has the wrong value_type");
+	static_assert(
+			std::is_same<typename alloc_traits::value_type, std::remove_cv_t<T>>::value,
+			"Allocator has the wrong value_type");
 
-  Alloc a(alloc);
-  auto p = alloc_traits::allocate(a, 1);
-  try {
-    alloc_traits::construct(a, std::addressof(*p), std::forward<Args>(args)...);
-    using deleter_type = alloc_deleter<Alloc>;
-    return std::unique_ptr<T, deleter_type>(p, deleter_type{a});
-  }
-  catch (...)
-  {
-    alloc_traits::deallocate(a, p, 1);
-    throw;
-  }
+	Alloc a(alloc);
+	auto  p = alloc_traits::allocate(a, 1);
+	try
+	{
+		alloc_traits::construct(a, std::addressof(*p), std::forward<Args>(args)...);
+		using deleter_type = alloc_deleter<Alloc>;
+		return std::unique_ptr<T, deleter_type>(p, deleter_type{a});
+	}
+	catch (...)
+	{
+		alloc_traits::deallocate(a, p, 1);
+		throw;
+	}
 }
-
 
 
 }    // namespace util
@@ -131,20 +134,21 @@ namespace util
 {
 
 template<class Alloc>
-class alloc_deleter // : protected Alloc
+class alloc_deleter    // : protected Alloc
 {
 	using alloc_traits = std::allocator_traits<Alloc>;
-	static_assert(!std::is_array<typename alloc_traits::value_type>::value, "alloc_deleter does not support array types");
+	static_assert(
+			!std::is_array<typename alloc_traits::value_type>::value,
+			"alloc_deleter does not support array types");
 
 public:
 	using pointer   = typename alloc_traits::pointer;
 	using size_type = typename alloc_traits::size_type;
 
 private:
-	Alloc    m_alloc;
+	Alloc m_alloc;
 
 public:
-
 	alloc_deleter(Alloc const& a) : /* Alloc{a} */ m_alloc{a} {}
 
 	void
@@ -162,20 +166,23 @@ inline auto
 allocate_unique(const Alloc& alloc, Args&&... args)
 {
 	using alloc_traits = std::allocator_traits<Alloc>;
-	static_assert(std::is_same<typename alloc_traits::value_type, std::remove_cv_t<T>>::value, "Allocator has the wrong value_type");
+	static_assert(
+			std::is_same<typename alloc_traits::value_type, std::remove_cv_t<T>>::value,
+			"Allocator has the wrong value_type");
 
-  Alloc a(alloc);
-  auto p = alloc_traits::allocate(a, 1);
-  try {
-    alloc_traits::construct(a, std::addressof(*p), std::forward<Args>(args)...);
-    using deleter_type = alloc_deleter<Alloc>;
-    return std::unique_ptr<T, deleter_type>(p, deleter_type{a});
-  }
-  catch (...)
-  {
-    alloc_traits::deallocate(a, p, 1);
-    throw;
-  }
+	Alloc a(alloc);
+	auto  p = alloc_traits::allocate(a, 1);
+	try
+	{
+		alloc_traits::construct(a, std::addressof(*p), std::forward<Args>(args)...);
+		using deleter_type = alloc_deleter<Alloc>;
+		return std::unique_ptr<T, deleter_type>(p, deleter_type{a});
+	}
+	catch (...)
+	{
+		alloc_traits::deallocate(a, p, 1);
+		throw;
+	}
 }
 
 
@@ -623,11 +630,12 @@ public:
 	shared_ptr(element_type* ep, _Del&& del, _Alloc&& alloc) : m_state{ep}
 	{
 
-		using allocator_type      = std::remove_reference_t<_Alloc>;
-		using deleter_type        = _Del;
-		using ctrl_blk_type       = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
+		using allocator_type = std::remove_reference_t<_Alloc>;
+		using deleter_type   = _Del;
+		using ctrl_blk_type  = detail::ptr_ctrl_blk<element_type, deleter_type, allocator_type>;
 
-		using ctrl_blk_alloc_type = typename std::allocator_traits<allocator_type>::template rebind_alloc<ctrl_blk_type>;
+		using ctrl_blk_alloc_type =
+				typename std::allocator_traits<allocator_type>::template rebind_alloc<ctrl_blk_type>;
 
 		// using ctrl_blk_alloc_type = typename allocator_type::template rebind<ctrl_blk_type>::other;
 
@@ -1158,7 +1166,7 @@ template<class U>
 struct hash<util::shared_ptr<U>>
 {
 	typedef util::shared_ptr<U> argument_type;
-	typedef std::size_t                    result_type;
+	typedef std::size_t         result_type;
 
 	result_type
 	operator()(const argument_type& v) const

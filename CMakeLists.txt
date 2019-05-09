@@ -42,6 +42,8 @@ add_executable(util_test ${UTIL_TEST_SRCS})
 target_link_libraries(util_test util boost_system)
 
 add_test(NAME util_test COMMAND util_test )
+SET_TESTS_PROPERTIES(util_test
+    PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1")
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

@@ -24,8 +24,8 @@
 
 #include <doctest.h>
 #include <iostream>
-#include <util/allocator.h>
 #include <unordered_map>
+#include <util/allocator.h>
 
 using namespace util;
 

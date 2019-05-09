@@ -29,12 +29,11 @@
 #define BOOST_PP_VARIADICS 1
 #endif
 
+#include <boost/preprocessor/comparison/greater.hpp>
+#include <boost/preprocessor/control/if.hpp>
 #include <boost/preprocessor/punctuation/comma.hpp>
 #include <boost/preprocessor/punctuation/paren.hpp>
 #include <boost/preprocessor/seq/for_each_i.hpp>
-#include <boost/preprocessor/variadic/to_seq.hpp>
-#include <boost/preprocessor/comparison/greater.hpp>
-#include <boost/preprocessor/control/if.hpp>
 #include <boost/preprocessor/variadic/size.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
 
@@ -51,14 +50,14 @@
 			UTIL_DEFINE_ERROR_CONTEXT_NO_ARGS_)                                                                        \
 	(__VA_ARGS__)
 
-#define UTIL_DEFINE_ERROR_CONTEXT_WITH_ARGS_(CONTEXT_NAME, ...)                                                   \
+#define UTIL_DEFINE_ERROR_CONTEXT_WITH_ARGS_(CONTEXT_NAME, ...)                                                        \
 	UTIL_DEFINE_ERROR_CONTEXT_WITH_ARGS_SEQ_(CONTEXT_NAME, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 #define UTIL_DEFINE_ERROR_CONTEXT_WITH_ARGS_SEQ_(CONTEXT_NAME, ERR_CAT_SEQ)                                            \
 	class CONTEXT_NAME                                                                                                 \
 	{                                                                                                                  \
 	public:                                                                                                            \
-		using index_type      = int;                                                                           \
+		using index_type      = int;                                                                                   \
 		using category_vector = std::vector<const std::error_category*>;                                               \
 		using category_map    = std::unordered_map<const std::error_category*, index_type>;                            \
 		static std::error_category const&                                                                              \

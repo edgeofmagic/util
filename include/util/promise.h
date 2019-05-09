@@ -107,10 +107,10 @@ struct is_void_promise<promise<void>> : public std::true_type
 template<class T>
 struct __promise_shared
 {
-	typedef std::function<void(T&&)>             resolve_f;
+	typedef std::function<void(T&&)>                    resolve_f;
 	typedef std::function<void(std::error_code const&)> reject_f;
-	typedef std::function<void()>                finally_f;
-	typedef boost::container::deque<T>           maybe_array_type;
+	typedef std::function<void()>                       finally_f;
+	typedef boost::container::deque<T>                  maybe_array_type;
 	using timeout_f      = std::function<void(std::error_code const&)>;
 	using cancel_timer_f = std::function<void()>;
 
@@ -129,10 +129,10 @@ struct __promise_shared
 template<>
 struct __promise_shared<void>
 {
-	typedef std::function<void()>                resolve_f;
+	typedef std::function<void()>                       resolve_f;
 	typedef std::function<void(std::error_code const&)> reject_f;
-	typedef std::function<void()>                finally_f;
-	typedef void                                 maybe_array_type;
+	typedef std::function<void()>                       finally_f;
+	typedef void                                        maybe_array_type;
 	using timeout_f      = std::function<void(std::error_code const&)>;
 	using cancel_timer_f = std::function<void()>;
 
@@ -706,7 +706,8 @@ private:
 
 		m_shared->resolve = [=](Q&& val) mutable {
 			resolve_func(std::move(val))
-					.then([=]() mutable { ret.resolve(); }, [=](std::error_code const& err) mutable { ret.reject(err); });
+					.then([=]() mutable { ret.resolve(); },
+						  [=](std::error_code const& err) mutable { ret.reject(err); });
 		};
 
 		m_shared->reject = [=](std::error_code const& err) mutable { ret.reject(err); };

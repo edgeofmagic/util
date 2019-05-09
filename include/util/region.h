@@ -83,7 +83,6 @@ protected:
 			= 0;
 
 public:
-
 	byte_type*
 	allocate(size_type capacity, std::error_code& err)
 	{

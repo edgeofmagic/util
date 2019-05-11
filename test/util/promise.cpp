@@ -87,6 +87,42 @@ make_e(int err_value, async_io::loop_param_type lp, std::chrono::milliseconds de
 
 TEST_CASE("nodeoze/smoke/promise")
 {
+	SUBCASE("promise type error_code resolve")
+	{
+		promise<std::error_code> p;
+
+		bool continuation_visited{false};
+
+		p.then([=, &continuation_visited](std::error_code const& err)
+		{
+			CHECK(err == std::errc::invalid_argument);
+			continuation_visited = true;
+		});
+
+		p.resolve(make_error_code(std::errc::invalid_argument));
+		CHECK(continuation_visited);
+	}
+
+	SUBCASE("promise type error_code reject")
+	{
+		promise<std::error_code> p;
+
+		bool rejection_visited{false};
+
+		p.then([=](std::error_code const& err)
+		{
+			CHECK(false);
+		},
+		[=, &rejection_visited] (std::error_code const& err) 
+		{
+			CHECK(err == std::errc::invalid_argument);
+			rejection_visited = true;
+		});
+
+		p.reject(make_error_code(std::errc::invalid_argument));
+		CHECK(rejection_visited);
+	}
+
 	SUBCASE("synchronous chaining")
 	{
 		auto          done = std::make_shared<bool>(false);

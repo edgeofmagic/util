@@ -40,6 +40,7 @@
 #include <cstdint>
 #include <system_error>
 #include <unordered_map>
+#include <util/error.h>
 #include <vector>
 
 #define UTIL_DEFINE_ERROR_CONTEXT(...)                                                                                 \
@@ -72,9 +73,10 @@
 		static util::error_context const&                                                                              \
 		get_context()                                                                                                  \
 		{                                                                                                              \
-			static util::error_context cntxt({&std::system_category(),                                                  \
-											 &std::generic_category()                                                  \
-													 BOOST_PP_SEQ_FOR_EACH_I(UTIL_DO_ERROR_CAT_, _, ERR_CAT_SEQ)});     \
+			static util::error_context cntxt(                                                                          \
+					{&std::system_category(),                                                                          \
+					 &std::generic_category(),                                                                         \
+					 &util::error_category() BOOST_PP_SEQ_FOR_EACH_I(UTIL_DO_ERROR_CAT_, _, ERR_CAT_SEQ)});            \
 			return cntxt;                                                                                              \
 		}                                                                                                              \
 	};
@@ -102,7 +104,8 @@
 		static util::error_context const&                                                                              \
 		get_context()                                                                                                  \
 		{                                                                                                              \
-			static util::error_context cntxt({&std::system_category(), &std::generic_category()});                        \
+			static util::error_context cntxt(                                                                          \
+					{&std::system_category(), &std::generic_category(), &util::error_category()});                     \
 			return cntxt;                                                                                              \
 		}                                                                                                              \
 	};
@@ -138,6 +141,6 @@ private:
 
 UTIL_DEFINE_ERROR_CONTEXT(default_error_context);
 
-}
+}    // namespace util
 
 #endif    // UTIL_ERROR_CONTEXT_H

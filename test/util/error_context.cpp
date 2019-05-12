@@ -166,20 +166,27 @@ UTIL_DEFINE_ERROR_CONTEXT(gcontext, foo::error_category);
 
 TEST_CASE("error_context [ smoke ] { error category context macro }")
 {
-	auto bar_idx = cat::fcontext::index_of_category(bar::error_category());
-	CHECK(bar_idx == 3);
-	auto& foo_cat = cat::fcontext::category_from_index(2);
+	auto& bar_cat = cat::fcontext::category_from_index(cat::fcontext::index_of_category(bar::error_category()));
+	CHECK(bar_cat == bar::error_category());
+	auto& foo_cat = cat::fcontext::category_from_index(cat::fcontext::index_of_category(foo::error_category()));
 	CHECK(foo_cat == foo::error_category());
 	auto sys_idx = util::default_error_context::index_of_category(std::system_category());
-	CHECK(sys_idx == 0);
+	auto& sys_cat = cat::fcontext::category_from_index(cat::fcontext::index_of_category(std::system_category()));
+	CHECK(sys_cat == std::system_category());
+	auto& gen_cat = cat::fcontext::category_from_index(cat::fcontext::index_of_category(std::generic_category()));
+	CHECK(gen_cat == std::generic_category());
+	auto& util_cat = cat::fcontext::category_from_index(cat::fcontext::index_of_category(util::error_category()));
+	CHECK(util_cat == util::error_category());
+
 }
 
 TEST_CASE("error_context [ smoke ] { invalid category failure }")
 {
-	auto& foo_cat = cat::gcontext::category_from_index(2);
+	auto& foo_cat = cat::fcontext::category_from_index(cat::fcontext::index_of_category(foo::error_category()));
 	CHECK(foo_cat == foo::error_category());
 	
-	bool exception_caught{false};
+	bool exception_1_caught{false};
+	bool exception_2_caught{false};
 	try
 	{
 		auto bar_idx = cat::gcontext::index_of_category(bar::error_category());
@@ -188,8 +195,19 @@ TEST_CASE("error_context [ smoke ] { invalid category failure }")
 	catch(const std::system_error& e)
 	{
 		CHECK(e.code() == util::errc::invalid_error_category);
-		exception_caught = true;
+		exception_1_caught = true;
 	}
-	CHECK(exception_caught);
-	
+	CHECK(exception_1_caught);
+
+	try
+	{
+		auto& bar_cat = cat::gcontext::category_from_index(5);
+		CHECK(false);
+	}
+	catch(const std::system_error& e)
+	{
+		CHECK(e.code() == util::errc::invalid_error_category);
+		exception_2_caught = true;
+	}
+	CHECK(exception_2_caught);
 }

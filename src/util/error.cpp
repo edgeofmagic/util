@@ -22,50 +22,48 @@
  * THE SOFTWARE.
  */
 
-#include <util/error_context.h>
 #include <util/error.h>
 
-using namespace util;
 
-error_context::error_context(category_vector&& categories) : m_category_vector{std::move(categories)}
+class util_category_impl : public std::error_category
 {
-	for (auto i = 0u; i < m_category_vector.size(); ++i)
+public:
+	virtual const char*
+	name() const noexcept override
 	{
-		m_category_map.emplace(m_category_vector[i], i);
+		return "util";
 	}
-}
 
-error_context::error_context(category_vector const& categories) : m_category_vector{categories}
-{
-	for (auto i = 0u; i < m_category_vector.size(); ++i)
+	virtual std::string
+	message(int ev) const noexcept override
 	{
-		m_category_map.emplace(m_category_vector[i], i);
+		switch (static_cast<util::errc>(ev))
+		{
+			case util::errc::ok:
+				return "success";
+			case util::errc::invalid_error_category:
+				return "error category not found in error context";
+			default:
+				return "unknown util error";
+		}
 	}
-}
+};
 
 std::error_category const&
-error_context::category_from_index(index_type index) const
+util::error_category() noexcept
 {
-	if (index < 0 || static_cast<std::size_t>(index) >= m_category_vector.size())
-	{
-		throw std::system_error(make_error_code(util::errc::invalid_error_category));
-	}
-	else
-	{
-		return *(m_category_vector[index]);
-	}
+	static util_category_impl instance;
+	return instance;
 }
 
-error_context::index_type
-error_context::index_of_category(std::error_category const& category) const
+std::error_condition
+util::make_error_condition(errc e)
 {
-	auto it = m_category_map.find(&category);
-	if (it != m_category_map.end())
-	{
-		return it->second;
-	}
-	else
-	{
-		throw std::system_error(make_error_code(util::errc::invalid_error_category));
-	}
+	return std::error_condition(static_cast<int>(e), util::error_category());
+}
+
+std::error_code
+util::make_error_code(errc e)
+{
+	return std::error_code(static_cast<int>(e), util::error_category());
 }

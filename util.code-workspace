@@ -73,7 +73,11 @@
 			"cstring": "cpp",
 			"ctime": "cpp",
 			"cwchar": "cpp",
-			"cwctype": "cpp"
+			"cwctype": "cpp",
+			"complex": "cpp",
+			"fstream": "cpp",
+			"new": "cpp",
+			"stack": "cpp"
 		}
 	}
 }

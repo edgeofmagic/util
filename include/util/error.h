@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2017 David Curtis.
+ * Copyright 2019 David Curtis.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,50 +22,34 @@
  * THE SOFTWARE.
  */
 
-#include <util/error_context.h>
-#include <util/error.h>
+#ifndef UTIL_ERROR_H
+#define UTIL_ERROR_H
 
-using namespace util;
+#include <string>
+#include <system_error>
 
-error_context::error_context(category_vector&& categories) : m_category_vector{std::move(categories)}
+namespace util
 {
-	for (auto i = 0u; i < m_category_vector.size(); ++i)
-	{
-		m_category_map.emplace(m_category_vector[i], i);
-	}
-}
 
-error_context::error_context(category_vector const& categories) : m_category_vector{categories}
+enum class errc : int
 {
-	for (auto i = 0u; i < m_category_vector.size(); ++i)
-	{
-		m_category_map.emplace(m_category_vector[i], i);
-	}
-}
+	ok = 0,
+	invalid_error_category,
+};
 
 std::error_category const&
-error_context::category_from_index(index_type index) const
-{
-	if (index < 0 || static_cast<std::size_t>(index) >= m_category_vector.size())
-	{
-		throw std::system_error(make_error_code(util::errc::invalid_error_category));
-	}
-	else
-	{
-		return *(m_category_vector[index]);
-	}
-}
+error_category() noexcept;
 
-error_context::index_type
-error_context::index_of_category(std::error_category const& category) const
-{
-	auto it = m_category_map.find(&category);
-	if (it != m_category_map.end())
-	{
-		return it->second;
-	}
-	else
-	{
-		throw std::system_error(make_error_code(util::errc::invalid_error_category));
-	}
-}
+std::error_condition
+make_error_condition(errc e);
+
+std::error_code
+make_error_code(errc e);
+
+}    // namespace util
+
+template<>
+struct std::is_error_condition_enum<util::errc> : public true_type
+{};
+
+#endif    // UTIL_ERROR_H

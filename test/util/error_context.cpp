@@ -25,6 +25,7 @@
 #include <doctest.h>
 #include <iostream>
 #include <util/error_context.h>
+#include <util/error.h>
 
 using namespace util;
 
@@ -160,6 +161,7 @@ struct std::is_error_condition_enum<bar::errc> : public true_type
 namespace cat
 {
 UTIL_DEFINE_ERROR_CONTEXT(fcontext, foo::error_category, bar::error_category);
+UTIL_DEFINE_ERROR_CONTEXT(gcontext, foo::error_category);
 }
 
 TEST_CASE("error_context [ smoke ] { error category context macro }")
@@ -170,4 +172,24 @@ TEST_CASE("error_context [ smoke ] { error category context macro }")
 	CHECK(foo_cat == foo::error_category());
 	auto sys_idx = util::default_error_context::index_of_category(std::system_category());
 	CHECK(sys_idx == 0);
+}
+
+TEST_CASE("error_context [ smoke ] { invalid category failure }")
+{
+	auto& foo_cat = cat::gcontext::category_from_index(2);
+	CHECK(foo_cat == foo::error_category());
+	
+	bool exception_caught{false};
+	try
+	{
+		auto bar_idx = cat::gcontext::index_of_category(bar::error_category());
+		CHECK(false);
+	}
+	catch(const std::system_error& e)
+	{
+		CHECK(e.code() == util::errc::invalid_error_category);
+		exception_caught = true;
+	}
+	CHECK(exception_caught);
+	
 }

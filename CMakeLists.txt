@@ -25,6 +25,7 @@ include_directories(
 set(UTIL_SRCS
 	src/util/error_context.cpp
 	src/util/buffer.cpp
+	src/util/error.cpp
 	src/fs_impl.cpp)
 
 set(UTIL_TEST_SRCS

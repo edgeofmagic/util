@@ -42,7 +42,6 @@
 #include <unordered_map>
 #include <vector>
 
-
 #define UTIL_DEFINE_ERROR_CONTEXT(...)                                                                                 \
 	BOOST_PP_IF(                                                                                                       \
 			BOOST_PP_GREATER(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), 1),                                                  \
@@ -57,45 +56,26 @@
 	class CONTEXT_NAME                                                                                                 \
 	{                                                                                                                  \
 	public:                                                                                                            \
-		using index_type      = int;                                                                                   \
-		using category_vector = std::vector<const std::error_category*>;                                               \
-		using category_map    = std::unordered_map<const std::error_category*, index_type>;                            \
+		using index_type = util::error_context::index_type;                                                            \
 		static std::error_category const&                                                                              \
 		category_from_index(index_type index)                                                                          \
 		{                                                                                                              \
-			static category_vector cvec = init_cvec();                                                                 \
-			if (index < 0 || static_cast<std::size_t>(index) >= cvec.size())                                           \
-				throw std::system_error(make_error_code(std::errc::invalid_argument));                                 \
-			else                                                                                                       \
-				return *(cvec[index]);                                                                                 \
+			return get_context().category_from_index(index);                                                           \
 		}                                                                                                              \
 		static index_type                                                                                              \
 		index_of_category(std::error_category const& category)                                                         \
 		{                                                                                                              \
-			static category_map cmap{init_cmap()};                                                                     \
-			auto                it = cmap.find(&category);                                                             \
-			if (it != cmap.end())                                                                                      \
-				return it->second;                                                                                     \
-			else                                                                                                       \
-				throw std::system_error(make_error_code(std::errc::invalid_argument));                                 \
+			return get_context().index_of_category(category);                                                          \
 		}                                                                                                              \
                                                                                                                        \
 	private:                                                                                                           \
-		static category_vector                                                                                         \
-		init_cvec()                                                                                                    \
+		static util::error_context const&                                                                              \
+		get_context()                                                                                                  \
 		{                                                                                                              \
-			return category_vector{&std::system_category(),                                                            \
-								   &std::generic_category()                                                            \
-										   BOOST_PP_SEQ_FOR_EACH_I(UTIL_DO_ERROR_CAT_, _, ERR_CAT_SEQ)};               \
-		}                                                                                                              \
-		static category_map                                                                                            \
-		init_cmap()                                                                                                    \
-		{                                                                                                              \
-			category_map    cmap;                                                                                      \
-			category_vector cvec(init_cvec());                                                                         \
-			for (auto i = 0u; i < cvec.size(); ++i)                                                                    \
-				cmap.emplace(cvec[i], i);                                                                              \
-			return cmap;                                                                                               \
+			static util::error_context cntxt({&std::system_category(),                                                  \
+											 &std::generic_category()                                                  \
+													 BOOST_PP_SEQ_FOR_EACH_I(UTIL_DO_ERROR_CAT_, _, ERR_CAT_SEQ)});     \
+			return cntxt;                                                                                              \
 		}                                                                                                              \
 	};
 
@@ -106,49 +86,58 @@
 	class CONTEXT_NAME                                                                                                 \
 	{                                                                                                                  \
 	public:                                                                                                            \
-		using index_type      = int;                                                                                   \
-		using category_vector = std::vector<const std::error_category*>;                                               \
-		using category_map    = std::unordered_map<const std::error_category*, index_type>;                            \
+		using index_type = util::error_context::index_type;                                                            \
 		static std::error_category const&                                                                              \
 		category_from_index(index_type index)                                                                          \
 		{                                                                                                              \
-			static category_vector cvec = init_cvec();                                                                 \
-			if (index < 0 || static_cast<std::size_t>(index) >= cvec.size())                                           \
-				throw std::system_error(make_error_code(std::errc::invalid_argument));                                 \
-			else                                                                                                       \
-				return *(cvec[index]);                                                                                 \
+			return get_context().category_from_index(index);                                                           \
 		}                                                                                                              \
 		static index_type                                                                                              \
 		index_of_category(std::error_category const& category)                                                         \
 		{                                                                                                              \
-			static category_map cmap{init_cmap()};                                                                     \
-			auto                it = cmap.find(&category);                                                             \
-			if (it != cmap.end())                                                                                      \
-				return it->second;                                                                                     \
-			else                                                                                                       \
-				throw std::system_error(make_error_code(std::errc::invalid_argument));                                 \
+			return get_context().index_of_category(category);                                                          \
 		}                                                                                                              \
                                                                                                                        \
 	private:                                                                                                           \
-		static category_vector                                                                                         \
-		init_cvec()                                                                                                    \
+		static util::error_context const&                                                                              \
+		get_context()                                                                                                  \
 		{                                                                                                              \
-			return category_vector{&std::system_category(), &std::generic_category()};                                 \
-		}                                                                                                              \
-		static category_map                                                                                            \
-		init_cmap()                                                                                                    \
-		{                                                                                                              \
-			category_map    cmap;                                                                                      \
-			category_vector cvec(init_cvec());                                                                         \
-			for (auto i = 0u; i < cvec.size(); ++i)                                                                    \
-				cmap.emplace(cvec[i], i);                                                                              \
-			return cmap;                                                                                               \
+			static util::error_context cntxt({&std::system_category(), &std::generic_category()});                        \
+			return cntxt;                                                                                              \
 		}                                                                                                              \
 	};
 
+
 namespace util
 {
+
+class error_context
+{
+public:
+	using index_type      = int;
+	using category_vector = std::vector<const std::error_category*>;
+	using category_map    = std::unordered_map<const std::error_category*, index_type>;
+
+	error_context() {}
+
+	error_context(category_vector&& categories);
+
+	error_context(category_vector const& categories);
+
+	std::error_category const&
+	category_from_index(index_type index) const;
+
+	index_type
+	index_of_category(std::error_category const& category) const;
+
+private:
+	category_vector m_category_vector;
+	category_map    m_category_map;
+};
+
+
 UTIL_DEFINE_ERROR_CONTEXT(default_error_context);
+
 }
 
 #endif    // UTIL_ERROR_CONTEXT_H

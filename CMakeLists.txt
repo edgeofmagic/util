@@ -23,6 +23,7 @@ include_directories(
 	ext/doctest/include)
 
 set(UTIL_SRCS
+	src/util/error_context.cpp
 	src/util/buffer.cpp
 	src/fs_impl.cpp)
 

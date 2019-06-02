@@ -77,7 +77,10 @@
 			"complex": "cpp",
 			"fstream": "cpp",
 			"new": "cpp",
-			"stack": "cpp"
+			"stack": "cpp",
+			"__errc": "cpp",
+			"__node_handle": "cpp",
+			"optional": "cpp"
 		}
 	}
 }

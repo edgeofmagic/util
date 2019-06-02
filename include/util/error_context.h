@@ -138,6 +138,52 @@ private:
 	category_map    m_category_map;
 };
 
+inline
+error_context::error_context(category_vector&& categories) : m_category_vector{std::move(categories)}
+{
+	for (auto i = 0u; i < m_category_vector.size(); ++i)
+	{
+		m_category_map.emplace(m_category_vector[i], i);
+	}
+}
+
+inline
+error_context::error_context(category_vector const& categories) : m_category_vector{categories}
+{
+	for (auto i = 0u; i < m_category_vector.size(); ++i)
+	{
+		m_category_map.emplace(m_category_vector[i], i);
+	}
+}
+
+inline
+std::error_category const&
+error_context::category_from_index(index_type index) const
+{
+	if (index < 0 || static_cast<std::size_t>(index) >= m_category_vector.size())
+	{
+		throw std::system_error(make_error_code(util::errc::invalid_error_category));
+	}
+	else
+	{
+		return *(m_category_vector[index]);
+	}
+}
+
+inline
+error_context::index_type
+error_context::index_of_category(std::error_category const& category) const
+{
+	auto it = m_category_map.find(&category);
+	if (it != m_category_map.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		throw std::system_error(make_error_code(util::errc::invalid_error_category));
+	}
+}
 
 UTIL_DEFINE_ERROR_CONTEXT(default_error_context);
 

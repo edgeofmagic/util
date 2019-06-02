@@ -37,14 +37,69 @@ enum class errc : int
 	invalid_error_category,
 };
 
-std::error_category const&
-error_category() noexcept;
+class util_category_impl : public std::error_category
+{
+public:
+	virtual const char*
+	name() const noexcept override
+	{
+		return "util";
+	}
 
-std::error_condition
-make_error_condition(errc e);
+	virtual std::string
+	message(int ev) const noexcept override
+	{
+		switch (static_cast<util::errc>(ev))
+		{
+			case util::errc::ok:
+				return "success";
+			case util::errc::invalid_error_category:
+				return "error category not found in error context";
+			default:
+				return "unknown util error";
+		}
+	}
+};
 
-std::error_code
-make_error_code(errc e);
+inline std::error_category const&
+error_category() noexcept
+{
+	static util_category_impl instance;
+	return instance;
+}
+
+inline std::error_condition
+make_error_condition(errc e)
+{
+	return std::error_condition(static_cast<int>(e), util::error_category());
+}
+
+
+inline std::error_code
+make_error_code(errc e)
+{
+	return std::error_code(static_cast<int>(e), util::error_category());
+}
+
+// std::error_category const&
+// util::error_category() noexcept
+// {
+// 	static util_category_impl instance;
+// 	return instance;
+// }
+
+// std::error_condition
+// util::make_error_condition(errc e)
+// {
+// 	return std::error_condition(static_cast<int>(e), util::error_category());
+// }
+
+// std::error_code
+// util::make_error_code(errc e)
+// {
+// 	return std::error_code(static_cast<int>(e), util::error_category());
+// }
+
 
 }    // namespace util
 

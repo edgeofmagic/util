@@ -24,18 +24,10 @@ endif (Boost_NO_SYSTEM_PATHS)
 
 find_package(Boost 1.68.0 REQUIRED system)
 
-#LINK_DIRECTORIES(${CMAKE_HOME_DIRECTORY}/../boost_1_68_0_install/lib)
-
 include_directories( 
 	include
 	${Boost_INCLUDE_DIRS}
 	ext/doctest/include)
-
-set(UTIL_SRCS
-	src/util/error_context.cpp
-	src/util/buffer.cpp
-	src/util/error.cpp)
-#	src/fs_impl.cpp)
 
 set(UTIL_TEST_SRCS
 
@@ -47,10 +39,9 @@ set(UTIL_TEST_SRCS
 	test/util/error_context.cpp
 	test/test_main.cpp)
 
-add_library(util ${UTIL_SRCS})
-
 add_executable(util_test ${UTIL_TEST_SRCS})
-target_link_libraries(util_test util ${Boost_LIBRARIES})
+
+target_link_libraries(util_test ${Boost_LIBRARIES})
 
 add_test(NAME util_test COMMAND util_test )
 SET_TESTS_PROPERTIES(util_test

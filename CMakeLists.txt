@@ -7,6 +7,7 @@ set (CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "CMAKE_HOME_DIRECTORY = ${CMAKE_HOME_DIRECTORY}")
 
 	if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+		set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fsanitize=address")
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
 #	else()
 #		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3")
@@ -14,19 +15,27 @@ message(STATUS "CMAKE_HOME_DIRECTORY = ${CMAKE_HOME_DIRECTORY}")
 
 enable_testing()
 
-LINK_DIRECTORIES(${CMAKE_HOME_DIRECTORY}/../boost_1_66_0/stage/lib)
+set(Boost_USE_STATIC_LIBS   ON)
+
+set(Boost_NO_SYSTEM_PATHS TRUE)
+if (Boost_NO_SYSTEM_PATHS)
+	set(BOOST_ROOT "${CMAKE_HOME_DIRECTORY}/../boost_1_68_0_install")
+endif (Boost_NO_SYSTEM_PATHS)
+
+find_package(Boost 1.68.0 REQUIRED system)
+
+#LINK_DIRECTORIES(${CMAKE_HOME_DIRECTORY}/../boost_1_68_0_install/lib)
 
 include_directories( 
-	include 
-	${CMAKE_HOME_DIRECTORY}/../boost_1_66_0
-#	ext/boost 
+	include
+	${Boost_INCLUDE_DIRS}
 	ext/doctest/include)
 
 set(UTIL_SRCS
 	src/util/error_context.cpp
 	src/util/buffer.cpp
-	src/util/error.cpp
-	src/fs_impl.cpp)
+	src/util/error.cpp)
+#	src/fs_impl.cpp)
 
 set(UTIL_TEST_SRCS
 
@@ -41,7 +50,7 @@ set(UTIL_TEST_SRCS
 add_library(util ${UTIL_SRCS})
 
 add_executable(util_test ${UTIL_TEST_SRCS})
-target_link_libraries(util_test util boost_system)
+target_link_libraries(util_test util ${Boost_LIBRARIES})
 
 add_test(NAME util_test COMMAND util_test )
 SET_TESTS_PROPERTIES(util_test

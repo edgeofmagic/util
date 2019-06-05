@@ -23,6 +23,7 @@
  */
 
 #define TEST_ASYNC 1
+#define TEST_ASYNC_GHETTO 1
 
 #include <doctest.h>
 #include <iostream>
@@ -31,8 +32,17 @@
 
 #if (TEST_ASYNC)
 #include <util/promise_timer.h>
+#if (TEST_ASYNC_ASIO)
 #include "asio_adapter.h"
 using async_io = asio_adapter::async_adapter;
+#elif (TEST_ASYNC_GHETTO)
+#include "ghetto_async.h"
+using async_io = ghetto_async::async_adapter;
+#endif
+#endif
+
+
+#if (TEST_ASYNC)
 
 #define STOP_LOOP(_loop_, _millisecs_)                                                                                 \
 	async_io::schedule(_loop_, std::chrono::milliseconds{_millisecs_}, [=](std::error_code const& err) mutable {       \
@@ -829,7 +839,10 @@ TEST_CASE("nodeoze/smoke/promise")
 		auto done = false;
 
 		func().timeout(util::promise_timer<async_io>{std::chrono::milliseconds(10), lp})
-				.then([&]() mutable { done = true; },
+				.then([&]() mutable 
+					{ 
+						done = true; 
+					},
 					  [&](auto _err) mutable {
 						  done = true;
 						  err  = _err;

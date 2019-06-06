@@ -15,8 +15,6 @@ message(STATUS "CMAKE_HOME_DIRECTORY = ${CMAKE_HOME_DIRECTORY}")
 
 enable_testing()
 
-set(Boost_USE_STATIC_LIBS   ON)
-
 set(Boost_NO_SYSTEM_PATHS TRUE)
 if (Boost_NO_SYSTEM_PATHS)
 	set(BOOST_ROOT "${CMAKE_HOME_DIRECTORY}/../boost_1_68_0_install")
@@ -30,7 +28,6 @@ include_directories(
 	ext/doctest/include)
 
 set(UTIL_TEST_SRCS
-
 	test/util/buffer.cpp
 	test/util/allocators.cpp
 	test/util/shared_ptr.cpp
@@ -40,8 +37,6 @@ set(UTIL_TEST_SRCS
 	test/test_main.cpp)
 
 add_executable(util_test ${UTIL_TEST_SRCS})
-
-target_link_libraries(util_test ${Boost_LIBRARIES})
 
 add_test(NAME util_test COMMAND util_test )
 SET_TESTS_PROPERTIES(util_test

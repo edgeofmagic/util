@@ -23,7 +23,6 @@
  */
 
 #define TEST_ASYNC 1
-#define TEST_ASYNC_GHETTO 1
 
 #include <doctest.h>
 #include <iostream>
@@ -32,13 +31,8 @@
 
 #if (TEST_ASYNC)
 #include <util/promise_timer.h>
-#if (TEST_ASYNC_ASIO)
-#include "asio_adapter.h"
-using async_io = asio_adapter::async_adapter;
-#elif (TEST_ASYNC_GHETTO)
 #include "ghetto_async.h"
 using async_io = ghetto_async::async_adapter;
-#endif
 #endif
 
 
@@ -79,7 +73,6 @@ make_p(int i, async_io::loop_param_type lp, std::chrono::milliseconds delay)
 
 	return p;
 }
-
 
 static promise<int>
 make_e(int err_value, async_io::loop_param_type lp, std::chrono::milliseconds delay)
